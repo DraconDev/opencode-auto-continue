@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Added session recovery timer on session creation to handle stalled sessions
+Refactored test timing in session recovery plugin to use async timer advancement
 
 ## Context
-This change addresses potential session stalls by automatically triggering recovery after a configurable timeout when a new session is created. It complements existing session status monitoring.
+The test suite for the session recovery plugin was previously using fake timers (vi.useFakeTimers) which could lead to flaky tests. This change replaces them with real async timers to ensure more reliable test execution while maintaining the same test coverage.
 
 ## Completed
-- [x] Added timer initialization on session creation
-- [x] Timer triggers recovery after `stallTimeoutMs` period
-- [x] Timer is cleared when session is properly created
+- [x] Replaced fake timers with real async timers in test cases
+- [x] Simplified test timing by using direct setTimeout instead of timer advancement
+- [x] Maintained same test coverage while improving reliability
+- [x] Updated test configuration to use shorter stallTimeoutMs values (50ms) for faster test execution
 
 ## In Progress
-- [ ] None (this is a complete feature addition)
+- [ ] No active work in progress
 
 ## Blockers
-- None (this is a standalone feature)
+- None identified
 
 ## Next Steps
-1. Verify timer behavior with integration tests
-2. Document the new configuration option in session recovery docs
+1. Verify all tests pass with the new timing approach
+2. Consider adding additional test cases for edge cases in session recovery
