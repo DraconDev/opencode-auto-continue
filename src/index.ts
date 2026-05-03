@@ -283,6 +283,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         updateProgress(s);
         s.attempts = 0;
         s.userCancelled = false;
+        if (s.planning) {
+          log('user sent message, clearing plan flag');
+          s.planning = false;
+        }
         clearTimer(sid);
         s.timer = setTimeout(() => {
           recover(sid);
