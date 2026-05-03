@@ -1,15 +1,15 @@
 # Project State
 
 ## Current Focus
-Refactor test timing in session recovery plugin to use async timer advancement
+Refactored test event handling to match updated plugin event structure
 
 ## Context
-The test suite for the session recovery plugin was using a combination of `vi.advanceTimersByTime()` and `Promise.resolve()` to handle timer-based test scenarios. This approach was inconsistent and could lead to race conditions in test execution.
+The plugin's event handling was updated to require events to be wrapped in an `event` property, which required corresponding changes to the test suite.
 
 ## Completed
-- [x] Replaced all instances of `vi.advanceTimersByTime()` with `vi.advanceTimersByTimeAsync()` to ensure proper async timer handling
-- [x] Removed redundant `await Promise.resolve()` calls that were used to force microtask execution
-- [x] Updated test cases to properly await timer advancement before making assertions
+- [x] Updated all test event calls to wrap events in `event` property
+- [x] Simplified `createPlugin` function by removing unnecessary async wrapper
+- [x] Maintained all test functionality while adapting to new event structure
 
 ## In Progress
 - [ ] No active work in progress
@@ -18,5 +18,5 @@ The test suite for the session recovery plugin was using a combination of `vi.ad
 - None identified
 
 ## Next Steps
-1. Verify all test cases pass with the new timer handling approach
-2. Consider adding additional test cases to cover edge cases in timer-based scenarios
+1. Verify all tests pass with the updated event structure
+2. Consider additional test cases for edge cases in the new event handling
