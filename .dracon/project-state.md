@@ -1,26 +1,23 @@
 # Project State
 
 ## Current Focus
-Improved session recovery reliability by removing verbose logging and simplifying error handling
+Enhanced session recovery reliability with configurable recovery limits and cooldown periods
 
 ## Context
-The previous implementation had excessive console logging and complex error handling. This change focuses on making the recovery process more reliable by:
-1. Removing debug logging that wasn't actionable
-2. Simplifying error handling to focus on the critical operations
-3. Maintaining the same core functionality but with cleaner code
+The previous session recovery implementation lacked explicit limits on recovery attempts and cooldown periods between attempts. This change adds these safeguards to prevent excessive recovery attempts and ensure proper spacing between recovery operations.
 
 ## Completed
-- [x] Removed all console.log statements from the recovery flow
-- [x] Simplified error handling to focus on the critical abort/continue operations
-- [x] Maintained the same recovery sequence (abort → wait → continue)
-- [x] Kept the same configuration structure and behavior
+- [x] Added `maxRecoveries` configuration to limit recovery attempts
+- [x] Added `cooldownMs` configuration to enforce minimum time between recovery attempts
+- [x] Initialized session state with `attempts` and `lastRecoveryTime` tracking
+- [x] Updated default configuration with sensible recovery limits
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Implement actual recovery attempt counting and cooldown enforcement in the recovery logic
 
 ## Blockers
-- None identified
+- Need to implement the actual recovery attempt counting and cooldown enforcement in the session recovery logic
 
 ## Next Steps
-1. Verify the recovery flow still works as expected with the simplified code
-2. Consider adding more detailed error recovery if needed
+1. Implement recovery attempt counting and cooldown enforcement in the session recovery logic
+2. Add unit tests for the new recovery limits and cooldown behavior

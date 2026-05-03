@@ -2,16 +2,22 @@ import type { Plugin } from "@opencode-ai/plugin";
 
 interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
+  attempts: number;
+  lastRecoveryTime: number;
 }
 
 interface PluginConfig {
   stallTimeoutMs: number;
   waitAfterAbortMs: number;
+  maxRecoveries: number;
+  cooldownMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
   stallTimeoutMs: 180000,
   waitAfterAbortMs: 1500,
+  maxRecoveries: 3,
+  cooldownMs: 60000,
 };
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
@@ -24,7 +30,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function getSession(id: string): SessionState {
     if (!sessions.has(id)) {
-      sessions.set(id, { timer: null });
+      sessions.set(id, { timer: null, attempts: 0, lastRecoveryTime: 0 });
     }
     return sessions.get(id)!;
   }
