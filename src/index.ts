@@ -122,15 +122,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         "session.status"
       ];
 
-      const activityTypes = [
-        "message.part.updated",
-        "message.part.added",
-        "message.updated",
-        "message.created",
-        "step.finish",
-        "session.status"
-      ];
-
       const staleTypes = [
         "session.idle",
         "session.error",
