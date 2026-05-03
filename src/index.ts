@@ -193,7 +193,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
       const progressTypes = [
-        "message.part.delta",
         "message.part.updated",
         "session.status"
       ];
