@@ -49,6 +49,7 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
+    "sync": "npm run build && cp src/index.ts ~/.config/opencode/plugins/opencode-auto-force-resume.ts && cp dist/index.js ~/.config/opencode/plugins/opencode-auto-force-resume.js && cp dist/index.d.ts ~/.config/opencode/plugins/opencode-auto-force-resume.d.ts",
     "prepublishOnly": "npm run build"
   }
 }
