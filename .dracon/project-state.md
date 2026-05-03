@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Refined progress tracking in session recovery to distinguish between meaningful and non-meaningful updates
+Added session recovery timer on session creation to handle stalled sessions
 
 ## Context
-The previous implementation updated progress for all event types, which could lead to false positives in recovery detection. We need to only count actual meaningful progress (text, step-finish, reasoning) while still tracking other events for recovery purposes.
+This change addresses potential session stalls by automatically triggering recovery after a configurable timeout when a new session is created. It complements existing session status monitoring.
 
 ## Completed
-- [x] Added specific handling for message.part.updated events to only count meaningful progress types
-- [x] Maintained recovery functionality for all other event types
-- [x] Preserved existing attempt counter and user cancellation reset behavior
+- [x] Added timer initialization on session creation
+- [x] Timer triggers recovery after `stallTimeoutMs` period
+- [x] Timer is cleared when session is properly created
 
 ## In Progress
-- [x] Implemented the refined progress tracking logic
+- [ ] None (this is a complete feature addition)
 
 ## Blockers
-- None identified
+- None (this is a standalone feature)
 
 ## Next Steps
-1. Add unit tests for the new progress filtering logic
-2. Verify behavior with edge cases (empty parts, malformed events)
+1. Verify timer behavior with integration tests
+2. Document the new configuration option in session recovery docs

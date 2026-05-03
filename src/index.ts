@@ -140,6 +140,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
+      if (event?.type === "session.created") {
+        const s = getSession(sid);
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          recover(sid);
+        }, config.stallTimeoutMs);
+        return;
+      }
+
       if (event?.type === "session.status") {
         const status = e?.properties?.status;
         const s = getSession(sid);
