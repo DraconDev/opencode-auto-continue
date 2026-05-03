@@ -187,14 +187,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   };
 
   return {
-    event: async ({ event }: { event: EventWithSessionID }) => {
-      const sessionId = extractSessionID(event);
+    event: async (input: { event: { type: string; properties?: Record<string, unknown> } }) => {
+      const event = input.event as EventWithSessionID;
+      const sessionId = extractSessionID(event as EventWithSessionID);
 
+      const extractedEvent = event as EventWithSessionID;
       console.log(`[auto-force-resume] Event received: ${event.type} for session: ${sessionId}`);
 
-      if (ACTIVITY_EVENTS.includes(event.type as typeof ACTIVITY_EVENTS[number])) {
+      if (ACTIVITY_EVENTS.includes(extractedEvent.type as typeof ACTIVITY_EVENTS[number])) {
         handleActivity(sessionId);
-      } else if (STALE_EVENTS.includes(event.type as typeof STALE_EVENTS[number])) {
+      } else if (STALE_EVENTS.includes(extractedEvent.type as typeof STALE_EVENTS[number])) {
         resetSession(sessionId);
       }
     },
