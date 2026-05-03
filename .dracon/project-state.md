@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored test timing in session recovery plugin to use async timer control for more reliable test behavior.
+Added explicit promise resolution in test cases to ensure proper async behavior in session recovery plugin.
 
 ## Context
-The test suite needed more reliable timing control to properly test the session recovery timer behavior. The original implementation used real timers with fixed delays, which could lead to flaky tests. This change switches to using Vitest's fake timers to precisely control time advancement during tests.
+The test cases for the session recovery plugin were previously relying on timer advancement without explicit promise resolution, which could lead to race conditions in async test execution. This change ensures proper sequencing of async operations during test execution.
 
 ## Completed
-- [x] Replaced real timers with Vitest fake timers in test cases
-- [x] Added proper timer cleanup with `vi.useRealTimers()`
-- [x] Maintained consistent test behavior across all timer-related test cases
+- [x] Added `await Promise.resolve()` after timer advancement in test cases to ensure proper async sequencing
+- [x] Applied consistent pattern across all test cases involving timer advancement
 
 ## In Progress
-- [x] Refactored all test cases to use the new timer control approach
+- [x] Verification of test stability with the new async resolution pattern
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify all test cases pass with the new timing approach
-2. Consider adding additional test cases for edge cases in timer behavior
+1. Verify test stability with the new async resolution pattern
+2. Consider adding more comprehensive async test utilities if needed
