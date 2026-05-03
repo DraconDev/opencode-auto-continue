@@ -154,6 +154,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         if (status?.type === "busy") {
           updateProgress(s);
+          s.attempts = 0;
+          s.userCancelled = false;
         }
         clearTimer(sid);
         s.timer = setTimeout(() => {
@@ -165,6 +167,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (progressTypes.includes(event?.type)) {
         const s = getSession(sid);
         updateProgress(s);
+        s.attempts = 0;
+        s.userCancelled = false;
         clearTimer(sid);
         s.timer = setTimeout(() => {
           recover(sid);
