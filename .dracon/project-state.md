@@ -1,21 +1,27 @@
 # Project State
 
 ## Current Focus
-Updated test case to verify timer behavior with the new `message.part.updated` event structure.
+Improved plan content detection in session recovery with stricter pattern matching and whitespace handling
 
 ## Context
-The test was modified to match the updated event structure introduced in the plugin code, ensuring compatibility with the new message part handling logic.
+The changes enhance the reliability of plan detection during session recovery by:
+1. Making pattern matching more precise with line-start anchors
+2. Adding support for additional plan indicators (step lists, checkboxes)
+3. Normalizing input text before pattern matching
 
 ## Completed
-- [x] Updated test case to use `message.part.updated` event structure instead of `message.part.delta`
-- [x] Maintained all existing test assertions and timing verifications
+- [x] Added line-start anchors (`^`) to all plan patterns for stricter matching
+- [x] Added support for step lists (`1. Step 1`, `- [x]`) as plan indicators
+- [x] Added plan prefix pattern (`plan: `)
+- [x] Added text trimming before pattern matching
+- [x] Simplified pattern list by removing redundant alternatives
 
 ## In Progress
-- [x] No active work in progress beyond this test update
+- [x] All pattern improvements are implemented
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Verify all related test cases are updated to match the new event structure
-2. Ensure the plugin implementation fully supports the new event format
+1. Verify test coverage for new plan patterns
+2. Consider adding configuration options for pattern customization

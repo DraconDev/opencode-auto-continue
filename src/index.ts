@@ -77,16 +77,20 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   const PLAN_PATTERNS = [
-    /here\s+is\s+(my|the)\s+plan/i,
-    /here'[rs]\s+(my|the)\s+plan/i,
-    /##\s*plan/i,
-    /\*\*plan:?\*\*/i,
-    /##\s*proposed\s+plan/i,
-    /##\s*implementation\s+plan/i,
+    /^here\s+is\s+(my|the)\s+plan/i,
+    /^here'[rs]\s+(my|the)\s+plan/i,
+    /^##\s*plan\b/i,
+    /^\*\*plan:\*\*$/i,
+    /^##\s*proposed\s+plan/i,
+    /^##\s*implementation\s+plan/i,
+    /^plan:\s*/i,
+    /^\d+[\.\)]\s*step\s+\d+/i,
+    /^-\s*\[x\]\s/i,
   ];
 
   function isPlanContent(text: string): boolean {
-    return PLAN_PATTERNS.some(p => p.test(text));
+    const trimmed = text.trim();
+    return PLAN_PATTERNS.some(p => p.test(trimmed));
   }
 
   function log(...args: unknown[]) {
