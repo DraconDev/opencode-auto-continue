@@ -63,12 +63,12 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
-    it("should set timer on message.part.delta", async () => {
+    it("should set timer on message.part.updated with delta", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).toHaveBeenCalled();
