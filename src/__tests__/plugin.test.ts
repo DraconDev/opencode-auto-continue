@@ -180,7 +180,7 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("maxRecoveries limit", () => {
-    it.skip("should stop recovering after maxRecoveries - affected by polling", async () => {
+    it("should stop recovering after maxRecoveries", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2 });
@@ -254,10 +254,10 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("attempts reset on progress", () => {
-    it.skip("should reset attempts on progress event - timer race condition with fake timers", async () => {
+    it("should reset attempts on progress event", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, cooldownMs: 0, maxRecoveries: 3 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, cooldownMs: 0, maxRecoveries: 3, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(50);
@@ -280,6 +280,46 @@ describe("opencode-auto-force-resume", () => {
       expect(mockAbort).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
     });
+  });
+
+  describe("timer restart after recovery", () => {
+    it("should set new timer after successful recovery", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(50);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      mockAbort.mockClear();
+      await vi.advanceTimersByTimeAsync(50);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+  });
+
+  describe("maxRecoveries limit", () => {
+    it("should stop recovering after maxRecoveries", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(500);
+        if (i < 4) {
+          await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: `hello${i}` } } });
+        }
+      }
+
+      expect(mockAbort).toHaveBeenCalledTimes(2);
+      vi.useRealTimers();
+    });
+  });
   });
 
   describe("timer restart after recovery", () => {
