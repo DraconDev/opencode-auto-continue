@@ -23,6 +23,15 @@ const DEFAULT_CONFIG: PluginConfig = {
   enableCompressionFallback: false,
 };
 
+type EventWithSessionID = {
+  type: string;
+  properties?: {
+    sessionID?: string;
+    info?: { sessionID?: string };
+    part?: { sessionID?: string };
+  };
+};
+
 const ACTIVITY_EVENTS = [
   "message.part.updated",
   "message.part.added",
@@ -38,6 +47,13 @@ const STALE_EVENTS = [
   "session.compacted",
   "session.ended",
 ] as const;
+
+function extractSessionID(event: EventWithSessionID): string {
+  if (event.properties?.sessionID) return event.properties.sessionID;
+  if (event.properties?.info?.sessionID) return event.properties.info.sessionID;
+  if (event.properties?.part?.sessionID) return event.properties.part.sessionID;
+  return "default";
+}
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   console.log("[auto-force-resume] Plugin loading with options:", JSON.stringify(options));
@@ -171,8 +187,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   };
 
   return {
-    event: async ({ event }) => {
-      const sessionId = (event as { properties?: { sessionID?: string } }).properties?.sessionID || "default";
+    event: async ({ event }: { event: EventWithSessionID }) => {
+      const sessionId = extractSessionID(event);
 
       console.log(`[auto-force-resume] Event received: ${event.type} for session: ${sessionId}`);
 

@@ -1,6 +1,6 @@
 {
   "name": "opencode-auto-force-resume",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "OpenCode plugin that automatically detects stalled sessions and recovers via abort+continue, with optional context compression fallback",
   "keywords": [
     "opencode",

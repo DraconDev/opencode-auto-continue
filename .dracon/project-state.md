@@ -1,28 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored session recovery logic with improved error handling and configurable timeouts
+Improved session ID extraction and type safety in event handling
 
 ## Context
-The previous session recovery implementation had inconsistent behavior with abort operations and lacked proper error handling. This change standardizes the recovery process and makes timeouts configurable.
+The previous session ID extraction was fragile and didn't handle nested property structures. This change makes the session ID extraction more robust and type-safe by defining a specific event type and extraction function.
 
 ## Completed
-- [x] Added explicit session.abort() call with proper error handling
-- [x] Removed text-based cancellation in favor of structured API calls
-- [x] Made all recovery timeouts configurable through PluginConfig
-- [x] Added comprehensive logging for recovery operations
-- [x] Simplified recovery flow by removing compression fallback
-- [x] Reduced default stall timeout from 3 minutes to 30 seconds
-- [x] Lowered max recovery attempts from 10 to 3
-- [x] Shortened cooldown period from 5 minutes to 1 minute
+- [x] Added `EventWithSessionID` type to properly type event structures
+- [x] Created `extractSessionID` function to handle nested session ID locations
+- [x] Updated event handler to use the new type and extraction function
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Session ID handling improvements
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify recovery behavior with integration tests
-2. Document new configuration options in README
-3. Consider adding metrics for recovery success rates
+1. Verify the new session ID extraction works with all event types
+2. Update related tests to cover the new extraction logic
