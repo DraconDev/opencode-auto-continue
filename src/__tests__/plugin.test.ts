@@ -47,9 +47,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-
-      vi.advanceTimersByTime(5000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -60,9 +58,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-
-      vi.advanceTimersByTime(10000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(10000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -73,9 +69,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
-
-      vi.advanceTimersByTime(5000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -86,15 +80,13 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
-      vi.advanceTimersByTime(4000);
+      await vi.advanceTimersByTimeAsync(4000);
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } } });
-      vi.advanceTimersByTime(4000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(4000);
 
       expect(mockAbort).not.toHaveBeenCalled();
 
-      vi.advanceTimersByTime(2000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(2000);
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -108,8 +100,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -121,8 +112,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -134,8 +124,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -149,8 +138,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 10000 });
 
       await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
-      vi.advanceTimersByTime(5000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -162,8 +150,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
-      vi.advanceTimersByTime(5000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -177,16 +164,15 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 10000, maxRecoveries: 10 });
 
       await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
-      vi.advanceTimersByTime(2000);
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+      await vi.advanceTimersByTimeAsync(2000);
       await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -200,10 +186,9 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2 });
 
       for (let i = 0; i < 5; i++) {
-        vi.advanceTimersByTime(500);
-        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(500);
         if (i < 4) {
-          await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+          await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: `hello${i}` } });
         }
       }
 
@@ -218,9 +203,9 @@ describe("opencode-auto-force-resume", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
+      await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
       await plugin.event({ type: "session.error", properties: { sessionID: "test", error: { name: "MessageAbortedError" } } });
-      vi.advanceTimersByTime(2000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(2000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -233,9 +218,7 @@ describe("opencode-auto-force-resume", () => {
 
       await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
       await plugin.event({ type: "session.error", properties: { sessionID: "test", error: { name: "SomeOtherError" } } });
-
-      vi.advanceTimersByTime(2000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(2000);
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -250,7 +233,7 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ type: "session.idle", properties: { sessionID: "test" } });
 
       vi.useFakeTimers();
-      vi.advanceTimersByTime(10000);
+      await vi.advanceTimersByTimeAsync(10000);
       await Promise.resolve();
 
       expect(mockAbort).not.toHaveBeenCalled();
@@ -264,7 +247,7 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ type: "session.deleted", properties: { sessionID: "test", info: {} } });
 
       vi.useFakeTimers();
-      vi.advanceTimersByTime(10000);
+      await vi.advanceTimersByTimeAsync(10000);
       await Promise.resolve();
 
       expect(mockAbort).not.toHaveBeenCalled();
@@ -278,22 +261,17 @@ describe("opencode-auto-force-resume", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 3 });
 
-      vi.advanceTimersByTime(500);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
-
-      vi.advanceTimersByTime(500);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } });
-
-      vi.advanceTimersByTime(500);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
@@ -307,14 +285,12 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 0, maxRecoveries: 5 });
 
       await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
-      vi.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 

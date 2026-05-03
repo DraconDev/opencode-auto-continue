@@ -1,17 +1,15 @@
 # Project State
 
 ## Current Focus
-Refactored test setup for session recovery plugin to use dynamic imports and proper typing
+Refactor test timing in session recovery plugin to use async timer advancement
 
 ## Context
-The test file was refactoring to better match the actual plugin implementation while maintaining testability. This change aligns the test setup with the plugin's actual interface and improves type safety.
+The test suite for the session recovery plugin was using a combination of `vi.advanceTimersByTime()` and `Promise.resolve()` to handle timer-based test scenarios. This approach was inconsistent and could lead to race conditions in test execution.
 
 ## Completed
-- [x] Updated test setup to use dynamic imports for the plugin
-- [x] Standardized mock client interface to match plugin requirements
-- [x] Removed redundant session state management code from tests
-- [x] Simplified test configuration handling
-- [x] Improved type safety in test implementations
+- [x] Replaced all instances of `vi.advanceTimersByTime()` with `vi.advanceTimersByTimeAsync()` to ensure proper async timer handling
+- [x] Removed redundant `await Promise.resolve()` calls that were used to force microtask execution
+- [x] Updated test cases to properly await timer advancement before making assertions
 
 ## In Progress
 - [ ] No active work in progress
@@ -20,5 +18,5 @@ The test file was refactoring to better match the actual plugin implementation w
 - None identified
 
 ## Next Steps
-1. Update test cases to verify the new plugin interface
-2. Add integration tests for the dynamic import behavior
+1. Verify all test cases pass with the new timer handling approach
+2. Consider adding additional test cases to cover edge cases in timer-based scenarios
