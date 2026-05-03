@@ -244,6 +244,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (staleTypes.includes(event?.type)) {
         resetSession(sid);
       }
+    },
+    dispose: () => {
+      sessions.forEach((s) => {
+        if (s.timer) {
+          clearTimeout(s.timer);
+          s.timer = null;
+        }
+      });
+      sessions.clear();
     }
   };
 };
