@@ -4,12 +4,26 @@ interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
 }
 
-const STALL_TIMEOUT = 30000;
-const WAIT_AFTER_ABORT = 1500;
+interface PluginConfig {
+  stallTimeoutMs: number;
+  waitAfterAbortMs: number;
+}
+
+const DEFAULT_CONFIG: PluginConfig = {
+  stallTimeoutMs: 180000,
+  waitAfterAbortMs: 1500,
+};
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   console.log("[force-resume] PLUGIN LOADED");
-  console.log("[force-resume] Options:", options);
+  console.log("[force-resume] Options:", JSON.stringify(options));
+
+  const config: PluginConfig = {
+    ...DEFAULT_CONFIG,
+    ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
+  };
+
+  console.log("[force-resume] Config:", JSON.stringify(config));
 
   const sessions = new Map<string, SessionState>();
 
@@ -47,7 +61,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
 
     // Step 2: wait
-    await new Promise(r => setTimeout(r, WAIT_AFTER_ABORT));
+    await new Promise(r => setTimeout(r, config.waitAfterAbortMs));
 
     // Step 3: continue
     console.log("[force-resume] Sending continue...");
@@ -69,7 +83,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       console.log("[force-resume] EVENT:", event?.type, "session:", sid);
 
-      // Activity events reset timer
       const activityTypes = [
         "message.part.updated",
         "message.part.added",
@@ -79,7 +92,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         "session.status"
       ];
 
-      // Stale events clear session
       const staleTypes = [
         "session.idle",
         "session.error",
@@ -93,7 +105,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.timer = setTimeout(() => {
           console.log("[force-resume] STALL TIMER FIRED for:", sid);
           recover(sid);
-        }, STALL_TIMEOUT);
+        }, config.stallTimeoutMs);
       } else if (staleTypes.includes(event?.type)) {
         resetSession(sid);
       }
