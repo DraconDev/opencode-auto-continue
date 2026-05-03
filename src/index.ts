@@ -15,15 +15,10 @@ const DEFAULT_CONFIG: PluginConfig = {
 };
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
-  console.log("[force-resume] PLUGIN LOADED");
-  console.log("[force-resume] Options:", JSON.stringify(options));
-
   const config: PluginConfig = {
     ...DEFAULT_CONFIG,
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
   };
-
-  console.log("[force-resume] Config:", JSON.stringify(config));
 
   const sessions = new Map<string, SessionState>();
 
@@ -43,36 +38,29 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   function resetSession(id: string) {
-    console.log("[force-resume] Reset session:", id);
     clearTimer(id);
     sessions.delete(id);
   }
 
   async function recover(sessionId: string) {
-    console.log("[force-resume] RECOVERY for:", sessionId);
-
     // Step 1: abort
-    console.log("[force-resume] Calling abort()...");
     try {
-      const result = await (input.client.session as any).abort({ path: { id: sessionId } });
-      console.log("[force-resume] abort result:", JSON.stringify(result));
-    } catch (e: any) {
-      console.error("[force-resume] abort failed:", e?.message);
+      await (input.client.session as any).abort({ path: { id: sessionId } });
+    } catch {
+      // abort failed, continue anyway
     }
 
     // Step 2: wait
     await new Promise(r => setTimeout(r, config.waitAfterAbortMs));
 
     // Step 3: continue
-    console.log("[force-resume] Sending continue...");
     try {
-      const result = await input.client.session.prompt({
+      await input.client.session.prompt({
         body: { parts: [{ type: "text", text: "continue" }], noReply: true },
         path: { id: sessionId }
       });
-      console.log("[force-resume] continue result:", JSON.stringify(result));
-    } catch (e: any) {
-      console.error("[force-resume] continue failed:", e?.message);
+    } catch {
+      // continue failed
     }
   }
 
@@ -80,8 +68,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     event: async ({ event }: { event: any }) => {
       const e = event as any;
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
-
-      console.log("[force-resume] EVENT:", event?.type, "session:", sid);
 
       const activityTypes = [
         "message.part.updated",
@@ -103,7 +89,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         clearTimer(sid);
         s.timer = setTimeout(() => {
-          console.log("[force-resume] STALL TIMER FIRED for:", sid);
           recover(sid);
         }, config.stallTimeoutMs);
       } else if (staleTypes.includes(event?.type)) {
