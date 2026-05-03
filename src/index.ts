@@ -187,11 +187,81 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "session.error") {
         const err = e?.properties?.error;
+        log('session.error:', err?.name);
         if (err?.name === "MessageAbortedError") {
           const s = sessions.get(sid);
           if (s) s.userCancelled = true;
           clearTimer(sid);
+          log('user cancelled session:', sid);
         }
+        return;
+      }
+
+      if (event?.type === "session.created") {
+        log('session.created:', sid);
+        getSession(sid);
+        return;
+      }
+
+      if (event?.type === "session.status") {
+        const status = e?.properties?.status;
+        log('session.status:', sid, status?.type);
+        const s = getSession(sid);
+        if (status?.type === "busy") {
+          updateProgress(s);
+          s.attempts = 0;
+          s.userCancelled = false;
+        }
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          recover(sid);
+        }, config.stallTimeoutMs);
+        return;
+      }
+
+      if (progressTypes.includes(event?.type)) {
+        log('progress event:', event?.type, sid);
+        const s = getSession(sid);
+
+        if (event?.type === "message.part.updated") {
+          const partType = e?.properties?.part?.type;
+          const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning";
+          log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
+          if (isRealProgress) {
+            updateProgress(s);
+            s.attempts = 0;
+            s.userCancelled = false;
+          }
+        } else {
+          updateProgress(s);
+          s.attempts = 0;
+          s.userCancelled = false;
+        }
+
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          recover(sid);
+        }, config.stallTimeoutMs);
+        return;
+      }
+
+      if (event?.type === "message.created" || event?.type === "message.part.added") {
+        log('activity event:', event?.type, sid);
+        const s = getSession(sid);
+        updateProgress(s);
+        s.attempts = 0;
+        s.userCancelled = false;
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          recover(sid);
+        }, config.stallTimeoutMs);
+        return;
+      }
+
+      if (staleTypes.includes(event?.type)) {
+        log('stale event:', event?.type, sid);
+        resetSession(sid);
+      }
         return;
       }
 
