@@ -1,6 +1,6 @@
 {
   "name": "opencode-auto-force-resume",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OpenCode plugin that automatically detects stalled sessions and recovers via cancel+continue, with optional context compression fallback",
   "keywords": [
     "opencode",
@@ -9,7 +9,7 @@
     "context-compression"
   ],
   "license": "MIT",
-  "author": "dracon <dracon@example.com>",
+  "author": "dracon",
   "repository": {
     "type": "git",
     "url": "https://github.com/DraconDev/opencode-auto-force-resume"
@@ -31,11 +31,13 @@
   "devDependencies": {
     "@opencode-ai/plugin": "^1.4.10",
     "@types/node": "^20.11.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
   },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "release": "git tag v$(npm run --silent --yes get-version) && git push origin --tags"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   }
 }

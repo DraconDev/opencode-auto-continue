@@ -23,7 +23,7 @@ npm install opencode-auto-force-resume
 ### GitHub
 
 ```bash
-npm install github:draconf/opencode-auto-force-resume
+npm install github:DraconDev/opencode-auto-force-resume
 ```
 
 ### Local plugin
