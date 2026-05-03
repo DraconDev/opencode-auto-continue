@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Refined test behavior for session recovery timer handling during non-abort errors
+Refactored test timing in session recovery plugin to use async timer control for more reliable test behavior.
 
 ## Context
-The test case was updated to verify that the session recovery timer continues running during non-abort errors, rather than being prematurely cleared. This aligns with the plugin's actual behavior where only specific error types should trigger timer cancellation.
+The test suite needed more reliable timing control to properly test the session recovery timer behavior. The original implementation used real timers with fixed delays, which could lead to flaky tests. This change switches to using Vitest's fake timers to precisely control time advancement during tests.
 
 ## Completed
-- [x] Updated test case to verify timer continues running for non-abort errors
-- [x] Adjusted test timing to properly validate the expected behavior
-- [x] Modified assertion to check for timer continuation rather than cancellation
+- [x] Replaced real timers with Vitest fake timers in test cases
+- [x] Added proper timer cleanup with `vi.useRealTimers()`
+- [x] Maintained consistent test behavior across all timer-related test cases
 
 ## In Progress
-- [x] Test case refinement for session recovery timer behavior
+- [x] Refactored all test cases to use the new timer control approach
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for all error types in session recovery
-2. Ensure consistent behavior between test and production code
+1. Verify all test cases pass with the new timing approach
+2. Consider adding additional test cases for edge cases in timer behavior

@@ -255,39 +255,46 @@ describe("opencode-auto-force-resume", () => {
 
   describe("attempts reset on progress", () => {
     it("should reset attempts on progress event", async () => {
+      vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, cooldownMs: 0, maxRecoveries: 3 });
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
-      await new Promise(r => setTimeout(r, 60));
+      await vi.advanceTimersByTimeAsync(50);
+
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
-      await new Promise(r => setTimeout(r, 60));
+      await vi.advanceTimersByTimeAsync(50);
+
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } } });
-      await new Promise(r => setTimeout(r, 60));
+      await vi.advanceTimersByTimeAsync(50);
+
       expect(mockAbort).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
     });
   });
 
   describe("timer restart after recovery", () => {
     it("should set new timer after successful recovery", async () => {
+      vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, cooldownMs: 0, maxRecoveries: 5 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await new Promise(r => setTimeout(r, 60));
+      await vi.advanceTimersByTimeAsync(50);
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
-      await new Promise(r => setTimeout(r, 60));
+      await vi.advanceTimersByTimeAsync(50);
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
     });
   });
 });
