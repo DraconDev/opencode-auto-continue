@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added planning state check to prevent session recovery during active planning
+Added configuration for plan stall detection in session recovery
 
 ## Context
-This change addresses a race condition where session recovery attempts could interfere with ongoing planning operations. The previous implementation didn't properly handle the `planning` state flag, potentially causing inconsistent recovery behavior.
+This change adds a new configuration parameter to prevent session recovery during active planning phases, which was identified as a potential source of reliability issues in recent commits.
 
 ## Completed
-- [x] Added check for `s.planning` flag before session recovery operations
-- [x] Added debug log when clearing the planning flag during recovery
+- [x] Added `planStallMs` configuration option to interface
+- [x] Set default value to 10 minutes (600,000ms)
 
 ## In Progress
-- [x] Implementation of planning state handling in session recovery
+- [x] Implementation of stall detection logic
 
 ## Blockers
-- None identified in this change
+- Implementation of the actual stall detection logic needs to be completed
 
 ## Next Steps
-1. Verify the new behavior in integration tests
-2. Document the planning state handling in session recovery documentation
+1. Implement stall detection using the new configuration
+2. Add corresponding test cases for the new functionality

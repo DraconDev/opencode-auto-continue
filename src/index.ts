@@ -18,6 +18,7 @@ interface PluginConfig {
   abortPollIntervalMs: number;
   abortPollMaxTimeMs: number;
   abortPollMaxFailures: number;
+  planStallMs: number;
   debug: boolean;
 }
 
@@ -29,6 +30,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollIntervalMs: 200,
   abortPollMaxTimeMs: 5000,
   abortPollMaxFailures: 3,
+  planStallMs: 600000,
   debug: false,
 };
 
