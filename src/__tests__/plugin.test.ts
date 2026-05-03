@@ -283,7 +283,7 @@ describe("opencode-auto-force-resume", () => {
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test", messageID: "msg1" }, delta: " world" } } });
       await vi.advanceTimersByTimeAsync(50);
       await Promise.resolve();
 
