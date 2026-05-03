@@ -79,9 +79,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           parts: [{ type: "text", text }],
           noReply,
         },
-        path: { sessionID: sessionId },
+        path: { id: sessionId },
       });
-      return result.ok;
+      if ("error" in result) {
+        return false;
+      }
+      return true;
     } catch (e) {
       console.error(`[auto-force-resume] Failed to send "${text}":`, e);
       return false;
