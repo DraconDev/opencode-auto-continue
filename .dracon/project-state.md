@@ -1,17 +1,16 @@
 # Project State
 
 ## Current Focus
-Refactored session recovery logic to use explicit abort/continue operations with proper error handling
+Improved session recovery reliability by replacing text-based cancellation with explicit API calls
 
 ## Context
-The previous implementation used generic "cancel" and "continue" prompts which could be ambiguous. This change introduces a more explicit abort operation with proper error handling and clearer test assertions.
+The plugin previously used text messages ("cancel") to interrupt stalled sessions, which could corrupt the OpenCode TUI and confuse the model. This change uses the proper `session.abort()` API for cleaner interruption.
 
 ## Completed
-- [x] Added explicit `abortSession` function to handle session termination
-- [x] Renamed `cancelWaitMs` to `continueWaitMs` in config for clarity
-- [x] Updated test assertions to verify abort calls separately from prompt calls
-- [x] Improved error handling in recovery flow
-- [x] Added tracking for abort calls in test infrastructure
+- [x] Replaced text-based cancellation with `session.abort()` API calls
+- [x] Renamed configuration option from `cancelWaitMs` to `continueWaitMs` for clarity
+- [x] Updated documentation to reflect the new recovery mechanism
+- [x] Version bumped to 1.1.0 to reflect this breaking change
 
 ## In Progress
 - [ ] No active work in progress
@@ -20,6 +19,5 @@ The previous implementation used generic "cancel" and "continue" prompts which c
 - None identified
 
 ## Next Steps
-1. Verify all test cases pass with the new implementation
-2. Consider adding more edge cases for error scenarios
-3. Document the new recovery flow in user documentation
+1. Test the new recovery mechanism with various model types
+2. Monitor for any regression in recovery success rates
