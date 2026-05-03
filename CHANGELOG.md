@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-05-03
+
+### Changed
+
+- **Simplified recovery flow**: Removed compression fallback for simplicity
+- **Config options**: `stallTimeoutMs` and `waitAfterAbortMs` only
+- **Recovery flow**: `session.abort()` → wait → `continue`
+- Uses OpenCode SDK's `session.abort()` API for clean interruption
+- No text messages sent to chat (avoids UI corruption)
+
+### Removed
+
+- `maxRecoveries`, `cooldownMs`, `enableCompressionFallback` (overcomplicated)
+- Compression fallback (can be added back if needed)
+
 ## [1.1.0] - 2025-05-03
 
 ### Changed
