@@ -1,20 +1,25 @@
 # Project State
 
 ## Current Focus
-Removed redundant planning state check during session recovery
+Improved plan detection and stall monitoring during session recovery
 
 ## Context
-This change eliminates a redundant check for the `planning` state during session recovery, which was previously being cleared unnecessarily after plan confirmation.
+The previous plan stall detection system had limitations in handling split plan markers across multiple message parts. This change implements a rolling buffer approach to reliably detect plan content regardless of how it's split in the response stream.
 
 ## Completed
-- [x] Removed redundant `planning` state check in session recovery logic
+- [x] Added `planBuffer` to session state to accumulate text parts
+- [x] Implemented rolling buffer (200-character window) for plan detection
+- [x] Removed redundant `planStallMs` configuration
+- [x] Enhanced plan detection to handle split markers across multiple parts
+- [x] Improved plan stall monitoring by pausing recovery during active planning
 
 ## In Progress
-- [x] None (this is a completed change)
+- [ ] None (all changes are complete)
 
 ## Blockers
 - None
 
 ## Next Steps
-1. Verify no regression in session recovery behavior
-2. Consider further optimization of session recovery timing
+1. Verify buffer size (200 chars) works for all plan marker cases
+2. Test edge cases with very long plan markers split across many parts
+3. Consider adding buffer size as configurable parameter if needed

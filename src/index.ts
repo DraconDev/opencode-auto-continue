@@ -8,6 +8,7 @@ interface SessionState {
   aborting: boolean;
   userCancelled: boolean;
   planning: boolean;
+  planBuffer: string;
 }
 
 interface PluginConfig {
@@ -18,7 +19,6 @@ interface PluginConfig {
   abortPollIntervalMs: number;
   abortPollMaxTimeMs: number;
   abortPollMaxFailures: number;
-  planStallMs: number;
   debug: boolean;
 }
 
@@ -30,7 +30,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollIntervalMs: 200,
   abortPollMaxTimeMs: 5000,
   abortPollMaxFailures: 3,
-  planStallMs: 600000,
   debug: false,
 };
 
@@ -52,6 +51,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         aborting: false,
         userCancelled: false,
         planning: false,
+        planBuffer: '',
       });
     }
     return sessions.get(id)!;
@@ -67,6 +67,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function resetSession(id: string) {
     clearTimer(id);
+    const s = sessions.get(id);
+    if (s) s.planBuffer = '';
     sessions.delete(id);
   }
 
@@ -99,20 +101,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
+    if (s.planning) return;
     if (s.attempts >= config.maxRecoveries) return;
 
     const now = Date.now();
-
-    // If session is waiting for plan confirmation, give it extra time
-    if (s.planning) {
-      if (now - s.lastProgressAt < config.planStallMs) {
-        // Still within plan grace period — don't recover
-        return;
-      }
-      // Plan has been stalled too long — treat as a real stall
-      log('plan stall timeout exceeded, clearing plan flag');
-      s.planning = false;
-    }
 
     if (now - s.lastRecoveryTime < config.cooldownMs) return;
 
@@ -265,18 +257,29 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.attempts = 0;
             s.userCancelled = false;
           }
+          if (partType === "text") {
+            const partText = e?.properties?.part?.text as string | undefined;
+            if (partText && isPlanContent(partText)) {
+              log('plan detected in updated text part, pausing stall monitoring');
+              s.planning = true;
+            }
+          }
         } else {
           updateProgress(s);
           s.attempts = 0;
           s.userCancelled = false;
         }
 
-        // Check if this delta contains plan content
+        // Check if this delta contains plan content (using rolling buffer for split markers)
         if (event?.type === "message.part.delta") {
           const deltaText = e?.properties?.part?.text as string | undefined;
-          if (deltaText && isPlanContent(deltaText)) {
-            log('plan detected, giving extra time before recovery');
-            s.planning = true;
+          if (deltaText) {
+            s.planBuffer = (s.planBuffer + deltaText).slice(-200);
+            if (isPlanContent(s.planBuffer)) {
+              log('plan detected, pausing stall monitoring — user must address');
+              s.planning = true;
+              s.planBuffer = '';
+            }
           }
         }
 
@@ -284,6 +287,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.timer = setTimeout(() => {
           recover(sid);
         }, config.stallTimeoutMs);
+        }
         return;
       }
 
