@@ -261,16 +261,19 @@ describe("opencode-auto-force-resume", () => {
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(500);
+      await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(500);
+      await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } } });
       await vi.advanceTimersByTimeAsync(500);
+      await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
@@ -285,11 +288,13 @@ describe("opencode-auto-force-resume", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
