@@ -1,452 +1,324 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-
-const ACTIVITY_EVENTS = [
-  "message.part.updated",
-  "message.part.added",
-  "message.updated",
-  "message.created",
-  "step.finish",
-  "session.status",
-] as const;
-
-const STALE_EVENTS = [
-  "session.idle",
-  "session.error",
-  "session.compacted",
-  "session.ended",
-] as const;
-
-interface SessionState {
-  stallTimer: ReturnType<typeof setTimeout> | null;
-  attempts: number;
-  lastRecoveryTime: number;
-  recoveryInProgress: boolean;
-}
-
-interface PluginConfig {
-  stallTimeoutMs: number;
-  continueWaitMs: number;
-  maxRecoveries: number;
-  cooldownMs: number;
-  enableCompressionFallback: boolean;
-}
-
-const DEFAULT_CONFIG = {
-  stallTimeoutMs: 180000,
-  continueWaitMs: 1500,
-  maxRecoveries: 10,
-  cooldownMs: 300000,
-  enableCompressionFallback: true,
-};
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import type { Plugin } from "@opencode-ai/plugin";
 
 interface MockClient {
   session: {
-    abort: (opts: { path: { id: string } }) => Promise<{ data?: unknown; error?: unknown }>;
-    prompt: (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => Promise<{ data?: unknown; error?: unknown }>;
+    abort: ReturnType<typeof vi.fn>;
+    prompt: ReturnType<typeof vi.fn>;
+    status: ReturnType<typeof vi.fn>;
   };
 }
 
-function createAutoForceResumePlugin(input: { client: MockClient }, options?: Partial<PluginConfig>) {
-  const config: PluginConfig = {
-    ...DEFAULT_CONFIG,
-    ...(typeof options === "object" && options !== null ? options : {}),
-  };
-
-  const sessions = new Map<string, SessionState>();
-  let abortCalls: Array<{ sessionId: string }> = [];
-  let promptCalls: Array<{ text: string; noReply: boolean; sessionId: string }> = [];
-
-  const getOrCreateSession = (sessionId: string): SessionState => {
-    if (!sessions.has(sessionId)) {
-      sessions.set(sessionId, {
-        stallTimer: null,
-        attempts: 0,
-        lastRecoveryTime: 0,
-        recoveryInProgress: false,
-      });
-    }
-    return sessions.get(sessionId)!;
-  };
-
-  const clearStallTimer = (sessionId: string): void => {
-    const state = sessions.get(sessionId);
-    if (state?.stallTimer) {
-      clearTimeout(state.stallTimer);
-      state.stallTimer = null;
-    }
-  };
-
-  const resetSession = (sessionId: string): void => {
-    clearStallTimer(sessionId);
-    sessions.delete(sessionId);
-  };
-
-  const abortSession = async (sessionId: string): Promise<boolean> => {
-    try {
-      abortCalls.push({ sessionId });
-      const result = await input.client.session.abort({ path: { id: sessionId } });
-      if ("error" in result && result.error) {
-        return false;
-      }
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const sendContinue = async (sessionId: string): Promise<boolean> => {
-    try {
-      promptCalls.push({ text: "continue", noReply: true, sessionId });
-      const result = await input.client.session.prompt({
-        body: { parts: [{ type: "text", text: "continue" }], noReply: true },
-        path: { id: sessionId },
-      });
-      if ("error" in result && result.error) {
-        return false;
-      }
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const compressAndResume = async (sessionId: string): Promise<boolean> => {
-    promptCalls.push({ text: "/compact", noReply: true, sessionId });
-    await new Promise((r) => setTimeout(r, 2000));
-    return await sendContinue(sessionId);
-  };
-
-  const performRecovery = async (sessionId: string): Promise<void> => {
-    const state = getOrCreateSession(sessionId);
-    const now = Date.now();
-
-    if (state.recoveryInProgress) {
-      return;
-    }
-
-    if (state.attempts >= config.maxRecoveries) {
-      return;
-    }
-
-    if (now - state.lastRecoveryTime < config.cooldownMs && state.attempts > 0) {
-      return;
-    }
-
-    state.recoveryInProgress = true;
-    state.attempts++;
-    state.lastRecoveryTime = now;
-
-    const aborted = await abortSession(sessionId);
-    if (!aborted) {
-      state.recoveryInProgress = false;
-      return;
-    }
-
-    await new Promise((r) => setTimeout(r, config.continueWaitMs));
-
-    const continued = await sendContinue(sessionId);
-    state.recoveryInProgress = false;
-
-    if (!continued && config.enableCompressionFallback) {
-      await compressAndResume(sessionId);
-    }
-  };
-
-  const handleActivity = (sessionId: string): void => {
-    const state = getOrCreateSession(sessionId);
-    clearStallTimer(sessionId);
-
-    if (state.recoveryInProgress) {
-      return;
-    }
-
-    state.stallTimer = setTimeout(() => {
-      performRecovery(sessionId);
-    }, config.stallTimeoutMs);
-  };
-
-  return {
-    event: async ({ event }: { event: { type: string; properties?: { sessionID?: string } } }) => {
-      const sessionId = event.properties?.sessionID || "default";
-
-      if (ACTIVITY_EVENTS.includes(event.type as typeof ACTIVITY_EVENTS[number])) {
-        handleActivity(sessionId);
-      } else if (STALE_EVENTS.includes(event.type as typeof STALE_EVENTS[number])) {
-        resetSession(sessionId);
-      }
-    },
-    getSession: (sessionId: string) => sessions.get(sessionId),
-    getAbortCalls: () => abortCalls,
-    getPromptCalls: () => promptCalls,
-    resetCalls: () => { abortCalls = []; promptCalls = []; },
-  };
+function createPlugin(input: { client: MockClient }, options?: Record<string, unknown>) {
+  return (async () => {
+    const { AutoForceResumePlugin } = await import('../index.js');
+    return AutoForceResumePlugin(input as Parameters<Plugin>[0], options as Parameters<Plugin>[1]);
+  })();
 }
 
 describe("opencode-auto-force-resume", () => {
   let mockClient: MockClient;
+  let mockAbort: ReturnType<typeof vi.fn>;
+  let mockPrompt: ReturnType<typeof vi.fn>;
+  let mockStatus: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
+    mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockStatus = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+
     mockClient = {
       session: {
-        abort: async () => ({ data: {} }),
-        prompt: async () => ({ data: {} }),
+        abort: mockAbort,
+        prompt: mockPrompt,
+        status: mockStatus,
       },
     };
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
   describe("stall detection", () => {
-    it("should create session with stall timer on activity event", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
-
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-
-      const session = plugin.getSession("test-session");
-      expect(session).toBeDefined();
-      expect(session!.stallTimer).not.toBeNull();
-    });
-
-    it("should reset stall timer on new activity", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
-
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      const firstTimer = plugin.getSession("test-session")!.stallTimer;
-
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      const secondTimer = plugin.getSession("test-session")!.stallTimer;
-
-      expect(firstTimer).not.toBe(secondTimer);
-    });
-
-    it("should not start timer for stale events", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
-
-      plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
-
-      const session = plugin.getSession("test-session");
-      expect(session).toBeUndefined();
-    });
-  });
-
-  describe("recovery flow", () => {
-    it("should call abort when stall timer fires", async () => {
+    it("should set stall timer on busy session.status", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1000);
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      const calls = plugin.getAbortCalls();
-      expect(calls.length).toBe(1);
-      expect(calls[0].sessionId).toBe("test-session");
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
     });
 
-    it("should send continue after abort", async () => {
+    it("should NOT set timer for idle session.status", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, continueWaitMs: 100 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1200);
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
 
-      const calls = plugin.getPromptCalls();
-      expect(calls.some((c) => c.text === "continue")).toBe(true);
+      vi.advanceTimersByTime(10000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
 
-    it("should abort before continue in order", async () => {
+    it("should set timer on message.part.delta", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, continueWaitMs: 100 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1200);
+      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
 
-      const abortCalls = plugin.getAbortCalls();
-      const promptCalls = plugin.getPromptCalls();
-      expect(abortCalls.length).toBe(1);
-      expect(promptCalls.length).toBe(1);
-      expect(abortCalls[0].sessionId).toBe("test-session");
-      expect(promptCalls[0].text).toBe("continue");
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should reset timer on new progress event", async () => {
+      vi.useFakeTimers();
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      vi.advanceTimersByTime(4000);
+      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } } });
+      vi.advanceTimersByTime(4000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
 
-  describe("compression fallback", () => {
-    it("should trigger /compact when continue fails and fallback enabled", async () => {
-      let callCount = 0;
-      const failingClient = {
-        session: {
-          abort: async () => {
-            callCount++;
-            return { data: {} };
-          },
-          prompt: async (opts: { body: { parts: Array<{ type: string; text: string }> } }) => {
-            callCount++;
-            const text = opts.body.parts[0]?.text;
-            if (text === "continue" && callCount >= 2) {
-              return { error: "failed" };
-            }
-            return { data: {} };
-          },
-        },
-      };
-
+  describe("session.status check before recovery", () => {
+    it("should NOT abort if session status is idle", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, continueWaitMs: 100 });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(6000);
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
 
-      const calls = plugin.getPromptCalls();
-      expect(calls.some((c) => c.text === "/compact")).toBe(true);
+      expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
 
-    it("should not trigger /compact when fallback is disabled", async () => {
-      let callCount = 0;
-      const failingClient = {
-        session: {
-          abort: async () => {
-            callCount++;
-            return { data: {} };
-          },
-          prompt: async () => {
-            callCount++;
-            if (callCount === 2) return { error: "failed" };
-            return { data: {} };
-          },
-        },
-      };
-
+    it("should NOT abort if session status is retry", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, continueWaitMs: 100, enableCompressionFallback: false });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "retry", attempt: 1, message: "error", next: Date.now() + 5000 } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(6000);
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
 
-      const calls = plugin.getPromptCalls();
-      expect(calls.some((c) => c.text === "/compact")).toBe(false);
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should abort if session status is busy", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+
+      await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
 
-  describe("cooldown and max recoveries", () => {
-    it("should block recovery within cooldown period", async () => {
+  describe("lastProgressAt tracking", () => {
+    it("should skip recovery if lastProgressAt is recent", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 10000, maxRecoveries: 10 });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 10000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1000);
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
 
-      const firstAbortCalls = plugin.getAbortCalls();
-      expect(firstAbortCalls.length).toBe(1);
-
-      plugin.resetCalls();
-
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1000);
-
-      const secondAbortCalls = plugin.getAbortCalls();
-      expect(secondAbortCalls.length).toBe(0);
+      expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
 
-    it("should respect maxRecoveries limit", async () => {
+    it("should recover if lastProgressAt is old enough", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 3 });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      for (let i = 0; i < 10; i++) {
-        plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-        await vi.advanceTimersByTimeAsync(500);
-        plugin.resetCalls();
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("cooldown enforcement", () => {
+    it("should not recover within cooldown period", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 10000, maxRecoveries: 10 });
+
+      await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      mockAbort.mockClear();
+      vi.advanceTimersByTime(2000);
+      await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("maxRecoveries limit", () => {
+    it("should stop recovering after maxRecoveries", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2 });
+
+      for (let i = 0; i < 5; i++) {
+        vi.advanceTimersByTime(500);
+        await Promise.resolve();
+        if (i < 4) {
+          await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+        }
       }
 
-      const session = plugin.getSession("test-session");
-      expect(session!.attempts).toBeLessThanOrEqual(3);
+      expect(mockAbort).toHaveBeenCalledTimes(2);
+      vi.useRealTimers();
+    });
+  });
+
+  describe("userCancelled detection", () => {
+    it("should not recover after MessageAbortedError", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+
+      await plugin.event({ type: "session.error", properties: { sessionID: "test", error: { name: "MessageAbortedError" } } });
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should clear timer on non-abort session.error", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+
+      await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
+      await plugin.event({ type: "session.error", properties: { sessionID: "test", error: { name: "SomeOtherError" } } });
+
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
 
   describe("session cleanup", () => {
-    it("should clear session on session.idle", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient });
+    it("should clear session on session.idle", async () => {
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeDefined();
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+      await plugin.event({ type: "session.idle", properties: { sessionID: "test" } });
 
-      plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeUndefined();
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(10000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
-    it("should clear session on session.error", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient });
+    it("should clear session on session.deleted", async () => {
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeDefined();
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+      await plugin.event({ type: "session.deleted", properties: { sessionID: "test", info: {} } });
 
-      plugin.event({ event: { type: "session.error", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeUndefined();
-    });
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(10000);
+      await Promise.resolve();
 
-    it("should clear session on session.compacted", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient });
-
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeDefined();
-
-      plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeUndefined();
-    });
-
-    it("should clear session on session.ended", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient });
-
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeDefined();
-
-      plugin.event({ event: { type: "session.ended", properties: { sessionID: "test-session" } } });
-      expect(plugin.getSession("test-session")).toBeUndefined();
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 
-  describe("activity event types", () => {
-    const eventTypes = [
-      "message.part.updated",
-      "message.part.added",
-      "message.updated",
-      "message.created",
-      "step.finish",
-      "session.status",
-    ];
+  describe("attempts reset on progress", () => {
+    it("should reset attempts on progress event", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 3 });
 
-    eventTypes.forEach((eventType) => {
-      it(`should handle ${eventType} as activity`, () => {
-        const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalledTimes(1);
 
-        plugin.event({ event: { type: eventType as typeof ACTIVITY_EVENTS[number], properties: { sessionID: "test-session" } } });
-        expect(plugin.getSession("test-session")).toBeDefined();
-        expect(plugin.getSession("test-session")!.stallTimer).not.toBeNull();
-      });
+      mockAbort.mockClear();
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } });
+
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      mockAbort.mockClear();
+      await plugin.event({ type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: " world" } });
+
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
     });
   });
 
-  describe("stale event types", () => {
-    const eventTypes = [
-      "session.idle",
-      "session.error",
-      "session.compacted",
-      "session.ended",
-    ];
+  describe("timer restart after recovery", () => {
+    it("should set new timer after successful recovery", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 0, maxRecoveries: 5 });
 
-    eventTypes.forEach((eventType) => {
-      it(`should handle ${eventType} as stale`, () => {
-        const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+      await plugin.event({ type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } });
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
 
-        plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-        expect(plugin.getSession("test-session")).toBeDefined();
+      expect(mockAbort).toHaveBeenCalledTimes(1);
 
-        plugin.event({ event: { type: eventType as typeof STALE_EVENTS[number], properties: { sessionID: "test-session" } } });
-        expect(plugin.getSession("test-session")).toBeUndefined();
-      });
+      mockAbort.mockClear();
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
     });
   });
 });
