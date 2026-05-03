@@ -1,22 +1,24 @@
 # Project State
 
 ## Current Focus
-Refactored session ID handling in the AutoForceResumePlugin to improve error handling and type safety.
+Improved documentation for the OpenCode auto-force-resume plugin with clearer installation and configuration instructions.
 
 ## Context
-The change addresses a potential bug where the plugin might not properly handle errors when sending session recovery messages. The refactoring ensures consistent error handling and clearer return types.
+The README was updated to better explain the plugin's recovery workflow and configuration options, making it easier for users to understand and set up the automatic session recovery feature.
 
 ## Completed
-- [x] Renamed `sessionID` to `id` in the message path for consistency
-- [x] Added explicit error handling to return `false` when an error occurs
-- [x] Improved type safety by checking for the `error` property in the result
+- [x] Simplified installation instructions with clearer section headers
+- [x] Added more detailed recovery flow diagram in the documentation
+- [x] Updated configuration options table with clearer descriptions
+- [x] Organized event-related documentation into logical sections
+- [x] Removed redundant comparison table with opencode-auto-resume
 
 ## In Progress
-- [x] No active work in progress beyond the completed changes
+- [ ] No active work in progress
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Verify the plugin's behavior with various error scenarios
-2. Consider adding more detailed error logging for debugging purposes
+1. Verify the updated documentation works with the latest plugin version
+2. Consider adding a quick-start example in the README
