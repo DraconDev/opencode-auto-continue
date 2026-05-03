@@ -4,6 +4,9 @@ interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
   attempts: number;
   lastRecoveryTime: number;
+  lastProgressAt: number;
+  aborting: boolean;
+  userCancelled: boolean;
 }
 
 interface PluginConfig {
@@ -30,7 +33,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function getSession(id: string): SessionState {
     if (!sessions.has(id)) {
-      sessions.set(id, { timer: null, attempts: 0, lastRecoveryTime: 0 });
+      sessions.set(id, {
+        timer: null,
+        attempts: 0,
+        lastRecoveryTime: 0,
+        lastProgressAt: Date.now(),
+        aborting: false,
+        userCancelled: false,
+      });
     }
     return sessions.get(id)!;
   }
@@ -48,32 +58,53 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     sessions.delete(id);
   }
 
+  function updateProgress(s: SessionState) {
+    s.lastProgressAt = Date.now();
+  }
+
   async function recover(sessionId: string) {
     const s = sessions.get(sessionId);
     if (!s) return;
 
-    const now = Date.now();
+    if (s.aborting) return;
+    if (s.userCancelled) return;
     if (s.attempts >= config.maxRecoveries) return;
+
+    const now = Date.now();
     if (now - s.lastRecoveryTime < config.cooldownMs) return;
 
-    s.attempts++;
-    s.lastRecoveryTime = now;
+    s.aborting = true;
 
     try {
+      const statusResult = await input.client.session.status({});
+      const statusData = statusResult.data as Record<string, { type: string }>;
+      const sessionStatus = statusData[sessionId];
+
+      if (!sessionStatus || sessionStatus.type !== "busy") {
+        s.aborting = false;
+        return;
+      }
+
+      if (now - s.lastProgressAt < config.stallTimeoutMs) {
+        s.aborting = false;
+        return;
+      }
+
       await (input.client.session as any).abort({ path: { id: sessionId } });
-    } catch {
-      // abort failed, continue anyway
-    }
 
-    await new Promise(r => setTimeout(r, config.waitAfterAbortMs));
+      await new Promise(r => setTimeout(r, config.waitAfterAbortMs));
 
-    try {
       await input.client.session.prompt({
         body: { parts: [{ type: "text", text: "continue" }], noReply: true },
         path: { id: sessionId }
       });
+
+      s.attempts++;
+      s.lastRecoveryTime = now;
     } catch {
-      // continue failed
+      // recovery failed
+    } finally {
+      s.aborting = false;
     }
   }
 
@@ -81,6 +112,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     event: async ({ event }: { event: any }) => {
       const e = event as any;
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
+
+      const progressTypes = [
+        "message.part.delta",
+        "message.part.updated",
+        "session.status"
+      ];
 
       const activityTypes = [
         "message.part.updated",
@@ -98,17 +135,54 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         "session.ended"
       ];
 
-      if (activityTypes.includes(event?.type)) {
+      if (event?.type === "session.error") {
+        const err = e?.properties?.error;
+        if (err?.name === "MessageAbortedError") {
+          const s = sessions.get(sid);
+          if (s) {
+            s.userCancelled = true;
+            clearTimer(sid);
+          }
+        }
+        return;
+      }
+
+      if (event?.type === "session.status") {
+        const status = e?.properties?.status;
         const s = getSession(sid);
+        if (status?.type === "busy") {
+          updateProgress(s);
+        }
         clearTimer(sid);
         s.timer = setTimeout(() => {
           recover(sid);
         }, config.stallTimeoutMs);
-      } else if (staleTypes.includes(event?.type)) {
+        return;
+      }
+
+      if (progressTypes.includes(event?.type)) {
+        const s = getSession(sid);
+        updateProgress(s);
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          recover(sid);
+        }, config.stallTimeoutMs);
+        return;
+      }
+
+      if (event?.type === "message.created" || event?.type === "message.part.added") {
+        const s = getSession(sid);
+        s.attempts = 0;
+        s.userCancelled = false;
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          recover(sid);
+        }, config.stallTimeoutMs);
+        return;
+      }
+
+      if (staleTypes.includes(event?.type)) {
         resetSession(sid);
-      } else if (event?.type === "message.created" || event?.type === "message.part.added") {
-        const s = sessions.get(sid);
-        if (s) s.attempts = 0;
       }
     }
   };
