@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery documentation and metadata in package.json
+Updated installation instructions to recommend GitHub installation over npm
 
 ## Context
-Improving discoverability and clarity of the session recovery functionality by updating package metadata
+The package is now available directly from GitHub, which provides more reliable installation for users who prefer this method
 
 ## Completed
-- [x] Expanded description to clarify intelligent stall detection and recovery process
-- [x] Added relevant keywords for better package searchability
-- [x] Enhanced documentation of session recovery capabilities
+- [x] Changed installation instructions to recommend GitHub installation
+- [x] Removed outdated npm installation instructions
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Documentation update for installation methods
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify package metadata improvements are reflected in package registries
-2. Consider additional documentation updates for session recovery features
+1. Verify GitHub installation works for all users
+2. Monitor for any installation issues reported by users

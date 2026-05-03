@@ -17,13 +17,7 @@ OpenCode sessions can stall due to context bloat, tool call loops, or provider t
 
 ## Installation
 
-### npm (recommended)
-
-```bash
-npm install opencode-auto-force-resume
-```
-
-### GitHub
+### GitHub (recommended)
 
 ```bash
 npm install github:DraconDev/opencode-auto-force-resume
