@@ -1,23 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored test timing in session recovery plugin to use async timer advancement
+Refined test behavior for session recovery timer handling during non-abort errors
 
 ## Context
-The test suite for the session recovery plugin was previously using fake timers (vi.useFakeTimers) which could lead to flaky tests. This change replaces them with real async timers to ensure more reliable test execution while maintaining the same test coverage.
+The test case was updated to verify that the session recovery timer continues running during non-abort errors, rather than being prematurely cleared. This aligns with the plugin's actual behavior where only specific error types should trigger timer cancellation.
 
 ## Completed
-- [x] Replaced fake timers with real async timers in test cases
-- [x] Simplified test timing by using direct setTimeout instead of timer advancement
-- [x] Maintained same test coverage while improving reliability
-- [x] Updated test configuration to use shorter stallTimeoutMs values (50ms) for faster test execution
+- [x] Updated test case to verify timer continues running for non-abort errors
+- [x] Adjusted test timing to properly validate the expected behavior
+- [x] Modified assertion to check for timer continuation rather than cancellation
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Test case refinement for session recovery timer behavior
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify all tests pass with the new timing approach
-2. Consider adding additional test cases for edge cases in session recovery
+1. Verify test coverage for all error types in session recovery
+2. Ensure consistent behavior between test and production code

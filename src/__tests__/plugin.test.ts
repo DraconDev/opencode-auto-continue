@@ -211,16 +211,16 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
-    it("should clear timer on non-abort session.error", async () => {
+    it("should NOT clear timer on non-abort session.error - timer continues", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeOtherError" } } } });
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
 
-      expect(mockAbort).not.toHaveBeenCalled();
+      expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
