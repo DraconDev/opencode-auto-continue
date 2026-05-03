@@ -274,10 +274,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (event?.type === "message.part.delta") {
           const deltaText = e?.properties?.part?.text as string | undefined;
           if (deltaText && isPlanContent(deltaText)) {
-            log('plan detected, pausing stall timer');
+            log('plan detected, giving extra time before recovery');
             s.planning = true;
-            clearTimer(sid);
-            return;
           }
         }
 

@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added plan stall timeout detection to prevent premature session recovery during planning
+Modified plan detection logic to provide extra time before session recovery
 
 ## Context
-The change addresses a race condition where session recovery would trigger prematurely during active planning, potentially interrupting the planning process before it could complete.
+The change improves session recovery reliability by giving more time when plan content is detected, preventing premature recovery during active planning phases.
 
 ## Completed
-- [x] Added plan stall timeout check (config.planStallMs) to prevent recovery during planning
-- [x] Added debug logging when plan stall timeout is exceeded
-- [x] Maintained backward compatibility with existing planning state checks
+- [x] Changed stall timer behavior to provide extra time when plan content is detected
+- [x] Removed immediate timer clearing during plan detection
+- [x] Updated log message to reflect the new behavior
 
 ## In Progress
-- [x] Implementation of plan stall detection logic
+- [x] Testing the new behavior with various plan content scenarios
 
 ## Blockers
-- None identified
+- Need to verify the new timeout duration works across different use cases
 
 ## Next Steps
-1. Verify the new timeout value works well in integration tests
-2. Document the new configuration option in session recovery docs
+1. Test with different plan content lengths and network conditions
+2. Document the new behavior in session recovery documentation
