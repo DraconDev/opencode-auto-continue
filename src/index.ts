@@ -92,7 +92,31 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       await (input.client.session as any).abort({ path: { id: sessionId } });
 
-      await new Promise(r => setTimeout(r, config.waitAfterAbortMs));
+      // Poll for session to become idle (max 5 seconds)
+      const pollInterval = 200;
+      const maxPollTime = 5000;
+      const startTime = Date.now();
+      let isIdle = false;
+
+      while (!isIdle && Date.now() - startTime < maxPollTime) {
+        await new Promise(r => setTimeout(r, pollInterval));
+        try {
+          const pollResult = await input.client.session.status({});
+          const pollData = pollResult.data as Record<string, { type: string }>;
+          const pollStatus = pollData[sessionId];
+          if (pollStatus?.type === "idle") {
+            isIdle = true;
+          }
+        } catch {
+          // status check failed, continue polling
+        }
+      }
+
+      // Also wait the minimum time even if idle
+      const remainingWait = config.waitAfterAbortMs - (Date.now() - startTime);
+      if (remainingWait > 0) {
+        await new Promise(r => setTimeout(r, remainingWait));
+      }
 
       const promptOptions = {
         body: { parts: [{ type: "text", text: "continue" }] as any[] },
