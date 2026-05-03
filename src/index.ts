@@ -99,8 +99,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
-    if (s.planning) return;
     if (s.attempts >= config.maxRecoveries) return;
+
+    // If session is waiting for plan confirmation, give it extra time
+    if (s.planning) {
+      if (now - s.lastProgressAt < config.planStallMs) {
+        // Still within plan grace period — don't recover
+        return;
+      }
+      // Plan has been stalled too long — treat as a real stall
+      log('plan stall timeout exceeded, clearing plan flag');
+      s.planning = false;
+    }
 
     const now = Date.now();
     if (now - s.lastRecoveryTime < config.cooldownMs) return;
