@@ -25,7 +25,7 @@ interface SessionState {
 
 interface PluginConfig {
   stallTimeoutMs: number;
-  cancelWaitMs: number;
+  continueWaitMs: number;
   maxRecoveries: number;
   cooldownMs: number;
   enableCompressionFallback: boolean;
@@ -33,7 +33,7 @@ interface PluginConfig {
 
 const DEFAULT_CONFIG = {
   stallTimeoutMs: 180000,
-  cancelWaitMs: 1500,
+  continueWaitMs: 1500,
   maxRecoveries: 10,
   cooldownMs: 300000,
   enableCompressionFallback: true,
@@ -41,6 +41,7 @@ const DEFAULT_CONFIG = {
 
 interface MockClient {
   session: {
+    abort: (opts: { path: { id: string } }) => Promise<{ data?: unknown; error?: unknown }>;
     prompt: (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => Promise<{ data?: unknown; error?: unknown }>;
   };
 }
@@ -52,6 +53,7 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
   };
 
   const sessions = new Map<string, SessionState>();
+  let abortCalls: Array<{ sessionId: string }> = [];
   let promptCalls: Array<{ text: string; noReply: boolean; sessionId: string }> = [];
 
   const getOrCreateSession = (sessionId: string): SessionState => {
@@ -79,14 +81,24 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
     sessions.delete(sessionId);
   };
 
-  const sendPrompt = async (sessionId: string, text: string, noReply = true): Promise<boolean> => {
+  const abortSession = async (sessionId: string): Promise<boolean> => {
     try {
-      promptCalls.push({ text, noReply, sessionId });
+      abortCalls.push({ sessionId });
+      const result = await input.client.session.abort({ path: { id: sessionId } });
+      if ("error" in result && result.error) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const sendContinue = async (sessionId: string): Promise<boolean> => {
+    try {
+      promptCalls.push({ text: "continue", noReply: true, sessionId });
       const result = await input.client.session.prompt({
-        body: {
-          parts: [{ type: "text", text }],
-          noReply,
-        },
+        body: { parts: [{ type: "text", text: "continue" }], noReply: true },
         path: { id: sessionId },
       });
       if ("error" in result && result.error) {
@@ -99,13 +111,9 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
   };
 
   const compressAndResume = async (sessionId: string): Promise<boolean> => {
-    const sent = await sendPrompt(sessionId, "/compact", true);
-    if (sent) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const resumed = await sendPrompt(sessionId, "continue", true);
-      return resumed;
-    }
-    return false;
+    promptCalls.push({ text: "/compact", noReply: true, sessionId });
+    await new Promise((r) => setTimeout(r, 2000));
+    return await sendContinue(sessionId);
   };
 
   const performRecovery = async (sessionId: string): Promise<void> => {
@@ -128,18 +136,18 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
     state.attempts++;
     state.lastRecoveryTime = now;
 
-    const cancelSent = await sendPrompt(sessionId, "cancel", true);
-    if (!cancelSent) {
+    const aborted = await abortSession(sessionId);
+    if (!aborted) {
       state.recoveryInProgress = false;
       return;
     }
 
-    await new Promise((r) => setTimeout(r, config.cancelWaitMs));
+    await new Promise((r) => setTimeout(r, config.continueWaitMs));
 
-    const continueSent = await sendPrompt(sessionId, "continue", true);
+    const continued = await sendContinue(sessionId);
     state.recoveryInProgress = false;
 
-    if (!continueSent && config.enableCompressionFallback) {
+    if (!continued && config.enableCompressionFallback) {
       await compressAndResume(sessionId);
     }
   };
@@ -168,8 +176,9 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
       }
     },
     getSession: (sessionId: string) => sessions.get(sessionId),
+    getAbortCalls: () => abortCalls,
     getPromptCalls: () => promptCalls,
-    resetPromptCalls: () => { promptCalls = []; },
+    resetCalls: () => { abortCalls = []; promptCalls = []; },
   };
 }
 
@@ -179,6 +188,7 @@ describe("opencode-auto-force-resume", () => {
   beforeEach(() => {
     mockClient = {
       session: {
+        abort: async () => ({ data: {} }),
         prompt: async () => ({ data: {} }),
       },
     };
@@ -218,41 +228,44 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("recovery flow", () => {
-    it("should send cancel when stall timer fires", async () => {
+    it("should call abort when stall timer fires", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      const calls = plugin.getPromptCalls();
-      expect(calls.some((c) => c.text === "cancel")).toBe(true);
+      const calls = plugin.getAbortCalls();
+      expect(calls.length).toBe(1);
+      expect(calls[0].sessionId).toBe("test-session");
       vi.useRealTimers();
     });
 
-    it("should send continue after cancel", async () => {
+    it("should send continue after abort", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, continueWaitMs: 100 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1500);
+      await vi.advanceTimersByTimeAsync(1200);
 
       const calls = plugin.getPromptCalls();
       expect(calls.some((c) => c.text === "continue")).toBe(true);
       vi.useRealTimers();
     });
 
-    it("should send cancel before continue in order", async () => {
+    it("should abort before continue in order", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, continueWaitMs: 100 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1500);
+      await vi.advanceTimersByTimeAsync(1200);
 
-      const calls = plugin.getPromptCalls();
-      const cancelIdx = calls.findIndex((c) => c.text === "cancel");
-      const continueIdx = calls.findIndex((c) => c.text === "continue");
-      expect(cancelIdx).toBeLessThan(continueIdx);
+      const abortCalls = plugin.getAbortCalls();
+      const promptCalls = plugin.getPromptCalls();
+      expect(abortCalls.length).toBe(1);
+      expect(promptCalls.length).toBe(1);
+      expect(abortCalls[0].sessionId).toBe("test-session");
+      expect(promptCalls[0].text).toBe("continue");
       vi.useRealTimers();
     });
   });
@@ -262,19 +275,26 @@ describe("opencode-auto-force-resume", () => {
       let callCount = 0;
       const failingClient = {
         session: {
-          prompt: async () => {
+          abort: async () => {
             callCount++;
-            if (callCount === 2) return { error: "failed" };
+            return { data: {} };
+          },
+          prompt: async (opts: { body: { parts: Array<{ type: string; text: string }> } }) => {
+            callCount++;
+            const text = opts.body.parts[0]?.text;
+            if (text === "continue" && callCount >= 2) {
+              return { error: "failed" };
+            }
             return { data: {} };
           },
         },
       };
 
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
+      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, continueWaitMs: 100 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       const calls = plugin.getPromptCalls();
       expect(calls.some((c) => c.text === "/compact")).toBe(true);
@@ -285,6 +305,10 @@ describe("opencode-auto-force-resume", () => {
       let callCount = 0;
       const failingClient = {
         session: {
+          abort: async () => {
+            callCount++;
+            return { data: {} };
+          },
           prompt: async () => {
             callCount++;
             if (callCount === 2) return { error: "failed" };
@@ -294,10 +318,10 @@ describe("opencode-auto-force-resume", () => {
       };
 
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100, enableCompressionFallback: false });
+      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, continueWaitMs: 100, enableCompressionFallback: false });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       const calls = plugin.getPromptCalls();
       expect(calls.some((c) => c.text === "/compact")).toBe(false);
@@ -313,16 +337,16 @@ describe("opencode-auto-force-resume", () => {
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      const firstCancelCalls = plugin.getPromptCalls().filter((c) => c.text === "cancel");
-      expect(firstCancelCalls.length).toBe(1);
+      const firstAbortCalls = plugin.getAbortCalls();
+      expect(firstAbortCalls.length).toBe(1);
 
-      plugin.resetPromptCalls();
+      plugin.resetCalls();
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      const secondCancelCalls = plugin.getPromptCalls().filter((c) => c.text === "cancel");
-      expect(secondCancelCalls.length).toBe(0);
+      const secondAbortCalls = plugin.getAbortCalls();
+      expect(secondAbortCalls.length).toBe(0);
       vi.useRealTimers();
     });
 
@@ -333,7 +357,7 @@ describe("opencode-auto-force-resume", () => {
       for (let i = 0; i < 10; i++) {
         plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
         await vi.advanceTimersByTimeAsync(500);
-        plugin.resetPromptCalls();
+        plugin.resetCalls();
       }
 
       const session = plugin.getSession("test-session");
