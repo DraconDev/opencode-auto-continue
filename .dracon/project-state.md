@@ -4,20 +4,20 @@
 Enhanced session recovery test configuration with additional polling and attempt tracking
 
 ## Context
-The test suite for session recovery was improved to better verify the plugin's behavior during stalled sessions. The changes focus on ensuring proper attempt counting and polling behavior when recovering from stalled sessions.
+The test suite for session recovery was being enhanced to better verify the reliability of the abort request mechanism. The previous implementation didn't fully test the maximum recovery attempts constraint.
 
 ## Completed
-- [x] Added explicit test steps for each recovery attempt
-- [x] Verified attempt counting logic (max 2 recoveries)
-- [x] Ensured proper timer handling between recovery attempts
-- [x] Added explicit promise resolution for test stability
+- [x] Added explicit test cases for each recovery attempt (1st, 2nd, and 3rd)
+- [x] Verified that recovery stops after reaching maxRecoveries (2 attempts)
+- [x] Included explicit promise resolution to ensure proper async timing
+- [x] Improved test readability with clear comments for each test phase
 
 ## In Progress
-- [x] Enhanced test coverage for session recovery polling
+- [x] Enhanced test coverage for session recovery timer behavior
 
 ## Blockers
-- None identified in this commit
+- None identified in this change
 
 ## Next Steps
-1. Verify test stability across different environments
-2. Consider adding more edge cases for session recovery scenarios
+1. Review test coverage for edge cases in session recovery
+2. Consider adding more test scenarios for different stallTimeout configurations
