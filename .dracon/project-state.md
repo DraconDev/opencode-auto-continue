@@ -1,26 +1,27 @@
 # Project State
 
 ## Current Focus
-Added automatic session recovery plugin with Dracon security infrastructure
+Updated package configuration and TypeScript settings for the automatic session recovery plugin
 
 ## Context
-The project needed a robust solution for handling stalled sessions in OpenCode plugins, particularly for scenarios where operations might hang or timeout. The Dracon security system was integrated to manage encrypted secrets securely within the git repository.
+This change prepares the plugin for distribution by:
+1. Resetting the version number for a new release
+2. Adding build scripts and file inclusion rules
+3. Configuring TypeScript for proper module resolution and type checking
 
 ## Completed
-- [x] Added OpenCode plugin for automatic session recovery with stall detection
-- [x] Implemented configurable recovery parameters (timeout, retries, cooldown)
-- [x] Added compression fallback mechanism for recovery
-- [x] Integrated Dracon security for encrypted secret management
-- [x] Updated CHANGELOG with new features
-- [x] Added VERSION file for tracking releases
+- [x] Updated package version to 1.0.0 for new release
+- [x] Added build scripts (tsc) and prepublish hook
+- [x] Configured TypeScript to include Node.js types
+- [x] Added dist directory to published files
+- [x] Maintained peer dependency on @opencode-ai/plugin
 
 ## In Progress
-- [x] Testing and validation of recovery mechanisms
+- [ ] Testing the plugin with the new build configuration
 
 ## Blockers
-- None identified at this stage
+- Need to verify the build output matches expected distribution format
 
 ## Next Steps
-1. Complete integration testing of the recovery plugin
-2. Document usage patterns and configuration options
-```
+1. Run build and verify dist directory contents
+2. Test plugin installation in a test environment
