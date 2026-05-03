@@ -1,23 +1,27 @@
 # Project State
 
 ## Current Focus
-Standardized documentation and added contribution guidelines for the OpenCode auto-force-resume plugin
+Refactored session recovery logic to use explicit abort/continue operations instead of generic prompts
 
 ## Context
-The project needed better documentation for contributors and maintainers. The CHANGELOG was restructured to follow Keep a Changelog standards, and CONTRIBUTING.md was added to outline development processes.
+The previous implementation used generic "cancel" and "continue" prompts which could be ambiguous. This change makes the session recovery process more explicit by:
+1. Adding a dedicated abortSession function
+2. Creating a specific sendContinue function
+3. Improving error handling and logging
 
 ## Completed
-- [x] Restructured CHANGELOG.md to follow Keep a Changelog format with semantic versioning
-- [x] Added CONTRIBUTING.md with development setup, testing, and release processes
-- [x] Documented all configurable options in CHANGELOG.md
-- [x] Included testing and CI/CD information in documentation
+- [x] Added explicit abortSession function with proper error handling
+- [x] Created dedicated sendContinue function for session resumption
+- [x] Improved error logging throughout the recovery process
+- [x] Renamed cancelWaitMs to continueWaitMs in config for clarity
+- [x] Updated compression fallback logic to use the new functions
 
 ## In Progress
-- [ ] No active work in progress beyond these documentation updates
+- [ ] No active work in progress
 
 ## Blockers
-- No blockers identified for this documentation update
+- None identified
 
 ## Next Steps
-1. Review documentation for completeness
-2. Begin implementation of new features based on the documented processes
+1. Verify the new recovery behavior matches expected functionality
+2. Update any related documentation to reflect the new approach

@@ -9,7 +9,7 @@ interface SessionState {
 
 interface PluginConfig {
   stallTimeoutMs: number;
-  cancelWaitMs: number;
+  continueWaitMs: number;
   maxRecoveries: number;
   cooldownMs: number;
   enableCompressionFallback: boolean;
@@ -17,7 +17,7 @@ interface PluginConfig {
 
 const DEFAULT_CONFIG: PluginConfig = {
   stallTimeoutMs: 180000,
-  cancelWaitMs: 1500,
+  continueWaitMs: 1500,
   maxRecoveries: 10,
   cooldownMs: 300000,
   enableCompressionFallback: true,
@@ -72,12 +72,28 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     sessions.delete(sessionId);
   };
 
-  const sendPrompt = async (sessionId: string, text: string, noReply = true): Promise<boolean> => {
+  const abortSession = async (sessionId: string): Promise<boolean> => {
+    try {
+      const result = await input.client.session.abort({
+        path: { id: sessionId },
+      });
+      if ("error" in result) {
+        console.error(`[auto-force-resume] Abort returned error for ${sessionId}`);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error(`[auto-force-resume] Failed to abort session ${sessionId}:`, e);
+      return false;
+    }
+  };
+
+  const sendContinue = async (sessionId: string): Promise<boolean> => {
     try {
       const result = await input.client.session.prompt({
         body: {
-          parts: [{ type: "text", text }],
-          noReply,
+          parts: [{ type: "text", text: "continue" }],
+          noReply: true,
         },
         path: { id: sessionId },
       });
@@ -86,21 +102,36 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
       return true;
     } catch (e) {
-      console.error(`[auto-force-resume] Failed to send "${text}":`, e);
+      console.error(`[auto-force-resume] Failed to send continue:`, e);
       return false;
     }
   };
 
   const compressAndResume = async (sessionId: string): Promise<boolean> => {
     console.log(`[auto-force-resume] Attempting context compression for session ${sessionId}`);
-    const sent = await sendPrompt(sessionId, "/compact", true);
-    if (sent) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const resumed = await sendPrompt(sessionId, "continue", true);
-      if (resumed) {
-        console.log(`[auto-force-resume] Compression recovery succeeded for ${sessionId}`);
-        return true;
+    try {
+      const compactResult = await input.client.session.prompt({
+        body: {
+          parts: [{ type: "text", text: "/compact" }],
+          noReply: true,
+        },
+        path: { id: sessionId },
+      });
+      if ("error" in compactResult) {
+        console.error(`[auto-force-resume] Compact failed for ${sessionId}`);
+        return false;
       }
+    } catch (e) {
+      console.error(`[auto-force-resume] Failed to send /compact:`, e);
+      return false;
+    }
+
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const resumed = await sendContinue(sessionId);
+    if (resumed) {
+      console.log(`[auto-force-resume] Compression recovery succeeded for ${sessionId}`);
+      return true;
     }
     console.error(`[auto-force-resume] Compression recovery failed for ${sessionId}`);
     return false;
@@ -129,17 +160,17 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     console.log(`[auto-force-resume] Session ${sessionId} stalled — recovery attempt ${state.attempts}`);
 
-    const cancelSent = await sendPrompt(sessionId, "cancel", true);
-    if (!cancelSent) {
-      console.error(`[auto-force-resume] Cancel failed for ${sessionId}, aborting recovery`);
+    const aborted = await abortSession(sessionId);
+    if (!aborted) {
+      console.error(`[auto-force-resume] Abort failed for ${sessionId}, aborting recovery`);
       state.recoveryInProgress = false;
       return;
     }
 
-    await new Promise((r) => setTimeout(r, config.cancelWaitMs));
+    await new Promise((r) => setTimeout(r, config.continueWaitMs));
 
-    const continueSent = await sendPrompt(sessionId, "continue", true);
-    if (continueSent) {
+    const continued = await sendContinue(sessionId);
+    if (continued) {
       console.log(`[auto-force-resume] Recovery sent for ${sessionId}`);
     } else {
       console.error(`[auto-force-resume] Continue failed for ${sessionId}`);
@@ -147,7 +178,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     state.recoveryInProgress = false;
 
-    if (!continueSent && config.enableCompressionFallback) {
+    if (!continued && config.enableCompressionFallback) {
       console.log(`[auto-force-resume] Standard recovery failed, trying compression fallback`);
       const compressed = await compressAndResume(sessionId);
       if (!compressed) {
