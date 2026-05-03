@@ -248,12 +248,119 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.timer = setTimeout(() => {
           recover(sid);
         }, config.stallTimeoutMs);
+      log('session not found, skipping recovery');
+      return;
+    }
+
+    if (s.aborting) {
+      log('recovery already in progress, skipping');
+      return;
+    }
+    if (s.userCancelled) {
+      log('user cancelled, skipping recovery');
+      return;
+    }
+    if (s.attempts >= config.maxRecoveries) {
+      log('max recoveries reached:', s.attempts, '>=', config.maxRecoveries);
+      return;
+    }
+
+    const now = Date.now();
+    if (now - s.lastRecoveryTime < config.cooldownMs) {
+      log('cooldown active:', now - s.lastRecoveryTime, '<', config.cooldownMs);
+      return;
+    }
+
+    s.aborting = true;
+    log('starting recovery for session:', sessionId);
+
+    try {
+      const statusResult = await input.client.session.status({});
+      const statusData = statusResult.data as Record<string, { type: string }>;
+      const sessionStatus = statusData[sessionId];
+
+      if (!sessionStatus || sessionStatus.type !== "busy") {
+        log('session not busy, skipping recovery:', sessionStatus?.type);
+        s.aborting = false;
         return;
       }
 
-      if (staleTypes.includes(event?.type)) {
-        resetSession(sid);
+      if (now - s.lastProgressAt < config.stallTimeoutMs) {
+        log('session has recent progress, skipping:', now - s.lastProgressAt, '<', config.stallTimeoutMs);
+        s.aborting = false;
+        return;
       }
+
+      log('calling abort for session:', sessionId);
+      await (input.client.session as any).abort({ 
+        path: { id: sessionId },
+        query: { directory: (input as any).directory }
+      });
+
+      // Poll for session to become idle
+      const startTime = Date.now();
+      let isIdle = false;
+      let statusFailures = 0;
+
+      if (config.abortPollMaxTimeMs > 0) {
+        log('polling for idle status...');
+        while (!isIdle && Date.now() - startTime < config.abortPollMaxTimeMs && statusFailures < config.abortPollMaxFailures) {
+          await new Promise(r => setTimeout(r, config.abortPollIntervalMs));
+          try {
+            const pollResult = await input.client.session.status({});
+            const pollData = pollResult.data as Record<string, { type: string }>;
+            const pollStatus = pollData[sessionId];
+            if (pollStatus?.type === "idle") {
+              log('session is idle');
+              isIdle = true;
+            }
+            statusFailures = 0;
+          } catch {
+            statusFailures++;
+            log('status poll failed, failures:', statusFailures);
+          }
+        }
+      }
+
+      // Also wait the minimum time even if idle
+      const remainingWait = config.waitAfterAbortMs - (Date.now() - startTime);
+      if (remainingWait > 0) {
+        log('waiting additional:', remainingWait, 'ms');
+        await new Promise(r => setTimeout(r, remainingWait));
+      }
+
+      log('sending continue prompt');
+      const promptOptions = {
+        body: { parts: [{ type: "text", text: "continue" }] as any[] },
+        path: { id: sessionId },
+        query: { directory: (input as any).directory }
+      };
+
+      try {
+        if (typeof (input.client.session as any).promptAsync === "function") {
+          log('using promptAsync');
+          await (input.client.session as any).promptAsync(promptOptions);
+        } else {
+          log('using prompt');
+          await input.client.session.prompt(promptOptions as any);
+        }
+      } catch (e) {
+        log('prompt failed:', e);
+      }
+
+      s.attempts++;
+      s.lastRecoveryTime = now;
+      log('recovery complete, attempts:', s.attempts);
+
+      s.timer = setTimeout(() => {
+        recover(sessionId);
+      }, config.stallTimeoutMs);
+    } catch (e) {
+      log('recovery failed:', e);
+    } finally {
+      s.aborting = false;
+    }
+  }
     },
     dispose: () => {
       sessions.forEach((s) => {
