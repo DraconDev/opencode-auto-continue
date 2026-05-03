@@ -1,208 +1,102 @@
 import type { Plugin } from "@opencode-ai/plugin";
 
 interface SessionState {
-  stallTimer: ReturnType<typeof setTimeout> | null;
-  attempts: number;
-  lastRecoveryTime: number;
-  recoveryInProgress: boolean;
+  timer: ReturnType<typeof setTimeout> | null;
 }
 
-interface PluginConfig {
-  stallTimeoutMs: number;
-  continueWaitMs: number;
-  maxRecoveries: number;
-  cooldownMs: number;
-  enableCompressionFallback: boolean;
-}
-
-const DEFAULT_CONFIG: PluginConfig = {
-  stallTimeoutMs: 30000,
-  continueWaitMs: 1500,
-  maxRecoveries: 3,
-  cooldownMs: 60000,
-  enableCompressionFallback: false,
-};
-
-type EventWithSessionID = {
-  type: string;
-  properties?: {
-    sessionID?: string;
-    info?: { sessionID?: string };
-    part?: { sessionID?: string };
-  };
-};
-
-const ACTIVITY_EVENTS = [
-  "message.part.updated",
-  "message.part.added",
-  "message.updated",
-  "message.created",
-  "step.finish",
-  "session.status",
-] as const;
-
-const STALE_EVENTS = [
-  "session.idle",
-  "session.error",
-  "session.compacted",
-  "session.ended",
-] as const;
-
-function extractSessionID(event: EventWithSessionID): string {
-  if (event.properties?.sessionID) return event.properties.sessionID;
-  if (event.properties?.info?.sessionID) return event.properties.info.sessionID;
-  if (event.properties?.part?.sessionID) return event.properties.part.sessionID;
-  return "default";
-}
+const STALL_TIMEOUT = 30000;
+const WAIT_AFTER_ABORT = 1500;
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
-  console.log("[auto-force-resume] Plugin loading with options:", JSON.stringify(options));
-
-  const config: PluginConfig = {
-    ...DEFAULT_CONFIG,
-    ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
-  };
-
-  console.log("[auto-force-resume] Merged config:", JSON.stringify(config));
+  console.log("[force-resume] PLUGIN LOADED");
+  console.log("[force-resume] Options:", options);
 
   const sessions = new Map<string, SessionState>();
 
-  const getOrCreateSession = (sessionId: string): SessionState => {
-    if (!sessions.has(sessionId)) {
-      sessions.set(sessionId, {
-        stallTimer: null,
-        attempts: 0,
-        lastRecoveryTime: 0,
-        recoveryInProgress: false,
-      });
+  function getSession(id: string): SessionState {
+    if (!sessions.has(id)) {
+      sessions.set(id, { timer: null });
     }
-    return sessions.get(sessionId)!;
-  };
+    return sessions.get(id)!;
+  }
 
-  const clearStallTimer = (sessionId: string): void => {
-    const state = sessions.get(sessionId);
-    if (state?.stallTimer) {
-      clearTimeout(state.stallTimer);
-      state.stallTimer = null;
+  function clearTimer(id: string) {
+    const s = sessions.get(id);
+    if (s?.timer) {
+      clearTimeout(s.timer);
+      s.timer = null;
     }
-  };
+  }
 
-  const resetSession = (sessionId: string): void => {
-    console.log(`[auto-force-resume] Reset session: ${sessionId}`);
-    clearStallTimer(sessionId);
-    sessions.delete(sessionId);
-  };
+  function resetSession(id: string) {
+    console.log("[force-resume] Reset session:", id);
+    clearTimer(id);
+    sessions.delete(id);
+  }
 
-  const sendContinue = async (sessionId: string): Promise<boolean> => {
+  async function recover(sessionId: string) {
+    console.log("[force-resume] RECOVERY for:", sessionId);
+
+    // Step 1: abort
+    console.log("[force-resume] Calling abort()...");
     try {
-      console.log(`[auto-force-resume] Sending continue to session: ${sessionId}`);
+      const result = await (input.client.session as any).abort({ path: { id: sessionId } });
+      console.log("[force-resume] abort result:", JSON.stringify(result));
+    } catch (e: any) {
+      console.error("[force-resume] abort failed:", e?.message);
+    }
+
+    // Step 2: wait
+    await new Promise(r => setTimeout(r, WAIT_AFTER_ABORT));
+
+    // Step 3: continue
+    console.log("[force-resume] Sending continue...");
+    try {
       const result = await input.client.session.prompt({
-        body: {
-          parts: [{ type: "text", text: "continue" }],
-          noReply: true,
-        },
-        path: { id: sessionId },
+        body: { parts: [{ type: "text", text: "continue" }], noReply: true },
+        path: { id: sessionId }
       });
-      if ("error" in result) {
-        console.error(`[auto-force-resume] Continue returned error:`, result.error);
-        return false;
-      }
-      console.log(`[auto-force-resume] Continue sent successfully`);
-      return true;
-    } catch (e) {
-      console.error(`[auto-force-resume] Failed to send continue:`, e);
-      return false;
+      console.log("[force-resume] continue result:", JSON.stringify(result));
+    } catch (e: any) {
+      console.error("[force-resume] continue failed:", e?.message);
     }
-  };
-
-  const performRecovery = async (sessionId: string): Promise<void> => {
-    const state = getOrCreateSession(sessionId);
-    const now = Date.now();
-
-    console.log(`[auto-force-resume] Recovery triggered for ${sessionId}, attempts: ${state.attempts}, recoveryInProgress: ${state.recoveryInProgress}`);
-
-    if (state.recoveryInProgress) {
-      console.log(`[auto-force-resume] Recovery already in progress, skipping`);
-      return;
-    }
-
-    if (state.attempts >= config.maxRecoveries) {
-      console.log(`[auto-force-resume] Max recoveries (${config.maxRecoveries}) reached for ${sessionId}`);
-      return;
-    }
-
-    if (now - state.lastRecoveryTime < config.cooldownMs && state.attempts > 0) {
-      console.log(`[auto-force-resume] Within cooldown period, skipping`);
-      return;
-    }
-
-    state.recoveryInProgress = true;
-    state.attempts++;
-    state.lastRecoveryTime = now;
-
-    console.log(`[auto-force-resume] Session ${sessionId} stalled — recovery attempt ${state.attempts}`);
-
-    // Try session.abort() first
-    console.log(`[auto-force-resume] Calling session.abort() for ${sessionId}`);
-    try {
-      const abortResult = await input.client.session.abort({
-        path: { id: sessionId },
-      });
-      console.log(`[auto-force-resume] abort() result:`, JSON.stringify(abortResult));
-      if ("error" in abortResult && abortResult.error) {
-        console.error(`[auto-force-resume] abort() returned error:`, abortResult.error);
-      }
-    } catch (e) {
-      console.error(`[auto-force-resume] abort() failed:`, e);
-    }
-
-    await new Promise((r) => setTimeout(r, config.continueWaitMs));
-
-    const continued = await sendContinue(sessionId);
-    if (continued) {
-      console.log(`[auto-force-resume] Recovery sent for ${sessionId}`);
-    } else {
-      console.error(`[auto-force-resume] Continue failed for ${sessionId}`);
-    }
-
-    state.recoveryInProgress = false;
-  };
-
-  const handleActivity = (sessionId: string): void => {
-    const state = getOrCreateSession(sessionId);
-
-    console.log(`[auto-force-resume] Activity for ${sessionId}, resetting timer`);
-
-    clearStallTimer(sessionId);
-
-    if (state.recoveryInProgress) {
-      console.log(`[auto-force-resume] Recovery in progress, not starting new timer`);
-      return;
-    }
-
-    state.stallTimer = setTimeout(() => {
-      console.log(`[auto-force-resume] Stall timer fired for ${sessionId}`);
-      performRecovery(sessionId);
-    }, config.stallTimeoutMs);
-  };
+  }
 
   return {
-    event: async (input: { event: { type: string; properties?: Record<string, unknown> } }) => {
-      const event = input.event as EventWithSessionID;
-      const sessionId = extractSessionID(event as EventWithSessionID);
+    event: async ({ event }: { event: any }) => {
+      const e = event as any;
+      const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
-      const extractedEvent = event as EventWithSessionID;
-      console.log(`[auto-force-resume] Event received: ${event.type} for session: ${sessionId}`);
+      console.log("[force-resume] EVENT:", event?.type, "session:", sid);
 
-      if (ACTIVITY_EVENTS.includes(extractedEvent.type as typeof ACTIVITY_EVENTS[number])) {
-        handleActivity(sessionId);
-      } else if (STALE_EVENTS.includes(extractedEvent.type as typeof STALE_EVENTS[number])) {
-        resetSession(sessionId);
+      // Activity events reset timer
+      const activityTypes = [
+        "message.part.updated",
+        "message.part.added",
+        "message.updated",
+        "message.created",
+        "step.finish",
+        "session.status"
+      ];
+
+      // Stale events clear session
+      const staleTypes = [
+        "session.idle",
+        "session.error",
+        "session.compacted",
+        "session.ended"
+      ];
+
+      if (activityTypes.includes(event?.type)) {
+        const s = getSession(sid);
+        clearTimer(sid);
+        s.timer = setTimeout(() => {
+          console.log("[force-resume] STALL TIMER FIRED for:", sid);
+          recover(sid);
+        }, STALL_TIMEOUT);
+      } else if (staleTypes.includes(event?.type)) {
+        resetSession(sid);
       }
-    },
-
-    config: async () => {
-      console.log("[auto-force-resume] Config hook called");
-    },
+    }
   };
 };
