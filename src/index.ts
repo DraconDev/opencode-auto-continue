@@ -94,14 +94,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       await new Promise(r => setTimeout(r, config.waitAfterAbortMs));
 
-      await input.client.session.prompt({
-        body: { parts: [{ type: "text", text: "continue" }], noReply: true },
-        path: { id: sessionId }
-      });
-
-      s.attempts++;
-      s.lastRecoveryTime = now;
-
       const promptOptions = {
         body: { parts: [{ type: "text", text: "continue" }] as any[] },
         path: { id: sessionId },
@@ -117,6 +109,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       } catch {
         // prompt failed
       }
+
+      s.attempts++;
+      s.lastRecoveryTime = now;
 
       s.timer = setTimeout(() => {
         recover(sessionId);
