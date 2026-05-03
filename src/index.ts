@@ -233,6 +233,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "message.created" || event?.type === "message.part.added") {
         const s = getSession(sid);
+        updateProgress(s);
         s.attempts = 0;
         s.userCancelled = false;
         clearTimer(sid);
