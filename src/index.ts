@@ -17,6 +17,7 @@ interface PluginConfig {
   abortPollIntervalMs: number;
   abortPollMaxTimeMs: number;
   abortPollMaxFailures: number;
+  debug: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -27,6 +28,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollIntervalMs: 200,
   abortPollMaxTimeMs: 5000,
   abortPollMaxFailures: 3,
+  debug: false,
 };
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
