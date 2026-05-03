@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Removed session recovery prompt handling and cleanup logic from the AutoForceResumePlugin.
+Added planning state to session recovery tracking
 
 ## Context
-This change simplifies the session recovery plugin by removing redundant prompt handling and cleanup logic that was previously handling recovery attempts and timer management.
+This change extends the session state tracking to include a `planning` flag, likely to distinguish between different phases of session recovery (planning vs execution).
 
 ## Completed
-- [x] Removed prompt handling logic for session recovery
-- [x] Eliminated redundant timer cleanup in the dispose method
-- [x] Reduced plugin complexity by removing recovery attempt tracking
+- [x] Added `planning: boolean` to SessionState interface
 
 ## In Progress
-- [x] No active work in progress
+- [x] Implementation of planning state logic
 
 ## Blockers
-- None identified
+- Need to implement behavior for planning state transitions
 
 ## Next Steps
-1. Verify no regression in session recovery behavior
-2. Update documentation to reflect the simplified implementation
+1. Implement planning state transition logic
+2. Add tests for planning state behavior

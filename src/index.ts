@@ -7,6 +7,7 @@ interface SessionState {
   lastProgressAt: number;
   aborting: boolean;
   userCancelled: boolean;
+  planning: boolean;
 }
 
 interface PluginConfig {
