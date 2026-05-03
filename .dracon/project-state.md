@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for the OpenCode auto-force-resume plugin's cancel behavior
+Added GitHub Actions workflows for CI and publishing to npm
 
 ## Context
-The test infrastructure was recently refactored to support comprehensive unit testing. This change adds specific assertions to verify the plugin's cancel behavior during session recovery.
+The project now has automated testing and publishing pipelines to ensure code quality and streamline releases
 
 ## Completed
-- [x] Added explicit assertion for first cancel call detection
-- [x] Added explicit assertion for second cancel call detection
-- [x] Improved test clarity by naming filtered call variables
+- [x] Added CI workflow that runs tests and type checking on pushes and PRs
+- [x] Added publish workflow that builds, tests, and publishes to npm when tagged
+- [x] Added GitHub release creation when publishing to npm
 
 ## In Progress
-- [x] Comprehensive test coverage for session recovery scenarios
+- [x] Workflows are fully configured and ready for use
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review test coverage for additional edge cases
-2. Document test improvements in plugin documentation
+1. Verify workflows work correctly on first push/PR
+2. Begin using the workflows for future development
