@@ -72,6 +72,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     s.lastProgressAt = Date.now();
   }
 
+  const PLAN_PATTERNS = [
+    /here\s+is\s+(my|the)\s+plan/i,
+    /here'[rs]\s+(my|the)\s+plan/i,
+    /##\s*plan/i,
+    /\*\*plan:?\*\*/i,
+    /##\s*proposed\s+plan/i,
+    /##\s*implementation\s+plan/i,
+  ];
+
+  function isPlanContent(text: string): boolean {
+    return PLAN_PATTERNS.some(p => p.test(text));
+  }
+
   function log(...args: unknown[]) {
     if (config.debug) {
       console.error('[auto-force-resume]', ...args);
@@ -84,6 +97,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
+    if (s.planning) return;
     if (s.attempts >= config.maxRecoveries) return;
 
     const now = Date.now();
