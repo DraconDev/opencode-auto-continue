@@ -313,14 +313,16 @@ describe("opencode-auto-force-resume", () => {
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      plugin.getPromptCalls().forEach(() => {});
+      const firstCancelCalls = plugin.getPromptCalls().filter((c) => c.text === "cancel");
+      expect(firstCancelCalls.length).toBe(1);
+
       plugin.resetPromptCalls();
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      const cancelCalls = plugin.getPromptCalls().filter((c) => c.text === "cancel");
-      expect(cancelCalls.length).toBe(1);
+      const secondCancelCalls = plugin.getPromptCalls().filter((c) => c.text === "cancel");
+      expect(secondCancelCalls.length).toBe(0);
       vi.useRealTimers();
     });
 
