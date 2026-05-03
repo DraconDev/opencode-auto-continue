@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored error handling in session recovery plugin to prevent duplicate timer cleanup.
+Refined progress tracking in session recovery to distinguish between meaningful and non-meaningful updates
 
 ## Context
-The change addresses a potential race condition where the timer cleanup could be called twice in error handling paths, which could lead to resource leaks or unexpected behavior.
+The previous implementation updated progress for all event types, which could lead to false positives in recovery detection. We need to only count actual meaningful progress (text, step-finish, reasoning) while still tracking other events for recovery purposes.
 
 ## Completed
-- [x] Removed duplicate `clearTimer(sid)` call in error handling path
-- [x] Maintained consistent timer cleanup behavior across all error paths
+- [x] Added specific handling for message.part.updated events to only count meaningful progress types
+- [x] Maintained recovery functionality for all other event types
+- [x] Preserved existing attempt counter and user cancellation reset behavior
 
 ## In Progress
-- [ ] Verify no regression in session recovery timing behavior
+- [x] Implemented the refined progress tracking logic
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Run regression tests to confirm session recovery timing remains accurate
-2. Monitor production metrics for any unusual timer-related issues
+1. Add unit tests for the new progress filtering logic
+2. Verify behavior with edge cases (empty parts, malformed events)

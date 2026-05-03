@@ -157,9 +157,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (progressTypes.includes(event?.type)) {
         const s = getSession(sid);
-        updateProgress(s);
-        s.attempts = 0;
-        s.userCancelled = false;
+
+        if (event?.type === "message.part.updated") {
+          const partType = e?.properties?.part?.type;
+          const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning";
+          if (isRealProgress) {
+            updateProgress(s);
+            s.attempts = 0;
+            s.userCancelled = false;
+          }
+        } else {
+          updateProgress(s);
+          s.attempts = 0;
+          s.userCancelled = false;
+        }
+
         clearTimer(sid);
         s.timer = setTimeout(() => {
           recover(sid);
