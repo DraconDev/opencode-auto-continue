@@ -101,6 +101,23 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       s.attempts++;
       s.lastRecoveryTime = now;
+
+      const promptOptions = {
+        body: { parts: [{ type: "text", text: "continue" }] as any[] },
+        path: { id: sessionId },
+        query: { directory: (input as any).directory }
+      };
+
+      try {
+        if (typeof (input.client.session as any).promptAsync === "function") {
+          await (input.client.session as any).promptAsync(promptOptions);
+        } else {
+          await input.client.session.prompt(promptOptions as any);
+        }
+      } catch {
+        // prompt failed
+      }
+
       s.timer = setTimeout(() => {
         recover(sessionId);
       }, config.stallTimeoutMs);

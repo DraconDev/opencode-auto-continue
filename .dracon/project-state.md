@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Bump version to 3.4.10 and update Node.js engine requirement to >=18.0.0
+Added prompt-based session recovery mechanism to handle stalled sessions
 
 ## Context
-The project is being updated to a new version with compatibility requirements for Node.js 18 or higher. This aligns with recent improvements in session recovery reliability and test stability.
+This change addresses unreliable session recovery by implementing a prompt-based recovery mechanism that attempts to resume stalled sessions before triggering the full recovery timer.
 
 ## Completed
-- [x] Updated package version from 1.1.0 to 3.4.10
-- [x] Added Node.js engine requirement (>=18.0.0)
+- [x] Added prompt-based recovery attempt before timer-based recovery
+- [x] Implemented fallback between `promptAsync` and `prompt` methods
+- [x] Added error handling for failed prompts
+- [x] Maintained existing timer-based recovery as fallback
 
 ## In Progress
-- [ ] No active work in progress beyond the version bump
+- [ ] None (this is a complete feature addition)
 
 ## Blockers
-- None identified in this change
+- None (this is a standalone feature)
 
 ## Next Steps
-1. Verify compatibility with Node.js 18+ environments
-2. Test session recovery features against the new version
+1. Verify prompt-based recovery works in integration tests
+2. Monitor reliability improvements in production environments
