@@ -280,11 +280,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
         }
 
-        // Check if we're no longer planning (new generation after plan confirmation)
-        if (s.planning) {
-          s.planning = false;
-        }
-
         clearTimer(sid);
         s.timer = setTimeout(() => {
           recover(sid);
