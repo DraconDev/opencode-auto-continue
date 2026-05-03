@@ -101,6 +101,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.userCancelled) return;
     if (s.attempts >= config.maxRecoveries) return;
 
+    const now = Date.now();
+
     // If session is waiting for plan confirmation, give it extra time
     if (s.planning) {
       if (now - s.lastProgressAt < config.planStallMs) {
@@ -112,7 +114,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.planning = false;
     }
 
-    const now = Date.now();
     if (now - s.lastRecoveryTime < config.cooldownMs) return;
 
     s.aborting = true;
