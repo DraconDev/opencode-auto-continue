@@ -269,16 +269,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.userCancelled = false;
         }
 
-        // Check if this delta contains plan content (using rolling buffer for split markers)
-        if (event?.type === "message.part.delta") {
-          const deltaText = e?.properties?.part?.text as string | undefined;
-          if (deltaText) {
-            s.planBuffer = (s.planBuffer + deltaText).slice(-200);
-            if (isPlanContent(s.planBuffer)) {
-              log('plan detected, pausing stall monitoring — user must address');
-              s.planning = true;
-              s.planBuffer = '';
-            }
+        // Check if this is a delta update containing plan content
+        const deltaText = e?.properties?.delta as string | undefined;
+        if (deltaText) {
+          s.planBuffer = (s.planBuffer + deltaText).slice(-200);
+          if (isPlanContent(s.planBuffer)) {
+            log('plan detected in delta, pausing stall monitoring — user must address');
+            s.planning = true;
+            s.planBuffer = '';
           }
         }
 
