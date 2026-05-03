@@ -66,8 +66,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     sessions.delete(id);
   }
 
-  function updateProgress(s: SessionState) {
-    s.lastProgressAt = Date.now();
+  function log(...args: unknown[]) {
+    if (config.debug) {
+      console.error('[auto-force-resume]', ...args);
+    }
   }
 
   async function recover(sessionId: string) {
