@@ -287,7 +287,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.timer = setTimeout(() => {
           recover(sid);
         }, config.stallTimeoutMs);
-        }
         return;
       }
 
