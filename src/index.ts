@@ -254,6 +254,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.userCancelled = false;
         }
 
+        // Check if this delta contains plan content
+        if (event?.type === "message.part.delta") {
+          const deltaText = e?.properties?.part?.text as string | undefined;
+          if (deltaText && isPlanContent(deltaText)) {
+            log('plan detected, pausing stall timer');
+            s.planning = true;
+            clearTimer(sid);
+            return;
+          }
+        }
+
+        // Check if we're no longer planning (new generation after plan confirmation)
+        if (s.planning) {
+          s.planning = false;
+        }
+
         clearTimer(sid);
         s.timer = setTimeout(() => {
           recover(sid);
