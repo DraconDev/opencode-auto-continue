@@ -106,6 +106,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }, config.stallTimeoutMs);
       } else if (staleTypes.includes(event?.type)) {
         resetSession(sid);
+      } else if (event?.type === "message.created" || event?.type === "message.part.added") {
+        const s = sessions.get(sid);
+        if (s) s.attempts = 0;
       }
     }
   };
