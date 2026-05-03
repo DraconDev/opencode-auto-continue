@@ -49,6 +49,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         lastProgressAt: Date.now(),
         aborting: false,
         userCancelled: false,
+        planning: false,
       });
     }
     return sessions.get(id)!;

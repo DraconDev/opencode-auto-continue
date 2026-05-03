@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Added planning state to session recovery tracking
+Added planning state to session recovery tracking for better recovery flow control.
 
 ## Context
-This change extends the session state tracking to include a `planning` flag, likely to distinguish between different phases of session recovery (planning vs execution).
+This change introduces a new `planning` state to session recovery tracking to distinguish between active recovery attempts and planning phases, improving reliability of the session recovery system.
 
 ## Completed
-- [x] Added `planning: boolean` to SessionState interface
+- [x] Added `planning: false` state to session recovery tracking object
+- [x] Enhanced session recovery state management for better recovery flow control
 
 ## In Progress
-- [x] Implementation of planning state logic
+- [ ] Testing new state behavior in various recovery scenarios
 
 ## Blockers
-- Need to implement behavior for planning state transitions
+- Need to verify how this state interacts with existing recovery logic
 
 ## Next Steps
-1. Implement planning state transition logic
-2. Add tests for planning state behavior
+1. Write tests for the new planning state behavior
+2. Document the new state in session recovery documentation
