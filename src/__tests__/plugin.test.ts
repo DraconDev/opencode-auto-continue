@@ -23,7 +23,7 @@ describe("opencode-auto-force-resume", () => {
   beforeEach(() => {
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
-    mockStatus = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockStatus = vi.fn().mockResolvedValue({ data: { "default": { type: "idle" } }, error: undefined });
 
     mockClient = {
       session: {
@@ -42,6 +42,7 @@ describe("opencode-auto-force-resume", () => {
   describe("stall detection", () => {
     it("should set stall timer on busy session.status", async () => {
       vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
@@ -64,6 +65,7 @@ describe("opencode-auto-force-resume", () => {
 
     it("should set timer on message.part.delta", async () => {
       vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
@@ -75,6 +77,7 @@ describe("opencode-auto-force-resume", () => {
 
     it("should reset timer on new progress event", async () => {
       vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
@@ -94,7 +97,6 @@ describe("opencode-auto-force-resume", () => {
   describe("session.status check before recovery", () => {
     it("should NOT abort if session status is idle", async () => {
       vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
