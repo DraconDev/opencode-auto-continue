@@ -1,22 +1,25 @@
 # Project State
 
 ## Current Focus
-Added cleanup logic for session recovery timers to prevent memory leaks
+Enhanced session recovery polling with configurable parameters
 
 ## Context
-The previous implementation of session recovery did not properly clean up timers when sessions were disposed, potentially causing memory leaks and stale timers to persist.
+Improved reliability of session recovery by making the polling behavior configurable through plugin settings
 
 ## Completed
-- [x] Added `dispose` method to clear all active session timers
-- [x] Ensured all session timers are properly cleared when plugin is disposed
-- [x] Reset timer references to null after clearing
+- [x] Added configurable polling interval (`abortPollIntervalMs`)
+- [x] Added configurable maximum polling time (`abortPollMaxTimeMs`)
+- [x] Added configurable maximum failure count (`abortPollMaxFailures`)
+- [x] Refactored polling logic to use configuration values
+- [x] Maintained backward compatibility with default values
 
 ## In Progress
-- [x] Implementation of timer cleanup during session disposal
+- [x] Implementation of configurable session recovery polling
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify no lingering timers exist after plugin disposal
-2. Ensure no race conditions between timer cleanup and session operations
+1. Update documentation to reflect new configuration options
+2. Add integration tests for the new polling parameters
+3. Consider adding validation for configuration values

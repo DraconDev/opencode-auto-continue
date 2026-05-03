@@ -14,6 +14,9 @@ interface PluginConfig {
   waitAfterAbortMs: number;
   maxRecoveries: number;
   cooldownMs: number;
+  abortPollIntervalMs: number;
+  abortPollMaxTimeMs: number;
+  abortPollMaxFailures: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -21,6 +24,9 @@ const DEFAULT_CONFIG: PluginConfig = {
   waitAfterAbortMs: 1500,
   maxRecoveries: 3,
   cooldownMs: 60000,
+  abortPollIntervalMs: 200,
+  abortPollMaxTimeMs: 5000,
+  abortPollMaxFailures: 3,
 };
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
@@ -95,26 +101,25 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         query: { directory: (input as any).directory }
       });
 
-      // Poll for session to become idle (max 5 seconds)
-      const pollInterval = 200;
-      const maxPollTime = 5000;
+      // Poll for session to become idle
       const startTime = Date.now();
       let isIdle = false;
       let statusFailures = 0;
-      const maxStatusFailures = 3;
 
-      while (!isIdle && Date.now() - startTime < maxPollTime && statusFailures < maxStatusFailures) {
-        await new Promise(r => setTimeout(r, pollInterval));
-        try {
-          const pollResult = await input.client.session.status({});
-          const pollData = pollResult.data as Record<string, { type: string }>;
-          const pollStatus = pollData[sessionId];
-          if (pollStatus?.type === "idle") {
-            isIdle = true;
+      if (config.abortPollMaxTimeMs > 0) {
+        while (!isIdle && Date.now() - startTime < config.abortPollMaxTimeMs && statusFailures < config.abortPollMaxFailures) {
+          await new Promise(r => setTimeout(r, config.abortPollIntervalMs));
+          try {
+            const pollResult = await input.client.session.status({});
+            const pollData = pollResult.data as Record<string, { type: string }>;
+            const pollStatus = pollData[sessionId];
+            if (pollStatus?.type === "idle") {
+              isIdle = true;
+            }
+            statusFailures = 0;
+          } catch {
+            statusFailures++;
           }
-          statusFailures = 0; // Reset on success
-        } catch {
-          statusFailures++;
         }
       }
 
