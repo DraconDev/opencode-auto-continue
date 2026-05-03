@@ -1,16 +1,15 @@
 # Project State
 
 ## Current Focus
-Improved session recovery reliability by replacing text-based cancellation with explicit API calls
+Updated GitHub Actions workflow permissions and dependencies for npm publishing
 
 ## Context
-The plugin previously used text messages ("cancel") to interrupt stalled sessions, which could corrupt the OpenCode TUI and confuse the model. This change uses the proper `session.abort()` API for cleaner interruption.
+The changes address security requirements for GitHub Actions workflows and streamline the npm publishing process by removing provenance checks.
 
 ## Completed
-- [x] Replaced text-based cancellation with `session.abort()` API calls
-- [x] Renamed configuration option from `cancelWaitMs` to `continueWaitMs` for clarity
-- [x] Updated documentation to reflect the new recovery mechanism
-- [x] Version bumped to 1.1.0 to reflect this breaking change
+- [x] Added explicit `contents: read` permission for the publish job
+- [x] Removed `--provenance` flag from npm publish command
+- [x] Updated `softprops/action-gh-release` from v1 to v2
 
 ## In Progress
 - [ ] No active work in progress
@@ -19,5 +18,5 @@ The plugin previously used text messages ("cancel") to interrupt stalled session
 - None identified
 
 ## Next Steps
-1. Test the new recovery mechanism with various model types
-2. Monitor for any regression in recovery success rates
+1. Verify the updated workflow runs successfully in CI
+2. Monitor npm package publishing for any issues related to the provenance change
