@@ -12,7 +12,7 @@
   "author": "dracon <dracon@example.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/draconf/opencode-auto-force-resume"
+    "url": "https://github.com/DraconDev/opencode-auto-force-resume"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
