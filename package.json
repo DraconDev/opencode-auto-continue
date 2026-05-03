@@ -39,19 +39,3 @@
     "prepublishOnly": "npm run build"
   }
 }
-  },
-  "files": [
-    "dist"
-  ],
-  "peerDependencies": {
-    "@opencode-ai/plugin": ">=1.0.0"
-  },
-  "devDependencies": {
-    "@opencode-ai/plugin": "^1.4.10",
-    "typescript": "^5.4.0"
-  },
-  "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build"
-  }
-}
