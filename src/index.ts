@@ -16,11 +16,11 @@ interface PluginConfig {
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
-  stallTimeoutMs: 180000,
+  stallTimeoutMs: 30000,
   continueWaitMs: 1500,
-  maxRecoveries: 10,
-  cooldownMs: 300000,
-  enableCompressionFallback: true,
+  maxRecoveries: 3,
+  cooldownMs: 60000,
+  enableCompressionFallback: false,
 };
 
 const ACTIVITY_EVENTS = [
@@ -40,10 +40,14 @@ const STALE_EVENTS = [
 ] as const;
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
+  console.log("[auto-force-resume] Plugin loading with options:", JSON.stringify(options));
+
   const config: PluginConfig = {
     ...DEFAULT_CONFIG,
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
   };
+
+  console.log("[auto-force-resume] Merged config:", JSON.stringify(config));
 
   const sessions = new Map<string, SessionState>();
 
@@ -68,28 +72,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   };
 
   const resetSession = (sessionId: string): void => {
+    console.log(`[auto-force-resume] Reset session: ${sessionId}`);
     clearStallTimer(sessionId);
     sessions.delete(sessionId);
   };
 
-  const abortSession = async (sessionId: string): Promise<boolean> => {
-    try {
-      const result = await input.client.session.abort({
-        path: { id: sessionId },
-      });
-      if ("error" in result) {
-        console.error(`[auto-force-resume] Abort returned error for ${sessionId}`);
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.error(`[auto-force-resume] Failed to abort session ${sessionId}:`, e);
-      return false;
-    }
-  };
-
   const sendContinue = async (sessionId: string): Promise<boolean> => {
     try {
+      console.log(`[auto-force-resume] Sending continue to session: ${sessionId}`);
       const result = await input.client.session.prompt({
         body: {
           parts: [{ type: "text", text: "continue" }],
@@ -98,8 +88,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         path: { id: sessionId },
       });
       if ("error" in result) {
+        console.error(`[auto-force-resume] Continue returned error:`, result.error);
         return false;
       }
+      console.log(`[auto-force-resume] Continue sent successfully`);
       return true;
     } catch (e) {
       console.error(`[auto-force-resume] Failed to send continue:`, e);
@@ -107,41 +99,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   };
 
-  const compressAndResume = async (sessionId: string): Promise<boolean> => {
-    console.log(`[auto-force-resume] Attempting context compression for session ${sessionId}`);
-    try {
-      const compactResult = await input.client.session.prompt({
-        body: {
-          parts: [{ type: "text", text: "/compact" }],
-          noReply: true,
-        },
-        path: { id: sessionId },
-      });
-      if ("error" in compactResult) {
-        console.error(`[auto-force-resume] Compact failed for ${sessionId}`);
-        return false;
-      }
-    } catch (e) {
-      console.error(`[auto-force-resume] Failed to send /compact:`, e);
-      return false;
-    }
-
-    await new Promise((r) => setTimeout(r, 2000));
-
-    const resumed = await sendContinue(sessionId);
-    if (resumed) {
-      console.log(`[auto-force-resume] Compression recovery succeeded for ${sessionId}`);
-      return true;
-    }
-    console.error(`[auto-force-resume] Compression recovery failed for ${sessionId}`);
-    return false;
-  };
-
   const performRecovery = async (sessionId: string): Promise<void> => {
     const state = getOrCreateSession(sessionId);
     const now = Date.now();
 
+    console.log(`[auto-force-resume] Recovery triggered for ${sessionId}, attempts: ${state.attempts}, recoveryInProgress: ${state.recoveryInProgress}`);
+
     if (state.recoveryInProgress) {
+      console.log(`[auto-force-resume] Recovery already in progress, skipping`);
       return;
     }
 
@@ -151,6 +116,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
 
     if (now - state.lastRecoveryTime < config.cooldownMs && state.attempts > 0) {
+      console.log(`[auto-force-resume] Within cooldown period, skipping`);
       return;
     }
 
@@ -160,11 +126,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     console.log(`[auto-force-resume] Session ${sessionId} stalled — recovery attempt ${state.attempts}`);
 
-    const aborted = await abortSession(sessionId);
-    if (!aborted) {
-      console.error(`[auto-force-resume] Abort failed for ${sessionId}, aborting recovery`);
-      state.recoveryInProgress = false;
-      return;
+    // Try session.abort() first
+    console.log(`[auto-force-resume] Calling session.abort() for ${sessionId}`);
+    try {
+      const abortResult = await input.client.session.abort({
+        path: { id: sessionId },
+      });
+      console.log(`[auto-force-resume] abort() result:`, JSON.stringify(abortResult));
+      if ("error" in abortResult && abortResult.error) {
+        console.error(`[auto-force-resume] abort() returned error:`, abortResult.error);
+      }
+    } catch (e) {
+      console.error(`[auto-force-resume] abort() failed:`, e);
     }
 
     await new Promise((r) => setTimeout(r, config.continueWaitMs));
@@ -177,26 +150,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
 
     state.recoveryInProgress = false;
-
-    if (!continued && config.enableCompressionFallback) {
-      console.log(`[auto-force-resume] Standard recovery failed, trying compression fallback`);
-      const compressed = await compressAndResume(sessionId);
-      if (!compressed) {
-        console.error(`[auto-force-resume] All recovery methods exhausted for ${sessionId}`);
-      }
-    }
   };
 
   const handleActivity = (sessionId: string): void => {
     const state = getOrCreateSession(sessionId);
 
+    console.log(`[auto-force-resume] Activity for ${sessionId}, resetting timer`);
+
     clearStallTimer(sessionId);
 
     if (state.recoveryInProgress) {
+      console.log(`[auto-force-resume] Recovery in progress, not starting new timer`);
       return;
     }
 
     state.stallTimer = setTimeout(() => {
+      console.log(`[auto-force-resume] Stall timer fired for ${sessionId}`);
       performRecovery(sessionId);
     }, config.stallTimeoutMs);
   };
@@ -204,6 +173,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   return {
     event: async ({ event }) => {
       const sessionId = (event as { properties?: { sessionID?: string } }).properties?.sessionID || "default";
+
+      console.log(`[auto-force-resume] Event received: ${event.type} for session: ${sessionId}`);
 
       if (ACTIVITY_EVENTS.includes(event.type as typeof ACTIVITY_EVENTS[number])) {
         handleActivity(sessionId);
@@ -213,7 +184,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     },
 
     config: async () => {
-      console.log("[auto-force-resume] Plugin loaded with config:", JSON.stringify(config));
+      console.log("[auto-force-resume] Config hook called");
     },
   };
 };
