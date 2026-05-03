@@ -137,7 +137,7 @@ describe("opencode-auto-force-resume", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 10000 });
 
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).not.toHaveBeenCalled();
@@ -149,7 +149,7 @@ describe("opencode-auto-force-resume", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(5000);
 
       expect(mockAbort).toHaveBeenCalled();
@@ -169,7 +169,7 @@ describe("opencode-auto-force-resume", () => {
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(2000);
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
@@ -186,7 +186,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
 
       // Create session and set timer
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       
       // First recovery (attempts=0 → 1)
       await vi.advanceTimersByTimeAsync(500);
@@ -239,7 +239,7 @@ describe("opencode-auto-force-resume", () => {
     it("should clear session on session.idle", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
 
       vi.useFakeTimers();
@@ -252,7 +252,7 @@ describe("opencode-auto-force-resume", () => {
     it("should clear session on session.deleted", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await plugin.event({ event: { type: "session.deleted", properties: { sessionID: "test", info: {} } } });
 
       vi.useFakeTimers();
@@ -269,14 +269,14 @@ describe("opencode-auto-force-resume", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, cooldownMs: 0, maxRecoveries: 3, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
 
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(50);
       await Promise.resolve();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(50);
       await Promise.resolve();
 
