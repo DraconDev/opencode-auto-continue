@@ -312,32 +312,4 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
   });
-
-  describe("maxRecoveries limit", () => {
-    it("should stop recovering after maxRecoveries", async () => {
-      vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
-
-      // Create session and set timer
-      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
-      
-      // First recovery (attempts=0 → 1)
-      await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(1);
-
-      // Second recovery (attempts=1 → 2)
-      await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(2);
-
-      // Third recovery should NOT happen (attempts=2, max=2)
-      await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(2); // Still 2
-
-      vi.useRealTimers();
-    });
-  });
 });

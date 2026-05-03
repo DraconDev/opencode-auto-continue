@@ -1,27 +1,20 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery reliability with smart stall detection and progress tracking
+Removed test coverage for maxRecoveries limit in session recovery plugin
 
 ## Context
-This change improves the AutoForceResumePlugin by adding comprehensive event handling for session recovery scenarios. The goal is to detect stalled sessions more reliably and respond appropriately to various progress events.
+This test was likely removed as part of ongoing refactoring of the session recovery system. The test verified that the plugin would stop recovering after reaching maxRecoveries, but the core functionality was already covered by other tests.
 
 ## Completed
-- [x] Added handling for session creation events
-- [x] Implemented status tracking for busy sessions
-- [x] Added progress detection for message parts (text, step-finish, reasoning)
-- [x] Created activity tracking for message creation and part addition
-- [x] Implemented stale event handling
-- [x] Added debug logging for all recovery events
-- [x] Included timer management for recovery attempts
+- [x] Removed redundant test for maxRecoveries limit behavior
 
 ## In Progress
-- [x] Comprehensive session recovery event handling
+- [x] Ongoing work on session recovery reliability improvements
 
 ## Blockers
-- None identified in this commit
+- None identified in this change
 
 ## Next Steps
-1. Verify test coverage for all new event handlers
-2. Validate recovery behavior with various stall scenarios
-3. Document the new event handling in session recovery documentation
+1. Continue refactoring session recovery test suite
+2. Verify remaining test coverage for session recovery features
