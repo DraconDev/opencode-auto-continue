@@ -1,15 +1,19 @@
 # opencode-auto-force-resume
 
-OpenCode plugin that automatically detects stalled sessions and recovers via `session.abort()` + `continue`.
+Intelligently detects and recovers stalled OpenCode sessions using `session.abort()` + `continue` prompt.
 
 ## Why
 
-OpenCode sessions can stall due to context bloat, tool call loops, or provider throttling. This plugin detects prolonged silence and performs recovery:
+OpenCode sessions can stall due to context bloat, tool call loops, or provider throttling. This plugin monitors session activity and performs automatic recovery only when the session is truly stuck.
 
-1. Detect that the session has been silent for too long (default: 3 minutes)
-2. Call `session.abort()` to interrupt the broken turn
-3. Wait configurable time
-4. Send `continue` to start fresh
+## Key Features
+
+- **Smart stall detection** — Only recovers if `session.status()` shows `busy` AND no real progress for the timeout period
+- **Status polling after abort** — Polls `session.status()` until session becomes `idle` before sending continue
+- **Progress tracking** — Tracks `message.part.delta`, `step-finish`, and `reasoning` parts as real progress
+- **Recovery limits** — Max 3 attempts per session with 60-second cooldown between attempts
+- **User cancellation detection** — Stops recovery after user manually aborts (ESC key)
+- **Silent operation** — No console spam or UI corruption
 
 ## Installation
 
@@ -38,7 +42,12 @@ Add to your `opencode.json` plugins array:
   "plugin": [
     ["opencode-auto-force-resume", {
       "stallTimeoutMs": 180000,
-      "waitAfterAbortMs": 1500
+      "waitAfterAbortMs": 1500,
+      "maxRecoveries": 3,
+      "cooldownMs": 60000,
+      "abortPollIntervalMs": 200,
+      "abortPollMaxTimeMs": 5000,
+      "abortPollMaxFailures": 3
     }]
   ]
 }
@@ -49,35 +58,80 @@ Add to your `opencode.json` plugins array:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `stallTimeoutMs` | `180000` | Time (ms) without activity before triggering recovery. Default 3 minutes accommodates slow reasoning models. |
-| `waitAfterAbortMs` | `1500` | Pause (ms) between `session.abort()` and `continue`. |
+| `waitAfterAbortMs` | `1500` | Minimum pause (ms) between `session.abort()` and `continue`. |
+| `maxRecoveries` | `3` | Maximum recovery attempts per session before giving up. |
+| `cooldownMs` | `60000` | Time (ms) between recovery attempts. Prevents spam. |
+| `abortPollIntervalMs` | `200` | How often to poll `session.status()` after abort (ms). |
+| `abortPollMaxTimeMs` | `5000` | Maximum time to poll for idle status after abort (ms). |
+| `abortPollMaxFailures` | `3` | Max consecutive `session.status()` failures before giving up on polling. |
 
 ## Recovery Flow
 
 ```
-[Stall detected]
-     ↓
-Call session.abort() → interrupt broken turn
-     ↓
-Wait waitAfterAbortMs
-     ↓
-Send "continue" → fresh start
+[Activity detected]
+      ↓
+Set stall timer (stallTimeoutMs)
+      ↓
+Timer fires → Check session.status()
+      ↓
+Status === "busy" AND lastProgressAt is old?
+      ↓
+YES → Call session.abort()
+      ↓
+Poll session.status() until "idle" (or timeout)
+      ↓
+Wait minimum time (waitAfterAbortMs)
+      ↓
+Send "continue" via promptAsync()
+      ↓
+Increment attempts, restart monitoring
 ```
+
+## How It Works
+
+### Stall Detection
+
+The plugin only considers a session "stuck" when:
+1. `session.status()` returns `busy` (not idle or retry)
+2. No real progress events for `stallTimeoutMs`
+
+Real progress events:
+- `message.part.delta` — AI generating text
+- `message.part.updated` with `step-finish` part — turn completed
+- `message.part.updated` with `reasoning` part — reasoning content
+- `session.status` with `busy` — actively working
+
+### Recovery Safety
+
+- Won't recover idle sessions
+- Won't recover sessions with recent progress
+- Won't recover after user aborts (ESC key)
+- Gives up after `maxRecoveries` attempts
+- Waits `cooldownMs` between attempts
+- Polls until session is ready before sending continue
 
 ## Events
 
-**Activity events that reset the stall timer:**
-- `message.part.updated`
-- `message.part.added`
-- `message.updated`
+**Progress events that reset stall timer and update lastProgressAt:**
+- `message.part.delta`
+- `message.part.updated` (text, step-finish, reasoning only)
+- `session.status` (when busy)
+
+**Activity events that reset stall timer:**
 - `message.created`
-- `step.finish`
-- `session.status`
+- `message.part.added`
+- `session.created`
 
 **Stale events that clear session state:**
 - `session.idle`
-- `session.error`
+- `session.error` (MessageAbortedError sets userCancelled)
 - `session.compacted`
 - `session.ended`
+- `session.deleted`
+
+## Cleanup
+
+The plugin registers a `dispose` handler that clears all active timers when OpenCode unloads the plugin, preventing memory leaks.
 
 ## License
 

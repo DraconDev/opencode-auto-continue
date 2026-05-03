@@ -1,23 +1,31 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery test configuration with additional polling and attempt tracking
+Enhanced session recovery reliability with smart stall detection and configurable recovery parameters
 
 ## Context
-The test suite for session recovery was being enhanced to better verify the reliability of the abort request mechanism. The previous implementation didn't fully test the maximum recovery attempts constraint.
+The plugin previously performed basic session recovery by aborting and continuing after a timeout, but this often caused false positives (recovering working sessions) or false negatives (missing truly stuck sessions). The changes improve reliability by:
+- Only recovering when session is truly stuck (busy + no progress)
+- Adding configurable polling for idle state after abort
+- Tracking real progress events (not just any activity)
+- Adding recovery limits and cooldown periods
 
 ## Completed
-- [x] Added explicit test cases for each recovery attempt (1st, 2nd, and 3rd)
-- [x] Verified that recovery stops after reaching maxRecoveries (2 attempts)
-- [x] Included explicit promise resolution to ensure proper async timing
-- [x] Improved test readability with clear comments for each test phase
+- [x] Added smart stall detection that only recovers when session is busy AND has no recent progress
+- [x] Implemented polling for idle state after abort with configurable parameters
+- [x] Added progress tracking for message parts and session status
+- [x] Implemented recovery limits (max attempts, cooldown periods)
+- [x] Added user cancellation detection (ESC key)
+- [x] Enhanced documentation with detailed recovery flow and configuration options
+- [x] Added cleanup logic to prevent timer memory leaks
 
 ## In Progress
-- [x] Enhanced test coverage for session recovery timer behavior
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this change
+- No blockers identified
 
 ## Next Steps
-1. Review test coverage for edge cases in session recovery
-2. Consider adding more test scenarios for different stallTimeout configurations
+1. Verify recovery behavior with various model types and network conditions
+2. Monitor for any false positives/negatives in production environments
+3. Consider adding metrics to track recovery success rates
