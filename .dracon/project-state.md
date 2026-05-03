@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added plan content detection to prevent session recovery during planning
+Added planning state check to prevent session recovery during active planning
 
 ## Context
-This change prevents session recovery from interrupting the planning process, which was causing unintended interruptions during content generation.
+This change addresses a race condition where session recovery attempts could interfere with ongoing planning operations. The previous implementation didn't properly handle the `planning` state flag, potentially causing inconsistent recovery behavior.
 
 ## Completed
-- [x] Added planning state check before session recovery
-- [x] Added debug logging for planning state changes
+- [x] Added check for `s.planning` flag before session recovery operations
+- [x] Added debug log when clearing the planning flag during recovery
 
 ## In Progress
-- [x] Testing recovery behavior during planning phase
+- [x] Implementation of planning state handling in session recovery
 
 ## Blockers
-- None identified
+- None identified in this change
 
 ## Next Steps
-1. Verify recovery behavior during planning phase
-2. Document edge cases for planning recovery
+1. Verify the new behavior in integration tests
+2. Document the planning state handling in session recovery documentation
