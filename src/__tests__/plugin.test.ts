@@ -259,6 +259,7 @@ describe("opencode-auto-force-resume", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 3 });
 
+      await plugin.event({ event: { type: "message.part.delta", properties: { sessionID: "test", messageID: "msg1", partID: "part1", field: "text", delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(500);
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
