@@ -181,7 +181,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
     },
 
-    config: async ({ config: opencodeConfig }) => {
+    config: async () => {
       console.log("[auto-force-resume] Plugin loaded with config:", JSON.stringify(config));
     },
   };
