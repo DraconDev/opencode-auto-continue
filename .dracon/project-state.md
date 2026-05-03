@@ -1,26 +1,26 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery reliability with explicit progress tracking and abort handling
+Improved session recovery reliability by handling additional session states and cleanup
 
 ## Context
-Improved session recovery by adding explicit progress tracking, abort handling, and better stall detection to prevent unnecessary recovery attempts
+The changes address reliability issues in session recovery by:
+1) Adding support for "session.deleted" events
+2) Moving timer cleanup to after error handling
+3) Simplifying the user cancellation flow
 
 ## Completed
-- [x] Added `lastProgressAt` timestamp to track session activity
-- [x] Added `aborting` and `userCancelled` flags for better state management
-- [x] Implemented progress update function for tracking activity
-- [x] Added stall detection with configurable timeout
-- [x] Improved error handling for MessageAbortedError cases
-- [x] Enhanced session status monitoring
-- [x] Added explicit abort/continue operations with proper state transitions
+- [x] Added handling for "session.deleted" events in recovery logic
+- [x] Moved timer cleanup after error handling to prevent race conditions
+- [x] Simplified user cancellation flow by removing redundant checks
 
 ## In Progress
-- [ ] None (all changes are complete)
+- [x] No active work in progress for this commit
 
 ## Blockers
-- None (feature is complete)
+- None identified for this specific change
 
 ## Next Steps
-1. Update documentation to reflect new configuration options
-2. Add integration tests for the new recovery behaviors
+1. Verify the new session state handling works with existing recovery flows
+2. Test edge cases around concurrent session operations
+3. Document the new session state handling in recovery documentation

@@ -101,6 +101,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       s.attempts++;
       s.lastRecoveryTime = now;
+      s.timer = setTimeout(() => {
+        recover(sessionId);
+      }, config.stallTimeoutMs);
     } catch {
       // recovery failed
     } finally {
@@ -132,18 +135,17 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         "session.idle",
         "session.error",
         "session.compacted",
-        "session.ended"
+        "session.ended",
+        "session.deleted"
       ];
 
       if (event?.type === "session.error") {
         const err = e?.properties?.error;
         if (err?.name === "MessageAbortedError") {
           const s = sessions.get(sid);
-          if (s) {
-            s.userCancelled = true;
-            clearTimer(sid);
-          }
+          if (s) s.userCancelled = true;
         }
+        clearTimer(sid);
         return;
       }
 
