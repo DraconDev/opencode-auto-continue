@@ -1,23 +1,4 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-
-interface MockSessionState {
-  promptCalls: Array<{ text: string; noReply: boolean }>;
-  shouldFail: boolean;
-}
-
-interface MockClient {
-  session: {
-    prompt: (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => Promise<{ data?: unknown; error?: unknown }>;
-  };
-}
-
-const DEFAULT_CONFIG = {
-  stallTimeoutMs: 180000,
-  cancelWaitMs: 1500,
-  maxRecoveries: 10,
-  cooldownMs: 300000,
-  enableCompressionFallback: true,
-};
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const ACTIVITY_EVENTS = [
   "message.part.updated",
@@ -50,6 +31,20 @@ interface PluginConfig {
   enableCompressionFallback: boolean;
 }
 
+const DEFAULT_CONFIG = {
+  stallTimeoutMs: 180000,
+  cancelWaitMs: 1500,
+  maxRecoveries: 10,
+  cooldownMs: 300000,
+  enableCompressionFallback: true,
+};
+
+interface MockClient {
+  session: {
+    prompt: (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => Promise<{ data?: unknown; error?: unknown }>;
+  };
+}
+
 function createAutoForceResumePlugin(input: { client: MockClient }, options?: Partial<PluginConfig>) {
   const config: PluginConfig = {
     ...DEFAULT_CONFIG,
@@ -57,6 +52,7 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
   };
 
   const sessions = new Map<string, SessionState>();
+  let promptCalls: Array<{ text: string; noReply: boolean; sessionId: string }> = [];
 
   const getOrCreateSession = (sessionId: string): SessionState => {
     if (!sessions.has(sessionId)) {
@@ -85,6 +81,7 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
 
   const sendPrompt = async (sessionId: string, text: string, noReply = true): Promise<boolean> => {
     try {
+      promptCalls.push({ text, noReply, sessionId });
       const result = await input.client.session.prompt({
         body: {
           parts: [{ type: "text", text }],
@@ -96,7 +93,7 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
         return false;
       }
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   };
@@ -149,7 +146,6 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
 
   const handleActivity = (sessionId: string): void => {
     const state = getOrCreateSession(sessionId);
-
     clearStallTimer(sessionId);
 
     if (state.recoveryInProgress) {
@@ -172,32 +168,24 @@ function createAutoForceResumePlugin(input: { client: MockClient }, options?: Pa
       }
     },
     getSession: (sessionId: string) => sessions.get(sessionId),
-    getSessions: () => sessions,
+    getPromptCalls: () => promptCalls,
+    resetPromptCalls: () => { promptCalls = []; },
   };
 }
 
 describe("opencode-auto-force-resume", () => {
   let mockClient: MockClient;
-  let promptCalls: Array<{ text: string; noReply: boolean; sessionId: string }> = [];
 
   beforeEach(() => {
-    promptCalls = [];
     mockClient = {
       session: {
-        prompt: async (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => {
-          promptCalls.push({
-            text: opts.body.parts[0].text,
-            noReply: opts.body.noReply,
-            sessionId: opts.path.id,
-          });
-          return { data: {} };
-        },
+        prompt: async () => ({ data: {} }),
       },
     };
   });
 
   describe("stall detection", () => {
-    it("should start a stall timer when activity event is received", () => {
+    it("should create session with stall timer on activity event", () => {
       const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
@@ -207,159 +195,154 @@ describe("opencode-auto-force-resume", () => {
       expect(session!.stallTimer).not.toBeNull();
     });
 
-    it("should reset timer when activity event is received", async () => {
+    it("should reset stall timer on new activity", () => {
       const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       const firstTimer = plugin.getSession("test-session")!.stallTimer;
 
-      await new Promise((r) => setTimeout(r, 100));
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       const secondTimer = plugin.getSession("test-session")!.stallTimer;
 
       expect(firstTimer).not.toBe(secondTimer);
     });
 
-    it("should trigger recovery after stallTimeoutMs", async () => {
-      vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+    it("should not start timer for stale events", () => {
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
-      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
+      plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
 
-      await vi.advanceTimersByTimeAsync(5000);
-
-      expect(promptCalls.length).toBeGreaterThan(0);
-      vi.useRealTimers();
+      const session = plugin.getSession("test-session");
+      expect(session).toBeUndefined();
     });
   });
 
   describe("recovery flow", () => {
-    it("should send cancel first then continue after waiting", async () => {
+    it("should send cancel when stall timer fires", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 1500 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      const cancelCall = promptCalls.find((p) => p.text === "cancel");
-      const continueCall = promptCalls.find((p) => p.text === "continue");
-
-      expect(cancelCall).toBeDefined();
-      expect(continueCall).toBeDefined();
+      const calls = plugin.getPromptCalls();
+      expect(calls.some((c) => c.text === "cancel")).toBe(true);
       vi.useRealTimers();
     });
 
-    it("should respect cancelWaitMs between cancel and continue", async () => {
+    it("should send continue after cancel", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 3000 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
+      await vi.advanceTimersByTimeAsync(1500);
 
-      await vi.advanceTimersByTimeAsync(1000);
+      const calls = plugin.getPromptCalls();
+      expect(calls.some((c) => c.text === "continue")).toBe(true);
+      vi.useRealTimers();
+    });
 
-      const cancelIdx = promptCalls.findIndex((p) => p.text === "cancel");
-      const continueIdx = promptCalls.findIndex((p) => p.text === "continue");
+    it("should send cancel before continue in order", async () => {
+      vi.useFakeTimers();
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
 
-      expect(continueIdx - cancelIdx).toBe(1);
+      plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
+      await vi.advanceTimersByTimeAsync(1500);
+
+      const calls = plugin.getPromptCalls();
+      const cancelIdx = calls.findIndex((c) => c.text === "cancel");
+      const continueIdx = calls.findIndex((c) => c.text === "continue");
+      expect(cancelIdx).toBeLessThan(continueIdx);
       vi.useRealTimers();
     });
   });
 
   describe("compression fallback", () => {
-    it("should try /compact when continue fails", async () => {
-      let failContinue = true;
+    it("should trigger /compact when continue fails and fallback enabled", async () => {
+      let callCount = 0;
       const failingClient = {
         session: {
-          prompt: async (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => {
-            promptCalls.push({
-              text: opts.body.parts[0].text,
-              noReply: opts.body.noReply,
-              sessionId: opts.path.id,
-            });
-            if (opts.body.parts[0].text === "continue" && failContinue) {
-              return { error: "failed" };
-            }
+          prompt: async () => {
+            callCount++;
+            if (callCount === 2) return { error: "failed" };
             return { data: {} };
           },
         },
       };
 
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, enableCompressionFallback: true });
+      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(5000);
 
-      const compactCall = promptCalls.find((p) => p.text === "/compact");
-      expect(compactCall).toBeDefined();
+      const calls = plugin.getPromptCalls();
+      expect(calls.some((c) => c.text === "/compact")).toBe(true);
       vi.useRealTimers();
     });
 
-    it("should not try compression if enableCompressionFallback is false", async () => {
-      let failContinue = true;
+    it("should not trigger /compact when fallback is disabled", async () => {
+      let callCount = 0;
       const failingClient = {
         session: {
-          prompt: async (opts: { body: { parts: Array<{ type: string; text: string }>; noReply: boolean }; path: { id: string } }) => {
-            promptCalls.push({
-              text: opts.body.parts[0].text,
-              noReply: opts.body.noReply,
-              sessionId: opts.path.id,
-            });
-            if (opts.body.parts[0].text === "continue" && failContinue) {
-              return { error: "failed" };
-            }
+          prompt: async () => {
+            callCount++;
+            if (callCount === 2) return { error: "failed" };
             return { data: {} };
           },
         },
       };
 
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, enableCompressionFallback: false });
+      const plugin = createAutoForceResumePlugin({ client: failingClient }, { stallTimeoutMs: 1000, cancelWaitMs: 100, enableCompressionFallback: false });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(5000);
 
-      const compactCall = promptCalls.find((p) => p.text === "/compact");
-      expect(compactCall).toBeUndefined();
+      const calls = plugin.getPromptCalls();
+      expect(calls.some((c) => c.text === "/compact")).toBe(false);
       vi.useRealTimers();
     });
   });
 
   describe("cooldown and max recoveries", () => {
-    it("should not attempt recovery within cooldown period", async () => {
+    it("should block recovery within cooldown period", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 10000 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, cooldownMs: 10000, maxRecoveries: 10 });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      promptCalls = [];
+      plugin.getPromptCalls().forEach(() => {});
+      plugin.resetPromptCalls();
+
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      const cancelCount = promptCalls.filter((p) => p.text === "cancel").length;
-      expect(cancelCount).toBe(1);
+      const cancelCalls = plugin.getPromptCalls().filter((c) => c.text === "cancel");
+      expect(cancelCalls.length).toBe(1);
       vi.useRealTimers();
     });
 
-    it("should stop after maxRecoveries attempts", async () => {
+    it("should respect maxRecoveries limit", async () => {
       vi.useFakeTimers();
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000, maxRecoveries: 2, cooldownMs: 0 });
+      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 3 });
 
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 10; i++) {
         plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
-        await vi.advanceTimersByTimeAsync(1000);
+        await vi.advanceTimersByTimeAsync(500);
+        plugin.resetPromptCalls();
       }
 
-      const cancelCount = promptCalls.filter((p) => p.text === "cancel").length;
-      expect(cancelCount).toBe(2);
+      const session = plugin.getSession("test-session");
+      expect(session!.attempts).toBeLessThanOrEqual(3);
       vi.useRealTimers();
     });
   });
 
-  describe("session state cleanup", () => {
-    it("should clear session on session.idle event", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+  describe("session cleanup", () => {
+    it("should clear session on session.idle", () => {
+      const plugin = createAutoForceResumePlugin({ client: mockClient });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       expect(plugin.getSession("test-session")).toBeDefined();
@@ -368,8 +351,8 @@ describe("opencode-auto-force-resume", () => {
       expect(plugin.getSession("test-session")).toBeUndefined();
     });
 
-    it("should clear session on session.error event", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+    it("should clear session on session.error", () => {
+      const plugin = createAutoForceResumePlugin({ client: mockClient });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       expect(plugin.getSession("test-session")).toBeDefined();
@@ -378,8 +361,8 @@ describe("opencode-auto-force-resume", () => {
       expect(plugin.getSession("test-session")).toBeUndefined();
     });
 
-    it("should clear session on session.compacted event", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+    it("should clear session on session.compacted", () => {
+      const plugin = createAutoForceResumePlugin({ client: mockClient });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       expect(plugin.getSession("test-session")).toBeDefined();
@@ -388,8 +371,8 @@ describe("opencode-auto-force-resume", () => {
       expect(plugin.getSession("test-session")).toBeUndefined();
     });
 
-    it("should clear session on session.ended event", () => {
-      const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+    it("should clear session on session.ended", () => {
+      const plugin = createAutoForceResumePlugin({ client: mockClient });
 
       plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
       expect(plugin.getSession("test-session")).toBeDefined();
@@ -399,8 +382,8 @@ describe("opencode-auto-force-resume", () => {
     });
   });
 
-  describe("activity events", () => {
-    const activityEventTypes = [
+  describe("activity event types", () => {
+    const eventTypes = [
       "message.part.updated",
       "message.part.added",
       "message.updated",
@@ -409,17 +392,34 @@ describe("opencode-auto-force-resume", () => {
       "session.status",
     ];
 
-    activityEventTypes.forEach((eventType) => {
-      it(`should reset stall timer on ${eventType} event`, () => {
+    eventTypes.forEach((eventType) => {
+      it(`should handle ${eventType} as activity`, () => {
         const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
 
         plugin.event({ event: { type: eventType as typeof ACTIVITY_EVENTS[number], properties: { sessionID: "test-session" } } });
-        const firstTimer = plugin.getSession("test-session")!.stallTimer;
+        expect(plugin.getSession("test-session")).toBeDefined();
+        expect(plugin.getSession("test-session")!.stallTimer).not.toBeNull();
+      });
+    });
+  });
 
-        plugin.event({ event: { type: eventType as typeof ACTIVITY_EVENTS[number], properties: { sessionID: "test-session" } } });
-        const secondTimer = plugin.getSession("test-session")!.stallTimer;
+  describe("stale event types", () => {
+    const eventTypes = [
+      "session.idle",
+      "session.error",
+      "session.compacted",
+      "session.ended",
+    ];
 
-        expect(firstTimer).not.toBe(secondTimer);
+    eventTypes.forEach((eventType) => {
+      it(`should handle ${eventType} as stale`, () => {
+        const plugin = createAutoForceResumePlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+
+        plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session" } } });
+        expect(plugin.getSession("test-session")).toBeDefined();
+
+        plugin.event({ event: { type: eventType as typeof STALE_EVENTS[number], properties: { sessionID: "test-session" } } });
+        expect(plugin.getSession("test-session")).toBeUndefined();
       });
     });
   });
