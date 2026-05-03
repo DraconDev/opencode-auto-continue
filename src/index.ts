@@ -90,15 +90,20 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      await (input.client.session as any).abort({ path: { id: sessionId } });
+      await (input.client.session as any).abort({ 
+        path: { id: sessionId },
+        query: { directory: (input as any).directory }
+      });
 
       // Poll for session to become idle (max 5 seconds)
       const pollInterval = 200;
       const maxPollTime = 5000;
       const startTime = Date.now();
       let isIdle = false;
+      let statusFailures = 0;
+      const maxStatusFailures = 3;
 
-      while (!isIdle && Date.now() - startTime < maxPollTime) {
+      while (!isIdle && Date.now() - startTime < maxPollTime && statusFailures < maxStatusFailures) {
         await new Promise(r => setTimeout(r, pollInterval));
         try {
           const pollResult = await input.client.session.status({});
@@ -107,8 +112,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (pollStatus?.type === "idle") {
             isIdle = true;
           }
+          statusFailures = 0; // Reset on success
         } catch {
-          // status check failed, continue polling
+          statusFailures++;
         }
       }
 

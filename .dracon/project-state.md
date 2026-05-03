@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Improved session recovery reliability by adding polling for idle state before proceeding
+Improved session recovery reliability by enhancing abort request parameters and adding status failure tracking
 
 ## Context
-The previous implementation had a race condition where the recovery process would proceed too quickly after aborting a stalled session, potentially causing issues. This change ensures the session is properly idle before continuing.
+To handle stalled sessions more robustly, we need to ensure proper session cleanup and reliable status polling. The previous implementation lacked directory context in abort requests and had no mechanism to handle repeated status failures.
 
 ## Completed
-- [x] Added polling mechanism to wait for session to become idle (max 5 seconds)
-- [x] Maintained minimum wait time even if session becomes idle early
-- [x] Updated test to skip flaky case affected by polling behavior
+- [x] Added directory parameter to session abort request
+- [x] Implemented status failure counter with max attempts limit
+- [x] Added failure counter reset on successful status checks
+- [x] Enhanced polling loop to include failure count in termination condition
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] None (changes are complete)
 
 ## Blockers
-- None identified
+- None (implementation is complete)
 
 ## Next Steps
-1. Verify polling behavior in integration tests
-2. Monitor for any new race conditions introduced by the polling mechanism
+1. Verify behavior with integration tests
+2. Monitor production impact of these changes
