@@ -1,18 +1,17 @@
 # Project State
 
 ## Current Focus
-Added comprehensive integration tests for the auto-force-resume plugin's session recovery behavior
+Added persistent logging to file system for debug messages and config validation errors
 
 ## Context
-To ensure the plugin reliably handles stalled sessions by properly detecting stalls, aborting sessions, and continuing execution, we've added integration tests that verify the complete recovery cycle from busy state to stall detection to abort and continue operations.
+To improve debugging and error tracking, the plugin now writes logs to `~/.opencode/logs/auto-force-resume.log` instead of only console output. This helps maintain visibility into plugin behavior when debug mode is enabled.
 
 ## Completed
-- [x] Added integration tests for full recovery cycle (busy → stall → abort → continue)
-- [x] Added test for idle session detection to prevent unnecessary aborts
-- [x] Added test for prompt fallback when async prompt isn't available
-- [x] Added test for tool execution detection to prevent false stalls
-- [x] Implemented mock client setup for testing all session operations
-- [x] Added timer control for testing stall detection timing
+- [x] Added file system logging for config validation errors
+- [x] Implemented persistent logging for debug messages
+- [x] Created log directory structure if it doesn't exist
+- [x] Added timestamp to all log entries
+- [x] Maintained silent failure for file operations
 
 ## In Progress
 - [ ] No active work in progress
@@ -21,5 +20,5 @@ To ensure the plugin reliably handles stalled sessions by properly detecting sta
 - None identified
 
 ## Next Steps
-1. Review test coverage for edge cases (multiple stalls, max recovery attempts)
-2. Consider adding performance benchmarking for recovery operations
+1. Verify log rotation strategy for long-term usage
+2. Add log level filtering (info/warn/error)

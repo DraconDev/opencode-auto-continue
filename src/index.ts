@@ -1,4 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin";
+import { appendFileSync, mkdirSync, existsSync } from "fs";
+import { join, dirname } from "path";
 
 interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
@@ -70,7 +72,14 @@ function validateConfig(config: PluginConfig): PluginConfig {
   }
 
   if (errors.length > 0) {
-    console.log('[auto-force-resume] Config validation failed, using defaults:', errors.join(', '));
+    try {
+      const vLogDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
+      const vLogFile = join(vLogDir, "auto-force-resume.log");
+      if (!existsSync(vLogDir)) mkdirSync(vLogDir, { recursive: true });
+      appendFileSync(vLogFile, `[${new Date().toISOString()}] [auto-force-resume] Config validation failed, using defaults: ${errors.join(', ')}\n`);
+    } catch {
+      // ignore
+    }
     return { ...DEFAULT_CONFIG };
   }
   
@@ -157,9 +166,28 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     return PLAN_PATTERNS.some(p => p.test(trimmed));
   }
 
+  const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
+  const logFile = join(logDir, "auto-force-resume.log");
+
+  function ensureLogDir() {
+    try {
+      if (!existsSync(logDir)) {
+        mkdirSync(logDir, { recursive: true });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   function log(...args: unknown[]) {
-    if (config.debug) {
-      console.log('[auto-force-resume]', ...args);
+    if (!config.debug) return;
+    try {
+      ensureLogDir();
+      const timestamp = new Date().toISOString();
+      const message = `[${timestamp}] [auto-force-resume] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
+      appendFileSync(logFile, message);
+    } catch {
+      // ignore file errors silently
     }
   }
 
