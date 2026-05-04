@@ -293,9 +293,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (err?.name === "MessageAbortedError") {
           const s = sessions.get(sid);
           if (s) s.userCancelled = true;
-          clearTimer(sid);
           log('user cancelled session:', sid);
         }
+        clearTimer(sid);
         return;
       }
 
