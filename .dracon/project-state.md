@@ -1,20 +1,22 @@
 # Project State
 
 ## Current Focus
-Expanded progress detection for session recovery by adding more message part types.
+Improved session recovery timing by adding state checks before setting recovery timers
 
 ## Context
-This change improves session recovery timing by including additional message part types in the progress detection logic. This ensures more accurate recovery when these part types are encountered during stalled sessions.
+The previous implementation set recovery timers unconditionally, which could lead to premature recovery attempts. This change ensures timers are only set when the session is in a "busy" or "retry" state, preventing unnecessary recovery attempts during other states.
 
 ## Completed
-- [x] Added `step-start`, `subtask`, and `file` part types to the progress detection criteria in session recovery
+- [x] Added state checks before setting recovery timers
+- [x] Fixed timer cleanup in error handling path
+- [x] Ensured timers only set for active recovery states
 
 ## In Progress
-- [x] Testing the impact of these changes on session recovery timing
+- [x] State validation for recovery timing
 
 ## Blockers
-- Verifying that these additional part types don't introduce false positives in session recovery
+- None identified
 
 ## Next Steps
-1. Run additional test cases to confirm the new part types don't affect recovery timing negatively
-2. Document the updated progress detection rules in session recovery documentation
+1. Verify timer behavior with updated test cases
+2. Monitor recovery behavior in production environments

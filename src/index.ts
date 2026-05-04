@@ -207,7 +207,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         recover(sessionId);
       }, config.stallTimeoutMs);
     } catch {
-      // recovery failed
+      s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
     } finally {
       s.aborting = false;
     }
@@ -267,9 +267,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
         }
         clearTimer(sid);
-        s.timer = setTimeout(() => {
-          recover(sid);
-        }, config.stallTimeoutMs);
+        if (status?.type === "busy" || status?.type === "retry") {
+          s.timer = setTimeout(() => {
+            recover(sid);
+          }, config.stallTimeoutMs);
+        }
         return;
       }
 
