@@ -279,7 +279,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
         if (event?.type === "message.part.updated") {
           const partType = e?.properties?.part?.type;
-          const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool";
+          const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
           log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
           if (isRealProgress) {
             updateProgress(s);

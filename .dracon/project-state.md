@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Improved session recovery timing by adding state checks before setting recovery timers
+Expanded progress detection for session recovery by adding more message part types.
 
 ## Context
-The changes address premature session recovery during planning or compacting states, which could disrupt ongoing operations. This follows recent work on adding `compacting` state handling and improving stall detection.
+This change improves session recovery timing by including additional message part types in the progress detection logic. This ensures more accurate recovery when these part types are encountered during stalled sessions.
 
 ## Completed
-- [x] Changed console.error to console.log for debug logging
-- [x] Added state checks before setting recovery timers to prevent premature recovery during planning or compacting
-- [x] Applied the same state check pattern consistently in both message part and compacting handlers
+- [x] Added `step-start`, `subtask`, and `file` part types to the progress detection criteria in session recovery
 
 ## In Progress
-- [x] Verification of timer behavior with new state checks in test cases
+- [x] Testing the impact of these changes on session recovery timing
 
 ## Blockers
-- None reported
+- Verifying that these additional part types don't introduce false positives in session recovery
 
 ## Next Steps
-1. Verify test coverage for the new state checks
-2. Document the new recovery timing behavior in session recovery documentation
+1. Run additional test cases to confirm the new part types don't affect recovery timing negatively
+2. Document the updated progress detection rules in session recovery documentation
