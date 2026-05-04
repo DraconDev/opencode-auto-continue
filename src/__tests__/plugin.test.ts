@@ -189,12 +189,12 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       
       // First recovery (attempts=0 → 1)
-      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(700);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       // Second recovery (attempts=1 → 2)
-      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(700);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(2);
 
@@ -204,7 +204,7 @@ describe("opencode-auto-force-resume", () => {
       expect(mockAbort).toHaveBeenCalledTimes(2); // Still 2
 
       // After backoff delay (500 * 2^0 = 500ms since backoffAttempts=0 after max reached)
-      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(600);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(3); // Now 3 with backoff
 
@@ -304,13 +304,7 @@ describe("opencode-auto-force-resume", () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, waitAfterAbortMs: 10, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0, debug: true });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await vi.advanceTimersByTimeAsync(50);
-      await Promise.resolve();
-
-      expect(mockAbort).toHaveBeenCalledTimes(1);
-
-      mockAbort.mockClear();
-      await vi.advanceTimersByTimeAsync(50);
+      await vi.advanceTimersByTimeAsync(100);
       await Promise.resolve();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);

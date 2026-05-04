@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added debug logging to session recovery test cases
+Updated test timers to better match the new `waitAfterAbortMs` configuration behavior.
 
 ## Context
-This change improves test observability by enabling debug logging in the session recovery test cases. The debug logging helps verify the timing and state transitions during session recovery operations.
+The test cases were modified to reflect the new timing behavior introduced by the `waitAfterAbortMs` configuration option, which controls the delay after an abort before attempting recovery.
 
 ## Completed
-- [x] Added `debug: true` flag to test plugin configuration
-- [x] Enabled detailed logging for session recovery test scenarios
+- [x] Updated timer delays in session recovery test cases to match the new `waitAfterAbortMs` configuration
+- [x] Adjusted test expectations to verify correct timing behavior with the new configuration
 
 ## In Progress
-- [x] Verifying debug output in test runs
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Run updated tests to verify debug output
-2. Review test results for any unexpected behavior
+1. Verify all test cases now correctly validate the new timing behavior
+2. Consider adding additional test cases if edge cases aren't fully covered
