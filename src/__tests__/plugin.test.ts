@@ -180,7 +180,7 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("maxRecoveries limit", () => {
-    it("should stop recovering after maxRecoveries", async () => {
+    it("should use exponential backoff after maxRecoveries", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, waitAfterAbortMs: 50, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0, debug: true });
@@ -198,15 +198,16 @@ describe("opencode-auto-force-resume", () => {
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(2);
 
-      // Third recovery should NOT happen immediately (attempts=2, max=2) but uses backoff
+      // Third check should NOT abort immediately - enters backoff
+      // Backoff delay = 500 * 2^0 = 500ms
       await vi.advanceTimersByTimeAsync(500);
       await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(2); // Still 2
+      expect(mockAbort).toHaveBeenCalledTimes(2); // Still 2, now in backoff
 
-      // After backoff delay (500 * 2^0 = 500ms since backoffAttempts=0 after max reached)
-      await vi.advanceTimersByTimeAsync(600);
+      // After backoff delay + recovery time, should attempt again
+      await vi.advanceTimersByTimeAsync(700);
       await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(3); // Now 3 with backoff
+      expect(mockAbort).toHaveBeenCalledTimes(3); // 3rd abort after backoff
 
       vi.useRealTimers();
     });

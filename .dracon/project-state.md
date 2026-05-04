@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Updated test timers to better match the new `waitAfterAbortMs` configuration behavior.
+Updated test case to verify exponential backoff behavior after max recovery attempts
 
 ## Context
-The test cases were modified to reflect the new timing behavior introduced by the `waitAfterAbortMs` configuration option, which controls the delay after an abort before attempting recovery.
+This change improves test coverage for the session recovery backoff system by verifying that after reaching `maxRecoveries`, the plugin enters exponential backoff mode rather than immediately attempting another recovery.
 
 ## Completed
-- [x] Updated timer delays in session recovery test cases to match the new `waitAfterAbortMs` configuration
-- [x] Adjusted test expectations to verify correct timing behavior with the new configuration
+- [x] Modified test case to verify backoff behavior after max recovery attempts
+- [x] Updated test assertions to check backoff timing and recovery attempts
+- [x] Added comments explaining the expected backoff behavior
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Test case verification of exponential backoff timing
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify all test cases now correctly validate the new timing behavior
-2. Consider adding additional test cases if edge cases aren't fully covered
+1. Verify test case passes with current implementation
+2. Consider adding additional test cases for different backoff configurations
