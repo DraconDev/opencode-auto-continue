@@ -1,21 +1,27 @@
 # Project State
 
 ## Current Focus
-Added `compacting` state handling to session recovery to prevent premature recovery during compaction operations.
+Improved plan content detection in session recovery with stricter patterns
 
 ## Context
-This change addresses a scenario where session recovery might occur during active compaction operations, potentially causing data inconsistencies. The new `compacting` state flag ensures recovery only happens when appropriate.
+To better identify and handle different forms of planning content during session recovery, we need to expand the pattern matching to cover more common phrasing used by users when outlining their approach.
 
 ## Completed
-- [x] Added `compacting` state check in message handling
-- [x] Added logging for state clearing during compaction
+- [x] Added 11 new regex patterns to detect various planning phrasings
+- [x] Expanded detection of plan content to include:
+  - Empty checkboxes
+  - Outlining statements
+  - Step-by-step instructions
+  - Plan summaries
+  - Numbered steps
+  - Bullet-point plans
 
 ## In Progress
-- [x] Implementation of compaction state handling
+- [x] Implementation of new plan detection patterns
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Verify test coverage for compaction scenarios
-2. Document the new state handling in session recovery documentation
+1. Verify the new patterns with test cases
+2. Optimize pattern matching for performance
