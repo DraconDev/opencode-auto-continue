@@ -70,7 +70,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   function resetSession(id: string) {
     clearTimer(id);
     const s = sessions.get(id);
-    if (s) s.planBuffer = '';
+    if (s) {
+      s.planBuffer = '';
+      s.compacting = false;
+    }
     sessions.delete(id);
   }
 
@@ -242,6 +245,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             log('session busy, clearing plan flag');
             s.planning = false;
           }
+          if (s.compacting) {
+            log('session busy, clearing compacting flag (compaction likely finished)');
+            s.compacting = false;
+          }
         }
         clearTimer(sid);
         s.timer = setTimeout(() => {
@@ -262,6 +269,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             updateProgress(s);
             s.attempts = 0;
             s.userCancelled = false;
+          }
+          if (partType === "compaction") {
+            log('compaction started, pausing stall monitoring');
+            s.compacting = true;
           }
           if (partType === "text") {
             const partText = e?.properties?.part?.text as string | undefined;

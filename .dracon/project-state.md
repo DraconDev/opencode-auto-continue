@@ -4,19 +4,21 @@
 Added `compacting` state to session recovery to prevent premature recovery during compaction operations.
 
 ## Context
-The plugin previously didn't account for compaction operations in its recovery logic, which could lead to premature session recovery during critical operations. This change ensures recovery only occurs when the session is in a stable state.
+This change addresses issues where session recovery would prematurely trigger during compaction operations, potentially disrupting ongoing processes. The new state helps distinguish between normal session activity and compaction operations.
 
 ## Completed
-- [x] Added `compacting` property to `SessionState` interface
-- [x] Initialized `compacting` to `false` in session creation
-- [x] Added check for `compacting` state in recovery logic
+- [x] Added `compacting` flag to session state
+- [x] Reset `compacting` flag when session is cleared
+- [x] Clear `compacting` flag when session becomes busy
+- [x] Set `compacting` flag when compaction starts
+- [x] Added logging for compaction state changes
 
 ## In Progress
-- [x] Added compaction state tracking
+- [x] Implementation of compaction state management
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Add unit tests for compaction state handling
-2. Document compaction state behavior in session recovery documentation
+1. Verify test coverage for compaction scenarios
+2. Monitor for any edge cases in production
