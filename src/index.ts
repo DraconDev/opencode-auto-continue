@@ -164,6 +164,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   async function recover(sessionId: string) {
+    if (isDisposed) return;
     const s = sessions.get(sessionId);
     if (!s) return;
 
