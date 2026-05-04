@@ -412,6 +412,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     },
     dispose: () => {
       log('disposing plugin');
+      isDisposed = true;
       sessions.forEach((s) => {
         if (s.timer) {
           clearTimeout(s.timer);
