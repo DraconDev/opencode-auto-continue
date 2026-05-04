@@ -163,12 +163,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   async function recover(sessionId: string) {
     const s = sessions.get(sessionId);
-    if (!s) return;
+    if (!s) { log('recover: no session'); return; }
 
-    if (s.aborting) return;
-    if (s.userCancelled) return;
-    if (s.planning) return;
-    if (s.compacting) return;
+    if (s.aborting) { log('recover: already aborting'); return; }
+    if (s.userCancelled) { log('recover: user cancelled'); return; }
+    if (s.planning) { log('recover: planning'); return; }
+    if (s.compacting) { log('recover: compacting'); return; }
     if (s.attempts >= config.maxRecoveries) {
       const backoffDelay = Math.min(
         config.stallTimeoutMs * Math.pow(2, s.backoffAttempts),
@@ -182,7 +182,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     const now = Date.now();
 
-    if (now - s.lastRecoveryTime < config.cooldownMs) return;
+    if (now - s.lastRecoveryTime < config.cooldownMs) { log('recover: in cooldown'); return; }
 
     s.aborting = true;
 
@@ -191,18 +191,26 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const statusData = statusResult.data as Record<string, { type: string }>;
       const sessionStatus = statusData[sessionId];
 
+      log('recover: status check', sessionStatus?.type);
+
       if (!sessionStatus || sessionStatus.type !== "busy") {
+        log('recover: not busy, re-arming timer');
         s.aborting = false;
         s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
         return;
       }
 
-      if (now - s.lastProgressAt < config.stallTimeoutMs) {
+      const timeSinceProgress = now - s.lastProgressAt;
+      log('recover: time since progress', timeSinceProgress, 'timeout', config.stallTimeoutMs);
+
+      if (timeSinceProgress < config.stallTimeoutMs) {
+        log('recover: progress too recent, re-arming timer');
         s.aborting = false;
         s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
         return;
       }
 
+      log('recover: calling abort');
       await (input.client.session as any).abort({ 
         path: { id: sessionId },
         query: { directory: (input as any).directory }
