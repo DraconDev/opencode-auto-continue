@@ -189,25 +189,25 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       
       // First recovery (attempts=0 → 1)
-      await vi.advanceTimersByTimeAsync(700);
+      await vi.advanceTimersByTimeAsync(600);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
-      // Second recovery (attempts=1 → 2)
-      await vi.advanceTimersByTimeAsync(700);
+      // Second recovery (attempts=1 → 2)  
+      await vi.advanceTimersByTimeAsync(600);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(2);
 
-      // Third check should NOT abort immediately - enters backoff
-      // Backoff delay = 500 * 2^0 = 500ms
+      // After maxRecoveries, should enter backoff - no abort within normal time
+      mockAbort.mockClear();
       await vi.advanceTimersByTimeAsync(500);
       await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(2); // Still 2, now in backoff
+      expect(mockAbort).not.toHaveBeenCalled();
 
-      // After backoff delay + recovery time, should attempt again
-      await vi.advanceTimersByTimeAsync(700);
+      // After backoff delay (500ms), should attempt recovery again
+      await vi.advanceTimersByTimeAsync(200);
       await Promise.resolve();
-      expect(mockAbort).toHaveBeenCalledTimes(3); // 3rd abort after backoff
+      expect(mockAbort).toHaveBeenCalledTimes(1); // 3rd abort after backoff
 
       vi.useRealTimers();
     });
