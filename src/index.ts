@@ -111,7 +111,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function log(...args: unknown[]) {
     if (config.debug) {
-      console.error('[auto-force-resume]', ...args);
+      console.log('[auto-force-resume]', ...args);
     }
   }
 
@@ -315,9 +315,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
 
         clearTimer(sid);
-        s.timer = setTimeout(() => {
-          recover(sid);
-        }, config.stallTimeoutMs);
+        if (!s.planning && !s.compacting) {
+          s.timer = setTimeout(() => {
+            recover(sid);
+          }, config.stallTimeoutMs);
+        }
         return;
       }
 
@@ -336,9 +338,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.compacting = false;
         }
         clearTimer(sid);
-        s.timer = setTimeout(() => {
-          recover(sid);
-        }, config.stallTimeoutMs);
+        if (!s.planning && !s.compacting) {
+          s.timer = setTimeout(() => {
+            recover(sid);
+          }, config.stallTimeoutMs);
+        }
         return;
       }
 
