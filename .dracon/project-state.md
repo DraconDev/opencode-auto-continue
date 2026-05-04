@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Added a `isDisposed` flag to track session cleanup state in the AutoForceResumePlugin
+Improved test coverage for session recovery timer behavior after non-abort errors
 
 ## Context
-This change improves session recovery reliability by ensuring cleanup operations don't proceed after disposal
+The test case was updated to verify that the timer is properly cleared when encountering non-abort errors, and that monitoring resumes only after receiving a new busy status
 
 ## Completed
-- [x] Added `isDisposed` flag to track plugin disposal state
-- [x] Prevents session operations after plugin disposal
+- [x] Updated test case to verify timer clearing on non-abort errors
+- [x] Added verification that timer restarts after receiving new busy status
+- [x] Improved test coverage for error handling in session recovery
 
 ## In Progress
-- [ ] Verify edge cases where sessions might be disposed during recovery attempts
+- [ ] No active work in progress
 
 ## Blockers
-- Need to confirm if this flag should also affect session recovery attempts
+- None identified
 
 ## Next Steps
-1. Add tests to verify session recovery behavior with disposed state
-2. Document the new disposal state tracking mechanism
+1. Review test case for completeness
+2. Consider adding additional edge cases for error scenarios
