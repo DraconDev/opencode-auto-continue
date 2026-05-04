@@ -117,7 +117,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     const s = sessions.get(id);
     if (s) {
       s.planBuffer = '';
+      s.planning = false;
       s.compacting = false;
+      s.backoffAttempts = 0;
     }
     sessions.delete(id);
   }

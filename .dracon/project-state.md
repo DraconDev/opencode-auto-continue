@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Reset backoff counter on session recovery attempt
+Reset session state flags and backoff counter during recovery
 
 ## Context
-The session recovery logic was previously clearing the backoff counter in `updateProgress`, but this was moved to the recovery attempt handler to ensure it only resets when an actual recovery attempt occurs rather than on every progress update.
+This change addresses session recovery by ensuring clean state initialization when a session is resumed, preventing stale planning states and backoff counters from affecting new recovery attempts.
 
 ## Completed
-- [x] Moved backoff counter reset from `updateProgress` to recovery attempt handler
-- [x] Ensures backoff counter only resets when recovery is attempted
+- [x] Reset `planning` flag to false during session recovery
+- [x] Reset `backoffAttempts` counter to 0 during session recovery
 
 ## In Progress
-- [x] Verification of backoff behavior in test cases
+- [x] Session state cleanup during recovery
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for backoff behavior
-2. Ensure no unintended side effects in session recovery timing
+1. Verify test coverage for session recovery state initialization
+2. Document the new state reset behavior in session recovery documentation
