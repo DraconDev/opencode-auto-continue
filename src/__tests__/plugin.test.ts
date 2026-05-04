@@ -204,8 +204,8 @@ describe("opencode-auto-force-resume", () => {
       await Promise.resolve();
       expect(mockAbort).not.toHaveBeenCalled();
 
-      // After backoff delay (500ms), should attempt recovery again
-      await vi.advanceTimersByTimeAsync(200);
+      // After backoff delay (500ms) + recovery time, should attempt recovery again
+      await vi.advanceTimersByTimeAsync(600);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1); // 3rd abort after backoff
 

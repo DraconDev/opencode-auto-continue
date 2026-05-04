@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Refined test case for session recovery backoff behavior after maximum recovery attempts.
+Refined test case for session recovery backoff timing after maximum attempts
 
 ## Context
-The test case was updated to verify that after reaching the maximum recovery attempts, the plugin enters exponential backoff correctly rather than immediately attempting another recovery.
+The test case was updated to more accurately verify the timing behavior when the session recovery plugin reaches its maximum backoff attempts. The change ensures the test properly accounts for both the backoff delay and the recovery operation time.
 
 ## Completed
-- [x] Adjusted test timers to properly verify backoff behavior
-- [x] Updated assertions to check for no immediate abort after max attempts
-- [x] Modified backoff timing to match the new `waitAfterAbortMs` configuration
-- [x] Ensured test properly verifies the transition from recovery attempts to backoff state
+- [x] Updated test timing to include both backoff delay and recovery operation time
+- [x] Adjusted test expectation to verify abort behavior after full backoff cycle
 
 ## In Progress
-- [x] Refining test case to ensure all edge cases of backoff behavior are covered
+- [x] Verifying test coverage for all edge cases in session recovery timing
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for all backoff scenarios
-2. Update related documentation if needed
+1. Run updated test suite to confirm all session recovery scenarios work
+2. Review test coverage for additional edge cases in session recovery
