@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Added exponential backoff with configurable maximum delay for session recovery when max attempts are reached
+Add `waitAfterAbortMs` configuration option to session recovery plugin tests
 
 ## Context
-When the plugin reaches the maximum recovery attempts, it now implements an exponential backoff strategy to prevent rapid retries. This addresses potential API rate limits or temporary service unavailability.
+The tests for the session recovery plugin were updated to include the new `waitAfterAbortMs` configuration parameter, which was recently added to the plugin's configuration options.
 
 ## Completed
-- [x] Added `maxBackoffMs` configuration option (default: 30 minutes)
-- [x] Added validation to ensure `maxBackoffMs` ≥ `stallTimeoutMs`
-- [x] Implemented exponential backoff with `backoffAttempts` tracking
-- [x] Added backoff delay logging with attempt counter
-- [x] Reset backoff counter on progress updates
+- [x] Added `waitAfterAbortMs: 100` to all test cases for the session recovery plugin
+- [x] Updated test cases to verify timer behavior with the new configuration parameter
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Testing the new configuration parameter in various session status scenarios
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Add unit tests for backoff behavior
-2. Document backoff configuration in README
+1. Verify all test cases pass with the new configuration
+2. Update documentation to reflect the new configuration option
