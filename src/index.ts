@@ -124,7 +124,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function updateProgress(s: SessionState) {
     s.lastProgressAt = Date.now();
-    s.backoffAttempts = 0;
   }
 
   const PLAN_PATTERNS = [
@@ -254,6 +253,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       s.attempts++;
       s.lastRecoveryTime = now;
+      s.backoffAttempts = 0;
 
       s.timer = setTimeout(() => {
         recover(sessionId);
