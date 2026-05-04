@@ -1,14 +1,15 @@
 # Project State
 
 ## Current Focus
-Added `waitAfterAbortMs` configuration option to session recovery plugin tests
+Improved test coverage for session recovery backoff behavior with `waitAfterAbortMs` configuration
 
 ## Context
-This change updates test cases to verify the new `waitAfterAbortMs` configuration option introduced in the session recovery plugin. The option controls how long to wait after aborting a session before attempting recovery.
+The changes enhance test cases to verify the exponential backoff implementation when session recovery reaches maximum attempts. This ensures proper timing behavior after abort operations.
 
 ## Completed
-- [x] Updated test case to verify timer behavior with the new `waitAfterAbortMs` configuration
-- [x] Added proper configuration to test cases for the new parameter
+- [x] Updated test to verify backoff behavior after reaching `maxRecoveries`
+- [x] Added explicit timing checks for backoff delay after maximum recovery attempts
+- [x] Consistent configuration of `waitAfterAbortMs` across test cases
 
 ## In Progress
 - [ ] No active work in progress
@@ -18,4 +19,4 @@ This change updates test cases to verify the new `waitAfterAbortMs` configuratio
 
 ## Next Steps
 1. Verify all test cases pass with the new configuration
-2. Ensure the new parameter is properly documented in the plugin's configuration schema
+2. Consider additional edge cases for backoff behavior

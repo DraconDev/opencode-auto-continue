@@ -183,7 +183,7 @@ describe("opencode-auto-force-resume", () => {
     it("should stop recovering after maxRecoveries", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0, waitAfterAbortMs: 0 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, waitAfterAbortMs: 50, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0 });
 
       // Create session and set timer
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
@@ -198,10 +198,15 @@ describe("opencode-auto-force-resume", () => {
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(2);
 
-      // Third recovery should NOT happen (attempts=2, max=2)
+      // Third recovery should NOT happen immediately (attempts=2, max=2) but uses backoff
       await vi.advanceTimersByTimeAsync(500);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(2); // Still 2
+
+      // After backoff delay (500 * 2^0 = 500ms since backoffAttempts=0 after max reached)
+      await vi.advanceTimersByTimeAsync(500);
+      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalledTimes(3); // Now 3 with backoff
 
       vi.useRealTimers();
     });
@@ -211,7 +216,7 @@ describe("opencode-auto-force-resume", () => {
     it("should not recover after MessageAbortedError", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "MessageAbortedError" } } } });
@@ -224,7 +229,7 @@ describe("opencode-auto-force-resume", () => {
     it("should NOT clear timer on non-abort session.error - timer continues", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeOtherError" } } } });
