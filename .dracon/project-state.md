@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Reset session state flags and backoff counter during recovery
+Added a `isDisposed` flag to track session cleanup state in the AutoForceResumePlugin.
 
 ## Context
-This change addresses session recovery by ensuring clean state initialization when a session is resumed, preventing stale planning states and backoff counters from affecting new recovery attempts.
+This change was prompted by ongoing work on session recovery and cleanup logic. The flag will help prevent operations on disposed sessions, improving reliability in the plugin's lifecycle management.
 
 ## Completed
-- [x] Reset `planning` flag to false during session recovery
-- [x] Reset `backoffAttempts` counter to 0 during session recovery
+- [x] Added `isDisposed` flag to track session cleanup state
 
 ## In Progress
-- [x] Session state cleanup during recovery
+- [x] Implementing checks for `isDisposed` in session operations
 
 ## Blockers
-- None identified
+- Need to verify how this flag interacts with existing session recovery logic
 
 ## Next Steps
-1. Verify test coverage for session recovery state initialization
-2. Document the new state reset behavior in session recovery documentation
+1. Implement checks for `isDisposed` in session operations
+2. Add tests to verify proper cleanup behavior

@@ -85,6 +85,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   config = validateConfig(config);
 
   const sessions = new Map<string, SessionState>();
+  let isDisposed = false;
 
   function getSession(id: string): SessionState {
     if (!sessions.has(id)) {
