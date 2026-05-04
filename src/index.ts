@@ -34,6 +34,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollMaxTimeMs: 5000,
   abortPollMaxFailures: 3,
   debug: false,
+  maxBackoffMs: 1800000,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -62,6 +63,10 @@ function validateConfig(config: PluginConfig): PluginConfig {
   }
   if (config.abortPollMaxFailures <= 0) {
     errors.push(`abortPollMaxFailures must be > 0, got ${config.abortPollMaxFailures}`);
+  }
+
+  if (config.maxBackoffMs < config.stallTimeoutMs) {
+    errors.push(`maxBackoffMs (${config.maxBackoffMs}) must be >= stallTimeoutMs (${config.stallTimeoutMs})`);
   }
 
   if (errors.length > 0) {
@@ -119,6 +124,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function updateProgress(s: SessionState) {
     s.lastProgressAt = Date.now();
+    s.backoffAttempts = 0;
   }
 
   const PLAN_PATTERNS = [
@@ -164,7 +170,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.planning) return;
     if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) {
-      log('max recoveries reached for', sessionId);
+      const backoffDelay = Math.min(
+        config.stallTimeoutMs * Math.pow(2, s.backoffAttempts),
+        config.maxBackoffMs
+      );
+      s.backoffAttempts++;
+      log('max recoveries reached, using exponential backoff:', backoffDelay, 'ms (attempt', s.backoffAttempts, ')');
+      s.timer = setTimeout(() => recover(sessionId), backoffDelay);
       return;
     }
 

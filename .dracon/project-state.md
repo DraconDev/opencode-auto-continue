@@ -1,21 +1,24 @@
 # Project State
 
 ## Current Focus
-Added backoff configuration and tracking for session recovery plugin
+Added exponential backoff with configurable maximum delay for session recovery when max attempts are reached
 
 ## Context
-This change enables configurable backoff behavior during session recovery, allowing the system to handle temporary failures more gracefully.
+When the plugin reaches the maximum recovery attempts, it now implements an exponential backoff strategy to prevent rapid retries. This addresses potential API rate limits or temporary service unavailability.
 
 ## Completed
-- [x] Added `maxBackoffMs` to PluginConfig for configurable backoff limits
-- [x] Added `backoffAttempts` tracking to session state
+- [x] Added `maxBackoffMs` configuration option (default: 30 minutes)
+- [x] Added validation to ensure `maxBackoffMs` ≥ `stallTimeoutMs`
+- [x] Implemented exponential backoff with `backoffAttempts` tracking
+- [x] Added backoff delay logging with attempt counter
+- [x] Reset backoff counter on progress updates
 
 ## In Progress
-- [x] Implementation of actual backoff logic (not yet in this commit)
+- [ ] No active work in progress
 
 ## Blockers
-- Need to implement the backoff algorithm using the new configuration
+- None identified
 
 ## Next Steps
-1. Implement exponential backoff using the new configuration
-2. Add tests for the backoff behavior
+1. Add unit tests for backoff behavior
+2. Document backoff configuration in README
