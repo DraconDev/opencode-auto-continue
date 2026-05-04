@@ -1,24 +1,20 @@
 # Project State
 
 ## Current Focus
-Added persistent logging to file system for debug messages and config validation errors
+Version bump from 3.31.46 to 3.32.1 in package-lock.json
 
 ## Context
-To improve debugging and error tracking, the plugin now writes logs to `~/.opencode/logs/auto-force-resume.log` instead of only console output. This helps maintain visibility into plugin behavior when debug mode is enabled.
+This version bump aligns with recent documentation updates and session recovery improvements in the auto-force-resume plugin.
 
 ## Completed
-- [x] Added file system logging for config validation errors
-- [x] Implemented persistent logging for debug messages
-- [x] Created log directory structure if it doesn't exist
-- [x] Added timestamp to all log entries
-- [x] Maintained silent failure for file operations
+- [x] Updated package-lock.json version to 3.32.1 to reflect recent changes
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Version synchronization across package.json and package-lock.json
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Verify log rotation strategy for long-term usage
-2. Add log level filtering (info/warn/error)
+1. Verify all dependent packages are compatible with version 3.32.1
+2. Update package.json to match the new version if needed
