@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved session recovery logging and state checks with detailed debug information
+Added debug logging to session recovery test cases
 
 ## Context
-This change enhances the session recovery mechanism by adding comprehensive logging for each state check and recovery attempt. The goal is to provide better observability into the recovery process while maintaining all existing functionality.
+This change improves test observability by enabling debug mode in the session recovery plugin test cases. It follows recent work on enhanced session recovery logging and state checks.
 
 ## Completed
-- [x] Added detailed logging for all session state checks (aborting, userCancelled, planning, compacting)
-- [x] Added logging for cooldown period checks
-- [x] Added logging for session status verification
-- [x] Added logging for progress time calculations
-- [x] Added logging for abort operations
+- [x] Added `debug: true` to test plugin configuration
+- [x] Maintained existing test behavior while improving observability
 
 ## In Progress
-- [x] Comprehensive logging implementation for all recovery scenarios
+- [x] Test case verification with debug output
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify all log messages appear correctly in production environments
-2. Ensure log messages don't impact performance negatively
+1. Verify test output shows expected debug information
+2. Ensure debug mode doesn't interfere with test assertions
