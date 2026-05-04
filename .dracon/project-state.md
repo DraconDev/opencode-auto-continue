@@ -1,27 +1,20 @@
 # Project State
 
 ## Current Focus
-Improved plan content detection in session recovery with stricter patterns
+Added tool part type to progress detection for session recovery
 
 ## Context
-To better identify and handle different forms of planning content during session recovery, we need to expand the pattern matching to cover more common phrasing used by users when outlining their approach.
+The change improves session recovery by including tool parts in the progress detection logic, ensuring they're properly tracked during recovery.
 
 ## Completed
-- [x] Added 11 new regex patterns to detect various planning phrasings
-- [x] Expanded detection of plan content to include:
-  - Empty checkboxes
-  - Outlining statements
-  - Step-by-step instructions
-  - Plan summaries
-  - Numbered steps
-  - Bullet-point plans
+- [x] Added 'tool' to the list of part types considered as real progress in session recovery
 
 ## In Progress
-- [x] Implementation of new plan detection patterns
+- [x] Testing the impact of this change on session recovery behavior
 
 ## Blockers
-- None identified
+- Need to verify if this change affects any existing session recovery edge cases
 
 ## Next Steps
-1. Verify the new patterns with test cases
-2. Optimize pattern matching for performance
+1. Run regression tests to confirm session recovery works with tool parts
+2. Document the new behavior in session recovery documentation
