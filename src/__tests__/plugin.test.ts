@@ -321,4 +321,103 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("tool and other part types progress tracking", () => {
+    it("should track tool parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "tool", callID: "call1", tool: "bash", state: { type: "running" }, sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should track step-start parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "step-start", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should track subtask parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "subtask", prompt: "test", description: "test", agent: "test", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should track file parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "file", mime: "text/plain", url: "test.txt", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("config validation", () => {
+    it("should use defaults when stallTimeoutMs <= waitAfterAbortMs", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 100, waitAfterAbortMs: 200 });
+
+      // Should use default stallTimeoutMs (180000) instead of invalid 100
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // With default 180s timeout, abort should NOT be called after 100ms
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should use defaults when maxRecoveries is negative", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, maxRecoveries: -1 });
+
+      // Should use default maxRecoveries (3) instead of invalid -1
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+  });
+
+  describe("dispose", () => {
+    it("should not crash when disposed during recovery", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, waitAfterAbortMs: 10, abortPollMaxTimeMs: 0 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      
+      // Dispose immediately
+      plugin.dispose();
+      
+      // Advance timers - should not throw
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
 });

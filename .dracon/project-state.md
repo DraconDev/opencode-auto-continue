@@ -1,15 +1,16 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for session recovery timer behavior after non-abort errors
+Expanded test coverage for session recovery and progress tracking in the auto-force-resume plugin
 
 ## Context
-The test case was updated to verify that the timer is properly cleared when encountering non-abort errors, and that monitoring resumes only after receiving a new busy status
+To ensure robust session recovery and accurate progress tracking, the test suite was enhanced to cover various part types and edge cases in the session recovery mechanism.
 
 ## Completed
-- [x] Updated test case to verify timer clearing on non-abort errors
-- [x] Added verification that timer restarts after receiving new busy status
-- [x] Improved test coverage for error handling in session recovery
+- [x] Added tests for tracking different part types (tool, step-start, subtask, file) as progress
+- [x] Added config validation tests for stallTimeoutMs and maxRecoveries
+- [x] Added test for safe disposal during recovery operations
+- [x] Improved test coverage for session recovery timer behavior
 
 ## In Progress
 - [ ] No active work in progress
@@ -18,5 +19,5 @@ The test case was updated to verify that the timer is properly cleared when enco
 - None identified
 
 ## Next Steps
-1. Review test case for completeness
-2. Consider adding additional edge cases for error scenarios
+1. Review test coverage for additional edge cases
+2. Update documentation to reflect new test scenarios
