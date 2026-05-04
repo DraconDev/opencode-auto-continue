@@ -1,20 +1,22 @@
 # Project State
 
 ## Current Focus
-Added tool part type to progress detection for session recovery
+Improved session recovery logging and messaging during stall detection
 
 ## Context
-The change improves session recovery by including tool parts in the progress detection logic, ensuring they're properly tracked during recovery.
+The changes enhance the AutoForceResumePlugin by adding better logging when maximum recovery attempts are reached and improving the user-facing message when continuing a stalled session.
 
 ## Completed
-- [x] Added 'tool' to the list of part types considered as real progress in session recovery
+- [x] Added logging when max recovery attempts are reached
+- [x] Improved the user-facing message from "continue" to "Please continue from where you left off."
+- [x] Ensured timer is properly set in all stall detection paths
 
 ## In Progress
-- [x] Testing the impact of this change on session recovery behavior
+- [x] No active work in progress beyond these changes
 
 ## Blockers
-- Need to verify if this change affects any existing session recovery edge cases
+- None identified in this commit
 
 ## Next Steps
-1. Run regression tests to confirm session recovery works with tool parts
-2. Document the new behavior in session recovery documentation
+1. Verify the new logging messages provide sufficient debugging information
+2. Test the updated user message for clarity and user experience

@@ -123,7 +123,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.userCancelled) return;
     if (s.planning) return;
     if (s.compacting) return;
-    if (s.attempts >= config.maxRecoveries) return;
+    if (s.attempts >= config.maxRecoveries) {
+      log('max recoveries reached for', sessionId);
+      return;
+    }
 
     const now = Date.now();
 
@@ -138,11 +141,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (!sessionStatus || sessionStatus.type !== "busy") {
         s.aborting = false;
+        s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
         return;
       }
 
       if (now - s.lastProgressAt < config.stallTimeoutMs) {
         s.aborting = false;
+        s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
         return;
       }
 
@@ -180,7 +185,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       const promptOptions = {
-        body: { parts: [{ type: "text", text: "continue" }] as any[] },
+        body: { parts: [{ type: "text", text: "Please continue from where you left off." }] as any[] },
         path: { id: sessionId },
         query: { directory: (input as any).directory }
       };
