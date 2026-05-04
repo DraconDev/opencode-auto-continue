@@ -9,6 +9,7 @@ interface SessionState {
   userCancelled: boolean;
   planning: boolean;
   planBuffer: string;
+  compacting: boolean;
 }
 
 interface PluginConfig {
@@ -52,6 +53,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         userCancelled: false,
         planning: false,
         planBuffer: '',
+        compacting: false,
       });
     }
     return sessions.get(id)!;
@@ -106,6 +108,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.aborting) return;
     if (s.userCancelled) return;
     if (s.planning) return;
+    if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) return;
 
     const now = Date.now();

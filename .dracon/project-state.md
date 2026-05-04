@@ -1,20 +1,22 @@
 # Project State
 
 ## Current Focus
-Added a new `sync` script to automate plugin deployment by copying built files to the OpenCode plugins directory.
+Added `compacting` state to session recovery to prevent premature recovery during compaction operations.
 
 ## Context
-This change enables faster development iteration by automating the process of deploying plugin files to the OpenCode configuration directory. Previously, developers had to manually copy files after each build.
+The plugin previously didn't account for compaction operations in its recovery logic, which could lead to premature session recovery during critical operations. This change ensures recovery only occurs when the session is in a stable state.
 
 ## Completed
-- [x] Added `sync` script that builds the project and copies TypeScript source, compiled JavaScript, and type definitions to the OpenCode plugins directory
+- [x] Added `compacting` property to `SessionState` interface
+- [x] Initialized `compacting` to `false` in session creation
+- [x] Added check for `compacting` state in recovery logic
 
 ## In Progress
-- [x] Plugin deployment automation
+- [x] Added compaction state tracking
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the sync script works correctly with the OpenCode plugin system
-2. Document the new deployment workflow in project documentation
+1. Add unit tests for compaction state handling
+2. Document compaction state behavior in session recovery documentation
