@@ -10,6 +10,7 @@ interface SessionState {
   planning: boolean;
   planBuffer: string;
   compacting: boolean;
+  backoffAttempts: number;
 }
 
 interface PluginConfig {
@@ -34,11 +35,48 @@ const DEFAULT_CONFIG: PluginConfig = {
   debug: false,
 };
 
+function validateConfig(config: PluginConfig): PluginConfig {
+  const errors: string[] = [];
+  
+  if (config.stallTimeoutMs <= 0) {
+    errors.push(`stallTimeoutMs must be > 0, got ${config.stallTimeoutMs}`);
+  }
+  if (config.waitAfterAbortMs <= 0) {
+    errors.push(`waitAfterAbortMs must be > 0, got ${config.waitAfterAbortMs}`);
+  }
+  if (config.stallTimeoutMs <= config.waitAfterAbortMs) {
+    errors.push(`stallTimeoutMs (${config.stallTimeoutMs}) must be > waitAfterAbortMs (${config.waitAfterAbortMs})`);
+  }
+  if (config.maxRecoveries < 0) {
+    errors.push(`maxRecoveries must be >= 0, got ${config.maxRecoveries}`);
+  }
+  if (config.cooldownMs < 0) {
+    errors.push(`cooldownMs must be >= 0, got ${config.cooldownMs}`);
+  }
+  if (config.abortPollIntervalMs <= 0) {
+    errors.push(`abortPollIntervalMs must be > 0, got ${config.abortPollIntervalMs}`);
+  }
+  if (config.abortPollMaxTimeMs < 0) {
+    errors.push(`abortPollMaxTimeMs must be >= 0, got ${config.abortPollMaxTimeMs}`);
+  }
+  if (config.abortPollMaxFailures <= 0) {
+    errors.push(`abortPollMaxFailures must be > 0, got ${config.abortPollMaxFailures}`);
+  }
+
+  if (errors.length > 0) {
+    console.log('[auto-force-resume] Config validation failed, using defaults:', errors.join(', '));
+    return { ...DEFAULT_CONFIG };
+  }
+  
+  return config;
+}
+
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
-  const config: PluginConfig = {
+  let config: PluginConfig = {
     ...DEFAULT_CONFIG,
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
   };
+  config = validateConfig(config);
 
   const sessions = new Map<string, SessionState>();
 
