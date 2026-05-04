@@ -304,7 +304,7 @@ describe("opencode-auto-force-resume", () => {
     it("should set new timer after successful recovery", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, waitAfterAbortMs: 10, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0, debug: true });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, waitAfterAbortMs: 10, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(100);
