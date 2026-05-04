@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Added configuration validation for session recovery plugin with backoff attempts tracking
+Added backoff configuration and tracking for session recovery plugin
 
 ## Context
-The session recovery system needed robust configuration validation to prevent invalid settings that could disrupt recovery operations. The new `backoffAttempts` state tracks recovery attempts, and the validation ensures all timing parameters are properly configured.
+This change enables configurable backoff behavior during session recovery, allowing the system to handle temporary failures more gracefully.
 
 ## Completed
-- [x] Added `backoffAttempts` to session state tracking
-- [x] Implemented comprehensive config validation with error reporting
-- [x] Added validation for all timing-related parameters
-- [x] Implemented fallback to defaults when validation fails
+- [x] Added `maxBackoffMs` to PluginConfig for configurable backoff limits
+- [x] Added `backoffAttempts` tracking to session state
 
 ## In Progress
-- [x] Configuration validation system
+- [x] Implementation of actual backoff logic (not yet in this commit)
 
 ## Blockers
-- None identified
+- Need to implement the backoff algorithm using the new configuration
 
 ## Next Steps
-1. Add unit tests for configuration validation
-2. Implement backoff logic using the new tracking state
+1. Implement exponential backoff using the new configuration
+2. Add tests for the backoff behavior

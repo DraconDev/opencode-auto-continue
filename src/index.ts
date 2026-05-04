@@ -22,6 +22,7 @@ interface PluginConfig {
   abortPollMaxTimeMs: number;
   abortPollMaxFailures: number;
   debug: boolean;
+  maxBackoffMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -92,6 +93,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         planning: false,
         planBuffer: '',
         compacting: false,
+        backoffAttempts: 0,
       });
     }
     return sessions.get(id)!;
