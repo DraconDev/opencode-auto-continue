@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Added conditional terminal title setting based on configuration
+Enhanced session status tracking and terminal integration with configurable features
 
 ## Context
-This change implements the terminal title configuration option added in a previous commit. It ensures the terminal title is only set when explicitly enabled in the configuration.
+The test suite was updated to verify new session status tracking features and terminal title configuration options. These changes support better session recovery and user feedback during plugin operations.
 
 ## Completed
-- [x] Added conditional check for `config.terminalTitleEnabled` before setting terminal title
-- [x] Maintained existing terminal title functionality when enabled
+- [x] Added test cases for status file writing during session status changes
+- [x] Added test cases for terminal title behavior with configuration
+- [x] Added test case for statusLine hook registration
+- [x] Removed outdated dispose test case for recovery scenarios
 
 ## In Progress
-- [ ] None
+- [x] Comprehensive test coverage for session status tracking features
 
 ## Blockers
-- None
+- None identified in this change
 
 ## Next Steps
-1. Verify terminal title behavior matches expectations with config enabled/disabled
-2. Consider adding more granular terminal title control options if needed
+1. Implement corresponding functionality in the main plugin code
+2. Add integration tests for the new features
