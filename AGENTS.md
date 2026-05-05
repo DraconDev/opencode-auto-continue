@@ -44,16 +44,20 @@ session.deleted / session.ended → cleanup
 | `todo.updated` (all done) | Trigger review after debounce |
 | `todo.updated` (has pending) | Set `hasOpenTodos = true`, start nudge timer |
 | `session.error` (MessageAbortedError) | Set `userCancelled = true`, clear timer |
+| `session.error` (other) | Clear timer, monitoring pauses |
+| `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
+| `session.compacted` | **Do NOT reset** — clear compacting flag, reset estimates, preserve state |
 | `session.idle` | **Do NOT reset** — preserve nudge state, trigger nudge |
 | `session.deleted` / `session.ended` | Call `resetSession()` — full cleanup |
 
 ### Key Invariants
 
 1. **`session.idle` is NOT terminal** — unlike `session.deleted`/`session.ended`, it preserves session state
-2. **Synthetic messages are filtered** — `part.synthetic === true` is ignored in `message.part.updated`
-3. **`wasBusy` dedup** — once per busy→idle transition, nudge fires exactly once (prevents infinite loops)
-4. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
-5. **Plan/compaction pause** — stall timer and nudge timer both pause during these states
+2. **`session.compacted` is NOT terminal** — it preserves session state, clears compacting flag, resets token estimates
+3. **Synthetic messages are filtered** — `part.synthetic === true` is ignored in `message.part.updated`
+4. **`wasBusy` dedup** — once per busy→idle transition, nudge fires exactly once (prevents infinite loops)
+5. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
+6. **Plan/compaction pause** — stall timer and nudge timer both pause during these states
 
 ## Nudge Architecture
 
