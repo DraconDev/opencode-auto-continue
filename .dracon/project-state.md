@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced test validation for token limit handling configuration with dual thresholds
+Added session action tracking and toast timer management for proactive compaction feedback
 
 ## Context
-The recent work on adaptive compaction and token estimation required corresponding test validation to ensure proper configuration handling. The changes update the test suite to validate both token-based and percentage-based proactive compaction thresholds.
+This change supports the proactive compaction system by tracking when actions start and managing UI feedback timers to inform users about compaction events.
 
 ## Completed
-- [x] Updated test to validate token-based proactive compaction threshold
-- [x] Added test for percentage-based proactive compaction threshold validation
-- [x] Enhanced message tracking in tests to include content for token estimation
-- [x] Updated test assertions to verify default behavior with invalid thresholds
+- [x] Added `actionStartedAt` field to track when session actions begin
+- [x] Added `toastTimer` field to manage UI feedback intervals
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Implementation of action tracking and timer management
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Review test coverage for additional edge cases
-2. Update documentation to reflect new threshold validation behavior
+1. Implement the actual timer logic that will show compaction feedback
+2. Integrate with the existing proactive compaction system

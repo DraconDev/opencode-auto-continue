@@ -28,6 +28,8 @@ interface SessionState {
   estimatedTokens: number;
   lastCompactionAt: number;
   tokenLimitHits: number;
+  actionStartedAt: number;
+  toastTimer: ReturnType<typeof setInterval> | null;
 }
 
 interface PluginConfig {
