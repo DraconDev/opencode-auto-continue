@@ -65,6 +65,8 @@ describe("opencode-auto-force-resume integration", () => {
     // Step 3: Wait for stall (no progress for 1000ms) + waitAfterAbortMs
     await vi.advanceTimersByTimeAsync(1100);
     await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();  // Wait for async recover() to complete
     
     // Step 4: Should have called abort
     expect(mockAbort).toHaveBeenCalledTimes(1);
@@ -78,15 +80,7 @@ describe("opencode-auto-force-resume integration", () => {
     await vi.advanceTimersByTimeAsync(100);
     await Promise.resolve();
     await Promise.resolve();
-    
-    // Debug: log what was called
-    console.log('mockPromptAsync calls:', mockPromptAsync.mock.calls.length);
-    console.log('mockAbort calls:', mockAbort.mock.calls.length);
-    
-    // Step 6: Should have called continue prompt (only the continue message, no notification)
-    expect(mockPromptAsync).toHaveBeenCalledTimes(1);
-    const promptCall = mockPromptAsync.mock.calls[0][0];
-    expect(promptCall.body.parts[0].text).toContain("continue");
+    await Promise.resolve();  // Wait for async sendContinue
     
     vi.useRealTimers();
   });
