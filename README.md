@@ -443,6 +443,113 @@ When `statusFileRotate > 0`, old status files are kept:
 - `~/.opencode/logs/auto-force-resume.status.2`
 - etc.
 
+## How Compaction Works
+
+The plugin uses two compaction strategies to prevent context bloat:
+
+### 1. Proactive Compaction (Preventive)
+
+Triggers BEFORE context becomes critical. Runs on:
+- **Every progress event** (message part updated) - catches bloat during active sessions
+- **When session resumes busy** - catches pre-existing bloat from prior interactions
+- **When session becomes idle** - catches bloat between user messages
+
+**Threshold calculation**:
+```
+threshold = min(proactiveCompactAtTokens, modelContextLimit * proactiveCompactAtPercent / 100)
+```
+
+For example, with a 262k context model and 50%:
+```
+threshold = min(100000, 262144 * 0.50) = min(100000, 131072) = 100000 tokens
+```
+
+### 2. Recovery Compaction (Reactive)
+
+Triggers when a stall is detected during recovery. Before aborting the session, the plugin tries `session.summarize()` with progressive verification:
+1. Wait 2 seconds → check if session idled
+2. Wait 3 seconds → check again
+3. Wait 5 seconds → check again
+4. If still busy → proceed with abort+continue
+
+### Token Estimation
+
+The plugin estimates token usage from ALL message part types, not just text:
+
+| Part Type | Estimation Source |
+|-----------|------------------|
+| `text` | Full text content |
+| `reasoning` | Reasoning chain text |
+| `tool` | Tool call JSON (serialized) |
+| `file` | URL + MIME type |
+| `subtask` | Prompt + description |
+| `step-start` | Step name |
+
+**Ratios used**:
+- English text: ~0.75 tokens/char (industry standard for Claude, GPT-4)
+- Code: ~1.0 tokens/char (dense tokenization)
+- Digits/numbers: ~0.5 tokens/char
+
+If OpenCode's API returns real token counts (via `session.status()`), those are used instead of estimates.
+
+### Why Compaction Might Not Fire
+
+If compaction isn't triggering despite high token usage, check these:
+
+1. **Check the status file** - Look at `compaction.estimatedTokens` vs `compaction.threshold`:
+   ```bash
+   cat ~/.opencode/logs/auto-force-resume.status
+   ```
+   Look for:
+   ```json
+   "compaction": {
+     "proactiveTriggers": 0,
+     "estimatedTokens": 85000,
+     "threshold": 100000
+   }
+   ```
+   If `estimatedTokens < threshold`, the estimated count is too low.
+
+2. **Known limitations**:
+   - Token estimation only counts content seen during this session. Pre-existing context from resumed sessions might not be counted.
+   - The plugin can't read tool definitions, system prompts, or file contents added to context before the plugin started.
+   - Only text content is estimated - binary data, images, and other non-text parts aren't counted.
+
+3. **Set a lower threshold**:
+   ```json
+   ["opencode-auto-force-resume", {
+     "proactiveCompactAtTokens": 50000,
+     "proactiveCompactAtPercent": 30
+   }]
+   ```
+
+4. **Enable debug mode** to see what's happening:
+   ```json
+   ["opencode-auto-force-resume", {
+     "debug": true
+   }]
+   ```
+   Check `~/.opencode/logs/auto-force-resume.log` for lines containing "compaction".
+
+### How to Verify Compaction Is Working
+
+1. Check the status file:
+   ```bash
+   watch -n 2 'cat ~/.opencode/logs/auto-force-resume.status'
+   ```
+   Look for `"compaction"` section - if `"proactiveTriggers"` > 0 or `"lastCompactAt"` is set, it's running.
+
+2. Watch debug logs:
+   ```bash
+   tail -f ~/.opencode/logs/auto-force-resume.log | grep -i compact
+   ```
+   You should see entries like:
+   ```
+   "attempting compaction for session: abc123"
+   "compaction successful for session: abc123 after 2000ms wait"
+   "compaction reduced tokens from ~ 85000 to ~ 25500"
+   ```
+
 ## Terminal Title
 
 When `terminalTitleEnabled: true`, the plugin updates your terminal title to show session timer:

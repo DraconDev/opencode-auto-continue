@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Added new configuration options for session compaction timing and verification.
+Documentation of session compaction strategies and troubleshooting guidance
 
 ## Context
-To improve reliability of session compaction operations, we needed to add explicit timing controls for verification and cooldown periods. This prevents excessive compaction attempts while ensuring proper verification of completed operations.
+The plugin needs clear documentation about its compaction mechanisms to help users understand and configure token management effectively. This change adds detailed explanations of proactive and reactive compaction, token estimation methods, and troubleshooting steps.
 
 ## Completed
-- [x] Added `compactionVerifyWaitMs` configuration (10s max wait with progressive checks)
-- [x] Added `compactCooldownMs` configuration (2-minute minimum between compaction attempts)
+- [x] Added documentation for compaction strategies (proactive and reactive)
+- [x] Documented token estimation methods for different message part types
+- [x] Included troubleshooting guidance for compaction issues
+- [x] Added verification methods to confirm compaction is working
 
 ## In Progress
-- [x] Documentation updates for new configuration options
+- [x] Documentation of compaction behavior and configuration options
 
 ## Blockers
-- None identified for this specific change
+- None identified in this documentation update
 
 ## Next Steps
-1. Verify configuration works as expected in test environments
-2. Monitor production usage to adjust timing values if needed
+1. Review documentation for completeness and accuracy
+2. Update related configuration examples if needed
