@@ -392,6 +392,33 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
+      // Try auto-compaction before aborting
+      if (config.autoCompact) {
+        try {
+          log('attempting auto-compaction for session:', sessionId);
+          await (input.client.session as any).summarize({
+            path: { id: sessionId },
+            query: { directory: (input as any).directory || "" }
+          });
+          log('auto-compaction successful, waiting for session to resume');
+          // Wait a bit for compaction to complete
+          await new Promise(r => setTimeout(r, 3000));
+          
+          // Check if session recovered
+          const postCompactStatus = await input.client.session.status({});
+          const postData = postCompactStatus.data as Record<string, { type: string }>;
+          if (postData[sessionId]?.type === "busy") {
+            log('session still busy after compaction, proceeding with abort');
+          } else {
+            log('session recovered after compaction');
+            s.aborting = false;
+            return;
+          }
+        } catch (e) {
+          log('auto-compaction failed:', e);
+        }
+      }
+
       try {
         await (input.client.session as any).abort({
           path: { id: sessionId },
