@@ -15,6 +15,7 @@ interface SessionState {
   backoffAttempts: number;
   autoSubmitCount: number;
   lastUserMessageId: string;
+  sentMessageAt: number;
 }
 
 interface PluginConfig {
@@ -132,6 +133,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         backoffAttempts: 0,
         autoSubmitCount: 0,
         lastUserMessageId: '',
+        sentMessageAt: 0,
       });
     }
     return sessions.get(id)!;
