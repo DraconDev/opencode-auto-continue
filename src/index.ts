@@ -776,15 +776,28 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   // This is a conservative estimate for proactive compaction
   function estimateTokens(text: string): number {
     if (!text) return 0;
-    const codeRatio = 0.5;
-    const englishRatio = 0.25;
+    
+    // More accurate token ratios based on real tokenizer behavior:
+    // English text: ~0.75 tokens/char (Claude, GPT-4)
+    // Code: ~1.0 tokens/char (dense code is very close to 1:1)
+    // Numbers, punctuation: ~0.5 tokens/char
+    const codeRatio = 1.0;
+    const englishRatio = 0.75;
     
     // Detect if text is mostly code (contains common code patterns)
     const codePatterns = /[{};\[\]()=<>+\-*/%|&!^~]/;
     const isCode = codePatterns.test(text);
     
+    // Count digits and special chars for finer estimation
+    const digitRatio = 0.5;
+    const digitCount = (text.match(/\d/g) || []).length;
+    const textWithoutDigits = text.length - digitCount;
+    
     const ratio = isCode ? codeRatio : englishRatio;
-    return Math.ceil(text.length * ratio);
+    // Weighted average: most text is content, digits are cheaper
+    const weightedRatio = (textWithoutDigits * ratio + digitCount * digitRatio) / text.length;
+    
+    return Math.max(1, Math.ceil(text.length * weightedRatio));
   }
 
   async function triggerReview(sessionId: string) {

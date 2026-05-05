@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Added test coverage for compaction verification when auto-compact is enabled
+Improved token estimation accuracy for session compaction in AutoForceResumePlugin
 
 ## Context
-This change implements test coverage for the recently added compaction verification feature, which ensures the system attempts compaction before aborting when auto-compact is enabled.
+The previous token estimation was overly conservative, leading to unnecessary compaction. This change implements a more accurate estimation based on actual tokenizer behavior, distinguishing between code and natural language text.
 
 ## Completed
-- [x] Added test case verifying compaction attempt before abort when autoCompact is true
-- [x] Configured test with specific timing parameters (1000ms stall timeout, 500ms compaction wait)
-- [x] Verified mock status calls during the test execution
+- [x] Updated token ratios to reflect real tokenizer behavior (1.0 for code, 0.75 for English)
+- [x] Added digit detection for finer estimation
+- [x] Implemented weighted average calculation for mixed content
+- [x] Added minimum token count of 1 to prevent zero-length estimates
 
 ## In Progress
-- [x] Test implementation for compaction verification behavior
+- [x] Implementation of more sophisticated pattern detection for different content types
 
 ## Blockers
-- None identified
+- Need to verify edge cases with mixed code/natural language content
 
 ## Next Steps
-1. Review test coverage for other compaction scenarios
-2. Consider adding edge case tests for compaction failures
+1. Add unit tests for the new estimation logic
+2. Benchmark against actual tokenizer outputs for validation
