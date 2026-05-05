@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Added test coverage for token estimation across different message part types
+Bump project version from 3.126.2 to 3.126.3
 
 ## Context
-To ensure accurate token counting during session compaction, we need to verify that all message part types (reasoning, tool, file) contribute to the token count, not just text parts.
+This version bump follows recent documentation and test coverage improvements related to session management, token estimation, and stall pattern detection.
 
 ## Completed
-- [x] Added test case verifying token counting for reasoning parts
-- [x] Added test case verifying token counting for tool parts
-- [x] Added test case verifying token counting for file parts
+- [x] Updated project version in package.json and package-lock.json to 3.126.3
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Version bump to reflect recent feature and documentation updates
 
 ## Blockers
-- None identified
+- No blockers identified for this version bump
 
 ## Next Steps
-1. Implement corresponding functionality in the main plugin code
-2. Expand test coverage to include edge cases for token estimation
+1. Prepare for next feature development cycle
+2. Continue documentation and test coverage enhancements
