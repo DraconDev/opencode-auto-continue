@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Added notification system for stuck session recovery attempts
+Updated integration tests to verify the notification system for stuck session recovery attempts.
 
 ## Context
-When sessions get stuck during recovery attempts (no progress detected), the system now notifies users with a clear message about the recovery status and attempt count.
+The notification system was recently added to provide feedback when session recovery attempts get stuck. The test changes ensure the notification is properly triggered and displayed to the user before proceeding with the recovery flow.
 
 ## Completed
-- [x] Added time calculation for stuck duration (minutes/seconds)
-- [x] Implemented notification system with recovery status
-- [x] Added fallback for different notification methods
-- [x] Included session ID and directory in notification path
-- [x] Gracefully handle notification failures
+- [x] Updated test assertions to verify the notification prompt is called before the continue prompt
+- [x] Adjusted test expectations to account for the additional notification call
 
 ## In Progress
-- [x] Notification system implementation
+- [x] Verification of notification content and timing in the test suite
 
 ## Blockers
-- None identified
+- None identified in this change
 
 ## Next Steps
-1. Verify notification formatting across different client types
-2. Add tests for notification content and timing
+1. Verify all integration tests pass with the updated expectations
+2. Review the notification system's impact on user experience
