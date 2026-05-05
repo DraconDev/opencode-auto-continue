@@ -116,6 +116,8 @@ describe("opencode-auto-force-resume integration", () => {
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
     await vi.advanceTimersByTimeAsync(1100);
     await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();  // Wait for async recover()
     
     expect(mockAbort).toHaveBeenCalledTimes(1);
     
@@ -123,7 +125,8 @@ describe("opencode-auto-force-resume integration", () => {
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
     await vi.advanceTimersByTimeAsync(100);
     await Promise.resolve();
-    await Promise.resolve();  // Extra tick for async sendContinue
+    await Promise.resolve();
+    await Promise.resolve();  // Wait for async sendContinue
     
     // only the continue message, no notification
     expect(mockPrompt).toHaveBeenCalledTimes(1);
