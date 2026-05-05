@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Improved auto-continue logic for sessions transitioning from busy→idle with pending todos
+Updated plugin metadata version to 3.132.2 in AutoForceResumePlugin
 
 ## Context
-The previous auto-continue logic would trigger whenever a session was idle with pending todos, potentially causing unnecessary nudges. This change ensures nudges only occur once per busy→idle transition to prevent duplicate notifications.
+This change updates the version number in the plugin metadata to reflect the latest release. The version bump is part of ongoing maintenance to ensure the plugin's metadata stays current with the project's versioning scheme.
 
 ## Completed
-- [x] Added `wasBusy` flag to track busy→idle transitions
-- [x] Modified auto-continue logic to only trigger after a busy→idle transition
-- [x] Reset `wasBusy` flag after triggering to prevent repeated nudges
+- [x] Updated plugin version from 3.128.0 to 3.132.2 in AutoForceResumePlugin metadata
 
 ## In Progress
-- [x] Implementation of the new transition-based auto-continue logic
+- [ ] No active work in progress related to this change
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify the new logic prevents duplicate nudges in test scenarios
-2. Monitor user feedback for any unintended side effects
+1. Verify the version number aligns with the current release
+2. Ensure all dependent systems are updated to recognize this version
