@@ -84,6 +84,7 @@ interface PluginConfig {
   stallPatternDetection: boolean;
   terminalProgressEnabled: boolean;
   compactionVerifyWaitMs: number;
+  compactCooldownMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -142,6 +143,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   stallPatternDetection: true,
   terminalProgressEnabled: true,
   compactionVerifyWaitMs: 10000,
+  compactCooldownMs: 120000,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -1062,7 +1064,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.compacting) return;
     
     // Don't compact too frequently
-    if (Date.now() - s.lastCompactionAt < 300000) return; // 5 min cooldown
+    if (Date.now() - s.lastCompactionAt < config.compactCooldownMs) return;
     
     // Detect model context limit from opencode.json
     const opencodeConfigPath = join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json");
@@ -1340,6 +1342,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const status = e?.properties?.status;
         log('session.status:', sid, status?.type);
         const s = getSession(sid);
+        
+        // Try reading actual token count from status response if available
+        // Some OpenCode versions include token info in status responses
+        if (status && typeof status === 'object') {
+          const rawStatus = status as any;
+          if (typeof rawStatus.tokensInput === 'number') {
+            s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.tokensInput);
+          }
+          if (typeof rawStatus.tokensOutput === 'number') {
+            s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.tokensInput + rawStatus.tokensOutput);
+          }
+          if (typeof rawStatus.totalTokens === 'number') {
+            s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.totalTokens);
+          }
+        }
+        
         if (status?.type === "busy" || status?.type === "retry") {
           updateProgress(s);
           s.userCancelled = false;
@@ -1375,10 +1393,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTerminalProgress();
         }
         clearTimer(sid);
-        if (status?.type === "busy" || status?.type === "retry") {
+        if (!s.planning && !s.compacting) {
           s.timer = setTimeout(() => {
             recover(sid);
           }, config.stallTimeoutMs);
+        }
+        // Check for proactive compaction on every progress event
+        // This ensures we catch context bloat during active sessions
+        if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
+          await maybeProactiveCompact(sid);
         }
         writeStatusFile(sid);
         return;
@@ -1406,6 +1429,28 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.userCancelled = false;
             // Track part type for stall pattern detection
             s.lastStallPartType = partType || "unknown";
+            
+            // Estimate tokens from ALL part types, not just text
+            // This gives a more accurate picture of total context usage
+            let partText = "";
+            if (partType === "text") {
+              partText = e?.properties?.part?.text as string || "";
+            } else if (partType === "reasoning") {
+              partText = e?.properties?.part?.reasoning as string || "";
+            } else if (partType === "tool") {
+              partText = JSON.stringify(e?.properties?.part) || "";
+            } else if (partType === "file") {
+              partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
+            } else if (partType === "subtask") {
+              partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
+            } else if (partType === "step-start") {
+              partText = e?.properties?.part?.name || "";
+            }
+            
+            if (partText) {
+              const estimatedTokens = estimateTokens(partText);
+              s.estimatedTokens += estimatedTokens;
+            }
           }
           if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
@@ -1414,10 +1459,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (partType === "text") {
             const partText = e?.properties?.part?.text as string | undefined;
             if (partText) {
-              // Estimate tokens from text content
-              const estimatedTokens = estimateTokens(partText);
-              s.estimatedTokens += estimatedTokens;
-              
               if (isPlanContent(partText)) {
                 log('plan detected in updated text part, pausing stall monitoring');
                 s.planning = true;
