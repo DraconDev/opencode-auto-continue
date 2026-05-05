@@ -1,21 +1,29 @@
 # Project State
 
 ## Current Focus
-Enhanced the session completion review message to include more comprehensive checks and suggestions
+Enhanced session compaction tracking with token estimation and progressive status checks
 
 ## Context
-The original review message was too generic. We want to ensure all tasks are properly reviewed, including checking for oversights, suggesting tests, and identifying follow-up tasks more thoroughly.
+The previous compaction implementation had unreliable busy state detection and didn't properly track token reductions after compaction. This change improves reliability by:
+- Adding progressive status checks with increasing wait times
+- Tracking pre-compaction token counts
+- Estimating post-compaction token reduction
+- Providing more detailed logging
 
 ## Completed
-- [x] Expanded the review message to include oversight checks, test suggestions, and follow-up task identification
-- [x] Maintained the original summary and technical decision documentation requirements
+- [x] Added progressive compaction status checks with multiple wait intervals
+- [x] Tracked pre-compaction token counts for accurate estimation
+- [x] Implemented token reduction estimation after successful compaction
+- [x] Enhanced logging with wait time and token reduction information
+- [x] Improved error handling and logging for failed compactions
 
 ## In Progress
-- [x] Review message enhancement complete
+- [ ] No active work in progress beyond these changes
 
 ## Blockers
-- None identified
+- No blockers identified
 
 ## Next Steps
-1. Verify the enhanced review message works as expected in practice
-2. Consider adding more specific review categories if needed
+1. Verify compaction token reduction estimates are accurate
+2. Test with large sessions to validate progressive wait times
+3. Consider adding configuration options for compaction thresholds

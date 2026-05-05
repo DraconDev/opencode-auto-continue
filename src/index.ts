@@ -967,29 +967,44 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   async function attemptCompact(sessionId: string): Promise<boolean> {
     try {
       log('attempting compaction for session:', sessionId);
+      
+      // Record pre-compaction state
+      const s = sessions.get(sessionId);
+      const preTokens = s?.estimatedTokens || 0;
+      
       await (input.client.session as any).summarize({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" }
       });
-      // Wait for compaction
-      await new Promise(r => setTimeout(r, 2000));
       
-      // Verify it worked
-      const status = await input.client.session.status({});
-      const data = status.data as Record<string, { type: string }>;
-      const isBusy = data[sessionId]?.type === "busy";
-      
-      if (!isBusy) {
-        log('compaction successful for session:', sessionId);
-        const s = sessions.get(sessionId);
-        if (s) {
-          s.lastCompactionAt = Date.now();
-          s.compacting = false;
+      // Wait for compaction with progressive checks
+      // Compaction can take several seconds for large contexts
+      const waitTimes = [2000, 3000, 5000];
+      for (const waitMs of waitTimes) {
+        await new Promise(r => setTimeout(r, waitMs));
+        
+        // Check if session is still busy
+        const status = await input.client.session.status({});
+        const data = status.data as Record<string, { type: string }>;
+        const isBusy = data[sessionId]?.type === "busy";
+        
+        if (!isBusy) {
+          log('compaction successful for session:', sessionId, 'after', waitMs, 'ms wait');
+          if (s) {
+            s.lastCompactionAt = Date.now();
+            s.compacting = false;
+            // Reset estimated tokens since context was compacted
+            const reduction = Math.floor(preTokens * 0.7); // Assume ~70% reduction
+            s.estimatedTokens = Math.max(s.estimatedTokens - reduction, Math.floor(preTokens * 0.3));
+            log('compaction reduced tokens from ~', preTokens, 'to ~', s.estimatedTokens);
+          }
+          return true;
         }
-        return true;
+        
+        log('compaction still in progress after', waitMs, 'ms, session still busy');
       }
       
-      log('compaction did not clear busy state for session:', sessionId);
+      log('compaction did not complete within expected time for session:', sessionId);
       return false;
     } catch (e) {
       log('compaction attempt failed:', e);
