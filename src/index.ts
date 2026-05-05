@@ -376,6 +376,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.totalRecoveryTimeMs = 0;
       s.recoveryStartTime = 0;
       s.statusHistory = [];
+      s.recoveryTimes = [];
+      s.lastStallPartType = "";
+      s.stallPatterns = {};
       if (s.toastTimer) {
         clearInterval(s.toastTimer);
         s.toastTimer = null;

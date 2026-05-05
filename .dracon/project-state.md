@@ -4,19 +4,21 @@
 Enhanced session recovery tracking with detailed stall pattern analysis
 
 ## Context
-This change adds detailed tracking of recovery times, stall patterns, and part types to better analyze and optimize session recovery operations.
+This change adds new tracking mechanisms for session recovery patterns and stall detection to improve recovery diagnostics
 
 ## Completed
 - [x] Added `recoveryTimes` array to track individual recovery durations
-- [x] Added `lastStallPartType` to record the type of part causing stalls
-- [x] Added `stallPatterns` object to track frequency of different stall scenarios
+- [x] Added `lastStallPartType` string to record the type of last detected stall
+- [x] Added `stallPatterns` object to store detailed stall pattern analysis
 
 ## In Progress
-- [ ] None (this is a complete feature addition)
+- [ ] Implementation of stall pattern analysis logic
+- [ ] Integration with existing recovery metrics
 
 ## Blockers
-- None (this is a self-contained enhancement)
+- Need to define specific stall pattern detection criteria
+- Requires validation of recovery time tracking accuracy
 
 ## Next Steps
-1. Implement analysis functions to process the collected stall pattern data
-2. Add visualization capabilities for recovery metrics
+1. Implement stall pattern detection logic
+2. Add visualization for recovery patterns in status reports
