@@ -157,6 +157,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.backoffAttempts = 0;
       s.autoSubmitCount = 0;
       s.lastUserMessageId = '';
+      s.sentMessageAt = 0;
     }
     sessions.delete(id);
   }
@@ -369,6 +370,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.autoSubmitCount++;
       s.lastRecoveryTime = Date.now();
       s.backoffAttempts = 0;
+      s.sentMessageAt = Date.now();
 
       // Don't set timer here - event handlers will set it when new activity starts
     } catch (e) {
