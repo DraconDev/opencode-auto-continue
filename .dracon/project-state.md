@@ -1,26 +1,26 @@
 # Project State
 
 ## Current Focus
-Refactor session idle handling test to use realistic session state transitions
+Added comprehensive agent documentation for the auto-force-resume plugin
 
 ## Context
-The test was previously creating a full session object manually, which made the test brittle. The change now properly simulates the real session lifecycle by:
-1. First creating a session with busy status
-2. Then updating it with todos
-3. Finally triggering the idle event
+The project needed clear documentation for the agent behavior, session state machine, and recovery mechanisms to ensure consistent operation and easier debugging.
 
 ## Completed
-- [x] Removed manual session object creation
-- [x] Added proper session state transitions (busy → idle)
-- [x] Simplified test assertions
-- [x] Added fake timers for consistent timing behavior
+- [x] Created AGENTS.md with detailed documentation of:
+  - Session state machine and transitions
+  - Nudge architecture and message templates
+  - Stall detection and recovery flow
+  - Token estimation and compaction strategies
+  - Status file format and terminal visibility
+  - Debugging instructions and common issues
 
 ## In Progress
-- [x] Test now properly verifies nudge behavior
+- [ ] None - documentation is complete
 
 ## Blockers
-- None
+- None - documentation is complete
 
 ## Next Steps
-1. Update related documentation to reflect the new test approach
-2. Consider adding more edge case tests for session state transitions
+1. Review documentation for completeness
+2. Update related code comments to reference this documentation
