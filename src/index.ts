@@ -1677,6 +1677,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
+      // session.compacted fires when context compaction completes
+      // The session is still active after compaction, so preserve state
+      if (event?.type === "session.compacted") {
+        const s = getSession(sid);
+        log('session compacted, clearing compacting flag:', sid);
+        s.compacting = false;
+        s.lastCompactionAt = Date.now();
+        // Reset estimated tokens since context was just compacted
+        s.estimatedTokens = Math.floor(s.estimatedTokens * 0.3);
+        // Reset recovery counters since we just freed context space
+        s.attempts = 0;
+        s.backoffAttempts = 0;
+        writeStatusFile(sid);
+        return;
+      }
+
       if (staleTypes.includes(event?.type)) {
         log('stale event:', event?.type, sid);
         resetSession(sid);

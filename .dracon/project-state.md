@@ -1,20 +1,24 @@
 # Project State
 
 ## Current Focus
-Removed "session.compacted" from stale session types in AutoForceResumePlugin
+Added handling for session compaction events to reset session state and token estimates
 
 ## Context
-This change was prompted by a refactoring of session idle handling tests that used realistic session states. The "session.compacted" type was identified as unnecessary in the stale session types array.
+The AutoForceResumePlugin now needs to properly handle session compaction events, which occur when context is optimized to free up space. This change ensures the session state is properly reset after compaction to maintain accurate token estimates and recovery counters.
 
 ## Completed
-- [x] Removed "session.compacted" from stale session types array in AutoForceResumePlugin
+- [x] Added handling for "session.compacted" events
+- [x] Reset compacting flag and update last compaction timestamp
+- [x] Reset estimated tokens to 30% of previous value after compaction
+- [x] Reset recovery counters (attempts and backoffAttempts)
+- [x] Updated session status file after compaction
 
 ## In Progress
-- [x] No active work in progress related to this change
+- [x] Session compaction event handling implementation
 
 ## Blockers
-- None
+- None identified
 
 ## Next Steps
-1. Verify no impact on session state handling logic
-2. Update related documentation if needed
+1. Verify compaction event handling through integration tests
+2. Document the new compaction behavior in plugin documentation
