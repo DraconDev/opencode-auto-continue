@@ -4,23 +4,20 @@
 Added session recovery tracking metrics to the SessionState interface
 
 ## Context
-This change enhances session recovery tracking by adding metrics to monitor recovery attempts and outcomes. This is part of ongoing work to improve session management reliability.
+To improve session recovery reliability, we need to track recovery attempts and outcomes. This change adds metrics for monitoring recovery success rates and identifying patterns in recovery failures.
 
 ## Completed
 - [x] Added `stallDetections` counter to track recovery attempts
 - [x] Added `recoverySuccessful` counter for successful recoveries
 - [x] Added `recoveryFailed` counter for failed recoveries
-- [x] Added `lastRecoverySuccess` timestamp for tracking last successful recovery
+- [x] Added `lastRecoverySuccess` timestamp for tracking recovery timing
 
 ## In Progress
-- [ ] Integration with existing recovery mechanisms
-- [ ] Metric visualization and reporting
+- [x] Implementation of session recovery tracking metrics
 
 ## Blockers
-- Need to implement metric reporting and visualization
-- Requires coordination with session recovery logic
+- Need to implement the actual recovery logic that will populate these metrics
 
 ## Next Steps
-1. Implement metric reporting for recovery tracking
-2. Add visualization for recovery metrics in dashboard
-3. Integrate with existing session recovery mechanisms
+1. Implement recovery logic that updates these metrics
+2. Add visualization for recovery metrics in the UI

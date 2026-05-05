@@ -341,6 +341,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
       s.actionStartedAt = 0;
+      s.stallDetections = 0;
+      s.recoverySuccessful = 0;
+      s.recoveryFailed = 0;
+      s.lastRecoverySuccess = 0;
       if (s.toastTimer) {
         clearInterval(s.toastTimer);
         s.toastTimer = null;
