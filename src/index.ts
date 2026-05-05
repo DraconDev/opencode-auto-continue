@@ -24,6 +24,9 @@ interface SessionState {
   needsContinue: boolean;
   continueMessageText: string;
   sessionCreatedAt: number;
+  messageCount: number;
+  lastCompactionAt: number;
+  tokenLimitHits: number;
 }
 
 interface PluginConfig {

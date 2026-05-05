@@ -1,23 +1,22 @@
 # Project State
 
 ## Current Focus
-Added proactive compaction configuration options for token limit handling
+Added token usage tracking fields to session state for proactive compaction
 
 ## Context
-This change extends the plugin configuration to support proactive compaction strategies when token limits are approached. It follows recent work on token limit error handling and session continuation improvements.
+To improve token management and prevent stalled sessions, we need to track token usage metrics and compaction events within each session.
 
 ## Completed
-- [x] Added proactive compaction threshold configuration
-- [x] Added retry delay and max retries for compaction attempts
-- [x] Added short continue message configuration
-- [x] Added token limit patterns configuration
+- [x] Added `messageCount` to track total messages in session
+- [x] Added `lastCompactionAt` to record when last compaction occurred
+- [x] Added `tokenLimitHits` to count token limit violations
 
 ## In Progress
-- [ ] Implementation of the new compaction strategies
+- [x] Implementing token usage monitoring logic
 
 ## Blockers
-- Need to implement the actual compaction logic using these new configuration options
+- Need to define compaction thresholds for these metrics
 
 ## Next Steps
-1. Implement the proactive compaction logic
-2. Add tests for the new configuration options
+1. Implement token usage monitoring logic
+2. Define compaction thresholds based on these metrics
