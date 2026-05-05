@@ -290,8 +290,36 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         await new Promise(r => setTimeout(r, remainingWait));
       }
 
+      // Loop protection: check auto-submit count
+      if (s.autoSubmitCount >= config.maxAutoSubmits) {
+        log('loop protection: max auto-submits reached:', s.autoSubmitCount);
+        s.aborting = false;
+        return;
+      }
+
+      // Fetch todos if enabled
+      let messageText = config.messageFormat;
+      if (config.includeTodoContext) {
+        try {
+          const todoResult = await (input.client.session as any).todo({ path: { id: sessionId } });
+          const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
+          const pending = todos.filter((t: any) => t.status === 'in_progress' || t.status === 'pending');
+          const completed = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
+          
+          if (pending.length > 0) {
+            const todoList = pending.slice(0, 5).map((t: any) => t.content || t.title || t.id).join(', ');
+            messageText = `${config.messageFormat} You have ${pending.length} open task(s): ${todoList}${pending.length > 5 ? '...' : ''}`;
+            log('todo context added:', pending.length, 'pending tasks');
+          } else {
+            log('no pending todos');
+          }
+        } catch (e) {
+          log('todo fetch failed:', e);
+        }
+      }
+
       const promptOptions = {
-        body: { parts: [{ type: "text", text: "Please continue from where you left off.", synthetic: true }] as any[] },
+        body: { parts: [{ type: "text", text: messageText, synthetic: true }] as any[] },
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" }
       };
@@ -307,6 +335,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       s.attempts++;
+      s.autoSubmitCount++;
       s.lastRecoveryTime = Date.now();
       s.backoffAttempts = 0;
 
@@ -352,6 +381,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (event?.type === "session.created") {
         log('session.created:', sid);
         getSession(sid);
+        return;
+      }
+
+      if (event?.type === "message.updated") {
+        const info = e?.properties?.info;
+        if (info?.role === "user" && info?.id) {
+          const s = getSession(sid);
+          if (s.lastUserMessageId !== info.id) {
+            s.lastUserMessageId = info.id;
+            s.autoSubmitCount = 0;
+            s.attempts = 0;
+            s.backoffAttempts = 0;
+            log('user message detected, resetting counters:', sid);
+          }
+        }
         return;
       }
 

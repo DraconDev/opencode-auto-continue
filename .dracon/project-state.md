@@ -1,26 +1,27 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery with auto-submit tracking and configurable message formatting
+Enhanced session recovery with loop protection, todo context integration, and user message detection
 
 ## Context
-The plugin needs to track auto-submit attempts and maintain context for session recovery messages. This improves reliability when sessions stall or need to be resumed.
+This change improves the auto-force-resume plugin by adding:
+1. Loop protection to prevent infinite auto-submit cycles
+2. Optional todo context integration in recovery messages
+3. User message detection to reset recovery counters
 
 ## Completed
-- [x] Added `autoSubmitCount` to track auto-submit attempts
-- [x] Added `lastUserMessageId` to maintain message context
-- [x] Added `maxAutoSubmits` config option (default: 3)
-- [x] Added `messageFormat` config option for recovery prompts
-- [x] Added `includeTodoContext` config option
-- [x] Added validation for `maxAutoSubmits` config
-- [x] Initialized new session state fields
+- [x] Added loop protection with max auto-submit count check
+- [x] Implemented optional todo context integration in recovery messages
+- [x] Added user message detection to reset recovery counters
+- [x] Updated message formatting to include todo context when available
 
 ## In Progress
-- [x] Implementation of auto-submit logic using these new fields
+- [x] All requested functionality is implemented
 
 ## Blockers
-- Need to implement the actual auto-submit behavior that uses these new tracking fields
+- None identified
 
 ## Next Steps
-1. Implement auto-submit logic using the new tracking fields
-2. Add tests for the new session recovery message formatting
+1. Verify integration with existing session recovery logic
+2. Test with various todo context scenarios
+3. Validate user message detection edge cases
