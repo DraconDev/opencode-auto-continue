@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved session continuation handling by adding queued continue message support when sessions become idle
+Improved session continuation testing by adding explicit idle state simulation
 
 ## Context
-This change addresses a critical issue where synthetic messages could trigger infinite loops during session recovery. The new implementation properly handles queued continues when sessions stabilize after recovery attempts.
+To verify proper handling of session continuation messages, the integration test now explicitly triggers the idle state that would normally occur during a real session pause
 
 ## Completed
-- [x] Added queued continue message support when sessions become idle
-- [x] Fixed synthetic message handling to prevent infinite loops during recovery
-- [x] Improved session state management during message events
+- [x] Added explicit idle state simulation in integration test
+- [x] Updated test to verify continue prompt after idle state
+- [x] Maintained existing assertion about continue prompt content
 
 ## In Progress
-- [x] Session continuation message handling with proper queuing
+- [x] Testing session continuation behavior with queued messages
 
 ## Blockers
-- None identified
+- None identified in this change
 
 ## Next Steps
-1. Verify queued continue messages work correctly in integration tests
-2. Monitor for any infinite loop cases in production environments
+1. Verify test coverage for all session continuation scenarios
+2. Consider adding more edge cases for session state transitions

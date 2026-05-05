@@ -73,7 +73,12 @@ describe("opencode-auto-force-resume integration", () => {
       query: expect.any(Object)
     }));
     
-    // Step 5: Should have called continue prompt (only the continue message, no notification)
+    // Step 5: Simulate session becoming idle (triggers sendContinue)
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
+    await vi.advanceTimersByTimeAsync(100);
+    await Promise.resolve();
+    
+    // Step 6: Should have called continue prompt (only the continue message, no notification)
     expect(mockPromptAsync).toHaveBeenCalledTimes(1);
     const promptCall = mockPromptAsync.mock.calls[0][0];
     expect(promptCall.body.parts[0].text).toContain("continue");
