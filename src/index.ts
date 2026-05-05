@@ -1347,7 +1347,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       const staleTypes = [
         "session.error",
-        "session.compacted",
         "session.ended",
         "session.deleted"
       ];
