@@ -963,6 +963,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     s.aborting = true;
     s.stallDetections++;
+    s.recoveryStartTime = Date.now();
     writeStatusFile(sessionId);
 
     try {
