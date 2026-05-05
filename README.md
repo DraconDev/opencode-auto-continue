@@ -126,13 +126,19 @@ Filter: pending/in_progress tasks
         │
         └──NO──► Cancel nudge timer
 
-[Nudge timer fires]
+[Nudge timer fires] or [session.status idle + busy→idle transition]
         │
-        └──Check: no user message recently?
-                    │
-                    └──YES──► Send nudge message
-                            │
-                            └──Record lastNudgeAt (cooldown)
+        ├──Check: session idle? (skip if busy)
+        │
+        ├──Check: no user message recently?
+        │
+        ├──Check: cooldown passed?
+        │
+        └──ALL YES──► Fetch todos for context
+                        │
+                        ├──Send to agent: "You have {pending} tasks: {todoList}. Continue."
+                        │
+                        └──Record lastNudgeAt (cooldown)
 ```
 
 ### Review Flow

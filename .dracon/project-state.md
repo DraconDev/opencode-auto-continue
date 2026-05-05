@@ -1,24 +1,24 @@
 # Project State
 
 ## Current Focus
-Updated nudge messaging to better reflect session state and pending tasks
+Improved nudge messaging to better reflect session state and pending tasks
 
 ## Context
-The change improves clarity in nudge messages by:
-1. Making the message more specific about session state
-2. Providing clearer context about pending tasks
-3. Aligning with recent session state tracking improvements
+The nudge system needed better handling of session states and more detailed task information to provide more relevant reminders to users.
 
 ## Completed
-- [x] Updated nudge message to "The session has {pending}..." instead of generic "You have {pending}..."
-- [x] Enhanced nudge description to "Send continue prompts for incomplete todos" instead of generic "Enable gentle nudges"
+- [x] Added session idle check before sending nudge
+- [x] Enhanced nudge message to include detailed pending task list
+- [x] Added cooldown check to prevent frequent nudges
+- [x] Updated documentation to reflect new nudge logic
 
 ## In Progress
-- [x] Documentation updates for nudge configuration options
+- [ ] Testing nudge behavior with different session states
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify nudge behavior with pending session states
-2. Consider additional context for complex pending task scenarios
+1. Verify nudge behavior with various session states
+2. Consider adding user preferences for nudge frequency
+```
