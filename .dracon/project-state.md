@@ -1,24 +1,27 @@
 # Project State
 
 ## Current Focus
-Modularizing terminal and notification functionality from the monolithic index.ts file
+Added terminal integration features for displaying session progress and timers
 
 ## Context
-The code was refactoring terminal and notification functionality from a large, monolithic index.ts file into separate modules to improve maintainability and separation of concerns.
+This change enhances user visibility into long-running operations by adding visual indicators in the terminal. It follows previous work modularizing terminal functionality and provides multiple ways to display session progress.
 
 ## Completed
-- [x] Created a new Python script (do_extraction.py) to safely extract and modularize terminal-related functionality
-- [x] Created terminal.ts module containing terminal title and progress bar functionality
-- [x] Created notifications.ts module containing timer toast functionality
-- [x] Updated index.ts to import and use the new modules
-- [x] Maintained all existing functionality while improving code organization
+- [x] Added terminal title updates with OSC sequences showing action duration and last progress time
+- [x] Implemented terminal progress bar using OSC 9;4 sequences
+- [x] Created status line hook integration for future-proof display in TUI
+- [x] Added timer toast notifications that update periodically
+- [x] Implemented duration formatting utilities
+- [x] Added configuration options for all new features
+- [x] Included proper cleanup of terminal state when sessions end
 
 ## In Progress
-- [ ] Comprehensive testing of the new modular structure
+- [ ] No active work in progress
 
 ## Blockers
-- Need to verify all terminal and notification functionality works identically to the original implementation
+- None identified
 
 ## Next Steps
-1. Add comprehensive test coverage for the new modules
-2. Verify all edge cases work correctly with the new modular structure
+1. Verify cross-terminal compatibility of OSC sequences
+2. Add user configuration documentation for new features
+3. Consider adding more visual indicators for different session states

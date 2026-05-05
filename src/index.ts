@@ -17,8 +17,6 @@ import {
   formatMessage,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
-import { createNotificationModule } from "./notifications.js";
-import { createTerminalModule } from "./terminal.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
@@ -117,10 +115,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // ignore file errors silently
     }
   }
-
-  const terminal = createTerminalModule({ config, sessions, log });
-
-  const notifications = createNotificationModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
   // ── Status File ────────────────────────────────────────────────────────
 
@@ -277,6 +271,176 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  // ── Terminal Title (OSC sequences) ────────────────────────────────────
+
+  function updateTerminalTitle(sessionId: string) {
+    if (!config.terminalTitleEnabled) return;
+    const s = sessions.get(sessionId);
+    if (!s || s.actionStartedAt === 0) return;
+
+    const now = Date.now();
+    const actionDuration = now - s.actionStartedAt;
+    const progressAgo = now - s.lastProgressAt;
+    const title = `⏱️ ${formatDuration(actionDuration)} | Last: ${formatDuration(progressAgo)} ago`;
+
+    try {
+      // OSC 0: set icon name and window title
+      process.stdout.write(`\x1b]0;${title}\x07`);
+      // OSC 2: set window title (fallback for some terminals)
+      process.stdout.write(`\x1b]2;${title}\x07`);
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearTerminalTitle() {
+    if (!config.terminalTitleEnabled) return;
+    try {
+      process.stdout.write('\x1b]0;opencode\x07');
+      process.stdout.write('\x1b]2;opencode\x07');
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── Terminal Progress Bar (OSC 9;4) ───────────────────────────────────
+
+  function updateTerminalProgress(sessionId: string) {
+    if (!config.terminalProgressEnabled) return;
+    const s = sessions.get(sessionId);
+    if (!s || s.actionStartedAt === 0) return;
+
+    const now = Date.now();
+    const actionDuration = now - s.actionStartedAt;
+    const progressAgo = now - s.lastProgressAt;
+    
+    // Calculate progress percentage based on stallTimeoutMs
+    // 0% = just started, 100% = about to trigger recovery
+    const progress = Math.min(Math.floor((progressAgo / config.stallTimeoutMs) * 100), 99);
+    
+    try {
+      // OSC 9;4;1;p - set progress (mode 1 = normal, p = percentage 0-100)
+      process.stdout.write(`\x1b]9;4;1;${progress}\x07`);
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearTerminalProgress() {
+    if (!config.terminalProgressEnabled) return;
+    try {
+      // OSC 9;4;0 - clear progress
+      process.stdout.write('\x1b]9;4;0\x07');
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── StatusLine Hook (future-proof) ────────────────────────────────────
+
+  function registerStatusLineHook() {
+    try {
+      // Check if the plugin system supports statusLine hooks
+      const pluginSystem = input as any;
+      if (typeof pluginSystem.hook === 'function') {
+        pluginSystem.hook("tui.statusLine.variables", async (_input: any, result: any) => {
+          // Provide timer variables for each active session
+          sessions.forEach((s, sid) => {
+            if (s.actionStartedAt > 0) {
+              const now = Date.now();
+              const actionDuration = now - s.actionStartedAt;
+              const progressAgo = now - s.lastProgressAt;
+              result.variables[`afr_timer_${sid.slice(0, 8)}`] = formatDuration(actionDuration);
+              result.variables[`afr_progress_${sid.slice(0, 8)}`] = formatDuration(progressAgo);
+            }
+          });
+          return result;
+        });
+        log('statusLine hook registered');
+      }
+    } catch {
+      // Hook not available in this OpenCode version
+    }
+  }
+
+  function formatMessage(template: string, vars: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
+  }
+
+  function formatDuration(ms: number): string {
+    if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
+    if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+    return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
+  }
+
+  async function showTimerToast(sessionId: string) {
+    if (isDisposed) return;
+    if (!config.timerToastEnabled) return;
+    
+    const s = sessions.get(sessionId);
+    if (!s || s.actionStartedAt === 0) return;
+    
+    const now = Date.now();
+    const actionDuration = now - s.actionStartedAt;
+    const lastProgressDuration = now - s.lastProgressAt;
+    
+    const actionStr = formatDuration(actionDuration);
+    const progressStr = formatDuration(lastProgressDuration);
+    
+    const message = `⏱️ Action: ${actionStr} | Last progress: ${progressStr} ago`;
+    
+    try {
+      log('showing timer toast for session:', sessionId, message);
+      await (input.client as any).tui.showToast({
+        query: { directory: (input as any).directory || "" },
+        body: {
+          title: "Session Timer",
+          message: message,
+          variant: "info",
+        },
+      });
+    } catch (e) {
+      log('timer toast error (ignored):', e);
+    }
+  }
+
+  function startTimerToast(sessionId: string) {
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    
+    // Clear existing timer
+    if (s.toastTimer) {
+      clearInterval(s.toastTimer);
+      s.toastTimer = null;
+    }
+    
+    if (!config.timerToastEnabled) return;
+    
+    s.actionStartedAt = Date.now();
+    
+    // Show first toast immediately
+    showTimerToast(sessionId);
+    
+    // Set up recurring timer
+    s.toastTimer = setInterval(() => {
+      showTimerToast(sessionId);
+    }, config.timerToastIntervalMs);
+    
+    log('timer toast started for session:', sessionId, 'interval:', config.timerToastIntervalMs);
+  }
+
+  function stopTimerToast(sessionId: string) {
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    
+    if (s.toastTimer) {
+      clearInterval(s.toastTimer);
+      s.toastTimer = null;
+      log('timer toast stopped for session:', sessionId);
+    }
+    
+    s.actionStartedAt = 0;
+  }
 
   // Rough token estimation: code ≈ 0.5 tokens/char, English ≈ 0.25 tokens/char
   // This is a conservative estimate for proactive compaction
@@ -835,7 +999,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   // Register statusLine hook if available (future-proof)
-  terminal.registerStatusLineHook(input);
+  registerStatusLineHook();
 
   return {
     event: async ({ event }: { event: any }) => {
@@ -941,11 +1105,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
           // Start timer toast if not already running
           if (s.actionStartedAt === 0) {
-            notifications.startTimerToast(sid);
+            startTimerToast(sid);
           }
           // Update terminal title and progress
-          terminal.updateTerminalTitle(sid);
-          terminal.updateTerminalProgress(sid);
+          updateTerminalTitle(sid);
+          updateTerminalProgress(sid);
           // Check for proactive compaction when resuming busy
           // Catches pre-existing context bloat from prior interactions
           await maybeProactiveCompact(sid);
@@ -970,9 +1134,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         // Stop timer toast and clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {
-          notifications.stopTimerToast(sid);
-          terminal.clearTerminalTitle();
-          terminal.clearTerminalProgress();
+          stopTimerToast(sid);
+          clearTerminalTitle();
+          clearTerminalProgress();
         }
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
