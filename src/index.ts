@@ -255,8 +255,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               isIdle = true;
             }
             statusFailures = 0;
-          } catch {
+          } catch (e) {
             statusFailures++;
+            log('status poll failed:', e);
           }
         }
       }
