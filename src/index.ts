@@ -29,46 +29,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function getSession(id: string): SessionState {
     if (!sessions.has(id)) {
-      sessions.set(id, {
-        timer: null,
-        attempts: 0,
-        lastRecoveryTime: 0,
-        lastProgressAt: Date.now(),
-        aborting: false,
-        userCancelled: false,
-        planning: false,
-        planBuffer: '',
-        compacting: false,
-        backoffAttempts: 0,
-        autoSubmitCount: 0,
-        lastUserMessageId: '',
-        sentMessageAt: 0,
-        reviewFired: false,
-        reviewDebounceTimer: null,
-        nudgeTimer: null,
-        lastNudgeAt: 0,
-        hasOpenTodos: false,
-        needsContinue: false,
-        continueMessageText: '',
-        sessionCreatedAt: Date.now(),
-        messageCount: 0,
-        estimatedTokens: 0,
-        lastCompactionAt: 0,
-        tokenLimitHits: 0,
-        actionStartedAt: 0,
-        toastTimer: null,
-        stallDetections: 0,
-        recoverySuccessful: 0,
-        recoveryFailed: 0,
-        lastRecoverySuccess: 0,
-        totalRecoveryTimeMs: 0,
-        recoveryStartTime: 0,
-        statusHistory: [],
-        recoveryTimes: [],
-        lastStallPartType: "",
-        stallPatterns: {},
-        wasBusy: false,
-      });
+      sessions.set(id, createSession());
     }
     return sessions.get(id)!;
   }
