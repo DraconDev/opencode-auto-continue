@@ -23,6 +23,8 @@ describe("opencode-auto-force-resume", () => {
   let mockClient: MockClient;
 
   beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
     mockStatus = vi.fn().mockResolvedValue({ data: { "default": { type: "idle" } }, error: undefined });
