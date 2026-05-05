@@ -8,6 +8,7 @@ interface MockClient {
     prompt: ReturnType<typeof vi.fn>;
     promptAsync: ReturnType<typeof vi.fn>;
     status: ReturnType<typeof vi.fn>;
+    todo: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -22,6 +23,7 @@ describe("opencode-auto-force-resume integration", () => {
   let mockPrompt: ReturnType<typeof vi.fn>;
   let mockPromptAsync: ReturnType<typeof vi.fn>;
   let mockStatus: ReturnType<typeof vi.fn>;
+  let mockTodo: ReturnType<typeof vi.fn>;
   let mockClient: MockClient;
 
   beforeEach(() => {
@@ -29,6 +31,7 @@ describe("opencode-auto-force-resume integration", () => {
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
     mockPromptAsync = vi.fn().mockResolvedValue({ data: {}, error: undefined });
     mockStatus = vi.fn().mockResolvedValue({ data: { "test-session": { type: "busy" } }, error: undefined });
+    mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
 
     mockClient = {
       session: {
@@ -36,6 +39,7 @@ describe("opencode-auto-force-resume integration", () => {
         prompt: mockPrompt,
         promptAsync: mockPromptAsync,
         status: mockStatus,
+        todo: mockTodo,
       },
     };
   });
