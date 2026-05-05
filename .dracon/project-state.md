@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added configurable nudge system for pending tasks in session management
+Clean up nudge timer state during session cleanup
 
 ## Context
-This change extends the session state management to include a nudge system for reminding users about pending tasks. The nudge system will help maintain user engagement by prompting them to complete outstanding todos.
+This change addresses potential resource leaks by ensuring nudge timers are properly cleared when sessions are terminated. It complements the configurable nudge system by maintaining clean state during session lifecycle management.
 
 ## Completed
-- [x] Added `nudgeTimer` to track active nudge timers
-- [x] Added `lastNudgeAt` to track when the last nudge was sent
-- [x] Added `hasOpenTodos` flag to track pending tasks
+- [x] Added cleanup for nudge timer during session termination
+- [x] Reset lastNudgeAt timestamp to 0
+- [x] Set hasOpenTodos flag to false
 
 ## In Progress
-- [ ] Implement the actual nudge logic and scheduling
+- [x] No active work in progress
 
 ## Blockers
-- Need to define the nudge timing and message content
+- None identified
 
 ## Next Steps
-1. Implement the nudge scheduling logic
-2. Add configuration options for nudge frequency and messages
+1. Verify no race conditions exist between timer cleanup and nudge scheduling
+2. Consider adding integration tests for session cleanup scenarios
