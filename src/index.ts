@@ -69,6 +69,7 @@ interface PluginConfig {
   tokenLimitPatterns: string[];
   timerToastEnabled: boolean;
   timerToastIntervalMs: number;
+  terminalTitleEnabled: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {

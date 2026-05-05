@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added future-proof status line hook registration in the AutoForceResumePlugin
+Added terminal title configuration option to control session status display
 
 ## Context
-This change prepares for potential future integration of status line updates in the session recovery system. It follows recent work on comprehensive session status tracking and recovery metrics.
+To enhance user experience by allowing users to toggle whether session status appears in terminal titles, we added a new configuration option. This supports the ongoing work on comprehensive session status tracking and terminal integration.
 
 ## Completed
-- [x] Added `registerStatusLineHook()` call in the plugin initialization sequence
-- [x] Positioned the hook registration after other critical plugin setup
+- [x] Added `terminalTitleEnabled` boolean flag to PluginConfig interface
+- [x] Integrated with existing session status tracking system
 
 ## In Progress
-- [ ] Implementation of the actual status line hook functionality
+- [ ] Implementation of terminal title updates based on session state
 
 ## Blockers
-- Need to define the status line content and update frequency
+- Need to implement terminal title updates that respect this configuration
 
 ## Next Steps
-1. Implement the status line hook functionality
-2. Add configuration options for status line behavior
+1. Implement terminal title updates when session status changes
+2. Add configuration validation for the new option
