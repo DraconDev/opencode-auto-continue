@@ -4,7 +4,7 @@ export interface NotificationDeps {
   config: Pick<PluginConfig, "timerToastEnabled" | "timerToastIntervalMs">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
-  isDisposed: () => boolean;
+  isDisposed: boolean;
   input: unknown;
 }
 
@@ -29,7 +29,8 @@ export function createNotificationModule(deps: NotificationDeps) {
     
     try {
       log('showing timer toast for session:', sessionId, message);
-      await (input.client as any).tui.showToast({
+      const client = input as any;
+      await client.tui.showToast({
         query: { directory: (input as any).directory || "" },
         body: {
           title: "Session Timer",

@@ -118,7 +118,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   const terminal = createTerminalModule({ config, sessions, log, input });
-  const notifications = createNotificationModule({ config, sessions, log, isDisposed: () => isDisposed, input });
+  const notifications = createNotificationModule({ config, sessions, log, isDisposed, input });
 
   // ── Status File ────────────────────────────────────────────────────────
 

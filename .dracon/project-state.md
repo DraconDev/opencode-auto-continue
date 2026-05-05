@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Integrate notification module into the main plugin initialization flow
+Refactor notification module dependencies to simplify the interface and improve type safety.
 
 ## Context
-This change follows recent work to modularize terminal and notification functionality. The goal is to provide a unified interface for session progress and notifications.
+The notification module was previously receiving an `isDisposed` function, but this was changed to a direct boolean value for better type safety and simpler usage.
 
 ## Completed
-- [x] Added notification module initialization alongside terminal module
-- [x] Passed consistent dependencies to both modules
+- [x] Changed `isDisposed` from a function to a direct boolean in the notification module interface
+- [x] Updated the notification module creation in `index.ts` to pass the boolean directly
 
 ## In Progress
-- [x] Notification module integration
+- [ ] Verify no runtime behavior changes occurred due to this refactoring
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify notification module behavior in integration tests
-2. Document the new module interface for other developers
+1. Verify the notification module still functions correctly with the new dependency structure
+2. Consider if additional refactoring is needed in related modules
