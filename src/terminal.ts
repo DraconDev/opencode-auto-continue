@@ -4,10 +4,11 @@ export interface TerminalDeps {
   config: Pick<PluginConfig, "terminalTitleEnabled" | "terminalProgressEnabled" | "stallTimeoutMs">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
+  input: unknown;
 }
 
 export function createTerminalModule(deps: TerminalDeps) {
-  const { config, sessions, log } = deps;
+  const { config, sessions, log, input } = deps;
 
   // ── Terminal Title (OSC sequences) ────────────────────────────────────
 

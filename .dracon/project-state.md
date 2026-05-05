@@ -1,27 +1,21 @@
 # Project State
 
 ## Current Focus
-Added terminal integration features for displaying session progress and timers
+Added input dependency to TerminalDeps interface for terminal integration features.
 
 ## Context
-This change enhances user visibility into long-running operations by adding visual indicators in the terminal. It follows previous work modularizing terminal functionality and provides multiple ways to display session progress.
+This change prepares the terminal module to handle user input by adding an input dependency to the TerminalDeps interface. This is part of ongoing work to enhance terminal integration capabilities.
 
 ## Completed
-- [x] Added terminal title updates with OSC sequences showing action duration and last progress time
-- [x] Implemented terminal progress bar using OSC 9;4 sequences
-- [x] Created status line hook integration for future-proof display in TUI
-- [x] Added timer toast notifications that update periodically
-- [x] Implemented duration formatting utilities
-- [x] Added configuration options for all new features
-- [x] Included proper cleanup of terminal state when sessions end
+- [x] Added `input` property to TerminalDeps interface
+- [x] Updated destructuring in createTerminalModule to include the new input dependency
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Implementation of input handling logic in the terminal module
 
 ## Blockers
-- None identified
+- Implementation of actual input handling logic needs to be completed
 
 ## Next Steps
-1. Verify cross-terminal compatibility of OSC sequences
-2. Add user configuration documentation for new features
-3. Consider adding more visual indicators for different session states
+1. Implement input handling logic in the terminal module
+2. Add tests for the new input functionality
