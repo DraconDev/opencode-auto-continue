@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added configuration options for session status file tracking
+Enhanced session recovery tracking with detailed status history and timing metrics
 
 ## Context
-This change enables tracking session status through a dedicated file, allowing for better session recovery and state persistence.
+To improve session recovery visibility and diagnostics, we're adding comprehensive tracking of recovery operations including timing metrics and status history.
 
 ## Completed
-- [x] Added `statusFileEnabled` flag to control status file writing
-- [x] Added `statusFilePath` configuration for custom file location
-- [x] Added `maxStatusHistory` to limit stored status entries
+- [x] Added `totalRecoveryTimeMs` to track cumulative recovery duration
+- [x] Added `recoveryStartTime` to timestamp recovery operations
+- [x] Added `statusHistory` array to log recovery status changes with timestamps and durations
 
 ## In Progress
-- [ ] Implementation of status file writing logic
+- [x] Implementation of recovery status tracking
 
 ## Blockers
-- Need to implement the actual file writing functionality
+- None identified
 
 ## Next Steps
-1. Implement status file writing when sessions are created/cancelled
-2. Add validation for status file path configuration
+1. Implement status history population during recovery operations
+2. Add visualization of recovery metrics in session status output

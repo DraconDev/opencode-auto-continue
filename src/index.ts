@@ -34,6 +34,9 @@ interface SessionState {
   recoverySuccessful: number;
   recoveryFailed: number;
   lastRecoverySuccess: number;
+  totalRecoveryTimeMs: number;
+  recoveryStartTime: number;
+  statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
 }
 
 interface PluginConfig {
@@ -307,6 +310,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         recoverySuccessful: 0,
         recoveryFailed: 0,
         lastRecoverySuccess: 0,
+        totalRecoveryTimeMs: 0,
+        recoveryStartTime: 0,
+        statusHistory: [],
       });
     }
     return sessions.get(id)!;
@@ -353,6 +359,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.recoverySuccessful = 0;
       s.recoveryFailed = 0;
       s.lastRecoverySuccess = 0;
+      s.totalRecoveryTimeMs = 0;
+      s.recoveryStartTime = 0;
+      s.statusHistory = [];
       if (s.toastTimer) {
         clearInterval(s.toastTimer);
         s.toastTimer = null;
