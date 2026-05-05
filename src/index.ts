@@ -550,6 +550,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.autoSubmitCount = 0;
             s.attempts = 0;
             s.backoffAttempts = 0;
+            // Reset nudge timer on user activity
+            if (s.nudgeTimer) {
+              clearTimeout(s.nudgeTimer);
+              s.nudgeTimer = null;
+            }
             log('user message detected, resetting counters:', sid);
           }
         }
@@ -671,22 +676,39 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         
         const s = getSession(sid);
         const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
+        const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
         
+        // Track open todos for nudging
+        s.hasOpenTodos = hasPending;
+        
+        // Handle review on completion
         if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
-          // Cancel any existing debounce timer
           if (s.reviewDebounceTimer) {
             clearTimeout(s.reviewDebounceTimer);
           }
-          
-          // Debounce the review trigger
           s.reviewDebounceTimer = setTimeout(() => {
             s.reviewDebounceTimer = null;
             triggerReview(sid);
           }, config.reviewDebounceMs);
         } else if (!allCompleted && s.reviewDebounceTimer) {
-          // Cancel review if todos become incomplete again
           clearTimeout(s.reviewDebounceTimer);
           s.reviewDebounceTimer = null;
+        }
+        
+        // Handle nudge timer
+        if (hasPending && config.nudgeEnabled) {
+          // Start or reset nudge timer
+          if (s.nudgeTimer) {
+            clearTimeout(s.nudgeTimer);
+          }
+          s.nudgeTimer = setTimeout(() => {
+            s.nudgeTimer = null;
+            sendNudge(sid);
+          }, config.nudgeTimeoutMs);
+        } else if (!hasPending && s.nudgeTimer) {
+          // Cancel nudge if no pending todos
+          clearTimeout(s.nudgeTimer);
+          s.nudgeTimer = null;
         }
         return;
       }
@@ -708,6 +730,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.reviewDebounceTimer) {
           clearTimeout(s.reviewDebounceTimer);
           s.reviewDebounceTimer = null;
+        }
+        if (s.nudgeTimer) {
+          clearTimeout(s.nudgeTimer);
+          s.nudgeTimer = null;
         }
       });
       sessions.clear();
