@@ -385,6 +385,35 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  function isTokenLimitError(error: any): boolean {
+    if (!error) return false;
+    const message = error.message || String(error);
+    return message.includes('context length') || 
+           message.includes('maximum context length') ||
+           message.includes('token count exceeds') ||
+           message.includes('too many tokens');
+  }
+
+  async function forceCompact(sessionId: string): Promise<boolean> {
+    try {
+      log('forcing compaction for token limit');
+      await (input.client.session as any).summarize({
+        path: { id: sessionId },
+        query: { directory: (input as any).directory || "" }
+      });
+      // Wait for compaction
+      await new Promise(r => setTimeout(r, 5000));
+      
+      // Verify it worked
+      const status = await input.client.session.status({});
+      const data = status.data as Record<string, { type: string }>;
+      return data[sessionId]?.type !== "busy";
+    } catch (e) {
+      log('force compaction failed:', e);
+      return false;
+    }
+  }
+
   async function recover(sessionId: string) {
     if (isDisposed) return;
     const s = sessions.get(sessionId);
