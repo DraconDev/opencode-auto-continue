@@ -1,18 +1,33 @@
 # opencode-auto-force-resume
 
-Intelligently detects and recovers stalled OpenCode sessions using `session.abort()` + `continue` prompt.
+The ultimate OpenCode plugin for session recovery. Intelligently detects stalled sessions, recovers them, reminds about open tasks, and reviews completed work — all in one plugin.
 
 ## Why
 
-OpenCode sessions can stall due to context bloat, tool call loops, or provider throttling. This plugin monitors session activity and performs automatic recovery only when the session is truly stuck.
+OpenCode sessions can stall due to context bloat, tool call loops, or provider throttling. This plugin monitors session activity and performs automatic recovery only when the session is truly stuck. It also replaces `opencode-todo-reminder` and `opencode-auto-review-completed-todos` with a unified, conflict-free implementation.
 
 ## Key Features
 
+### Stall Recovery
 - **Smart stall detection** — Only recovers if `session.status()` shows `busy` AND no real progress for the timeout period
 - **Status polling after abort** — Polls `session.status()` until session becomes `idle` before sending continue
 - **Progress tracking** — Tracks text, step-finish, step-start, reasoning, tool, subtask, and file parts as real progress
+- **Synthetic filtering** — Ignores synthetic messages to prevent infinite loops
 - **Plan awareness** — Detects plan content and pauses stall monitoring during planning
 - **Compaction awareness** — Detects context compaction and pauses stall monitoring during compaction
+
+### Todo Context (Replaces `opencode-todo-reminder`)
+- **Todo fetching** — Fetches open todos before sending continue message
+- **Context-aware messages** — Includes pending task count and names in recovery message
+- **Loop protection** — Max 3 auto-submits without user engagement, resets when user sends a message
+- **Configurable messages** — Customize continue message format with template variables
+
+### Review on Completion (Replaces `opencode-auto-review-completed-todos`)
+- **Auto-review** — Sends review prompt when all todos are completed
+- **Debounced** — 500ms debounce to avoid premature triggering
+- **One-shot** — Only fires once per session
+
+### Recovery Safety
 - **Recovery limits** — Max 3 attempts per session with 60-second cooldown between attempts
 - **Exponential backoff** — After maxRecoveries, uses exponential backoff up to 30 minutes
 - **User cancellation detection** — Stops recovery after user manually aborts (ESC key)
@@ -52,6 +67,15 @@ Add to your `opencode.json` plugins array:
       "abortPollMaxTimeMs": 5000,
       "abortPollMaxFailures": 3,
       "maxBackoffMs": 1800000,
+      "maxAutoSubmits": 3,
+      "continueMessage": "Please continue from where you left off.",
+      "continueWithTodosMessage": "Please continue from where you left off. You have {pending} open task(s): {todoList}.",
+      "maxAttemptsMessage": "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
+      "includeTodoContext": true,
+      "reviewOnComplete": true,
+      "reviewMessage": "All tasks in this session have been completed. Please perform a final review: summarize what was accomplished, note any technical decisions or trade-offs made, flag anything that should be documented, and list any follow-up tasks or improvements for next time.",
+      "reviewDebounceMs": 500,
+      "showToasts": false,
       "debug": false
     }]
   ]
@@ -70,7 +94,29 @@ Add to your `opencode.json` plugins array:
 | `abortPollMaxTimeMs` | `5000` | Maximum time to poll for idle status after abort (ms). |
 | `abortPollMaxFailures` | `3` | Max consecutive `session.status()` failures before giving up on polling. |
 | `maxBackoffMs` | `1800000` | Maximum backoff delay (ms) after maxRecoveries. Default 30 minutes. |
+| `maxAutoSubmits` | `3` | Max auto-submits without user engagement before pausing. |
+| `continueMessage` | `"Please continue..."` | Default continue message (used when no todos or todos disabled). |
+| `continueWithTodosMessage` | `"Please continue... You have {pending}..."` | Continue message when todos are present. |
+| `maxAttemptsMessage` | `"I've tried to continue..."` | Message shown when max attempts reached. |
+| `includeTodoContext` | `true` | Whether to fetch and include todo context in messages. |
+| `reviewOnComplete` | `true` | Whether to send review prompt when all todos complete. |
+| `reviewMessage` | `"All tasks completed..."` | Review prompt message. |
+| `reviewDebounceMs` | `500` | Debounce time (ms) before triggering review after todos complete. |
+| `showToasts` | `false` | Show toast notifications (if TUI supports it). |
 | `debug` | `false` | Enable debug logging to `~/.opencode/logs/auto-force-resume.log` |
+
+## Template Variables
+
+Use these in message templates:
+
+| Variable | Description |
+|----------|-------------|
+| `{pending}` | Number of open tasks |
+| `{total}` | Total tasks |
+| `{completed}` | Completed tasks |
+| `{todoList}` | Comma-separated list of pending tasks (max 5) |
+| `{attempts}` | Current recovery attempt |
+| `{maxAttempts}` | Max recovery attempts |
 
 ## Recovery Flow
 
@@ -83,15 +129,33 @@ Timer fires → Check session.status()
       ↓
 Status === "busy" AND lastProgressAt is old?
       ↓
-YES → Call session.abort()
+YES → Fetch todos (if enabled)
+      ↓
+Build context-aware message
+      ↓
+Call session.abort()
       ↓
 Poll session.status() until "idle" (or timeout)
       ↓
 Wait minimum time (waitAfterAbortMs)
       ↓
-Send "continue from where you left off" via prompt()
+Send continue prompt with todo context
       ↓
 Increment attempts, restart monitoring (event-driven)
+```
+
+## Review Flow
+
+```
+[Todo updated]
+      ↓
+All todos completed?
+      ↓
+YES → Start debounce timer (reviewDebounceMs)
+      ↓
+Timer fires → Send review prompt
+      ↓
+Flag review as fired (one-shot per session)
 ```
 
 ## How It Works
@@ -111,6 +175,10 @@ Real progress events:
 - `message.part.updated` with `subtask` part — subtask created/completed
 - `message.part.updated` with `file` part — file operation
 - `session.status` with `busy` — actively working
+
+### Synthetic Filtering
+
+The plugin ignores messages with `synthetic: true` to prevent infinite loops. When the plugin sends its own continue prompt with `synthetic: true`, the resulting events are filtered out and do not reset the stall timer.
 
 ### Plan Detection
 
@@ -132,16 +200,7 @@ When `message.part.updated` with `compaction` part is received, stall monitoring
 - Waits `cooldownMs` between attempts
 - Polls until session is ready before sending continue
 - Uses exponential backoff after maxRecoveries
-
-## Debug Logging
-
-When `debug: true` is set in config, all plugin activity is logged to `~/.opencode/logs/auto-force-resume.log`. This includes:
-- Session status changes
-- Progress event types
-- Recovery attempts and outcomes
-- Config validation failures
-
-Logs use `appendFileSync` for thread safety.
+- Filters synthetic messages to prevent loops
 
 ## Events
 
@@ -166,11 +225,25 @@ Logs use `appendFileSync` for thread safety.
 - `session.ended`
 - `session.deleted`
 
+**Todo events:**
+- `todo.updated` → checks completion status, triggers review if all done
+
+## Debug Logging
+
+When `debug: true` is set in config, all plugin activity is logged to `~/.opencode/logs/auto-force-resume.log`. This includes:
+- Session status changes
+- Progress event types
+- Recovery attempts and outcomes
+- Todo fetch results
+- Config validation failures
+
+Logs use `appendFileSync` for thread safety.
+
 ## Cleanup
 
 The plugin registers a `dispose` handler that:
 - Sets `isDisposed` flag to prevent new recovery attempts
-- Clears all active timers
+- Clears all active timers (stall timers and review debounce timers)
 - Clears the sessions map
 
 ## License
