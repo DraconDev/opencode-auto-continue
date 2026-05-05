@@ -13,6 +13,8 @@ interface SessionState {
   planBuffer: string;
   compacting: boolean;
   backoffAttempts: number;
+  autoSubmitCount: number;
+  lastUserMessageId: string;
 }
 
 interface PluginConfig {
@@ -25,6 +27,9 @@ interface PluginConfig {
   abortPollMaxFailures: number;
   debug: boolean;
   maxBackoffMs: number;
+  maxAutoSubmits: number;
+  messageFormat: string;
+  includeTodoContext: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -37,6 +42,9 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollMaxFailures: 3,
   debug: false,
   maxBackoffMs: 1800000,
+  maxAutoSubmits: 3,
+  messageFormat: "Please continue from where you left off.",
+  includeTodoContext: true,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -69,6 +77,9 @@ function validateConfig(config: PluginConfig): PluginConfig {
 
   if (config.maxBackoffMs < config.stallTimeoutMs) {
     errors.push(`maxBackoffMs (${config.maxBackoffMs}) must be >= stallTimeoutMs (${config.stallTimeoutMs})`);
+  }
+  if (config.maxAutoSubmits < 0) {
+    errors.push(`maxAutoSubmits must be >= 0, got ${config.maxAutoSubmits}`);
   }
 
   if (errors.length > 0) {
@@ -109,6 +120,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         planBuffer: '',
         compacting: false,
         backoffAttempts: 0,
+        autoSubmitCount: 0,
+        lastUserMessageId: '',
       });
     }
     return sessions.get(id)!;
@@ -130,6 +143,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.planning = false;
       s.compacting = false;
       s.backoffAttempts = 0;
+      s.autoSubmitCount = 0;
+      s.lastUserMessageId = '';
     }
     sessions.delete(id);
   }

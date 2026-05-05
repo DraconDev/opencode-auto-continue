@@ -1,21 +1,26 @@
 # Project State
 
 ## Current Focus
-Version bump from 3.36.18 to 3.36.19 in package metadata
+Enhanced session recovery with auto-submit tracking and configurable message formatting
 
 ## Context
-This is a routine version bump following recent improvements to session recovery logic and error handling in the auto-force-resume plugin. The version update reflects incremental progress in the project's stability and reliability.
+The plugin needs to track auto-submit attempts and maintain context for session recovery messages. This improves reliability when sessions stall or need to be resumed.
 
 ## Completed
-- [x] Updated package version in package.json from 3.36.18 to 3.36.19
-- [x] Synchronized version in package-lock.json to match package.json
+- [x] Added `autoSubmitCount` to track auto-submit attempts
+- [x] Added `lastUserMessageId` to maintain message context
+- [x] Added `maxAutoSubmits` config option (default: 3)
+- [x] Added `messageFormat` config option for recovery prompts
+- [x] Added `includeTodoContext` config option
+- [x] Added validation for `maxAutoSubmits` config
+- [x] Initialized new session state fields
 
 ## In Progress
-- [ ] No active development work is being tracked in this commit
+- [x] Implementation of auto-submit logic using these new fields
 
 ## Blockers
-- None reported for this version bump
+- Need to implement the actual auto-submit behavior that uses these new tracking fields
 
 ## Next Steps
-1. Continue development of session recovery features
-2. Prepare for next feature release or bugfix cycle
+1. Implement auto-submit logic using the new tracking fields
+2. Add tests for the new session recovery message formatting
