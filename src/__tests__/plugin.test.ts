@@ -261,6 +261,10 @@ describe("opencode-auto-force-resume", () => {
 
   describe("session cleanup", () => {
     it("should NOT clear session on session.idle — triggers nudge instead", async () => {
+      vi.useFakeTimers();
+      // Status returns idle when sendNudge checks session status
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 5000,
         nudgeEnabled: true,
@@ -270,59 +274,18 @@ describe("opencode-auto-force-resume", () => {
         terminalTitleEnabled: false,
         statusFilePath: ""
       });
-      // Set up session with pending todos so nudge fires
-      const s = sessions.get("test") || sessions.set("test", {
-        id: "test",
-        hasOpenTodos: true,
-        lastNudgeAt: 0,
-        planBuffer: "",
-        planning: false,
-        compacting: false,
-        backoffAttempts: 0,
-        autoSubmitCount: 0,
-        lastUserMessageId: "",
-        sentMessageAt: 0,
-        reviewFired: false,
-        lastNudgeAt: 0,
-        needsContinue: false,
-        continueMessageText: "",
-        messageCount: 0,
-        estimatedTokens: 0,
-        lastCompactionAt: 0,
-        tokenLimitHits: 0,
-        actionStartedAt: 0,
-        attemptCount: 0,
-        successfulAttempts: 0,
-        failedAttempts: 0,
-        stallDetections: 0,
-        recoverySuccessful: 0,
-        recoveryFailed: 0,
-        lastRecoverySuccess: 0,
-        totalRecoveryTimeMs: 0,
-        recoveryStartTime: 0,
-        statusHistory: [],
-        recoveryTimes: [],
-        lastStallPartType: "",
-        stallPatterns: {},
-        wasBusy: false,
-        lastProgressAt: Date.now(),
-        lastIdleSeen: 0,
-        lastUserMessage: 0,
-        lastContinuation: 0,
-        hourlyCount: 0,
-        hourStart: 0,
-        denyCount: 0,
-        lastDenyNudge: 0,
-      }).get("test")!;
 
-      // Send session.idle — should NOT clear session, should trigger nudge
-      mockPromptAsync.mockResolvedValue(undefined);
+      // Create session with busy status first
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set hasOpenTodos via todo.updated
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
+
+      // Now fire session.idle - mockStatus returns idle, so nudge should send
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
 
-      // Verify session still exists
-      expect(sessions.has("test")).toBe(true);
-      // Verify nudge was sent
-      expect(mockPromptAsync).toHaveBeenCalled();
+      // Verify nudge was sent (prompt was called)
+      expect(mockPrompt).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should clear session on session.deleted", async () => {

@@ -1,23 +1,26 @@
 # Project State
 
 ## Current Focus
-Update Vitest to v2.1.9 and bump project version to 3.136.3
+Refactor session idle handling test to use realistic session state transitions
 
 ## Context
-The package updates were triggered by recent improvements to session idle handling and auto-continue functionality, which required updated testing capabilities.
+The test was previously creating a full session object manually, which made the test brittle. The change now properly simulates the real session lifecycle by:
+1. First creating a session with busy status
+2. Then updating it with todos
+3. Finally triggering the idle event
 
 ## Completed
-- [x] Updated Vitest from v1.6.0 to v2.1.9
-- [x] Updated project version from 3.126.3 to 3.136.3
-- [x] Updated rollup dependencies to v4.60.3
+- [x] Removed manual session object creation
+- [x] Added proper session state transitions (busy → idle)
+- [x] Simplified test assertions
+- [x] Added fake timers for consistent timing behavior
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Test now properly verifies nudge behavior
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify test suite compatibility with Vitest v2.1.9
-2. Update test coverage for new session state tracking features
-```
+1. Update related documentation to reflect the new test approach
+2. Consider adding more edge case tests for session state transitions
