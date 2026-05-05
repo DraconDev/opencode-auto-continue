@@ -1415,6 +1415,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         
         if (status?.type === "busy" || status?.type === "retry") {
+          s.wasBusy = true;
           updateProgress(s);
           s.userCancelled = false;
           if (s.planning) {
@@ -1445,10 +1446,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "idle" && !s.needsContinue) {
           await maybeProactiveCompact(sid);
         }
-        // Auto-continue when idle with pending todos - tell agent to keep working
-        if (status?.type === "idle" && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
+        // Auto-continue when transitioning busy→idle with pending todos
+        // Uses wasBusy flag to fire only once per busy→idle transition
+        if (status?.type === "idle" && s.wasBusy && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
+          s.wasBusy = false;
           if (Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
-            log('session idle with pending todos, sending continue for:', sid);
+            log('session transitioned busy→idle with pending todos, sending continue');
             await sendNudge(sid);
           }
         }

@@ -1,20 +1,22 @@
 # Project State
 
 ## Current Focus
-Added session state tracking for busy status in auto-continue functionality
+Improved auto-continue logic for sessions transitioning from busy→idle with pending todos
 
 ## Context
-This change supports the auto-continue feature by tracking whether the system was previously busy, which helps determine if a session should be automatically resumed when idle.
+The previous auto-continue logic would trigger whenever a session was idle with pending todos, potentially causing unnecessary nudges. This change ensures nudges only occur once per busy→idle transition to prevent duplicate notifications.
 
 ## Completed
-- [x] Added `wasBusy` state variable to track session activity status
+- [x] Added `wasBusy` flag to track busy→idle transitions
+- [x] Modified auto-continue logic to only trigger after a busy→idle transition
+- [x] Reset `wasBusy` flag after triggering to prevent repeated nudges
 
 ## In Progress
-- [x] Implementation of busy state tracking for auto-continue logic
+- [x] Implementation of the new transition-based auto-continue logic
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Implement logic to update `wasBusy` state based on actual system activity
-2. Integrate with existing auto-continue functionality to use this state for decision making
+1. Verify the new logic prevents duplicate nudges in test scenarios
+2. Monitor user feedback for any unintended side effects
