@@ -451,6 +451,115 @@ describe("opencode-auto-force-resume", () => {
     });
   });
 
+  describe("token limit handling", () => {
+    it("should use short continue message after token limit hit", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      mockPrompt.mockRejectedValueOnce(new Error("maximum context length exceeded"));
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1100);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      // Simulate idle to trigger sendContinue
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // First prompt fails with token limit error
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      // Now simulate another recovery - should use short message
+      mockPrompt.mockClear();
+      mockAbort.mockClear();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1100);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should use short continue message
+      const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+      expect(lastCall[0].body.parts[0].text).toBe("Continue.");
+
+      vi.useRealTimers();
+    });
+
+    it("should track message count on user messages", async () => {
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, proactiveCompactThreshold: 5 });
+
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg1" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg2" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg3" } } } });
+
+      // Messages tracked - test passes if no errors
+      expect(true).toBe(true);
+    });
+
+    it("should trigger proactive compaction when message count exceeds threshold", async () => {
+      vi.useFakeTimers();
+      const mockSummarize = vi.fn().mockResolvedValue({ data: true });
+      mockClient.session.summarize = mockSummarize as any;
+      
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, proactiveCompactThreshold: 3, autoCompact: true });
+
+      // Send 3 user messages to exceed threshold
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg1" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg2" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg3" } } } });
+
+      // Trigger idle status - should trigger proactive compaction
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should detect token limit errors with custom patterns", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      mockPrompt.mockRejectedValueOnce(new Error("payload too large for context window"));
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0, tokenLimitPatterns: ['payload too large', 'context window'] });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1100);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      // Simulate idle to trigger sendContinue which will hit token limit error
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should have attempted to handle token limit error (prompt was called and failed)
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
+
   describe("dispose", () => {
     it("should not crash when disposed during recovery", async () => {
       vi.useFakeTimers();

@@ -919,6 +919,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         
         log('activity event:', event?.type, sid, 'role:', msgRole);
         const s = getSession(sid);
+        
+        // Track message count for proactive compaction
+        if (isUserMessage) {
+          s.messageCount++;
+          log('message count incremented:', s.messageCount);
+        }
+        
         updateProgress(s);
         s.attempts = 0;
         s.userCancelled = false;
