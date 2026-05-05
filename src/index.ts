@@ -37,6 +37,9 @@ interface SessionState {
   totalRecoveryTimeMs: number;
   recoveryStartTime: number;
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
+  recoveryTimes: number[];
+  lastStallPartType: string;
+  stallPatterns: Record<string, number>;
 }
 
 interface PluginConfig {
@@ -321,6 +324,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         totalRecoveryTimeMs: 0,
         recoveryStartTime: 0,
         statusHistory: [],
+        recoveryTimes: [],
+        lastStallPartType: "",
+        stallPatterns: {},
       });
     }
     return sessions.get(id)!;

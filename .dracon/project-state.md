@@ -1,23 +1,22 @@
 # Project State
 
 ## Current Focus
-Added new configuration options for enhanced session status tracking and recovery metrics.
+Enhanced session recovery tracking with detailed stall pattern analysis
 
 ## Context
-This change extends the plugin's configuration capabilities to support more detailed session status tracking, recovery metrics, and terminal integration. It follows recent work on session recovery tracking and status file improvements.
+This change adds detailed tracking of recovery times, stall patterns, and part types to better analyze and optimize session recovery operations.
 
 ## Completed
-- [x] Added `statusFileRotate` option to control status file rotation
-- [x] Added `recoveryHistogramEnabled` to track recovery timing metrics
-- [x] Added `stallPatternDetection` for identifying session stalls
-- [x] Added `terminalProgressEnabled` for terminal-based progress display
+- [x] Added `recoveryTimes` array to track individual recovery durations
+- [x] Added `lastStallPartType` to record the type of part causing stalls
+- [x] Added `stallPatterns` object to track frequency of different stall scenarios
 
 ## In Progress
-- [ ] None (all changes are complete)
+- [ ] None (this is a complete feature addition)
 
 ## Blockers
-- None (configuration options are now available for use)
+- None (this is a self-contained enhancement)
 
 ## Next Steps
-1. Update documentation to reflect new configuration options
-2. Implement terminal progress display based on new configuration
+1. Implement analysis functions to process the collected stall pattern data
+2. Add visualization capabilities for recovery metrics
