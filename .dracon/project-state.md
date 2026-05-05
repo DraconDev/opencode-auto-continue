@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Refined test validation for backoff timing in plugin recovery mechanism
+Added a utility function for message template formatting in the AutoForceResumePlugin
 
 ## Context
-The test was updated to more precisely verify the exponential backoff behavior in the plugin's recovery mechanism. The original test checked for behavior after a full backoff period, while the updated test verifies the system's state during the backoff period itself.
+This change supports the plugin's need to format dynamic messages with variable substitution, which was identified during the recent work on session action tracking and toast notifications.
 
 ## Completed
-- [x] Modified test to check backoff state during the delay period rather than after
-- [x] Adjusted timing assertions to verify behavior before the full backoff duration elapses
+- [x] Added `formatMessage` function to replace placeholders in strings with provided variables
 
 ## In Progress
-- [x] Test validation for plugin recovery backoff timing
+- [x] Implementation of message formatting utility
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Verify test coverage for other recovery scenarios
-2. Consider adding additional test cases for edge cases in backoff behavior
+1. Verify the function works with existing toast notification templates
+2. Consider adding unit tests for the message formatting logic

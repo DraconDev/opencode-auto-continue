@@ -398,6 +398,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  function formatMessage(template: string, vars: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
+  }
+
   function formatDuration(ms: number): string {
     if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
     if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
