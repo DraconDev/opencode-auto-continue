@@ -1,6 +1,21 @@
 import type { Plugin } from "@opencode-ai/plugin";
 import { appendFileSync, mkdirSync, existsSync, readFileSync, writeFileSync, renameSync } from "fs";
-import { join, dirname } from "path";
+import { join } from "path";
+import {
+  type SessionState,
+  type PluginConfig,
+  DEFAULT_CONFIG,
+  validateConfig,
+  getModelContextLimit,
+  getCompactionThreshold,
+  PLAN_PATTERNS,
+  isPlanContent,
+  estimateTokens,
+  formatDuration,
+  createSession,
+  updateProgress,
+  formatMessage,
+} from "./shared.js";
 
 interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
