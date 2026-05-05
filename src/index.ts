@@ -46,6 +46,7 @@ interface PluginConfig {
   nudgeTimeoutMs: number;
   nudgeMessage: string;
   nudgeCooldownMs: number;
+  autoCompact: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -71,6 +72,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   nudgeTimeoutMs: 300000,
   nudgeMessage: "You have {pending} open task(s). Send a message when you're ready to continue.",
   nudgeCooldownMs: 60000,
+  autoCompact: true,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
