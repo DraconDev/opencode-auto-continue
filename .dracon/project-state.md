@@ -1,26 +1,23 @@
 # Project State
 
 ## Current Focus
-Enhanced token tracking and estimation for adaptive compaction during session continuation
+Enhanced test validation for token limit handling configuration with dual thresholds
 
 ## Context
-To improve proactive compaction decisions, we need accurate token usage tracking across all message types during session continuation. This enables more precise threshold calculations for when to compact conversation history.
+The recent work on adaptive compaction and token estimation required corresponding test validation to ensure proper configuration handling. The changes update the test suite to validate both token-based and percentage-based proactive compaction thresholds.
 
 ## Completed
-- [x] Added token estimation for text parts during plan detection
-- [x] Enhanced message count tracking with token estimation
-- [x] Added token estimation for both user and assistant/tool responses
-- [x] Updated logging to include token counts in progress tracking
+- [x] Updated test to validate token-based proactive compaction threshold
+- [x] Added test for percentage-based proactive compaction threshold validation
+- [x] Enhanced message tracking in tests to include content for token estimation
+- [x] Updated test assertions to verify default behavior with invalid thresholds
 
 ## In Progress
-- [ ] Integration testing for token estimation accuracy
-- [ ] Validation of compaction thresholds with estimated tokens
+- [ ] No active work in progress
 
 ## Blockers
-- Need to verify token estimation accuracy matches actual model tokenization
-- Requires coordination with model provider for precise token counting
+- None identified
 
 ## Next Steps
-1. Complete integration testing of token estimation
-2. Implement adaptive compaction using estimated tokens
-3. Document token tracking behavior in session lifecycle
+1. Review test coverage for additional edge cases
+2. Update documentation to reflect new threshold validation behavior

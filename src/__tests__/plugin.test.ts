@@ -467,21 +467,35 @@ describe("opencode-auto-force-resume", () => {
     });
 
     it("should track message count on user messages", async () => {
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, proactiveCompactThreshold: 5 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, proactiveCompactAtTokens: 100000 });
 
-      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg1" } } } });
-      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg2" } } } });
-      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg3" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg1", content: "Hello world" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg2", content: "Test message" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg3", content: "Another test" } } } });
 
       // Messages tracked - test passes if no errors
       expect(true).toBe(true);
     });
 
-    it("should validate proactive compaction threshold", async () => {
+    it("should validate proactive compaction token threshold", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      // Negative threshold should trigger validation failure
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, proactiveCompactThreshold: -1 });
+      // Negative token threshold should trigger validation failure
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, proactiveCompactAtTokens: -1 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // Should use defaults
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should validate proactive compaction percent threshold", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      // Invalid percent should trigger validation failure
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, proactiveCompactAtPercent: 150 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
