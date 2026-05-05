@@ -493,6 +493,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   // ── Terminal Title (OSC sequences) ────────────────────────────────────
 
   function updateTerminalTitle(sessionId: string) {
+    if (!config.terminalTitleEnabled) return;
     const s = sessions.get(sessionId);
     if (!s || s.actionStartedAt === 0) return;
 

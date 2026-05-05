@@ -4,17 +4,17 @@
 Added terminal title configuration option to control session status display
 
 ## Context
-This change enables users to toggle whether the terminal title shows session status information, which is part of the ongoing work to enhance session management and terminal integration.
+This change implements a configuration option to toggle terminal title updates, allowing users to disable session status display in their terminal titles when desired.
 
 ## Completed
-- [x] Added `terminalTitleEnabled` configuration option with default value `true`
+- [x] Added `config.terminalTitleEnabled` check to skip terminal title updates when disabled
 
 ## In Progress
-- [x] Implementation of terminal title updates based on session state
+- [x] Configuration option implementation
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Implement terminal title updates when session state changes
-2. Add configuration validation for the new option
+1. Add documentation for the new configuration option
+2. Add tests for the terminal title behavior with different configuration settings
