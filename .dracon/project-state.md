@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved nudge messaging to better reflect session state and pending tasks
+Improved nudge messaging to include detailed task list for pending sessions
 
 ## Context
-The nudge system needed better handling of session states and more detailed task information to provide more relevant reminders to users.
+The change enhances user visibility into pending tasks during session nudges by adding the actual todo list to the message, making it clearer what needs attention.
 
 ## Completed
-- [x] Added session idle check before sending nudge
-- [x] Enhanced nudge message to include detailed pending task list
-- [x] Added cooldown check to prevent frequent nudges
-- [x] Updated documentation to reflect new nudge logic
+- [x] Updated nudge message to include `{todoList}` in the notification
+- [x] Maintained all existing configuration options while adding more detail
 
 ## In Progress
-- [ ] Testing nudge behavior with different session states
+- [ ] No active work in progress beyond this change
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify nudge behavior with various session states
-2. Consider adding user preferences for nudge frequency
-```
+1. Verify the new message format works as expected in different session states
+2. Consider adding similar enhancements to other notification types if needed
