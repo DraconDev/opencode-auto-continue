@@ -63,6 +63,8 @@ interface PluginConfig {
   compactMaxRetries: number;
   shortContinueMessage: string;
   tokenLimitPatterns: string[];
+  timerToastEnabled: boolean;
+  timerToastIntervalMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
