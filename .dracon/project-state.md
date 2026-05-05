@@ -1,22 +1,27 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for session recovery timer behavior after non-busy events
+Enhanced stall recovery with plan/compaction awareness, exponential backoff, and debug logging
 
 ## Context
-The changes enhance test reliability by simulating session status events during recovery attempts, ensuring proper timer handling after non-busy states.
+Improved session recovery by adding awareness for planning/compaction phases, implementing exponential backoff after max recovery attempts, and adding file-based debug logging
 
 ## Completed
-- [x] Added test case for session status event during recovery
-- [x] Updated version numbers to 3.35.17
-- [x] Enhanced test coverage for timer behavior after non-busy events
+- [x] Added plan detection to pause stall monitoring during planning
+- [x] Added compaction detection to pause stall monitoring during context compaction
+- [x] Implemented exponential backoff after max recovery attempts (up to 30 minutes)
+- [x] Added file-based debug logging with configurable output
+- [x] Expanded progress tracking to include more event types
+- [x] Updated documentation with new configuration options and behavior details
+- [x] Version bump to 3.35.20
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Comprehensive testing of new features
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for edge cases in session recovery
-2. Consider additional test scenarios for complex recovery flows
+1. Verify debug logging works correctly in production environments
+2. Monitor recovery behavior with new plan/compaction awareness
+3. Gather user feedback on exponential backoff timing
