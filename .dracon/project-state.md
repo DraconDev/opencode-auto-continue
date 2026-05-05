@@ -1,23 +1,20 @@
 # Project State
 
 ## Current Focus
-Added auto-continue functionality for idle sessions with pending todos
+Added session state tracking for busy status in auto-continue functionality
 
 ## Context
-The plugin now needs to handle cases where sessions become idle but still have pending tasks. This prevents sessions from getting stuck when there are unresolved todos.
+This change supports the auto-continue feature by tracking whether the system was previously busy, which helps determine if a session should be automatically resumed when idle.
 
 ## Completed
-- [x] Added `wasBusy` flag to track session activity state
-- [x] Implemented auto-continue logic for idle sessions with pending todos
-- [x] Added nudge cooldown check to prevent rapid nudges
-- [x] Integrated with existing session status tracking
+- [x] Added `wasBusy` state variable to track session activity status
 
 ## In Progress
-- [x] Auto-continue functionality for idle sessions with pending todos
+- [x] Implementation of busy state tracking for auto-continue logic
 
 ## Blockers
-- None identified in this change
+- None identified for this specific change
 
 ## Next Steps
-1. Add tests for the new auto-continue behavior
-2. Document the new configuration options for nudge behavior
+1. Implement logic to update `wasBusy` state based on actual system activity
+2. Integrate with existing auto-continue functionality to use this state for decision making
