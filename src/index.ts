@@ -83,6 +83,7 @@ interface PluginConfig {
   recoveryHistogramEnabled: boolean;
   stallPatternDetection: boolean;
   terminalProgressEnabled: boolean;
+  compactionVerifyWaitMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
