@@ -403,6 +403,47 @@ describe("opencode-auto-force-resume", () => {
     });
   });
 
+  describe("compaction handling", () => {
+    it("should pause monitoring during compaction", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
+
+      // Session becomes busy
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      
+      // Compaction starts - this should set compacting = true
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "compaction", auto: true }, delta: "" } } });
+      
+      // Timer fires - but should NOT abort because compacting = true
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should resume monitoring after compaction ends", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
+
+      // Session becomes busy and compaction starts
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "compaction", auto: true }, delta: "" } } });
+      
+      // Compaction ends (user sends message)
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: {} } } });
+      
+      // Now wait for stall - should abort because compacting was cleared
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
   describe("dispose", () => {
     it("should not crash when disposed during recovery", async () => {
       vi.useFakeTimers();
