@@ -1,26 +1,20 @@
 # Project State
 
 ## Current Focus
-Added comprehensive agent documentation for the auto-force-resume plugin
+Improved documentation for nudge cooldown behavior in idle session handling
 
 ## Context
-The project needed clear documentation for the agent behavior, session state machine, and recovery mechanisms to ensure consistent operation and easier debugging.
+This change clarifies how the `nudgeCooldownMs` setting applies to both session idle events and busy→idle transitions, ensuring consistent behavior across different session state changes.
 
 ## Completed
-- [x] Created AGENTS.md with detailed documentation of:
-  - Session state machine and transitions
-  - Nudge architecture and message templates
-  - Stall detection and recovery flow
-  - Token estimation and compaction strategies
-  - Status file format and terminal visibility
-  - Debugging instructions and common issues
+- [x] Updated documentation to explicitly state that `nudgeCooldownMs` applies to both session idle events and busy→idle transitions
 
 ## In Progress
-- [ ] None - documentation is complete
+- [x] Documentation update for nudge cooldown behavior
 
 ## Blockers
-- None - documentation is complete
+- None identified
 
 ## Next Steps
-1. Review documentation for completeness
-2. Update related code comments to reference this documentation
+1. Verify that the updated documentation matches the actual implementation behavior
+2. Consider if additional documentation is needed for other related configuration options

@@ -272,7 +272,7 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | `nudgeEnabled` | `true` | Send continue prompts for incomplete todos |
 | `nudgeTimeoutMs` | `300000` | Idle time before nudge (5 min) |
 | `nudgeMessage` | `"The session has {pending}..."` | Nudge message telling agent to continue |
-| `nudgeCooldownMs` | `60000` | Min time between nudges (1 min) |
+| `nudgeCooldownMs` | `60000` | Min time between nudges (1 min); applies to both `session.idle` events and busy→idle transitions |
 
 ### Compaction Options
 
