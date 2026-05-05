@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced test validation for token limit handling configuration
+Enhanced proactive compaction configuration with dual thresholds (absolute tokens and percentage)
 
 ## Context
-The recent changes improved token limit error handling with proactive compaction and retry logic. The test suite now needs validation to ensure proper configuration of token limit patterns, proactive compaction thresholds, and short continue messages.
+To improve token limit handling, we're adding more flexible compaction triggers that can activate based on either absolute token counts or percentage thresholds of the session's token usage.
 
 ## Completed
-- [x] Added validation tests for token limit patterns configuration
-- [x] Added validation tests for proactive compaction threshold configuration
-- [x] Added validation tests for short continue message configuration
-- [x] Simplified test cases by removing redundant mock setups
-- [x] Updated test assertions to verify default values when validation fails
+- [x] Renamed `proactiveCompactThreshold` to `proactiveCompactAtTokens` to clarify it's a token count
+- [x] Added `proactiveCompactAtPercent` to support percentage-based compaction triggers
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Implementation of dual-threshold compaction logic (not yet in this diff)
 
 ## Blockers
-- None identified
+- Need to implement the actual compaction logic that uses these thresholds
 
 ## Next Steps
-1. Review test coverage for other configuration validation scenarios
-2. Consider adding integration tests for the validated configurations
+1. Implement compaction logic that checks both token count and percentage thresholds
+2. Add tests for the new threshold-based compaction behavior

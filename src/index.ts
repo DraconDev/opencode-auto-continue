@@ -54,7 +54,8 @@ interface PluginConfig {
   nudgeCooldownMs: number;
   autoCompact: boolean;
   maxSessionAgeMs: number;
-  proactiveCompactThreshold: number;
+  proactiveCompactAtTokens: number;
+  proactiveCompactAtPercent: number;
   compactRetryDelayMs: number;
   compactMaxRetries: number;
   shortContinueMessage: string;
