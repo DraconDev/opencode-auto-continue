@@ -1,23 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored nudge notification system to delegate scheduling to the nudge module
+Refactored nudge notification timer reset logic to use centralized nudge module
 
 ## Context
-The previous implementation had the nudge logic tightly coupled with the session idle handler. This change separates concerns by moving the nudge scheduling to the dedicated nudge module, which handles cooldown, loop protection, and other nudge-related logic.
+The nudge notification system was previously handling timer management directly in the main plugin. This change extracts that responsibility to the centralized nudge module for better separation of concerns and maintainability.
 
 ## Completed
-- [x] Removed direct nudge triggering logic from session idle handler
-- [x] Added call to `nudge.scheduleNudge()` to delegate nudge scheduling
-- [x] Kept status file writing for session tracking
+- [x] Removed direct timer management code from the main plugin
+- [x] Replaced with centralized `nudge.resetNudge()` call
+- [x] Maintained same functionality while improving code organization
 
 ## In Progress
-- [ ] Verify nudge module properly handles all edge cases (cooldown, loop protection)
-- [ ] Update documentation for the new nudge scheduling interface
+- [ ] No active work in progress
 
 ## Blockers
-- Need to ensure the nudge module's cooldown and loop protection logic matches previous behavior
+- None identified
 
 ## Next Steps
-1. Update nudge module tests to verify new scheduling behavior
-2. Document the new nudge scheduling interface in the module's documentation
+1. Verify all nudge-related functionality remains consistent
+2. Update related documentation if needed

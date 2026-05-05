@@ -979,11 +979,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.autoSubmitCount = 0;
             s.attempts = 0;
             s.backoffAttempts = 0;
-            // Reset nudge timer on user activity
-            if (s.nudgeTimer) {
-              clearTimeout(s.nudgeTimer);
-              s.nudgeTimer = null;
-            }
+            nudge.resetNudge(sid);
             log('user message detected, resetting counters:', sid);
           }
         }
