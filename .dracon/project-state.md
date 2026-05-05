@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Removed the nudge notification system from the main plugin
+Refactored nudge notification system to delegate scheduling to the nudge module
 
 ## Context
-The nudge notification system was previously implemented to remind users about pending tasks in idle sessions. This change removes the feature as part of ongoing refactoring and modularization efforts.
+The previous implementation had the nudge logic tightly coupled with the session idle handler. This change separates concerns by moving the nudge scheduling to the dedicated nudge module, which handles cooldown, loop protection, and other nudge-related logic.
 
 ## Completed
-- [x] Removed the `sendNudge` function and all related nudge notification logic
-- [x] Cleaned up associated session tracking and configuration references
+- [x] Removed direct nudge triggering logic from session idle handler
+- [x] Added call to `nudge.scheduleNudge()` to delegate nudge scheduling
+- [x] Kept status file writing for session tracking
 
 ## In Progress
-- [x] Ongoing modularization of terminal and notification functionality
+- [ ] Verify nudge module properly handles all edge cases (cooldown, loop protection)
+- [ ] Update documentation for the new nudge scheduling interface
 
 ## Blockers
-- None identified
+- Need to ensure the nudge module's cooldown and loop protection logic matches previous behavior
 
 ## Next Steps
-1. Continue modularizing remaining notification-related functionality
-2. Integrate the cleaned-up notification module into the main plugin initialization flow
+1. Update nudge module tests to verify new scheduling behavior
+2. Document the new nudge scheduling interface in the module's documentation
