@@ -1,20 +1,24 @@
 # Project State
 
 ## Current Focus
-Added session creation timestamp tracking to the session state interface
+Added session age tracking to prevent indefinite stalled sessions
 
 ## Context
-This change supports enhanced session management by recording when a session was created, which will enable better tracking of session duration and potential timeout handling.
+To prevent sessions from getting stuck indefinitely, we need to enforce a maximum session lifetime. This addresses cases where sessions might remain open without progress for extended periods, consuming resources unnecessarily.
 
 ## Completed
-- [x] Added `sessionCreatedAt` field to `SessionState` interface to track session creation time
+- [x] Added `maxSessionAgeMs` configuration option (default: 2 hours)
+- [x] Added session creation timestamp tracking
+- [x] Implemented session age check during recovery attempts
+- [x] Added validation for `maxSessionAgeMs` configuration
+- [x] Updated version numbers in package files
 
 ## In Progress
-- [x] Implementation of session duration tracking and timeout handling
+- [ ] No active work in progress
 
 ## Blockers
-- Need to implement the actual timestamp assignment logic when sessions are created
+- None identified
 
 ## Next Steps
-1. Implement session timestamp assignment in session initialization code
-2. Add session duration monitoring and timeout handling based on the creation timestamp
+1. Test session expiration behavior with various timeout values
+2. Consider adding notifications when sessions are about to expire

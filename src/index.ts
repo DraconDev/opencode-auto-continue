@@ -50,6 +50,7 @@ interface PluginConfig {
   nudgeMessage: string;
   nudgeCooldownMs: number;
   autoCompact: boolean;
+  maxSessionAgeMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -76,6 +77,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   nudgeMessage: "You have {pending} open task(s). Send a message when you're ready to continue.",
   nudgeCooldownMs: 60000,
   autoCompact: true,
+  maxSessionAgeMs: 7200000,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -120,6 +122,10 @@ function validateConfig(config: PluginConfig): PluginConfig {
   }
   if (config.reviewDebounceMs < 0) {
     errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
+  }
+
+  if (config.maxSessionAgeMs < 0) {
+    errors.push(`maxSessionAgeMs must be >= 0, got ${config.maxSessionAgeMs}`);
   }
 
   if (errors.length > 0) {
@@ -170,6 +176,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         hasOpenTodos: false,
         needsContinue: false,
         continueMessageText: '',
+        sessionCreatedAt: Date.now(),
       });
     }
     return sessions.get(id)!;
@@ -476,6 +483,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
     if (now - s.lastRecoveryTime < config.cooldownMs) return;
 
+    // Check session age
+    if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
+      log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
+      s.aborting = false;
+      return;
+    }
+
     s.aborting = true;
 
     try {
@@ -488,9 +502,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      if (now - s.lastProgressAt < config.stallTimeoutMs) {
+      // Recalculate now after async operations
+      const currentTime = Date.now();
+
+      if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
         s.aborting = false;
-        const remaining = config.stallTimeoutMs - (now - s.lastProgressAt);
+        const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
         s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
         return;
       }
