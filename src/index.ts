@@ -28,7 +28,9 @@ interface PluginConfig {
   debug: boolean;
   maxBackoffMs: number;
   maxAutoSubmits: number;
-  messageFormat: string;
+  continueMessage: string;
+  continueWithTodosMessage: string;
+  maxAttemptsMessage: string;
   includeTodoContext: boolean;
 }
 

@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Version bump from 3.38.0 to 3.38.1 in package metadata
+Enhanced session recovery messaging with configurable message formats
 
 ## Context
-This is a minor version bump following recent improvements to session recovery functionality, including enhanced error handling, timer optimizations, and redundant code removal.
+The previous single `messageFormat` field was too limiting for different recovery scenarios. This change supports distinct messages for different recovery states (continue, continue with TODOs, max attempts reached).
 
 ## Completed
-- [x] Updated package version from 3.38.0 to 3.38.1 in package.json
-- [x] Synchronized version in package-lock.json to match package.json
+- [x] Added `continueMessage` for standard recovery prompts
+- [x] Added `continueWithTodosMessage` for recovery with pending TODOs
+- [x] Added `maxAttemptsMessage` for when maximum recovery attempts are reached
+- [x] Removed the single `messageFormat` field in favor of specialized fields
 
 ## In Progress
-- [ ] No active work in progress beyond version bump
+- [ ] Testing message formatting across different recovery scenarios
 
 ## Blockers
-- None identified for this version bump
+- Need to verify message templates work with existing i18n system
 
 ## Next Steps
-1. Prepare release notes for version 3.38.1
-2. Begin work on next feature or bugfix following the version bump
+1. Update documentation for new message configuration options
+2. Add integration tests for message formatting in recovery flows
