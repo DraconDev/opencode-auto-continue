@@ -457,7 +457,10 @@ describe("opencode-auto-force-resume", () => {
       const mockSummarize = vi.fn().mockResolvedValue({ data: true });
       mockClient.session.summarize = mockSummarize as any;
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      // First prompt fails with token limit error
       mockPrompt.mockRejectedValueOnce(new Error("maximum context length exceeded"));
+      // Retry prompt after compaction succeeds
+      mockPrompt.mockResolvedValueOnce({ data: {} });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
@@ -467,14 +470,15 @@ describe("opencode-auto-force-resume", () => {
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
-      // Simulate idle to trigger sendContinue
+      // Simulate idle to trigger sendContinue - this will fail with token limit, trigger compaction, then retry
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(100);
+      // Advance enough time for forceCompact retries (2s + 3s + 6s = 11s max)
+      await vi.advanceTimersByTimeAsync(12000);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
 
-      // First prompt fails with token limit error, then compaction is attempted
+      // Should have called prompt (first attempt fails, retry succeeds)
       expect(mockPrompt).toHaveBeenCalled();
 
       // Now simulate another recovery - should use short message
@@ -495,7 +499,7 @@ describe("opencode-auto-force-resume", () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Should use short continue message
+      // Should use short continue message due to tokenLimitHits > 0
       const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
       expect(lastCall[0].body.parts[0].text).toBe("Continue.");
 
@@ -517,6 +521,8 @@ describe("opencode-auto-force-resume", () => {
       vi.useFakeTimers();
       const mockSummarize = vi.fn().mockResolvedValue({ data: true });
       mockClient.session.summarize = mockSummarize as any;
+      // Return idle after compaction
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
       
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, proactiveCompactThreshold: 3, autoCompact: true });
 
@@ -527,6 +533,7 @@ describe("opencode-auto-force-resume", () => {
 
       // Trigger idle status - should trigger proactive compaction
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      // Advance enough time for attemptCompact (2s delay)
       await vi.advanceTimersByTimeAsync(3000);
       await Promise.resolve();
       await Promise.resolve();
@@ -541,7 +548,10 @@ describe("opencode-auto-force-resume", () => {
       const mockSummarize = vi.fn().mockResolvedValue({ data: true });
       mockClient.session.summarize = mockSummarize as any;
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      // First prompt fails with custom token limit error
       mockPrompt.mockRejectedValueOnce(new Error("payload too large for context window"));
+      // Retry succeeds
+      mockPrompt.mockResolvedValueOnce({ data: {} });
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0, tokenLimitPatterns: ['payload too large', 'context window'] });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
@@ -553,12 +563,13 @@ describe("opencode-auto-force-resume", () => {
 
       // Simulate idle to trigger sendContinue which will hit token limit error
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(5000);
+      // Advance enough time for forceCompact
+      await vi.advanceTimersByTimeAsync(12000);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
 
-      // Should have attempted to handle token limit error (prompt was called and failed)
+      // Should have attempted to handle token limit error
       expect(mockPrompt).toHaveBeenCalled();
 
       vi.useRealTimers();
