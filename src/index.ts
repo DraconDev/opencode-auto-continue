@@ -141,6 +141,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   recoveryHistogramEnabled: true,
   stallPatternDetection: true,
   terminalProgressEnabled: true,
+  compactionVerifyWaitMs: 10000,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {

@@ -4,18 +4,19 @@
 Added new configuration option for compaction verification wait time
 
 ## Context
-This change supports enhanced session recovery tracking by allowing configuration of how long to wait during compaction verification. It complements recent work on stall pattern detection and terminal progress integration.
+This change adds a new configuration parameter to control the wait time during compaction verification, which is part of ongoing work to enhance session recovery and compaction tracking features.
 
 ## Completed
-- [x] Added `compactionVerifyWaitMs` to PluginConfig interface
-- [x] Initialized default value in DEFAULT_CONFIG
+- [x] Added `compactionVerifyWaitMs` configuration option with default value of 10000ms
 
 ## In Progress
-- [x] Implementation of the wait time functionality
+- [ ] Integration testing of the new configuration option
+- [ ] Documentation updates for the new configuration parameter
 
 ## Blockers
-- Need to implement the actual wait time logic in the compaction verification process
+- None identified at this stage
 
 ## Next Steps
-1. Implement the wait time logic in the compaction verification process
-2. Add corresponding tests for the new configuration option
+1. Complete integration tests for the new configuration
+2. Update documentation to include the new parameter
+3. Verify impact on session recovery operations
