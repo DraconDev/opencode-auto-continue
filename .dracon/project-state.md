@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Added configuration options for timer toast notifications with validation
+Added session action tracking and toast timer management for proactive notifications
 
 ## Context
-This change enables timer toast notifications in the plugin, allowing users to configure how frequently they receive session action tracking updates. The validation ensures the interval meets minimum requirements.
+This change implements tracking for when actions start and manages toast notification timers to provide proactive feedback to users about ongoing operations.
 
 ## Completed
-- [x] Added `timerToastEnabled` and `timerToastIntervalMs` to default configuration
-- [x] Added validation for minimum interval of 10 seconds (10000ms)
+- [x] Added `actionStartedAt` timestamp to track when session actions begin
+- [x] Added `toastTimer` to manage notification intervals
+- [x] Implemented cleanup of toast timers when sessions are deleted
 
 ## In Progress
-- [x] Implementation of toast notification system
+- [x] Session action tracking and notification management
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Implement the toast notification system using the configured interval
-2. Add user interface controls for these settings
+1. Implement toast notification display logic
+2. Add configuration options for toast timing and behavior

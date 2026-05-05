@@ -289,6 +289,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         estimatedTokens: 0,
         lastCompactionAt: 0,
         tokenLimitHits: 0,
+        actionStartedAt: 0,
+        toastTimer: null,
       });
     }
     return sessions.get(id)!;
@@ -330,6 +332,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.estimatedTokens = 0;
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
+      s.actionStartedAt = 0;
+      if (s.toastTimer) {
+        clearInterval(s.toastTimer);
+        s.toastTimer = null;
+      }
     }
     sessions.delete(id);
   }
