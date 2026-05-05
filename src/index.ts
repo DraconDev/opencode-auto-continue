@@ -428,6 +428,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     log('sending continue prompt from event handler');
     
     try {
+      s.messageCount++;
       await (input.client.session as any).prompt({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" },
@@ -446,20 +447,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       
       // Handle token limit error
       if (isTokenLimitError(e)) {
-        log('token limit error detected, forcing compaction');
+        s.tokenLimitHits++;
+        log('token limit error detected (hit #' + s.tokenLimitHits + '), forcing compaction');
         const compacted = await forceCompact(sessionId);
         if (compacted) {
-          log('compaction succeeded, retrying continue');
-          // Retry after compaction
+          log('compaction succeeded, retrying continue with short message');
+          // Retry after compaction with very short message
           await new Promise(r => setTimeout(r, 2000));
           try {
+            s.messageCount++;
             await (input.client.session as any).prompt({
               path: { id: sessionId },
               query: { directory: (input as any).directory || "" },
               body: {
                 parts: [{
                   type: "text",
-                  text: "Please continue from where you left off.",
+                  text: config.shortContinueMessage,
                   synthetic: true,
                 }],
               },

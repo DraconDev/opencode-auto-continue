@@ -1,31 +1,26 @@
 # Project State
 
 ## Current Focus
-Enhanced token limit handling with proactive compaction and retry logic
+Improve token limit error handling by tracking hit counts and using configurable short messages
 
 ## Context
-The code now handles token limit errors more robustly by implementing:
-1. Configurable token limit detection patterns
-2. Retry logic for compaction attempts
-3. Proactive compaction based on message thresholds
-4. Better session state tracking during compaction
+This change enhances the proactive compaction system by:
+1. Tracking token limit hits with a counter
+2. Using a configurable short message for retries
+3. Maintaining message count tracking for session state
 
 ## Completed
-- [x] Refactored token limit error detection to use configurable patterns
-- [x] Implemented retry logic for compaction attempts (configurable retries and delays)
-- [x] Added proactive compaction triggered by message count thresholds
-- [x] Enhanced session state tracking during compaction (busy status, timestamps)
-- [x] Improved logging for compaction operations and failures
+- [x] Added token limit hit counter (`s.tokenLimitHits`)
+- [x] Enhanced error logging with hit count
+- [x] Replaced hardcoded continue message with configurable `shortContinueMessage`
+- [x] Maintained message count tracking for both continue attempts
 
 ## In Progress
-- [ ] Testing edge cases for compaction retry logic
-- [ ] Performance benchmarking of proactive compaction
+- [x] Implementation of token limit tracking and configurable messages
 
 ## Blockers
-- Need to verify compaction cooldown timing (currently 5 minutes)
-- Requires integration testing with various token limit scenarios
+- None identified in this change
 
 ## Next Steps
-1. Complete integration testing with different token limit patterns
-2. Optimize compaction timing parameters based on test results
-3. Document new configuration options for token limit handling
+1. Verify the new message configuration works in all edge cases
+2. Monitor session state tracking for accuracy in production
