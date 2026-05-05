@@ -981,7 +981,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       
       // Wait for compaction with progressive checks
       // Compaction can take several seconds for large contexts
-      const waitTimes = [2000, 3000, 5000];
+      const maxWait = config.compactionVerifyWaitMs;
+      const waitTimes = [2000, 3000, 5000].filter(t => t <= maxWait);
+      if (waitTimes.length === 0) waitTimes.push(maxWait);
+      
       for (const waitMs of waitTimes) {
         await new Promise(r => setTimeout(r, waitMs));
         
