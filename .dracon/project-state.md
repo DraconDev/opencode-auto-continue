@@ -1,20 +1,23 @@
 # Project State
 
 ## Current Focus
-Removed "session.idle" from stale session types in AutoForceResumePlugin
+Added automatic nudging for idle sessions with pending todos
 
 ## Context
-The change removes "session.idle" from the list of stale session types that trigger auto-resume behavior. This was likely done to prevent idle sessions from being treated as stale when they should remain in a paused state.
+The plugin now needs to proactively nudge users when sessions become idle but have pending todos, ensuring tasks aren't forgotten. This follows recent work on auto-continue functionality and session state tracking.
 
 ## Completed
-- [x] Removed "session.idle" from stale session type list in AutoForceResumePlugin
+- [x] Added session.idle event handler to check for pending todos
+- [x] Implemented nudge logic with cooldown period
+- [x] Maintained session timer for idle states
+- [x] Added logging for nudge decisions
 
 ## In Progress
-- [x] Analysis of impact on session state management
+- [x] Nudge functionality for idle sessions with pending todos
 
 ## Blockers
-- Need to verify if this change affects pending session resume functionality
+- None identified
 
 ## Next Steps
-1. Test session state transitions with the updated stale type list
-2. Document the reasoning behind this change in the session state management documentation
+1. Add unit tests for nudge logic
+2. Document nudge configuration options

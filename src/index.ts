@@ -1663,6 +1663,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
+      // session.idle fires when the model stops generating and goes idle
+      // This is the perfect time to check for pending todos and nudge the agent
+      if (event?.type === "session.idle") {
+        const s = getSession(sid);
+        if (config.nudgeEnabled && s.hasOpenTodos && Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
+          log('session idle with pending todos, sending nudge:', sid);
+          await sendNudge(sid);
+        } else {
+          log('session idle, no nudge needed:', sid, 'enabled:', config.nudgeEnabled, 'hasTodos:', s.hasOpenTodos);
+        }
+        // Keep timer running — idle is not terminal
+        writeStatusFile(sid);
+        return;
+      }
+
       if (staleTypes.includes(event?.type)) {
         log('stale event:', event?.type, sid);
         resetSession(sid);
