@@ -1126,6 +1126,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             log('user message detected, resetting counters:', sid);
           }
         }
+        writeStatusFile(sid);
         return;
       }
 
