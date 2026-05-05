@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Enhanced proactive compaction configuration with dual thresholds (absolute tokens and percentage)
+Enhanced proactive compaction configuration with dual thresholds for token management
 
 ## Context
-To improve token limit handling, we're adding more flexible compaction triggers that can activate based on either absolute token counts or percentage thresholds of the session's token usage.
+The proactive compaction system was previously configured with a single threshold value. This change introduces more granular control by allowing configuration based on both absolute token counts and percentage thresholds.
 
 ## Completed
-- [x] Renamed `proactiveCompactThreshold` to `proactiveCompactAtTokens` to clarify it's a token count
-- [x] Added `proactiveCompactAtPercent` to support percentage-based compaction triggers
+- [x] Replaced single `proactiveCompactThreshold` with dual thresholds: `proactiveCompactAtTokens` (absolute count) and `proactiveCompactAtPercent` (percentage of capacity)
+- [x] Updated validation to enforce proper ranges for both new threshold types
+- [x] Maintained backward compatibility with existing configuration structure
 
 ## In Progress
-- [x] Implementation of dual-threshold compaction logic (not yet in this diff)
+- [ ] Update related documentation to reflect the new configuration options
+- [ ] Add unit tests for the new threshold validation logic
 
 ## Blockers
-- Need to implement the actual compaction logic that uses these thresholds
+- None identified at this time
 
 ## Next Steps
-1. Implement compaction logic that checks both token count and percentage thresholds
-2. Add tests for the new threshold-based compaction behavior
+1. Update documentation to explain the new configuration options
+2. Implement comprehensive test coverage for the new threshold system

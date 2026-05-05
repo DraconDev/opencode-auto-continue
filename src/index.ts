@@ -87,7 +87,8 @@ const DEFAULT_CONFIG: PluginConfig = {
   nudgeCooldownMs: 60000,
   autoCompact: true,
   maxSessionAgeMs: 7200000,
-  proactiveCompactThreshold: 50,
+  proactiveCompactAtTokens: 100000,
+  proactiveCompactAtPercent: 50,
   compactRetryDelayMs: 3000,
   compactMaxRetries: 3,
   shortContinueMessage: "Continue.",
@@ -152,8 +153,11 @@ function validateConfig(config: PluginConfig): PluginConfig {
     errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
   }
 
-  if (config.proactiveCompactThreshold < 0) {
-    errors.push(`proactiveCompactThreshold must be >= 0, got ${config.proactiveCompactThreshold}`);
+  if (config.proactiveCompactAtTokens < 0) {
+    errors.push(`proactiveCompactAtTokens must be >= 0, got ${config.proactiveCompactAtTokens}`);
+  }
+  if (config.proactiveCompactAtPercent < 0 || config.proactiveCompactAtPercent > 100) {
+    errors.push(`proactiveCompactAtPercent must be between 0 and 100, got ${config.proactiveCompactAtPercent}`);
   }
   if (config.compactRetryDelayMs < 0) {
     errors.push(`compactRetryDelayMs must be >= 0, got ${config.compactRetryDelayMs}`);
