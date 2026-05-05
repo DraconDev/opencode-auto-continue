@@ -1,21 +1,27 @@
 # Project State
 
 ## Current Focus
-Refactored nudge notification configuration to support idle delay and maximum submit limits.
+Enhanced nudge notification system with idle delay, submit limits, and pause functionality
 
 ## Context
-The nudge notification system was being refactored to simplify triggering logic. This change adjusts the configuration to better control when nudges appear and how many times they can be triggered.
+The nudge notification system was being refactored to improve user experience and prevent notification spam. This change adds more granular control over when nudges are shown and how often they can be triggered.
 
 ## Completed
-- [x] Renamed `nudgeTimeoutMs` to `nudgeIdleDelayMs` to clarify its purpose as an idle delay
-- [x] Added `nudgeMaxSubmits` to limit the number of nudge submissions
+- [x] Added `nudgeCount` to track how many times a nudge has been shown
+- [x] Added `lastTodoSnapshot` to compare current todos against previous state
+- [x] Added `nudgePaused` flag to temporarily disable nudges
+- [x] Renamed `nudgeTimeoutMs` to `nudgeIdleDelayMs` for clearer semantics
+- [x] Added `nudgeMaxSubmits` to limit how many times nudges can be triggered
 
 ## In Progress
-- [ ] Verify the new configuration values work correctly in integration tests
+- [ ] Implement logic to compare `lastTodoSnapshot` with current todos
+- [ ] Implement cooldown behavior using `nudgePaused` flag
 
 ## Blockers
-- Need to update tests to account for the new configuration options
+- Need to implement the actual comparison logic between todo snapshots
+- Need to define exact behavior for when to pause/resume nudges
 
 ## Next Steps
-1. Update nudge notification tests to verify behavior with new configuration
-2. Document the new configuration options in the plugin documentation
+1. Implement todo snapshot comparison logic
+2. Add tests for the new nudge control features
+3. Document the new configuration options in the plugin documentation

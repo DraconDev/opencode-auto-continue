@@ -20,6 +20,9 @@ export interface SessionState {
   reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
   nudgeTimer: ReturnType<typeof setTimeout> | null;
   lastNudgeAt: number;
+  nudgeCount: number;
+  lastTodoSnapshot: string;
+  nudgePaused: boolean;
   hasOpenTodos: boolean;
   needsContinue: boolean;
   continueMessageText: string;
@@ -109,7 +112,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
   reviewDebounceMs: 500,
   showToasts: false,
   nudgeEnabled: true,
-  nudgeTimeoutMs: 300000,
+  nudgeIdleDelayMs: 500,
+  nudgeMaxSubmits: 3,
   nudgeMessage: "The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks.",
   nudgeCooldownMs: 60000,
   autoCompact: true,
