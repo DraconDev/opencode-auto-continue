@@ -1,20 +1,24 @@
 # Project State
 
 ## Current Focus
-Version bump from 3.31.46 to 3.32.1 in package-lock.json
+Added notification system for stuck session recovery attempts
 
 ## Context
-This version bump aligns with recent documentation updates and session recovery improvements in the auto-force-resume plugin.
+When sessions get stuck during recovery attempts (no progress detected), the system now notifies users with a clear message about the recovery status and attempt count.
 
 ## Completed
-- [x] Updated package-lock.json version to 3.32.1 to reflect recent changes
+- [x] Added time calculation for stuck duration (minutes/seconds)
+- [x] Implemented notification system with recovery status
+- [x] Added fallback for different notification methods
+- [x] Included session ID and directory in notification path
+- [x] Gracefully handle notification failures
 
 ## In Progress
-- [x] Version synchronization across package.json and package-lock.json
+- [x] Notification system implementation
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Verify all dependent packages are compatible with version 3.32.1
-2. Update package.json to match the new version if needed
+1. Verify notification formatting across different client types
+2. Add tests for notification content and timing
