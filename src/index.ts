@@ -633,7 +633,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
           log('session idle, sending queued continue');
-          sendContinue(sid);
+          await sendContinue(sid);
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {

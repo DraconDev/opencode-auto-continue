@@ -77,6 +77,7 @@ describe("opencode-auto-force-resume integration", () => {
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
     await vi.advanceTimersByTimeAsync(100);
     await Promise.resolve();
+    await Promise.resolve();  // Extra tick for async sendContinue
     
     // Step 6: Should have called continue prompt (only the continue message, no notification)
     expect(mockPromptAsync).toHaveBeenCalledTimes(1);
@@ -119,6 +120,13 @@ describe("opencode-auto-force-resume integration", () => {
     await Promise.resolve();
     
     expect(mockAbort).toHaveBeenCalledTimes(1);
+    
+    // Trigger continue via session.status (idle)
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
+    await vi.advanceTimersByTimeAsync(100);
+    await Promise.resolve();
+    await Promise.resolve();  // Extra tick for async sendContinue
+    
     // only the continue message, no notification
     expect(mockPrompt).toHaveBeenCalledTimes(1);
     
