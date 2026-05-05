@@ -16,6 +16,8 @@ interface SessionState {
   autoSubmitCount: number;
   lastUserMessageId: string;
   sentMessageAt: number;
+  reviewFired: boolean;
+  reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
 }
 
 interface PluginConfig {
@@ -145,6 +147,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         autoSubmitCount: 0,
         lastUserMessageId: '',
         sentMessageAt: 0,
+        reviewFired: false,
+        reviewDebounceTimer: null,
       });
     }
     return sessions.get(id)!;
@@ -169,6 +173,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.autoSubmitCount = 0;
       s.lastUserMessageId = '';
       s.sentMessageAt = 0;
+      s.reviewFired = false;
+      if (s.reviewDebounceTimer) {
+        clearTimeout(s.reviewDebounceTimer);
+        s.reviewDebounceTimer = null;
+      }
     }
     sessions.delete(id);
   }
@@ -232,6 +241,50 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function formatMessage(template: string, vars: Record<string, string>): string {
     return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
+  }
+
+  async function triggerReview(sessionId: string) {
+    if (isDisposed) return;
+    const s = sessions.get(sessionId);
+    if (!s || s.reviewFired) return;
+    
+    s.reviewFired = true;
+    log('triggering review for session:', sessionId);
+    
+    try {
+      // Show toast if enabled
+      if (config.showToasts) {
+        try {
+          await (input.client as any).tui.showToast({
+            query: { directory: (input as any).directory || "" },
+            body: {
+              title: "Session Complete",
+              message: "All tasks completed. Initiating review...",
+              variant: "info",
+            },
+          });
+        } catch (e) {
+          log('toast error (ignored):', e);
+        }
+      }
+      
+      // Send review prompt
+      await (input.client.session as any).prompt({
+        path: { id: sessionId },
+        query: { directory: (input as any).directory || "" },
+        body: {
+          parts: [{
+            type: "text",
+            text: config.reviewMessage,
+            synthetic: true,
+          }],
+        },
+      });
+      
+      log('review sent successfully');
+    } catch (e) {
+      log('review failed:', e);
+    }
   }
 
   async function recover(sessionId: string) {
@@ -552,6 +605,32 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
+      if (event?.type === "todo.updated") {
+        const todos = e?.properties?.todos;
+        if (!Array.isArray(todos)) return;
+        
+        const s = getSession(sid);
+        const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
+        
+        if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
+          // Cancel any existing debounce timer
+          if (s.reviewDebounceTimer) {
+            clearTimeout(s.reviewDebounceTimer);
+          }
+          
+          // Debounce the review trigger
+          s.reviewDebounceTimer = setTimeout(() => {
+            s.reviewDebounceTimer = null;
+            triggerReview(sid);
+          }, config.reviewDebounceMs);
+        } else if (!allCompleted && s.reviewDebounceTimer) {
+          // Cancel review if todos become incomplete again
+          clearTimeout(s.reviewDebounceTimer);
+          s.reviewDebounceTimer = null;
+        }
+        return;
+      }
+
       if (staleTypes.includes(event?.type)) {
         log('stale event:', event?.type, sid);
         resetSession(sid);
@@ -565,6 +644,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.timer) {
           clearTimeout(s.timer);
           s.timer = null;
+        }
+        if (s.reviewDebounceTimer) {
+          clearTimeout(s.reviewDebounceTimer);
+          s.reviewDebounceTimer = null;
         }
       });
       sessions.clear();

@@ -4,21 +4,22 @@
 Added configurable review and toast notification features for session completion
 
 ## Context
-This change enhances session management by allowing configurable review prompts and toast notifications when all tasks in a session are completed. The previous implementation lacked structured feedback mechanisms for completed sessions.
+The plugin now automatically triggers a review prompt when all todos in a session are completed, with configurable debouncing and toast notifications to improve user experience.
 
 ## Completed
-- [x] Added `reviewOnComplete` boolean flag to enable/disable review prompts
-- [x] Added `reviewMessage` template for structured session review prompts
-- [x] Added `reviewDebounceMs` to control review prompt timing
-- [x] Added `showToasts` flag to enable/disable toast notifications
-- [x] Added validation for new configuration options
+- [x] Added `reviewFired` flag to track review state
+- [x] Added `reviewDebounceTimer` for configurable delay
+- [x] Implemented `triggerReview` function with toast and review prompt
+- [x] Added todo completion detection with debounced review trigger
+- [x] Included cleanup for review timer on session reset
+- [x] Added config options for review behavior and messages
 
 ## In Progress
-- [ ] No active work in progress beyond these changes
+- [x] Implementation of the review feature with all configuration options
 
 ## Blockers
-- None identified for this specific change
+- None identified in this commit
 
 ## Next Steps
-1. Update documentation to reflect new configuration options
-2. Add integration tests for the review and toast notification features
+1. Test review feature with different debounce configurations
+2. Verify toast notifications work across different client environments
