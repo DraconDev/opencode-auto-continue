@@ -1,15 +1,14 @@
 # Project State
 
 ## Current Focus
-Refactored file reading in integration tests to use Node.js `fs` instead of Bun's file API
+Refactored file reading in integration tests to use Node.js `fs` instead of Bun's file API.
 
 ## Context
-The integration tests were previously using Bun's file API (`Bun.file()`) to read status files. This was changed to use Node.js's `fs.readFileSync()` for consistency with other parts of the codebase that use Node.js APIs.
+The integration tests were previously using Bun's `Bun.file().text()` for reading status files. This was changed to use Node.js's `fs.readFileSync()` for consistency with other parts of the codebase that use synchronous file operations.
 
 ## Completed
-- [x] Replaced `Bun.file().text()` with `fs.readFileSync()` for reading status files
-- [x] Updated test assertions to maintain the same functionality
-- [x] Maintained the same error handling behavior for status file operations
+- [x] Replaced `Bun.file(tmpStatusFile).text()` with `readFileSync(tmpStatusFile, "utf-8")` in three locations
+- [x] Maintained the same functionality while using Node.js file system API
 
 ## In Progress
 - [x] No active work in progress beyond the refactoring
@@ -18,5 +17,5 @@ The integration tests were previously using Bun's file API (`Bun.file()`) to rea
 - None identified
 
 ## Next Steps
-1. Verify all tests pass with the new file reading implementation
-2. Consider whether to standardize on Node.js APIs across the entire codebase
+1. Verify test coverage remains complete after the change
+2. Consider if other test files should follow this pattern for consistency

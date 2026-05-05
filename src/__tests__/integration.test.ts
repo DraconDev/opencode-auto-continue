@@ -193,14 +193,14 @@ describe("opencode-auto-force-resume integration", () => {
     // Step 2: Send a progress event — status file updates
     await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test-session", messageID: "msg1" }, delta: "hello" } } });
 
-    statusContent = await Bun.file(tmpStatusFile).text();
+    statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
     expect(status.sessions["test-session"].timer.lastProgressAgo).toBeDefined();
 
     // Step 3: Send todo with pending todos — nudge state tracked
     await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [{ id: "t1", content: "test task", status: "in_progress" }] } } });
 
-    statusContent = await Bun.file(tmpStatusFile).text();
+    statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
     expect(status.sessions["test-session"].todos.hasOpenTodos).toBe(true);
 
@@ -209,7 +209,7 @@ describe("opencode-auto-force-resume integration", () => {
     mockPrompt.mockResolvedValue({ data: {}, error: undefined });
     await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
 
-    statusContent = await Bun.file(tmpStatusFile).text();
+    statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
     expect(status.sessions["test-session"].nudge.lastNudgeAt).toBeDefined();
 
