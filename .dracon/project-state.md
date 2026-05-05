@@ -4,20 +4,19 @@
 Added configurable nudge system for pending tasks in session management
 
 ## Context
-This change extends the session management system by introducing a configurable nudge feature that reminds users about pending tasks after a specified timeout period. This helps maintain focus and prevents task abandonment during long sessions.
+This change extends the session state management to include a nudge system for reminding users about pending tasks. The nudge system will help maintain user engagement by prompting them to complete outstanding todos.
 
 ## Completed
-- [x] Added nudge configuration options to PluginConfig interface
-- [x] Implemented default nudge settings (enabled, 5-minute timeout, customizable message, 1-minute cooldown)
-- [x] Added type definitions for nudge-related configuration properties
+- [x] Added `nudgeTimer` to track active nudge timers
+- [x] Added `lastNudgeAt` to track when the last nudge was sent
+- [x] Added `hasOpenTodos` flag to track pending tasks
 
 ## In Progress
-- [ ] Implementation of the actual nudge functionality (not yet in this commit)
+- [ ] Implement the actual nudge logic and scheduling
 
 ## Blockers
-- Implementation of the nudge logic requires integration with the session state management system
+- Need to define the nudge timing and message content
 
 ## Next Steps
-1. Implement the nudge functionality that triggers messages when tasks remain pending
-2. Add tests for the nudge system behavior
-3. Document the new configuration options in the project documentation
+1. Implement the nudge scheduling logic
+2. Add configuration options for nudge frequency and messages

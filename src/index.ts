@@ -18,6 +18,9 @@ interface SessionState {
   sentMessageAt: number;
   reviewFired: boolean;
   reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
+  nudgeTimer: ReturnType<typeof setTimeout> | null;
+  lastNudgeAt: number;
+  hasOpenTodos: boolean;
 }
 
 interface PluginConfig {
@@ -157,6 +160,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         sentMessageAt: 0,
         reviewFired: false,
         reviewDebounceTimer: null,
+        nudgeTimer: null,
+        lastNudgeAt: 0,
+        hasOpenTodos: false,
       });
     }
     return sessions.get(id)!;
