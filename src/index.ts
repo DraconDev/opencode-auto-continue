@@ -123,6 +123,9 @@ const DEFAULT_CONFIG: PluginConfig = {
   timerToastEnabled: true,
   timerToastIntervalMs: 60000,
   terminalTitleEnabled: true,
+  statusFileEnabled: true,
+  statusFilePath: "",
+  maxStatusHistory: 10,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
