@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added error handling for session ID extraction in AutoForceResumePlugin to prevent plugin crashes from event handler errors
+Added handling for session update and diff events in AutoForceResumePlugin
 
 ## Context
-The previous implementation lacked proper error handling in the session.compacted event handler, which could cause the entire plugin to fail if session ID extraction encountered an error. This change ensures robustness by catching and logging errors without crashing the pipeline.
+The plugin needs to properly handle session state changes and informational events to ensure session persistence and proper event processing.
 
 ## Completed
-- [x] Added try-catch block around session.compacted event handler
-- [x] Added error logging for debugging purposes
-- [x] Maintained existing functionality while adding safety
+- [x] Added handling for `session.updated` events to preserve session state
+- [x] Added handling for `session.diff` events as informational (no action needed)
+- [x] Added logging for both event types
 
 ## In Progress
-- [x] Error handling implementation for session.compacted events
+- [x] Event handling implementation for session state management
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Verify error handling works in integration tests
-2. Consider adding metrics for error tracking
+1. Verify test coverage for new event handlers
+2. Update documentation to reflect new event handling behavior

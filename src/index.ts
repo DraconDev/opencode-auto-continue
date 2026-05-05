@@ -1372,6 +1372,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
+      if (event?.type === "session.updated") {
+        log('session.updated:', sid);
+        // Session was modified (e.g., model/provider change) — preserve state
+        writeStatusFile(sid);
+        return;
+      }
+
+      if (event?.type === "session.diff") {
+        // Session diff events are informational — no action needed
+        log('session.diff:', sid);
+        return;
+      }
+
       if (event?.type === "message.updated") {
         const info = e?.properties?.info;
         if (info?.role === "user" && info?.id) {
