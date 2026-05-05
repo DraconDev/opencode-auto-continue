@@ -605,7 +605,8 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 | `session.status` (retry) | Treat as busy (progress indicator) |
 | `message.part.updated` (real) | Update progress, reset attempts |
 | `message.part.updated` (synthetic) | **Ignore** (prevents loops) |
-| `message.part.updated` (compaction) | Pause monitoring |
+| `message.part.updated` (compaction) | Pause monitoring; `session.compacted` resumes |
+| `session.compacted` | Clear compacting flag, preserve session state, reset estimates |
 | `message.part.updated` (plan text) | Pause monitoring |
 | `message.created` / `message.part.added` | Reset timer, reset attempts |
 | `message.updated` (user) | Reset counters, cancel nudge |

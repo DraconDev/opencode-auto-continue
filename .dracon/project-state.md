@@ -1,15 +1,15 @@
 # Project State
 
 ## Current Focus
-Added test coverage for session state preservation during compaction events
+Documentation for session compaction event handling in AutoForceResumePlugin
 
 ## Context
-The recent refactoring removed "session.compacted" from stale session types, but we need to ensure session state (like pending todos) is preserved during compaction. This test verifies that session state remains intact after compaction events.
+The recent changes improved session state handling during compaction operations, particularly around the `session.compacted` event. This documentation update clarifies how session state is preserved and reset during compaction operations.
 
 ## Completed
-- [x] Added test case verifying session state preservation during compaction
-- [x] Confirmed pending todos and other session state survive compaction
-- [x] Ensured nudge messages still trigger correctly after compaction
+- [x] Added documentation for `session.compacted` event behavior
+- [x] Clarified that compaction pauses monitoring but preserves session state
+- [x] Documented how estimates are reset after compaction
 
 ## In Progress
 - [ ] No active work in progress
@@ -18,5 +18,5 @@ The recent refactoring removed "session.compacted" from stale session types, but
 - None identified
 
 ## Next Steps
-1. Verify test coverage for other session state transitions
-2. Update documentation to reflect compaction behavior
+1. Review test coverage for compaction scenarios
+2. Verify documentation aligns with implementation behavior
