@@ -386,6 +386,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
   }
 
+  // Rough token estimation: code ≈ 0.5 tokens/char, English ≈ 0.25 tokens/char
+  // This is a conservative estimate for proactive compaction
+  function estimateTokens(text: string): number {
+    if (!text) return 0;
+    const codeRatio = 0.5;
+    const englishRatio = 0.25;
+    
+    // Detect if text is mostly code (contains common code patterns)
+    const codePatterns = /[{};\[\]()=<>+\-*/%|&!^~]/;
+    const isCode = codePatterns.test(text);
+    
+    const ratio = isCode ? codeRatio : englishRatio;
+    return Math.ceil(text.length * ratio);
+  }
+
   async function triggerReview(sessionId: string) {
     if (isDisposed) return;
     const s = sessions.get(sessionId);
