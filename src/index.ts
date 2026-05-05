@@ -216,6 +216,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         needsContinue: false,
         continueMessageText: '',
         sessionCreatedAt: Date.now(),
+        messageCount: 0,
+        lastCompactionAt: 0,
+        tokenLimitHits: 0,
       });
     }
     return sessions.get(id)!;
@@ -253,6 +256,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.hasOpenTodos = false;
       s.needsContinue = false;
       s.continueMessageText = '';
+      s.messageCount = 0;
+      s.lastCompactionAt = 0;
+      s.tokenLimitHits = 0;
     }
     sessions.delete(id);
   }
