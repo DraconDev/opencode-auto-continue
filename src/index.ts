@@ -387,6 +387,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const e = event as any;
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
+      // Phase 2: Ignore message events triggered by our own prompts (within 5 seconds)
+      const isMessageEvent = event?.type?.startsWith('message.');
+      const s = sessions.get(sid);
+      if (isMessageEvent && s && s.sentMessageAt > 0 && Date.now() - s.sentMessageAt < 5000) {
+        log('ignoring message event within 5s of our prompt:', event?.type);
+        return;
+      }
+
       const progressTypes = [
         "message.part.updated",
       ];
