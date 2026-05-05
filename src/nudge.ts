@@ -54,7 +54,7 @@ export function createNudgeModule(deps: NudgeDeps) {
 
   // Main nudge injection — called after idle delay
   async function injectNudge(sessionId: string): Promise<void> {
-    if (isDisposed) return;
+    if (isDisposed()) return;
 
     const s = sessions.get(sessionId);
     if (!s) return;

@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored the `NudgeDeps` interface to improve type safety and readability.
+Refactored nudge module dependencies to make `isDisposed` a function call
 
 ## Context
-The change was prompted by a need to better organize and document the dependencies required for the nudge notification system. The previous implementation had a long line of type definitions that was difficult to read and maintain.
+The nudge module was being passed a boolean `isDisposed` value, but the implementation needed to check this value dynamically. This change makes the dependency more flexible by converting it to a function call.
 
 ## Completed
-- [x] Split the long `Pick<PluginConfig>` type into multiple lines for better readability
-- [x] Changed `isDisposed` from a boolean property to a function type `() => boolean` to better represent its behavior
+- [x] Changed `isDisposed` from a boolean to a function in `createNudgeModule` dependencies
+- [x] Updated the nudge injection logic to call `isDisposed()` instead of referencing it directly
+- [x] Added `nudge.cancelNudge(sid)` call when handling stale events to ensure cleanup
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Verify that all nudge module consumers properly handle the function call
 
 ## Blockers
-- None identified
+- Need to ensure all callers of `createNudgeModule` provide a function for `isDisposed`
 
 ## Next Steps
-1. Update any dependent code that might be affected by these interface changes
-2. Verify the nudge notification system continues to function correctly with these changes
+1. Update all callers of `createNudgeModule` to provide a function for `isDisposed`
+2. Add unit tests to verify the dynamic disposal check behavior

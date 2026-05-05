@@ -120,7 +120,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const terminal = createTerminalModule({ config, sessions, log, input });
   const notifications = createNotificationModule({ config, sessions, log, isDisposed, input });
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed, input });
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
   // ── Status File ────────────────────────────────────────────────────────
 
@@ -1277,6 +1277,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (staleTypes.includes(event?.type)) {
         log('stale event:', event?.type, sid);
+        nudge.cancelNudge(sid);
         resetSession(sid);
         writeStatusFile(sid);
         return;
