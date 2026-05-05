@@ -1325,37 +1325,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTimeout(s.reviewDebounceTimer);
           s.reviewDebounceTimer = null;
         }
-        
-        // Handle nudge timer
-        if (hasPending && config.nudgeEnabled) {
-          // Start or reset nudge timer
-          if (s.nudgeTimer) {
-            clearTimeout(s.nudgeTimer);
-          }
-          s.nudgeTimer = setTimeout(() => {
-            s.nudgeTimer = null;
-            sendNudge(sid);
-          }, config.nudgeTimeoutMs);
-        } else if (!hasPending && s.nudgeTimer) {
-          // Cancel nudge if no pending todos
-          clearTimeout(s.nudgeTimer);
-          s.nudgeTimer = null;
-        }
+
+        // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
         writeStatusFile(sid);
         return;
       }
 
       // session.idle fires when the model stops generating and goes idle
-      // This is the perfect time to check for pending todos and nudge the agent
+      // This is the primary nudge trigger — fire on every idle with pending todos
       if (event?.type === "session.idle") {
         const s = getSession(sid);
-        // wasBusy check prevents double-nudge on repeated idle events
-        if (config.nudgeEnabled && s.wasBusy && s.hasOpenTodos && Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
-          s.wasBusy = false;
+        // Primary nudge: idle + open todos + cooldown passed + not waiting for continue
+        if (config.nudgeEnabled && !s.needsContinue && s.hasOpenTodos && Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
           log('session idle with pending todos, sending nudge:', sid);
           await sendNudge(sid);
         } else {
-          log('session idle, no nudge needed:', sid, 'enabled:', config.nudgeEnabled, 'wasBusy:', s.wasBusy, 'hasTodos:', s.hasOpenTodos);
+          log('session idle, no nudge needed:', sid, 'enabled:', config.nudgeEnabled, 'needsContinue:', s.needsContinue, 'hasTodos:', s.hasOpenTodos);
         }
         // Keep timer running — idle is not terminal
         writeStatusFile(sid);

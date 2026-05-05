@@ -1,21 +1,26 @@
 # Project State
 
 ## Current Focus
-Refactor notification module dependencies to simplify the interface and improve type safety.
+Refactored nudge notification logic to simplify triggering and reduce redundant checks
 
 ## Context
-The notification module was previously receiving an `isDisposed` function, but this was changed to a direct boolean value for better type safety and simpler usage.
+The nudge system was previously triggering on both session idle events and todo updates, leading to potential double nudges. The refactor simplifies the logic by:
+1. Removing the nudge timer that was tracking pending todos
+2. Making the idle event the primary nudge trigger
+3. Adding explicit checks for needsContinue state
 
 ## Completed
-- [x] Changed `isDisposed` from a function to a direct boolean in the notification module interface
-- [x] Updated the notification module creation in `index.ts` to pass the boolean directly
+- [x] Removed redundant nudge timer logic
+- [x] Simplified nudge triggering to only occur on idle events
+- [x] Added needsContinue check to prevent nudges during continue operations
+- [x] Updated logging to reflect new nudge conditions
 
 ## In Progress
-- [ ] Verify no runtime behavior changes occurred due to this refactoring
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the notification module still functions correctly with the new dependency structure
-2. Consider if additional refactoring is needed in related modules
+1. Verify nudge behavior in integration tests
+2. Update documentation to reflect new nudge triggering rules
