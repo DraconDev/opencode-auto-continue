@@ -1070,6 +1070,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     s.aborting = true;
     s.stallDetections++;
     s.recoveryStartTime = Date.now();
+    
+    // Track stall pattern
+    if (config.stallPatternDetection && s.lastStallPartType) {
+      s.stallPatterns[s.lastStallPartType] = (s.stallPatterns[s.lastStallPartType] || 0) + 1;
+    }
+    
     writeStatusFile(sessionId);
 
     try {

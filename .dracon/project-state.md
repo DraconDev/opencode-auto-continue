@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Added terminal progress bar integration using OSC 9;4 protocol for visual feedback during session recovery.
+Added stall pattern tracking to enhance session recovery analysis
 
 ## Context
-This change enhances user experience by providing visual progress during long-running recovery operations, complementing the existing terminal title updates.
+This change builds on previous work to improve session recovery metrics by tracking patterns in stall occurrences, particularly when configuration for stall pattern detection is enabled.
 
 ## Completed
-- [x] Added `updateTerminalProgress()` function to send OSC 9;4 progress updates
-- [x] Added `clearTerminalProgress()` function to reset progress bar
-- [x] Integrated progress updates with session state changes
-- [x] Added configuration check for `terminalProgressEnabled`
-- [x] Tracked last stall part type for potential future pattern analysis
+- [x] Added stall pattern tracking when `config.stallPatternDetection` is enabled
+- [x] Maintains count of stalls by their last detected part type in `s.stallPatterns`
 
 ## In Progress
-- [x] Terminal progress bar implementation is complete
+- [x] Implementation of stall pattern tracking
 
 ## Blockers
-- None identified
+- None identified in this change
 
 ## Next Steps
-1. Verify cross-terminal compatibility for OSC 9;4 support
-2. Add configuration option to disable progress bar if needed
+1. Verify pattern tracking works correctly with various stall scenarios
+2. Potentially expand pattern analysis to include more stall characteristics
