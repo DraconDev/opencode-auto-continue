@@ -1,10 +1,13 @@
 import { type PluginConfig, type SessionState, formatMessage } from "./shared.js";
 
 export interface NudgeDeps {
-  config: Pick<PluginConfig, "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | "showToasts">;
+  config: Pick<PluginConfig, 
+    "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
+    "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
+    "showToasts">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
-  isDisposed: boolean;
+  isDisposed: () => boolean;
   input: unknown;
 }
 
