@@ -21,6 +21,8 @@ interface SessionState {
   nudgeTimer: ReturnType<typeof setTimeout> | null;
   lastNudgeAt: number;
   hasOpenTodos: boolean;
+  needsContinue: boolean;
+  continueMessageText: string;
 }
 
 interface PluginConfig {
@@ -165,6 +167,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         nudgeTimer: null,
         lastNudgeAt: 0,
         hasOpenTodos: false,
+        needsContinue: false,
+        continueMessageText: '',
       });
     }
     return sessions.get(id)!;
@@ -200,6 +204,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
       s.lastNudgeAt = 0;
       s.hasOpenTodos = false;
+      s.needsContinue = false;
+      s.continueMessageText = '';
     }
     sessions.delete(id);
   }

@@ -1,26 +1,23 @@
 # Project State
 
 ## Current Focus
-Unified session management plugin replacing three separate plugins with a single, conflict-free implementation
+Added session continuation tracking with message support for unified session management
 
 ## Context
-The project now consolidates three separate plugins (auto-recovery, todo-reminders, and auto-review) into one to eliminate event conflicts and improve session management.
+This change extends the session state to track when a session needs continuation and stores the associated message text. This supports the unified session management system by providing a way to track pending continuation actions.
 
 ## Completed
-- [x] Unified stall recovery with smart detection and status polling
-- [x] Integrated todo context fetching and context-aware messages
-- [x] Added automatic review on task completion
-- [x] Implemented configurable nudging for idle sessions
-- [x] Added auto-compaction feature for context management
-- [x] Updated documentation with comprehensive feature table
-- [x] Version bump to 3.52.1
+- [x] Added `needsContinue` boolean flag to track continuation status
+- [x] Added `continueMessageText` string to store continuation message
+- [x] Initialized new fields in session creation
+- [x] Reset new fields during session cleanup
 
 ## In Progress
-- [ ] Testing edge cases for event conflict resolution
+- [x] Implementation of continuation logic (not yet implemented)
 
 ## Blockers
-- Need to verify all configuration options work together
+- Continuation logic implementation depends on message handling system
 
 ## Next Steps
-1. Test unified plugin with multiple concurrent sessions
-2. Document any configuration conflicts that emerge
+1. Implement continuation logic based on message content
+2. Add UI components to display continuation prompts
