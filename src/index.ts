@@ -865,13 +865,54 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     // Don't nudge if no open todos
     if (!s.hasOpenTodos) return;
     
+    // Check session is truly idle before nudging - don't interrupt busy work
+    try {
+      const statusResult = await input.client.session.status({});
+      const statusData = statusResult.data as Record<string, { type: string }>;
+      const sessionStatus = statusData[sessionId];
+      if (sessionStatus?.type === "busy" || sessionStatus?.type === "retry") {
+        log('skipping nudge - session is busy/retry');
+        return;
+      }
+    } catch {
+      // ignore status check error, proceed with nudge
+    }
+    
     log('sending nudge for session:', sessionId);
     s.lastNudgeAt = Date.now();
     
     try {
-      const messageText = formatMessage(config.nudgeMessage, {
-        pending: s.hasOpenTodos ? 'some' : '0',
+      // Fetch todos for richer context message
+      let messageText = formatMessage(config.nudgeMessage, {
+        pending: '0',
+        todoList: '',
+        total: '0',
+        completed: '0',
       });
+      
+      if (config.includeTodoContext) {
+        try {
+          const todoResult = await (input.client.session as any).todo({ path: { id: sessionId } });
+          const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
+          const pending = todos.filter((t: any) => t.status === 'in_progress' || t.status === 'pending');
+          const completed = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
+          
+          const templateVars: Record<string, string> = {
+            pending: String(pending.length),
+            total: String(todos.length),
+            completed: String(completed.length),
+          };
+          
+          if (pending.length > 0) {
+            const todoList = pending.slice(0, 5).map((t: any) => t.content || t.title || t.id).join(', ');
+            templateVars.todoList = todoList + (pending.length > 5 ? '...' : '');
+          }
+          
+          messageText = formatMessage(config.nudgeMessage, templateVars);
+        } catch {
+          // todo fetch failed, use basic message
+        }
+      }
       
       s.messageCount++;
       await (input.client.session as any).prompt({

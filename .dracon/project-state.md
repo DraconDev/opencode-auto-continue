@@ -1,21 +1,25 @@
 # Project State
 
 ## Current Focus
-Enhanced nudge message to include detailed task list for pending session tasks
+Enhanced nudge message with session status checks and detailed todo context
 
 ## Context
-Improving user awareness of pending tasks by providing more detailed feedback in the nudge message
+Improved user engagement by providing more context in session nudges while preventing interruptions during busy work
 
 ## Completed
-- [x] Updated nudge message to include `{todoList}` placeholder showing pending tasks
-- [x] Maintained all other default configuration values
+- [x] Added session status check to prevent nudging during busy/retry states
+- [x] Implemented detailed todo context in nudge messages when enabled
+- [x] Added comprehensive todo statistics (pending, completed, total counts)
+- [x] Included sample todo items in nudge messages for better context
+- [x] Maintained fallback behavior when todo context fails to load
 
 ## In Progress
-- [x] Implementation of the actual todoList generation logic (not shown in this diff)
+- [x] Implementation of enhanced nudge messaging with session state awareness
 
 ## Blockers
-- Implementation of the todoList generation logic needs to be completed
+- None identified in this change
 
 ## Next Steps
-1. Implement the todoList generation logic to populate the placeholder
-2. Add tests for the enhanced nudge message formatting
+1. Verify nudge message formatting across different todo states
+2. Test session status checks with various session types
+3. Document new configuration options for nudge behavior
