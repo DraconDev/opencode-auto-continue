@@ -684,7 +684,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const status = e?.properties?.status;
         log('session.status:', sid, status?.type);
         const s = getSession(sid);
-        if (status?.type === "busy") {
+        if (status?.type === "busy" || status?.type === "retry") {
           updateProgress(s);
           s.userCancelled = false;
           if (s.planning) {
@@ -700,8 +700,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "idle" && s.needsContinue) {
           log('session idle, sending queued continue for:', sid);
           await sendContinue(sid);
-        } else if (status?.type === "idle") {
-          log('session idle but no queued continue for:', sid, 'needsContinue:', s.needsContinue);
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
@@ -767,30 +765,43 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "message.created" || event?.type === "message.part.added") {
-        // CRITICAL: Ignore events from our own synthetic prompts
-        // We track needsContinue to know if we sent a prompt recently
-        const s = sessions.get(sid);
-        if (s && s.needsContinue) {
-          log('ignoring message event during recovery:', event?.type);
-          return;
+        // Check if this is a real user message (not our synthetic prompt)
+        const msgRole = e?.properties?.info?.role;
+        const isUserMessage = msgRole === "user";
+        
+        if (isUserMessage) {
+          // User sent a message - cancel any queued continue and process normally
+          const s = sessions.get(sid);
+          if (s && s.needsContinue) {
+            log('user message during recovery, cancelling queued continue');
+            s.needsContinue = false;
+            s.continueMessageText = '';
+          }
+        } else {
+          // Non-user message (likely our synthetic prompt) - check if we're recovering
+          const s = sessions.get(sid);
+          if (s && s.needsContinue) {
+            log('ignoring synthetic message event during recovery:', event?.type);
+            return;
+          }
         }
         
-        log('activity event:', event?.type, sid);
-        const s2 = getSession(sid);
-        updateProgress(s2);
-        s2.attempts = 0;
-        s2.userCancelled = false;
-        if (s2.planning) {
+        log('activity event:', event?.type, sid, 'role:', msgRole);
+        const s = getSession(sid);
+        updateProgress(s);
+        s.attempts = 0;
+        s.userCancelled = false;
+        if (s.planning) {
           log('user sent message, clearing plan flag');
-          s2.planning = false;
+          s.planning = false;
         }
-        if (s2.compacting) {
+        if (s.compacting) {
           log('user sent message, clearing compacting flag');
-          s2.compacting = false;
+          s.compacting = false;
         }
         clearTimer(sid);
-        if (!s2.planning && !s2.compacting) {
-          s2.timer = setTimeout(() => {
+        if (!s.planning && !s.compacting) {
+          s.timer = setTimeout(() => {
             recover(sid);
           }, config.stallTimeoutMs);
         }

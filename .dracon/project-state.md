@@ -1,22 +1,25 @@
 # Project State
 
 ## Current Focus
-Added token limit error handling with forced compaction for stalled sessions
+Improved session continuation handling by distinguishing between user messages and synthetic prompts during recovery
 
 ## Context
-The plugin previously failed silently when encountering token limit errors during session nudges. This change improves error handling by detecting token limit issues and triggering forced compaction to recover stalled sessions.
+The previous implementation ignored all message events during session recovery, which could lead to missed user interactions. This change adds proper handling for both user messages and synthetic prompts during recovery.
 
 ## Completed
-- [x] Added token limit error detection in nudge failure handler
-- [x] Implemented forced compaction when token limit errors occur
-- [x] Updated version numbers (3.59.2 → 3.59.3)
+- [x] Added distinction between user messages and synthetic prompts during recovery
+- [x] When user sends message during recovery, cancels queued continue and processes normally
+- [x] Synthetic prompts during recovery are properly ignored
+- [x] Improved logging to track message roles during recovery
+- [x] Maintained all existing recovery behavior for non-message events
 
 ## In Progress
-- [ ] Testing the new error handling in various session scenarios
+- [ ] No active work in progress
 
 ## Blockers
-- Need to verify compaction behavior doesn't interfere with active sessions
+- None identified
 
 ## Next Steps
-1. Run integration tests with token limit scenarios
-2. Monitor production behavior for any unexpected side effects
+1. Verify the new handling works correctly with integration tests
+2. Monitor production logs for any unexpected behavior
+3. Consider adding metrics to track recovery message handling
