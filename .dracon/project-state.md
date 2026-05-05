@@ -1,26 +1,20 @@
 # Project State
 
 ## Current Focus
-Improve token limit error handling by tracking hit counts and using configurable short messages
+Increment token usage tracking during session continuation prompts
 
 ## Context
-This change enhances the proactive compaction system by:
-1. Tracking token limit hits with a counter
-2. Using a configurable short message for retries
-3. Maintaining message count tracking for session state
+This change is part of the ongoing work to improve token limit handling by tracking token usage more precisely. The recent commits have been adding infrastructure for token tracking and proactive compaction.
 
 ## Completed
-- [x] Added token limit hit counter (`s.tokenLimitHits`)
-- [x] Enhanced error logging with hit count
-- [x] Replaced hardcoded continue message with configurable `shortContinueMessage`
-- [x] Maintained message count tracking for both continue attempts
+- [x] Added token usage counter increment during session continuation prompts
 
 ## In Progress
-- [x] Implementation of token limit tracking and configurable messages
+- [x] Token usage tracking implementation
 
 ## Blockers
-- None identified in this change
+- Need to verify counter behavior with edge cases (empty responses, partial completions)
 
 ## Next Steps
-1. Verify the new message configuration works in all edge cases
-2. Monitor session state tracking for accuracy in production
+1. Add unit tests for token counter behavior
+2. Implement token limit enforcement using the new counter
