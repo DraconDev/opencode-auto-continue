@@ -119,6 +119,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   ],
   timerToastEnabled: true,
   timerToastIntervalMs: 60000,
+  terminalTitleEnabled: true,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
