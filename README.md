@@ -608,7 +608,8 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 | `session.error` (MessageAbortedError) | Set userCancelled, clear timer |
 | `session.error` (other) | Clear timer, monitoring pauses |
 | `todo.updated` | Check completion, trigger review/nudge |
-| `session.idle` / `session.deleted` | Clear all session state |
+| `session.idle` | Trigger nudge for pending todos (not terminal) |
+| `session.deleted` | Clear all session state |
 
 ## How to Customize
 

@@ -1,26 +1,20 @@
 # Project State
 
 ## Current Focus
-Updated test coverage for session idle handling to verify nudge behavior instead of session clearing
+Improved documentation for session idle handling in AutoForceResumePlugin
 
 ## Context
-The recent feature work added automatic nudging for idle sessions with pending todos, replacing the previous behavior of clearing sessions on idle. This test update reflects the new behavior by:
-1. Verifying sessions are preserved on idle
-2. Confirming nudges are triggered
-3. Maintaining all session state
+The recent feature work added automatic nudging for idle sessions with pending todos, but the documentation needed clarification about how `session.idle` events should trigger nudges (excluding terminal sessions) while `session.deleted` should clear all session state.
 
 ## Completed
-- [x] Updated test to verify nudge triggering instead of session clearing
-- [x] Added comprehensive session state setup for nudge testing
-- [x] Verified session persistence after idle event
-- [x] Confirmed nudge prompt is sent
+- [x] Updated README.md to clarify that `session.idle` triggers nudges for non-terminal sessions while `session.deleted` clears all session state
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Documentation updates for session idle handling
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review test coverage for other session state transitions
-2. Update documentation to reflect new idle behavior
+1. Verify the documentation change aligns with the latest implementation
+2. Consider additional documentation improvements for other session state transitions
