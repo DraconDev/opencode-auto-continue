@@ -1124,6 +1124,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const statusData = statusResult.data as Record<string, { type: string }>;
       const sessionStatus = statusData[sessionId];
 
+      // Try reading actual token counts from status response if available
+      if (sessionStatus && typeof sessionStatus === 'object') {
+        const st = sessionStatus as any;
+        if (typeof st.tokensInput === 'number' || typeof st.totalTokens === 'number') {
+          const actualTokens = st.totalTokens || (st.tokensInput + (st.tokensOutput || 0));
+          if (actualTokens > 0) {
+            s.estimatedTokens = Math.max(s.estimatedTokens, actualTokens);
+            log('read actual tokens from session status:', actualTokens);
+          }
+        }
+      }
+
       if (!sessionStatus || sessionStatus.type !== "busy") {
         s.aborting = false;
         return;
@@ -1376,6 +1388,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           // Update terminal title and progress
           updateTerminalTitle(sid);
           updateTerminalProgress(sid);
+          // Check for proactive compaction when resuming busy
+          // Catches pre-existing context bloat from prior interactions
+          await maybeProactiveCompact(sid);
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
