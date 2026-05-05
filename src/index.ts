@@ -70,6 +70,9 @@ interface PluginConfig {
   timerToastEnabled: boolean;
   timerToastIntervalMs: number;
   terminalTitleEnabled: boolean;
+  statusFileEnabled: boolean;
+  statusFilePath: string;
+  maxStatusHistory: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
