@@ -354,8 +354,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       });
       
       log('nudge sent successfully');
-    } catch (e) {
+    } catch (e: any) {
       log('nudge failed:', e);
+      if (isTokenLimitError(e)) {
+        log('token limit error in nudge, forcing compaction');
+        await forceCompact(sessionId);
+      }
     }
   }
 
