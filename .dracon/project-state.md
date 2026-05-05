@@ -1,20 +1,26 @@
 # Project State
 
 ## Current Focus
-Increment token usage tracking during session continuation prompts
+Enhanced token limit handling with proactive compaction during idle sessions
 
 ## Context
-This change is part of ongoing work to improve token limit handling in the system. The recent commits show a series of related improvements to token usage tracking, proactive compaction, and session management.
+This change improves handling of token limits by:
+1. Using shorter continuation messages when token limits have been hit previously
+2. Adding proactive compaction during idle periods to prevent future token issues
+3. Tracking message counts to inform compaction decisions
 
 ## Completed
-- [x] Added token usage tracking by incrementing `messageCount` during session continuation prompts
+- [x] Added token limit hit detection to use shorter continuation messages
+- [x] Implemented proactive compaction during idle sessions
+- [x] Added message count tracking for session state
 
 ## In Progress
-- [x] Ongoing work to improve token limit error handling and session management
+- [x] Token limit handling improvements
 
 ## Blockers
-- Need to ensure the new tracking field is properly utilized in the token limit checks
+- None identified in this change
 
 ## Next Steps
-1. Verify the new `messageCount` field is being used in token limit calculations
-2. Continue implementing the proactive compaction and retry logic for token limit handling
+1. Verify compaction effectiveness in load testing
+2. Monitor token usage patterns with new tracking
+3. Consider additional compaction triggers based on session age

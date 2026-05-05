@@ -725,6 +725,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         messageText = formatMessage(config.continueMessage, templateVars);
       }
 
+      // Use short message if we've hit token limits before
+      if (s.tokenLimitHits > 0) {
+        log('using short continue message due to previous token limit hits:', s.tokenLimitHits);
+        messageText = config.shortContinueMessage;
+      }
+
       // Store message for later delivery (from event handler, not timer)
       s.needsContinue = true;
       s.continueMessageText = messageText;
@@ -734,6 +740,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.autoSubmitCount++;
       s.lastRecoveryTime = Date.now();
       s.backoffAttempts = 0;
+      s.messageCount++;
 
       // Don't set timer here - event handlers will set it when new activity starts
     } catch (e) {
@@ -820,6 +827,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "idle" && s.needsContinue) {
           log('session idle, sending queued continue for:', sid);
           await sendContinue(sid);
+        }
+        // Proactive compaction when idle and message count is high
+        if (status?.type === "idle" && !s.needsContinue) {
+          await maybeProactiveCompact(sid);
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
