@@ -1205,6 +1205,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTimeout(s.nudgeTimer);
           s.nudgeTimer = null;
         }
+        if (s.toastTimer) {
+          clearInterval(s.toastTimer);
+          s.toastTimer = null;
+        }
       });
       sessions.clear();
     }
