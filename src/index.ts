@@ -378,10 +378,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               s.planning = true;
             }
           }
-        } else {
-          updateProgress(s);
-          s.attempts = 0;
-          s.userCancelled = false;
         }
 
         // Check if this is a delta update containing plan content
