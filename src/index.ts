@@ -390,8 +390,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const progressTypes = [
         "message.part.updated",
       ];
-        "message.part.updated",
-      ];
 
       const staleTypes = [
         "session.idle",
