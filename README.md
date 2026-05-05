@@ -263,9 +263,9 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `nudgeEnabled` | `true` | Enable gentle nudges |
+| `nudgeEnabled` | `true` | Send continue prompts for incomplete todos |
 | `nudgeTimeoutMs` | `300000` | Idle time before nudge (5 min) |
-| `nudgeMessage` | `"You have {pending}..."` | Nudge message text |
+| `nudgeMessage` | `"The session has {pending}..."` | Nudge message telling agent to continue |
 | `nudgeCooldownMs` | `60000` | Min time between nudges (1 min) |
 
 ### Compaction Options
