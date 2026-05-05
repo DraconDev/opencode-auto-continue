@@ -630,6 +630,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.compacting = false;
           }
         }
+        // Send queued continue when session becomes idle/stable
+        if (status?.type === "idle" && s.needsContinue) {
+          log('session idle, sending queued continue');
+          sendContinue(sid);
+        }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
           s.timer = setTimeout(() => {
@@ -694,29 +699,30 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "message.created" || event?.type === "message.part.added") {
-        // CRITICAL: Ignore synthetic messages to prevent infinite loops
-        const isSynthetic = e?.properties?.info?.synthetic === true || e?.properties?.part?.synthetic === true;
-        if (isSynthetic) {
-          log('ignoring synthetic message event:', event?.type);
+        // CRITICAL: Ignore events from our own synthetic prompts
+        // We track needsContinue to know if we sent a prompt recently
+        const s = sessions.get(sid);
+        if (s && s.needsContinue) {
+          log('ignoring message event during recovery:', event?.type);
           return;
         }
         
         log('activity event:', event?.type, sid);
-        const s = getSession(sid);
-        updateProgress(s);
-        s.attempts = 0;
-        s.userCancelled = false;
-        if (s.planning) {
+        const s2 = getSession(sid);
+        updateProgress(s2);
+        s2.attempts = 0;
+        s2.userCancelled = false;
+        if (s2.planning) {
           log('user sent message, clearing plan flag');
-          s.planning = false;
+          s2.planning = false;
         }
-        if (s.compacting) {
+        if (s2.compacting) {
           log('user sent message, clearing compacting flag');
-          s.compacting = false;
+          s2.compacting = false;
         }
         clearTimer(sid);
-        if (!s.planning && !s.compacting) {
-          s.timer = setTimeout(() => {
+        if (!s2.planning && !s2.compacting) {
+          s2.timer = setTimeout(() => {
             recover(sid);
           }, config.stallTimeoutMs);
         }
