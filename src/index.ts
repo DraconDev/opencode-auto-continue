@@ -355,6 +355,36 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  async function sendContinue(sessionId: string) {
+    if (isDisposed) return;
+    const s = sessions.get(sessionId);
+    if (!s || !s.needsContinue) return;
+    
+    const messageText = s.continueMessageText;
+    s.needsContinue = false;
+    s.continueMessageText = '';
+    
+    log('sending continue prompt from event handler');
+    
+    try {
+      await (input.client.session as any).prompt({
+        path: { id: sessionId },
+        query: { directory: (input as any).directory || "" },
+        body: {
+          parts: [{
+            type: "text",
+            text: messageText,
+            synthetic: true,
+          }],
+        },
+      });
+      
+      log('continue sent successfully');
+    } catch (e) {
+      log('continue failed:', e);
+    }
+  }
+
   async function recover(sessionId: string) {
     if (isDisposed) return;
     const s = sessions.get(sessionId);
