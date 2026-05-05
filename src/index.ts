@@ -908,7 +908,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.recoverySuccessful++;
       s.lastRecoverySuccess = Date.now();
       if (s.recoveryStartTime > 0) {
-        s.totalRecoveryTimeMs += (Date.now() - s.recoveryStartTime);
+        const recoveryTime = Date.now() - s.recoveryStartTime;
+        s.totalRecoveryTimeMs += recoveryTime;
+        s.recoveryTimes.push(recoveryTime);
+        // Keep only last 100 recovery times to prevent memory bloat
+        if (s.recoveryTimes.length > 100) {
+          s.recoveryTimes.shift();
+        }
         s.recoveryStartTime = 0;
       }
       writeStatusFile(sessionId);

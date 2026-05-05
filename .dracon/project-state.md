@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Added stall pattern tracking to enhance session recovery analysis
+Enhanced session recovery time tracking with historical data collection
 
 ## Context
-This change builds on previous work to improve session recovery metrics by tracking patterns in stall occurrences, particularly when configuration for stall pattern detection is enabled.
+To improve recovery analysis, we need to track individual recovery times and maintain a history of recent recoveries
 
 ## Completed
-- [x] Added stall pattern tracking when `config.stallPatternDetection` is enabled
-- [x] Maintains count of stalls by their last detected part type in `s.stallPatterns`
+- [x] Store individual recovery times in an array
+- [x] Limit history to last 100 recoveries to prevent memory bloat
+- [x] Maintain all existing recovery metrics while adding new tracking
 
 ## In Progress
-- [x] Implementation of stall pattern tracking
+- [x] Implementation of recovery time history tracking
 
 ## Blockers
-- None identified in this change
+- None identified
 
 ## Next Steps
-1. Verify pattern tracking works correctly with various stall scenarios
-2. Potentially expand pattern analysis to include more stall characteristics
+1. Add visualization of recovery time trends
+2. Implement performance alerts for unusually long recoveries
