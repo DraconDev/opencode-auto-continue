@@ -1,25 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced nudge notification system with improved idle detection and user interaction handling
+Removed the nudge notification system from the main plugin
 
 ## Context
-The nudge system now properly handles user activity, session state changes, and todo status tracking to provide more reliable reminders while respecting user workflow.
+The nudge notification system was previously implemented to remind users about pending tasks in idle sessions. This change removes the feature as part of ongoing refactoring and modularization efforts.
 
 ## Completed
-- [x] Added proper nudge cancellation and reset functionality
-- [x] Implemented user activity detection (ESC key aborts)
-- [x] Enhanced todo status filtering and change detection
-- [x] Added comprehensive logging for nudge operations
-- [x] Improved session state management for nudge tracking
+- [x] Removed the `sendNudge` function and all related nudge notification logic
+- [x] Cleaned up associated session tracking and configuration references
 
 ## In Progress
-- [ ] Testing edge cases for rapid todo status changes
+- [x] Ongoing modularization of terminal and notification functionality
 
 ## Blockers
-- Need to verify nudge behavior with rapid status updates
+- None identified
 
 ## Next Steps
-1. Complete integration testing with various user workflows
-2. Optimize performance for large todo sets
-3. Add configuration validation for nudge parameters
+1. Continue modularizing remaining notification-related functionality
+2. Integrate the cleaned-up notification module into the main plugin initialization flow
