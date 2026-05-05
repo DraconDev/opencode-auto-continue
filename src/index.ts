@@ -45,7 +45,9 @@ const DEFAULT_CONFIG: PluginConfig = {
   debug: false,
   maxBackoffMs: 1800000,
   maxAutoSubmits: 3,
-  messageFormat: "Please continue from where you left off.",
+  continueMessage: "Please continue from where you left off.",
+  continueWithTodosMessage: "Please continue from where you left off. You have {pending} open task(s): {todoList}.",
+  maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
   includeTodoContext: true,
 };
 

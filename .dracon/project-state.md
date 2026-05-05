@@ -4,20 +4,19 @@
 Enhanced session recovery messaging with configurable message formats
 
 ## Context
-The previous single `messageFormat` field was too limiting for different recovery scenarios. This change supports distinct messages for different recovery states (continue, continue with TODOs, max attempts reached).
+This change improves the session recovery system by making the messaging more configurable and specific to different scenarios (continuation with todos, max attempts reached).
 
 ## Completed
-- [x] Added `continueMessage` for standard recovery prompts
-- [x] Added `continueWithTodosMessage` for recovery with pending TODOs
-- [x] Added `maxAttemptsMessage` for when maximum recovery attempts are reached
-- [x] Removed the single `messageFormat` field in favor of specialized fields
+- [x] Renamed `messageFormat` to `continueMessage` for clarity
+- [x] Added `continueWithTodosMessage` for cases with pending tasks
+- [x] Added `maxAttemptsMessage` for when maximum retry attempts are reached
 
 ## In Progress
-- [ ] Testing message formatting across different recovery scenarios
+- [ ] No active work in progress
 
 ## Blockers
-- Need to verify message templates work with existing i18n system
+- None identified
 
 ## Next Steps
-1. Update documentation for new message configuration options
-2. Add integration tests for message formatting in recovery flows
+1. Verify the new message formats work as expected in different scenarios
+2. Update documentation to reflect the new configuration options
