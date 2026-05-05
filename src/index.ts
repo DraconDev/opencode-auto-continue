@@ -310,8 +310,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       });
       
       log('review sent successfully');
-    } catch (e) {
+    } catch (e: any) {
       log('review failed:', e);
+      if (isTokenLimitError(e)) {
+        log('token limit error in review, forcing compaction');
+        await forceCompact(sessionId);
+      }
     }
   }
 
