@@ -229,12 +229,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (now - s.lastProgressAt < config.stallTimeoutMs) {
         s.aborting = false;
+        const remaining = config.stallTimeoutMs - (now - s.lastProgressAt);
+        s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
         return;
       }
 
       await (input.client.session as any).abort({ 
         path: { id: sessionId },
-        query: { directory: (input as any).directory }
+        query: { directory: (input as any).directory || "" }
       });
 
       // Poll for session to become idle

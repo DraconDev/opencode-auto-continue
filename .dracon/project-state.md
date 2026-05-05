@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Removed redundant session attempt counter reset in auto-force-resume plugin
+Improved stall recovery timer handling in auto-force-resume plugin
 
 ## Context
-This change eliminates duplicate session state management in the auto-force-resume plugin, which was previously resetting the attempt counter and user cancellation status unnecessarily.
+The change addresses potential edge cases in the session recovery timer logic by ensuring the timer is properly set with a minimum delay and handling empty directory paths.
 
 ## Completed
-- [x] Removed redundant `s.attempts = 0` reset in session recovery logic
-- [x] Removed redundant `s.userCancelled = false` reset in session recovery logic
+- [x] Added calculation of remaining stall timeout time
+- [x] Set timer with calculated remaining time (minimum 100ms)
+- [x] Ensured empty directory path is handled gracefully
 
 ## In Progress
-- [x] None - this is a completed refactoring
+- [x] Verification of timer behavior with various stall scenarios
 
 ## Blockers
-- None
+- None identified in this change
 
 ## Next Steps
-1. Verify no regression in session recovery behavior
-2. Review related test coverage for session state management
+1. Verify timer behavior with integration tests
+2. Review impact on session recovery reliability
