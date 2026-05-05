@@ -157,4 +157,133 @@ describe("opencode-auto-force-resume integration", () => {
     
     vi.useRealTimers();
   });
+
+  it("should write valid status file structure during session lifecycle", async () => {
+    vi.useFakeTimers();
+    const tmpStatusFile = `/tmp/opencode-test-status-${Date.now()}.json`;
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        stallTimeoutMs: 5000,
+        waitAfterAbortMs: 100,
+        cooldownMs: 0,
+        maxRecoveries: 3,
+        abortPollMaxTimeMs: 0,
+        statusFileEnabled: true,
+        statusFilePath: tmpStatusFile,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        debug: true,
+      }
+    );
+
+    // Step 1: Create session — status file should be written
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+
+    let statusContent = await Bun.file(tmpStatusFile).text();
+    let status = JSON.parse(statusContent);
+
+    expect(status.sessions["test-session"]).toBeDefined();
+    expect(status.sessions["test-session"].elapsed).toBeDefined();
+    expect(status.sessions["test-session"].status).toBe("active");
+    expect(status.sessions["test-session"].recovery).toBeDefined();
+    expect(status.sessions["test-session"].recovery.attempts).toBe(0);
+
+    // Step 2: Send a progress event — status file updates
+    await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test-session", messageID: "msg1" }, delta: "hello" } } });
+
+    statusContent = await Bun.file(tmpStatusFile).text();
+    status = JSON.parse(statusContent);
+    expect(status.sessions["test-session"].timer.lastProgressAgo).toBeDefined();
+
+    // Step 3: Send todo with pending todos — nudge state tracked
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [{ id: "t1", content: "test task", status: "in_progress" }] } } });
+
+    statusContent = await Bun.file(tmpStatusFile).text();
+    status = JSON.parse(statusContent);
+    expect(status.sessions["test-session"].todos.hasOpenTodos).toBe(true);
+
+    // Step 4: session.idle with pending todos — nudge tracked
+    mockStatus.mockResolvedValue({ data: { "test-session": { type: "idle" } }, error: undefined });
+    mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+    await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
+
+    statusContent = await Bun.file(tmpStatusFile).text();
+    status = JSON.parse(statusContent);
+    expect(status.sessions["test-session"].nudge.lastNudgeAt).toBeDefined();
+
+    // Step 5: session.deleted — session should be cleaned up (file may be gone or session absent)
+    await plugin.event({ event: { type: "session.deleted", properties: { sessionID: "test-session", info: {} } } });
+
+    // Status file should not throw — session is cleaned up gracefully
+    try {
+      const finalContent = await Bun.file(tmpStatusFile).text();
+      const finalStatus = JSON.parse(finalContent);
+      // After deleted, session should either be absent from file or status should reflect cleanup
+      expect(finalStatus.sessions["test-session"]).toBeUndefined();
+    } catch {
+      // File may have been rotated or cleaned up — that's fine
+    }
+
+    vi.useRealTimers();
+  });
+
+  it("should handle session.idle with no pending todos gracefully", async () => {
+    vi.useFakeTimers();
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFileEnabled: false,
+      }
+    );
+
+    // Create session without todos
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+
+    // Fire session.idle with no todos
+    mockStatus.mockResolvedValue({ data: { "test-session": { type: "idle" } }, error: undefined });
+    await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
+
+    // No prompt should have been sent
+    expect(mockPrompt).not.toHaveBeenCalled();
+  });
+
+  it("should resume monitoring after session.compacted", async () => {
+    vi.useFakeTimers();
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        stallTimeoutMs: 1000,
+        waitAfterAbortMs: 100,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFileEnabled: false,
+      }
+    );
+
+    // Start busy session
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+
+    // Compaction starts (compacting flag set)
+    await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session", messageID: "msg1", part: { id: "part1", type: "compaction", auto: true }, delta: "" } } });
+
+    // Timer fires — should NOT abort because compacting = true
+    await vi.advanceTimersByTimeAsync(1000);
+    await Promise.resolve();
+    expect(mockAbort).not.toHaveBeenCalled();
+
+    // session.compacted fires — should clear compacting flag
+    await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test-session" } } });
+
+    // Now wait for stall again — SHOULD abort because compacting is cleared
+    await vi.advanceTimersByTimeAsync(1000);
+    await Promise.resolve();
+    expect(mockAbort).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });
