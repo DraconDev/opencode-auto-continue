@@ -377,6 +377,40 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
+    it("should NOT send double-nudge when session.idle fires multiple times after busy→idle", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0, // No cooldown to isolate wasBusy dedup behavior
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status (sets wasBusy = true)
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set pending todos
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test task", status: "in_progress" }
+      ] } } });
+
+      // First session.idle — should trigger nudge AND clear wasBusy
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Second session.idle immediately — wasBusy is now false, so no nudge should fire
+      // (but hasOpenTodos is still true, cooldown is 0, so the only gate is wasBusy)
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Verify no second nudge
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
     it("should clear session on session.deleted after session.idle", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 

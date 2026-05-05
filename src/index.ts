@@ -1680,11 +1680,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // This is the perfect time to check for pending todos and nudge the agent
       if (event?.type === "session.idle") {
         const s = getSession(sid);
-        if (config.nudgeEnabled && s.hasOpenTodos && Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
+        // wasBusy check prevents double-nudge on repeated idle events
+        if (config.nudgeEnabled && s.wasBusy && s.hasOpenTodos && Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
+          s.wasBusy = false;
           log('session idle with pending todos, sending nudge:', sid);
           await sendNudge(sid);
         } else {
-          log('session idle, no nudge needed:', sid, 'enabled:', config.nudgeEnabled, 'hasTodos:', s.hasOpenTodos);
+          log('session idle, no nudge needed:', sid, 'enabled:', config.nudgeEnabled, 'wasBusy:', s.wasBusy, 'hasTodos:', s.hasOpenTodos);
         }
         // Keep timer running — idle is not terminal
         writeStatusFile(sid);

@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Added handling for session update and diff events in AutoForceResumePlugin
+Added prevention of duplicate nudges during repeated idle events by tracking busy status
 
 ## Context
-The plugin needs to properly handle session state changes and informational events to ensure session persistence and proper event processing.
+Previously, the plugin would send multiple nudges when receiving repeated "session.idle" events after a busy→idle transition, which could be disruptive to users. This change ensures only one nudge is sent per busy→idle cycle.
 
 ## Completed
-- [x] Added handling for `session.updated` events to preserve session state
-- [x] Added handling for `session.diff` events as informational (no action needed)
-- [x] Added logging for both event types
+- [x] Added `wasBusy` flag to session state to track busy→idle transitions
+- [x] Modified nudge logic to only send when `wasBusy` is true
+- [x] Added test case verifying no duplicate nudges are sent during repeated idle events
+- [x] Updated logging to include `wasBusy` status in debug messages
 
 ## In Progress
-- [x] Event handling implementation for session state management
+- [ ] No active work in progress
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Verify test coverage for new event handlers
-2. Update documentation to reflect new event handling behavior
+1. Verify no regression in other idle session handling scenarios
+2. Consider adding metrics to track nudge frequency and effectiveness
