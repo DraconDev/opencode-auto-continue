@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added session status file writing for session cancellation and creation
+Added session status file writing for session cancellation and stale event handling
 
 ## Context
-This change implements persistent session status tracking by writing status files during session lifecycle events. This enables better recovery and terminal integration for session management.
+This change enhances session management by ensuring the session status is persisted to disk when sessions are cancelled or encounter stale events, improving recovery and state tracking.
 
 ## Completed
-- [x] Added `writeStatusFile(sid)` calls in both session cancellation paths
-- [x] Implemented status file writing for session creation and termination
+- [x] Added `writeStatusFile(sid)` calls in both cancellation and stale event paths
+- [x] Ensures session state is written to disk during critical lifecycle events
 
 ## In Progress
-- [x] Session status file writing functionality
+- [x] Session status file writing implementation
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify status file format and content
-2. Implement status file reading for session recovery
+1. Verify status file writing works correctly in integration tests
+2. Document the new status file format and usage in session recovery

@@ -1340,12 +1340,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTimeout(s.nudgeTimer);
           s.nudgeTimer = null;
         }
+        writeStatusFile(sid);
         return;
       }
 
       if (staleTypes.includes(event?.type)) {
         log('stale event:', event?.type, sid);
         resetSession(sid);
+        writeStatusFile(sid);
         return;
       }
     },
