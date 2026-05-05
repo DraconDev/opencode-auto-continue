@@ -76,6 +76,10 @@ interface PluginConfig {
   statusFileEnabled: boolean;
   statusFilePath: string;
   maxStatusHistory: number;
+  statusFileRotate: number;
+  recoveryHistogramEnabled: boolean;
+  stallPatternDetection: boolean;
+  terminalProgressEnabled: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -129,6 +133,10 @@ const DEFAULT_CONFIG: PluginConfig = {
   statusFileEnabled: true,
   statusFilePath: "",
   maxStatusHistory: 10,
+  statusFileRotate: 5,
+  recoveryHistogramEnabled: true,
+  stallPatternDetection: true,
+  terminalProgressEnabled: true,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
