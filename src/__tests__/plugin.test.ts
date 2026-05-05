@@ -564,7 +564,6 @@ describe("opencode-auto-force-resume", () => {
       writeSpy.mockRestore();
     });
   });
-  });
 
   describe("statusLine hook", () => {
     it("should attempt to register statusLine hook on init", async () => {
