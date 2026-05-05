@@ -18,6 +18,7 @@ import {
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNotificationModule } from "./notifications.js";
+import { createNudgeModule } from "./nudge.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
@@ -119,6 +120,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const terminal = createTerminalModule({ config, sessions, log, input });
   const notifications = createNotificationModule({ config, sessions, log, isDisposed, input });
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed, input });
 
   // ── Status File ────────────────────────────────────────────────────────
 
