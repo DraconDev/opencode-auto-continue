@@ -4,14 +4,14 @@
 Added session status file writing for session cancellation and creation
 
 ## Context
-This change implements persistent session state tracking by writing status files when sessions are created or cancelled. It builds on the comprehensive session status tracking system introduced in recent commits.
+This change implements persistent session status tracking by writing status files during session lifecycle events. This enables better recovery and terminal integration for session management.
 
 ## Completed
-- [x] Added `writeStatusFile(sid)` call to persist session state during cancellation
-- [x] Integrated with existing session management system
+- [x] Added `writeStatusFile(sid)` calls in both session cancellation paths
+- [x] Implemented status file writing for session creation and termination
 
 ## In Progress
-- [x] Session status file writing implementation
+- [x] Session status file writing functionality
 
 ## Blockers
 - None identified

@@ -1233,6 +1233,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             recover(sid);
           }, config.stallTimeoutMs);
         }
+        writeStatusFile(sid);
         return;
       }
 
@@ -1295,6 +1296,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             recover(sid);
           }, config.stallTimeoutMs);
         }
+        writeStatusFile(sid);
         return;
       }
 
