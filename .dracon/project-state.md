@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved documentation for nudge cooldown behavior in idle session handling
+Enhanced test coverage for session idle handling with nudge cooldown behavior
 
 ## Context
-The change adds clarity to the nudge system's behavior during session state transitions, particularly around the `wasBusy` flag which prevents duplicate nudges during busy→idle→idle sequences.
+The recent feature additions for automatic nudging and session state tracking required comprehensive test coverage to verify proper behavior when sessions transition from busy to idle states, especially with pending todos and cooldown periods.
 
 ## Completed
-- [x] Added documentation for the `wasBusy` flag logic
-- [x] Clarified nudge trigger conditions in the flow diagram
+- [x] Added test for nudge suppression when no pending todos exist
+- [x] Added test for nudge cooldown period enforcement
+- [x] Added test for session clearing after idle state
 
 ## In Progress
-- [x] Documentation updates for idle session handling
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review documentation changes for accuracy
-2. Consider additional edge cases for future documentation
-```
+1. Review test coverage for edge cases in session state transitions
+2. Update documentation to reflect new test scenarios

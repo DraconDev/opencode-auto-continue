@@ -288,7 +288,58 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
-    it("should clear session on session.deleted", async () => {
+    it("should NOT trigger nudge on session.idle if no pending todos", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // No todos set (hasOpenTodos stays false)
+
+      // Fire session.idle - should NOT trigger nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should NOT trigger nudge on session.idle within cooldown period", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 60000, // 1 minute cooldown
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session and set todo
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
+
+      // First session.idle should trigger nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Second session.idle immediately after should NOT trigger (cooldown)
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should clear session on session.deleted after session.idle", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
