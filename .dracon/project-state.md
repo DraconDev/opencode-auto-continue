@@ -1,22 +1,28 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery messaging with configurable message formats
+Enhanced session recovery messaging with configurable message templates and todo context integration
 
 ## Context
-This change improves the session recovery system by making the messaging more configurable and specific to different scenarios (continuation with todos, max attempts reached).
+This change improves the session recovery experience by:
+1. Making recovery messages more dynamic through template variables
+2. Integrating todo context into recovery prompts
+3. Providing better visibility into recovery attempts and status
 
 ## Completed
-- [x] Renamed `messageFormat` to `continueMessage` for clarity
-- [x] Added `continueWithTodosMessage` for cases with pending tasks
-- [x] Added `maxAttemptsMessage` for when maximum retry attempts are reached
+- [x] Added validation for new message configuration fields
+- [x] Implemented template variable substitution system
+- [x] Integrated todo context into recovery messages
+- [x] Added template variables for recovery attempt tracking
+- [x] Enhanced message formatting with dynamic content
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Implementation of configurable recovery messages
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the new message formats work as expected in different scenarios
-2. Update documentation to reflect the new configuration options
+1. Add unit tests for message formatting logic
+2. Document new configuration options in README
+3. Consider adding more template variables for advanced use cases

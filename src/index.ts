@@ -85,6 +85,12 @@ function validateConfig(config: PluginConfig): PluginConfig {
   if (config.maxAutoSubmits < 0) {
     errors.push(`maxAutoSubmits must be >= 0, got ${config.maxAutoSubmits}`);
   }
+  if (!config.continueMessage || typeof config.continueMessage !== 'string') {
+    errors.push(`continueMessage must be a non-empty string`);
+  }
+  if (!config.continueWithTodosMessage || typeof config.continueWithTodosMessage !== 'string') {
+    errors.push(`continueWithTodosMessage must be a non-empty string`);
+  }
 
   if (errors.length > 0) {
     try {
@@ -210,6 +216,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  function formatMessage(template: string, vars: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
+  }
+
   async function recover(sessionId: string) {
     if (isDisposed) return;
     const s = sessions.get(sessionId);
@@ -302,7 +312,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       // Fetch todos if enabled
-      let messageText = config.messageFormat;
+      let messageText = config.continueMessage;
+      const templateVars: Record<string, string> = {
+        attempts: String(s.attempts + 1),
+        maxAttempts: String(config.maxRecoveries),
+      };
+      
       if (config.includeTodoContext) {
         try {
           const todoResult = await (input.client.session as any).todo({ path: { id: sessionId } });
@@ -310,9 +325,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           const pending = todos.filter((t: any) => t.status === 'in_progress' || t.status === 'pending');
           const completed = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
           
+          templateVars.total = String(todos.length);
+          templateVars.completed = String(completed.length);
+          templateVars.pending = String(pending.length);
+          
           if (pending.length > 0) {
             const todoList = pending.slice(0, 5).map((t: any) => t.content || t.title || t.id).join(', ');
-            messageText = `${config.messageFormat} You have ${pending.length} open task(s): ${todoList}${pending.length > 5 ? '...' : ''}`;
+            templateVars.todoList = todoList + (pending.length > 5 ? '...' : '');
+            messageText = formatMessage(config.continueWithTodosMessage, templateVars);
             log('todo context added:', pending.length, 'pending tasks');
           } else {
             log('no pending todos');
@@ -320,6 +340,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         } catch (e) {
           log('todo fetch failed:', e);
         }
+      }
+
+      // If still using default message, apply template vars
+      if (messageText === config.continueMessage) {
+        messageText = formatMessage(config.continueMessage, templateVars);
       }
 
       const promptOptions = {
