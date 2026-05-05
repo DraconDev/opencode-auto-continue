@@ -224,13 +224,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (!sessionStatus || sessionStatus.type !== "busy") {
         s.aborting = false;
-        s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
         return;
       }
 
       if (now - s.lastProgressAt < config.stallTimeoutMs) {
         s.aborting = false;
-        s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
         return;
       }
 
