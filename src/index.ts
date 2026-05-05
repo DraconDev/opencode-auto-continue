@@ -108,7 +108,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   showToasts: false,
   nudgeEnabled: true,
   nudgeTimeoutMs: 300000,
-  nudgeMessage: "You have {pending} open task(s). Send a message when you're ready to continue.",
+  nudgeMessage: "The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks.",
   nudgeCooldownMs: 60000,
   autoCompact: true,
   maxSessionAgeMs: 7200000,
