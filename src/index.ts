@@ -54,6 +54,10 @@ const DEFAULT_CONFIG: PluginConfig = {
   continueWithTodosMessage: "Please continue from where you left off. You have {pending} open task(s): {todoList}.",
   maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
   includeTodoContext: true,
+  reviewOnComplete: true,
+  reviewMessage: "All tasks in this session have been completed. Please perform a final review: summarize what was accomplished, note any technical decisions or trade-offs made, flag anything that should be documented, and list any follow-up tasks or improvements for next time.",
+  reviewDebounceMs: 500,
+  showToasts: false,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -93,8 +97,11 @@ function validateConfig(config: PluginConfig): PluginConfig {
   if (!config.continueMessage || typeof config.continueMessage !== 'string') {
     errors.push(`continueMessage must be a non-empty string`);
   }
-  if (!config.continueWithTodosMessage || typeof config.continueWithTodosMessage !== 'string') {
-    errors.push(`continueWithTodosMessage must be a non-empty string`);
+  if (!config.reviewMessage || typeof config.reviewMessage !== 'string') {
+    errors.push(`reviewMessage must be a non-empty string`);
+  }
+  if (config.reviewDebounceMs < 0) {
+    errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
   }
 
   if (errors.length > 0) {

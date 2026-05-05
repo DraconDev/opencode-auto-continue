@@ -1,23 +1,24 @@
 # Project State
 
 ## Current Focus
-Added configurable review and toast notification features for session recovery
+Added configurable review and toast notification features for session completion
 
 ## Context
-The recent work on session recovery messaging needed additional configuration options to control how users are notified about review completion and system status updates.
+This change enhances session management by allowing configurable review prompts and toast notifications when all tasks in a session are completed. The previous implementation lacked structured feedback mechanisms for completed sessions.
 
 ## Completed
-- [x] Added `reviewOnComplete` flag to enable/disable post-review notifications
-- [x] Added `reviewMessage` string for customizable review completion messages
-- [x] Added `reviewDebounceMs` to control notification timing
-- [x] Added `showToasts` toggle for system status notifications
+- [x] Added `reviewOnComplete` boolean flag to enable/disable review prompts
+- [x] Added `reviewMessage` template for structured session review prompts
+- [x] Added `reviewDebounceMs` to control review prompt timing
+- [x] Added `showToasts` flag to enable/disable toast notifications
+- [x] Added validation for new configuration options
 
 ## In Progress
-- [ ] Testing integration with existing session recovery flows
+- [ ] No active work in progress beyond these changes
 
 ## Blockers
-- Need to verify default values align with user expectations
+- None identified for this specific change
 
 ## Next Steps
-1. Implement default values for new configuration options
-2. Add integration tests for review notification flows
+1. Update documentation to reflect new configuration options
+2. Add integration tests for the review and toast notification features
