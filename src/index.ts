@@ -335,7 +335,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         if (status?.type === "busy") {
           updateProgress(s);
-          s.attempts = 0;
           s.userCancelled = false;
           if (s.planning) {
             log('session busy, clearing plan flag');
