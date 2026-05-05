@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Enhanced test coverage for session idle handling with nudge cooldown behavior
+Added test coverage for nudge message todo context inclusion in idle session handling
 
 ## Context
-The recent feature additions for automatic nudging and session state tracking required comprehensive test coverage to verify proper behavior when sessions transition from busy to idle states, especially with pending todos and cooldown periods.
+This change enhances test coverage for the auto-force-resume plugin's nudge functionality when including todo context in idle session messages. It verifies that the plugin properly fetches and includes todo context when configured to do so.
 
 ## Completed
-- [x] Added test for nudge suppression when no pending todos exist
-- [x] Added test for nudge cooldown period enforcement
-- [x] Added test for session clearing after idle state
+- [x] Added test case verifying todo context inclusion in nudge messages
+- [x] Test validates proper todo context fetching during session idle events
+- [x] Ensures nudge messages include relevant todo information when enabled
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Test implementation for todo context inclusion in nudge messages
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review test coverage for edge cases in session state transitions
-2. Update documentation to reflect new test scenarios
+1. Review test coverage for other nudge message scenarios
+2. Consider adding integration tests for the nudge functionality

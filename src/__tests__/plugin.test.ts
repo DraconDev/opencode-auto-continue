@@ -339,6 +339,44 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
+    it("should include todo context in nudge message when includeTodoContext is true", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({
+        data: [
+          { id: "t1", content: "First task", status: "in_progress" },
+          { id: "t2", content: "Second task", status: "pending" }
+        ],
+        error: undefined
+      });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        includeTodoContext: true,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session and set todo
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "First task", status: "in_progress" },
+        { id: "t2", content: "Second task", status: "pending" }
+      ] } } });
+
+      // Fire session.idle - should call todo() to get context
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Verify todo was called to fetch context
+      expect(mockTodo).toHaveBeenCalled();
+      // Verify prompt was called with todo context
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
     it("should clear session on session.deleted after session.idle", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
