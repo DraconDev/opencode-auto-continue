@@ -513,6 +513,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   function clearTerminalTitle() {
+    if (!config.terminalTitleEnabled) return;
     try {
       process.stdout.write('\x1b]0;opencode\x07');
       process.stdout.write('\x1b]2;opencode\x07');
