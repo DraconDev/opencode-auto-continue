@@ -1,22 +1,27 @@
 # Project State
 
 ## Current Focus
-Added session action tracking and toast timer management for proactive notifications
+Added session action tracking with visual timer toasts for long-running operations
 
 ## Context
-This change implements tracking for when actions start and manages toast notification timers to provide proactive feedback to users about ongoing operations.
+To improve user visibility during long-running session actions, this adds a timer toast that shows:
+- Total time since action started
+- Time since last progress update
+This helps users understand when operations are stuck or progressing
 
 ## Completed
-- [x] Added `actionStartedAt` timestamp to track when session actions begin
-- [x] Added `toastTimer` to manage notification intervals
-- [x] Implemented cleanup of toast timers when sessions are deleted
+- [x] Added duration formatting helper
+- [x] Created timer toast display system
+- [x] Implemented timer start/stop logic
+- [x] Integrated with session state tracking
+- [x] Added configuration option for toast frequency
 
 ## In Progress
-- [x] Session action tracking and notification management
+- [x] Timer toast implementation is complete
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Implement toast notification display logic
-2. Add configuration options for toast timing and behavior
+1. Add unit tests for timer functionality
+2. Document configuration options for timer behavior

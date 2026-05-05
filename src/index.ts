@@ -398,8 +398,79 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
-  function formatMessage(template: string, vars: Record<string, string>): string {
-    return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
+  function formatDuration(ms: number): string {
+    if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
+    if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+    return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
+  }
+
+  async function showTimerToast(sessionId: string) {
+    if (isDisposed) return;
+    if (!config.timerToastEnabled) return;
+    
+    const s = sessions.get(sessionId);
+    if (!s || s.actionStartedAt === 0) return;
+    
+    const now = Date.now();
+    const actionDuration = now - s.actionStartedAt;
+    const lastProgressDuration = now - s.lastProgressAt;
+    
+    const actionStr = formatDuration(actionDuration);
+    const progressStr = formatDuration(lastProgressDuration);
+    
+    const message = `⏱️ Action: ${actionStr} | Last progress: ${progressStr} ago`;
+    
+    try {
+      log('showing timer toast for session:', sessionId, message);
+      await (input.client as any).tui.showToast({
+        query: { directory: (input as any).directory || "" },
+        body: {
+          title: "Session Timer",
+          message: message,
+          variant: "info",
+        },
+      });
+    } catch (e) {
+      log('timer toast error (ignored):', e);
+    }
+  }
+
+  function startTimerToast(sessionId: string) {
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    
+    // Clear existing timer
+    if (s.toastTimer) {
+      clearInterval(s.toastTimer);
+      s.toastTimer = null;
+    }
+    
+    if (!config.timerToastEnabled) return;
+    
+    s.actionStartedAt = Date.now();
+    
+    // Show first toast immediately
+    showTimerToast(sessionId);
+    
+    // Set up recurring timer
+    s.toastTimer = setInterval(() => {
+      showTimerToast(sessionId);
+    }, config.timerToastIntervalMs);
+    
+    log('timer toast started for session:', sessionId, 'interval:', config.timerToastIntervalMs);
+  }
+
+  function stopTimerToast(sessionId: string) {
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    
+    if (s.toastTimer) {
+      clearInterval(s.toastTimer);
+      s.toastTimer = null;
+      log('timer toast stopped for session:', sessionId);
+    }
+    
+    s.actionStartedAt = 0;
   }
 
   // Rough token estimation: code ≈ 0.5 tokens/char, English ≈ 0.25 tokens/char
@@ -920,6 +991,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             log('session busy, clearing compacting flag (compaction likely finished)');
             s.compacting = false;
           }
+          // Start timer toast if not already running
+          if (s.actionStartedAt === 0) {
+            startTimerToast(sid);
+          }
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
@@ -929,6 +1004,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Proactive compaction when idle and message count is high
         if (status?.type === "idle" && !s.needsContinue) {
           await maybeProactiveCompact(sid);
+        }
+        // Stop timer toast when session becomes idle
+        if (status?.type === "idle") {
+          stopTimerToast(sid);
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
