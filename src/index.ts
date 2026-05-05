@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode-ai/plugin";
-import { appendFileSync, mkdirSync, existsSync, readFileSync } from "fs";
+import { appendFileSync, mkdirSync, existsSync, readFileSync, writeFileSync, renameSync } from "fs";
 import { join, dirname } from "path";
 
 interface SessionState {
