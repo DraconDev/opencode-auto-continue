@@ -1705,6 +1705,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Reset recovery counters since we just freed context space
         s.attempts = 0;
         s.backoffAttempts = 0;
+        // Restart stall timer since we just freed context
+        clearTimer(sid);
+        if (!s.planning && !s.compacting) {
+          s.timer = setTimeout(() => recover(sid), 0);
+        }
         writeStatusFile(sid);
         return;
       }
