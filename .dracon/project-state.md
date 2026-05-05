@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced session terminal integration with status updates and cleanup
+Added session status file writing for session cancellation and creation events
 
 ## Context
-The code adds terminal title updates and status file writing during session management to provide better visibility into session state and recovery status.
+This change enhances session recovery tracking by persisting session state to disk when sessions are created or cancelled, ensuring continuity across application restarts.
 
 ## Completed
-- [x] Added terminal title updates during session activity
-- [x] Added terminal title clearing when sessions become idle
-- [x] Added status file writing to persist session state information
+- [x] Added `writeStatusFile(sid)` call in session cancellation handler
+- [x] Added `writeStatusFile(sid)` call in session creation handler
 
 ## In Progress
-- [x] Terminal integration for session status visualization
+- [x] Session status file writing implementation
 
 ## Blockers
-- None identified in this change
+- None identified in this commit
 
 ## Next Steps
-1. Verify terminal updates don't interfere with existing session operations
-2. Confirm status file content is sufficient for recovery scenarios
+1. Verify status file integrity and recovery process
+2. Add tests for status file persistence and recovery scenarios

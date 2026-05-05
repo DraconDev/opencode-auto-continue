@@ -1098,12 +1098,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           log('user cancelled session:', sid);
         }
         clearTimer(sid);
+        writeStatusFile(sid);
         return;
       }
 
       if (event?.type === "session.created") {
         log('session.created:', sid);
         getSession(sid);
+        writeStatusFile(sid);
         return;
       }
 
