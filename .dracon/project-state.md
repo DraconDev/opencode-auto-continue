@@ -1,23 +1,26 @@
 # Project State
 
 ## Current Focus
-Added automatic nudging for idle sessions with pending todos
+Updated test coverage for session idle handling to verify nudge behavior instead of session clearing
 
 ## Context
-The plugin now needs to proactively nudge users when sessions become idle but have pending todos, ensuring tasks aren't forgotten. This follows recent work on auto-continue functionality and session state tracking.
+The recent feature work added automatic nudging for idle sessions with pending todos, replacing the previous behavior of clearing sessions on idle. This test update reflects the new behavior by:
+1. Verifying sessions are preserved on idle
+2. Confirming nudges are triggered
+3. Maintaining all session state
 
 ## Completed
-- [x] Added session.idle event handler to check for pending todos
-- [x] Implemented nudge logic with cooldown period
-- [x] Maintained session timer for idle states
-- [x] Added logging for nudge decisions
+- [x] Updated test to verify nudge triggering instead of session clearing
+- [x] Added comprehensive session state setup for nudge testing
+- [x] Verified session persistence after idle event
+- [x] Confirmed nudge prompt is sent
 
 ## In Progress
-- [x] Nudge functionality for idle sessions with pending todos
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Add unit tests for nudge logic
-2. Document nudge configuration options
+1. Review test coverage for other session state transitions
+2. Update documentation to reflect new idle behavior

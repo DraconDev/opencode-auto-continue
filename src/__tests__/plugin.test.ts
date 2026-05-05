@@ -260,17 +260,69 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("session cleanup", () => {
-    it("should clear session on session.idle", async () => {
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+    it("should NOT clear session on session.idle — triggers nudge instead", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        nudgeEnabled: true,
+        nudgeCooldownMs: 1000,
+        includeTodoContext: false,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+      // Set up session with pending todos so nudge fires
+      const s = sessions.get("test") || sessions.set("test", {
+        id: "test",
+        hasOpenTodos: true,
+        lastNudgeAt: 0,
+        planBuffer: "",
+        planning: false,
+        compacting: false,
+        backoffAttempts: 0,
+        autoSubmitCount: 0,
+        lastUserMessageId: "",
+        sentMessageAt: 0,
+        reviewFired: false,
+        lastNudgeAt: 0,
+        needsContinue: false,
+        continueMessageText: "",
+        messageCount: 0,
+        estimatedTokens: 0,
+        lastCompactionAt: 0,
+        tokenLimitHits: 0,
+        actionStartedAt: 0,
+        attemptCount: 0,
+        successfulAttempts: 0,
+        failedAttempts: 0,
+        stallDetections: 0,
+        recoverySuccessful: 0,
+        recoveryFailed: 0,
+        lastRecoverySuccess: 0,
+        totalRecoveryTimeMs: 0,
+        recoveryStartTime: 0,
+        statusHistory: [],
+        recoveryTimes: [],
+        lastStallPartType: "",
+        stallPatterns: {},
+        wasBusy: false,
+        lastProgressAt: Date.now(),
+        lastIdleSeen: 0,
+        lastUserMessage: 0,
+        lastContinuation: 0,
+        hourlyCount: 0,
+        hourStart: 0,
+        denyCount: 0,
+        lastDenyNudge: 0,
+      }).get("test")!;
 
-      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      // Send session.idle — should NOT clear session, should trigger nudge
+      mockPromptAsync.mockResolvedValue(undefined);
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
 
-      vi.useFakeTimers();
-      await vi.advanceTimersByTimeAsync(10000);
-
-      expect(mockAbort).not.toHaveBeenCalled();
-      vi.useRealTimers();
+      // Verify session still exists
+      expect(sessions.has("test")).toBe(true);
+      // Verify nudge was sent
+      expect(mockPromptAsync).toHaveBeenCalled();
     });
 
     it("should clear session on session.deleted", async () => {
