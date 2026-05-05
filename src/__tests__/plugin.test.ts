@@ -193,6 +193,9 @@ describe("opencode-auto-force-resume", () => {
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
+      // After recovery, new message starts - simulate event to set new timer
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      
       // Second recovery (attempts=1 → 2)  
       await vi.advanceTimersByTimeAsync(600);
       await Promise.resolve();
