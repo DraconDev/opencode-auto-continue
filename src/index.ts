@@ -410,6 +410,141 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  // ── Status File ────────────────────────────────────────────────────────
+
+  const statusFile = join(logDir, "auto-force-resume.status");
+
+  function writeStatusFile(sessionId: string) {
+    try {
+      ensureLogDir();
+      const s = sessions.get(sessionId);
+      if (!s) return;
+
+      const now = Date.now();
+      const elapsed = now - s.sessionCreatedAt;
+      const actionDuration = s.actionStartedAt > 0 ? now - s.actionStartedAt : 0;
+      const lastProgressAgo = now - s.lastProgressAt;
+      const nextRetryIn = s.attempts >= config.maxRecoveries && s.backoffAttempts > 0
+        ? Math.min(config.stallTimeoutMs * Math.pow(2, s.backoffAttempts), config.maxBackoffMs)
+        : 0;
+
+      const data = {
+        version: "3.85.0",
+        timestamp: new Date().toISOString(),
+        sessions: {
+          [sessionId]: {
+            elapsed: formatDuration(elapsed),
+            status: s.aborting ? "recovering" : (s.compacting ? "compacting" : (s.planning ? "planning" : "active")),
+            recovery: {
+              attempts: s.attempts,
+              successful: s.recoverySuccessful,
+              failed: s.recoveryFailed,
+              lastAttempt: s.lastRecoveryTime > 0 ? new Date(s.lastRecoveryTime).toISOString() : null,
+              lastSuccess: s.lastRecoverySuccess > 0 ? new Date(s.lastRecoverySuccess).toISOString() : null,
+              inBackoff: s.attempts >= config.maxRecoveries,
+              backoffAttempts: s.backoffAttempts,
+              nextRetryIn: nextRetryIn > 0 ? formatDuration(nextRetryIn) : null,
+            },
+            stall: {
+              detections: s.stallDetections,
+              lastDetectionAt: s.lastRecoveryTime > 0 ? new Date(s.lastRecoveryTime).toISOString() : null,
+            },
+            compaction: {
+              proactiveTriggers: 0, // tracked separately if needed
+              tokenLimitTriggers: s.tokenLimitHits,
+              successful: s.lastCompactionAt > 0 ? 1 : 0,
+              lastCompactAt: s.lastCompactionAt > 0 ? new Date(s.lastCompactionAt).toISOString() : null,
+              estimatedTokens: s.estimatedTokens,
+              threshold: getCompactionThreshold(
+                getModelContextLimit(join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json")),
+                config
+              ),
+            },
+            timer: {
+              actionDuration: actionDuration > 0 ? formatDuration(actionDuration) : "idle",
+              lastProgressAgo: formatDuration(lastProgressAgo),
+            },
+            nudge: {
+              sent: s.lastNudgeAt > 0 ? 1 : 0,
+              lastNudgeAt: s.lastNudgeAt > 0 ? new Date(s.lastNudgeAt).toISOString() : null,
+            },
+            todos: {
+              hasOpenTodos: s.hasOpenTodos,
+            },
+            autoSubmits: s.autoSubmitCount,
+            userCancelled: s.userCancelled,
+            planning: s.planning,
+            compacting: s.compacting,
+            sessionCreatedAt: new Date(s.sessionCreatedAt).toISOString(),
+          },
+        },
+      };
+
+      const tmpFile = statusFile + ".tmp";
+      writeFileSync(tmpFile, JSON.stringify(data, null, 2) + "\n");
+      renameSync(tmpFile, statusFile);
+    } catch {
+      // Silently ignore file system errors
+    }
+  }
+
+  // ── Terminal Title (OSC sequences) ────────────────────────────────────
+
+  function updateTerminalTitle(sessionId: string) {
+    const s = sessions.get(sessionId);
+    if (!s || s.actionStartedAt === 0) return;
+
+    const now = Date.now();
+    const actionDuration = now - s.actionStartedAt;
+    const progressAgo = now - s.lastProgressAt;
+    const title = `⏱️ ${formatDuration(actionDuration)} | Last: ${formatDuration(progressAgo)} ago`;
+
+    try {
+      // OSC 0: set icon name and window title
+      process.stdout.write(`\x1b]0;${title}\x07`);
+      // OSC 2: set window title (fallback for some terminals)
+      process.stdout.write(`\x1b]2;${title}\x07`);
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearTerminalTitle() {
+    try {
+      process.stdout.write('\x1b]0;opencode\x07');
+      process.stdout.write('\x1b]2;opencode\x07');
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── StatusLine Hook (future-proof) ────────────────────────────────────
+
+  function registerStatusLineHook() {
+    try {
+      // Check if the plugin system supports statusLine hooks
+      const pluginSystem = input as any;
+      if (typeof pluginSystem.hook === 'function') {
+        pluginSystem.hook("tui.statusLine.variables", async (_input: any, result: any) => {
+          // Provide timer variables for each active session
+          sessions.forEach((s, sid) => {
+            if (s.actionStartedAt > 0) {
+              const now = Date.now();
+              const actionDuration = now - s.actionStartedAt;
+              const progressAgo = now - s.lastProgressAt;
+              result.variables[`afr_timer_${sid.slice(0, 8)}`] = formatDuration(actionDuration);
+              result.variables[`afr_progress_${sid.slice(0, 8)}`] = formatDuration(progressAgo);
+            }
+          });
+          return result;
+        });
+        log('statusLine hook registered');
+      }
+    } catch {
+      // Hook not available in this OpenCode version
+    }
+  }
+
   function formatMessage(template: string, vars: Record<string, string>): string {
     return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
   }

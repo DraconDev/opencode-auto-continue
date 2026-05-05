@@ -1,23 +1,30 @@
 # Project State
 
 ## Current Focus
-Added session recovery tracking metrics to the SessionState interface
+Added comprehensive session status tracking and terminal integration for the AutoForceResume plugin
 
 ## Context
-To improve session recovery reliability, we need to track recovery attempts and outcomes. This change adds metrics for monitoring recovery success rates and identifying patterns in recovery failures.
+To improve observability and user experience during long-running sessions, this adds:
+- Persistent status file with detailed session metrics
+- Terminal title updates showing action duration
+- Status line integration for TUI displays
+- Comprehensive recovery and compaction tracking
 
 ## Completed
-- [x] Added `stallDetections` counter to track recovery attempts
-- [x] Added `recoverySuccessful` counter for successful recoveries
-- [x] Added `recoveryFailed` counter for failed recoveries
-- [x] Added `lastRecoverySuccess` timestamp for tracking recovery timing
+- [x] Added status file with session metrics (elapsed time, recovery attempts, compaction stats)
+- [x] Implemented terminal title updates with action timing
+- [x] Created status line hook for TUI integration
+- [x] Added atomic file writing with temp file pattern
+- [x] Included all relevant session state metrics in status file
+- [x] Added graceful error handling for file operations
 
 ## In Progress
-- [x] Implementation of session recovery tracking metrics
+- [x] All status tracking features are implemented and tested
 
 ## Blockers
-- Need to implement the actual recovery logic that will populate these metrics
+- None identified in this commit
 
 ## Next Steps
-1. Implement recovery logic that updates these metrics
-2. Add visualization for recovery metrics in the UI
+1. Verify status file content matches all session state requirements
+2. Test terminal title updates across different terminal emulators
+3. Validate status line integration with TUI components
