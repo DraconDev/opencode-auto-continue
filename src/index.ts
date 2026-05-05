@@ -39,6 +39,10 @@ interface PluginConfig {
   reviewMessage: string;
   reviewDebounceMs: number;
   showToasts: boolean;
+  nudgeEnabled: boolean;
+  nudgeTimeoutMs: number;
+  nudgeMessage: string;
+  nudgeCooldownMs: number;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -60,6 +64,10 @@ const DEFAULT_CONFIG: PluginConfig = {
   reviewMessage: "All tasks in this session have been completed. Please perform a final review: summarize what was accomplished, note any technical decisions or trade-offs made, flag anything that should be documented, and list any follow-up tasks or improvements for next time.",
   reviewDebounceMs: 500,
   showToasts: false,
+  nudgeEnabled: true,
+  nudgeTimeoutMs: 300000,
+  nudgeMessage: "You have {pending} open task(s). Send a message when you're ready to continue.",
+  nudgeCooldownMs: 60000,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {

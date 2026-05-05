@@ -1,24 +1,23 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery with unified todo context and completion review features
+Added configurable nudge system for pending tasks in session management
 
 ## Context
-The plugin now combines three separate features (stall recovery, todo reminder, and auto-review) into a single, conflict-free implementation with configurable messages and safety mechanisms.
+This change extends the session management system by introducing a configurable nudge feature that reminds users about pending tasks after a specified timeout period. This helps maintain focus and prevents task abandonment during long sessions.
 
 ## Completed
-- [x] Unified stall recovery with todo context integration
-- [x] Added configurable review prompt when all todos complete
-- [x] Implemented synthetic message filtering to prevent loops
-- [x] Added comprehensive documentation with template variables
-- [x] Enhanced configuration options for all features
+- [x] Added nudge configuration options to PluginConfig interface
+- [x] Implemented default nudge settings (enabled, 5-minute timeout, customizable message, 1-minute cooldown)
+- [x] Added type definitions for nudge-related configuration properties
 
 ## In Progress
-- [ ] None (all features implemented)
+- [ ] Implementation of the actual nudge functionality (not yet in this commit)
 
 ## Blockers
-- None (all features implemented)
+- Implementation of the nudge logic requires integration with the session state management system
 
 ## Next Steps
-1. Test integration with existing OpenCode plugins
-2. Prepare release notes for the combined feature set
+1. Implement the nudge functionality that triggers messages when tasks remain pending
+2. Add tests for the nudge system behavior
+3. Document the new configuration options in the project documentation
