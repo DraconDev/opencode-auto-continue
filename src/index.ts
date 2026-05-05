@@ -33,6 +33,10 @@ interface PluginConfig {
   continueWithTodosMessage: string;
   maxAttemptsMessage: string;
   includeTodoContext: boolean;
+  reviewOnComplete: boolean;
+  reviewMessage: string;
+  reviewDebounceMs: number;
+  showToasts: boolean;
 }
 
 const DEFAULT_CONFIG: PluginConfig = {

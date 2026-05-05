@@ -1,20 +1,23 @@
 # Project State
 
 ## Current Focus
-Minor version bump from 3.44.16 to 3.44.17 in package metadata
+Added configurable review and toast notification features for session recovery
 
 ## Context
-This change follows a series of recent improvements to session recovery functionality, including message event filtering, timestamp tracking, and synthetic message detection. The version bump indicates a stable release with these enhancements.
+The recent work on session recovery messaging needed additional configuration options to control how users are notified about review completion and system status updates.
 
 ## Completed
-- [x] Updated package version to 3.44.17 in both package.json and package-lock.json
+- [x] Added `reviewOnComplete` flag to enable/disable post-review notifications
+- [x] Added `reviewMessage` string for customizable review completion messages
+- [x] Added `reviewDebounceMs` to control notification timing
+- [x] Added `showToasts` toggle for system status notifications
 
 ## In Progress
-- [x] No active work in progress for this commit
+- [ ] Testing integration with existing session recovery flows
 
 ## Blockers
-- None reported for this version bump
+- Need to verify default values align with user expectations
 
 ## Next Steps
-1. Verify package installation works correctly with the new version
-2. Prepare release notes for the 3.44.17 version
+1. Implement default values for new configuration options
+2. Add integration tests for review notification flows
