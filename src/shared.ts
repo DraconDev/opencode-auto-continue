@@ -63,7 +63,8 @@ export interface PluginConfig {
   reviewDebounceMs: number;
   showToasts: boolean;
   nudgeEnabled: boolean;
-  nudgeTimeoutMs: number;
+  nudgeIdleDelayMs: number;
+  nudgeMaxSubmits: number;
   nudgeMessage: string;
   nudgeCooldownMs: number;
   autoCompact: boolean;

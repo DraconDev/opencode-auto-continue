@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored nudge notification test to verify cooldown behavior with pending todos
+Refactored nudge notification configuration to support idle delay and maximum submit limits.
 
 ## Context
-The test was updated to verify that nudge notifications are properly rate-limited by the cooldown period, ensuring users aren't spammed with repeated notifications when they return from idle to busy states.
+The nudge notification system was being refactored to simplify triggering logic. This change adjusts the configuration to better control when nudges appear and how many times they can be triggered.
 
 ## Completed
-- [x] Updated test to verify nudge cooldown prevents rapid notifications
-- [x] Simplified test setup by removing unnecessary wasBusy state tracking
-- [x] Added explicit cooldown period (60000ms) to test realistic behavior
+- [x] Renamed `nudgeTimeoutMs` to `nudgeIdleDelayMs` to clarify its purpose as an idle delay
+- [x] Added `nudgeMaxSubmits` to limit the number of nudge submissions
 
 ## In Progress
-- [x] Test now verifies cooldown prevents duplicate nudges
+- [ ] Verify the new configuration values work correctly in integration tests
 
 ## Blockers
-- None identified
+- Need to update tests to account for the new configuration options
 
 ## Next Steps
-1. Verify test passes with current implementation
-2. Consider adding additional edge cases for different cooldown scenarios
+1. Update nudge notification tests to verify behavior with new configuration
+2. Document the new configuration options in the plugin documentation
