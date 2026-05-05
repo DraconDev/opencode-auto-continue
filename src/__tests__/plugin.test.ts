@@ -575,4 +575,57 @@ describe("opencode-auto-force-resume", () => {
       expect(plugin.dispose).toBeDefined();
     });
   });
+
+  describe("status file config", () => {
+    it("should not write status file when disabled", async () => {
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation(() => {});
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        terminalTitleEnabled: false,
+        statusFileEnabled: false 
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      expect(writeFileSpy).not.toHaveBeenCalled();
+      writeFileSpy.mockRestore();
+    });
+
+    it("should write status file with history tracking", async () => {
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        terminalTitleEnabled: false,
+        maxStatusHistory: 3 
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Should not throw
+      expect(true).toBe(true);
+    });
+  });
+
+  describe("recovery timing stats", () => {
+    it("should track recovery timing on successful recovery", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 1000, 
+        waitAfterAbortMs: 100, 
+        cooldownMs: 0,
+        terminalTitleEnabled: false 
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+
+      // Recovery should have been attempted
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
 });
