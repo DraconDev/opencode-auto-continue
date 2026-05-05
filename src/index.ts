@@ -295,6 +295,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         tokenLimitHits: 0,
         actionStartedAt: 0,
         toastTimer: null,
+        stallDetections: 0,
+        recoverySuccessful: 0,
+        recoveryFailed: 0,
+        lastRecoverySuccess: 0,
       });
     }
     return sessions.get(id)!;
