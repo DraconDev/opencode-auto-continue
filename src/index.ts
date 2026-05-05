@@ -279,17 +279,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         } else {
           await input.client.session.prompt(promptOptions as any);
         }
-      } catch {
-        // prompt failed
+      } catch (e) {
+        log('prompt failed:', e);
       }
 
       s.attempts++;
-      s.lastRecoveryTime = now;
+      s.lastRecoveryTime = Date.now();
       s.backoffAttempts = 0;
 
       // Don't set timer here - event handlers will set it when new activity starts
-    } catch {
+    } catch (e) {
       // Recovery failed, retry with longer delay
+      log('recovery failed:', e);
       s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
     } finally {
       s.aborting = false;
