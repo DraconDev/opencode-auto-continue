@@ -805,6 +805,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       log('continue sent successfully');
       s.recoverySuccessful++;
       s.lastRecoverySuccess = Date.now();
+      if (s.recoveryStartTime > 0) {
+        s.totalRecoveryTimeMs += (Date.now() - s.recoveryStartTime);
+        s.recoveryStartTime = 0;
+      }
       writeStatusFile(sessionId);
     } catch (e: any) {
       log('continue failed:', e);

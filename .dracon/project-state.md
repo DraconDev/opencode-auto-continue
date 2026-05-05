@@ -1,14 +1,15 @@
 # Project State
 
 ## Current Focus
-Added recovery start time tracking for session recovery operations
+Track total recovery time when session recovery succeeds
 
 ## Context
-This change enhances session recovery tracking by recording when recovery attempts begin, allowing for more accurate measurement of recovery durations and improving monitoring capabilities.
+This change completes the recovery time tracking by calculating the duration between when recovery started and when it successfully completed.
 
 ## Completed
-- [x] Added `s.recoveryStartTime = Date.now()` to track recovery initiation time
-- [x] Integrated with existing status file writing mechanism
+- [x] Added calculation of recovery duration when recovery succeeds
+- [x] Reset recovery start time after successful recovery
+- [x] Accumulate total recovery time in session metrics
 
 ## In Progress
 - [x] Recovery time tracking implementation
@@ -17,6 +18,5 @@ This change enhances session recovery tracking by recording when recovery attemp
 - None identified
 
 ## Next Steps
-1. Verify recovery time calculations in integration tests
-2. Document the new recovery metrics in session status documentation
-```
+1. Verify recovery time metrics are correctly recorded in status files
+2. Add unit tests for recovery time tracking logic
