@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced error handling for session abort failures in auto-force-resume plugin
+Minor version bump to 3.36.15 for package maintenance
 
 ## Context
-The previous implementation lacked proper error handling for session abort operations. This change improves reliability by catching and logging abort failures, then triggering recovery with an extended timeout.
+This is a routine version bump following recent improvements to error handling and session recovery logic in the auto-force-resume plugin. The changes maintain package consistency while reflecting incremental progress in the project.
 
 ## Completed
-- [x] Added try-catch block around session abort operation
-- [x] Added error logging for abort failures
-- [x] Implemented recovery fallback with doubled stall timeout
-- [x] Maintained session state consistency on failure
+- [x] Updated package version from 3.35.20 to 3.36.15 in package-lock.json
+- [x] Updated package version from 3.36.14 to 3.36.15 in package.json
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] No active development work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify error logging format in integration tests
-2. Validate recovery behavior with various failure scenarios
+1. Continue with ongoing improvements to session recovery logic
+2. Prepare for next feature development cycle
