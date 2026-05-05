@@ -40,6 +40,13 @@ export function createSession(id: string): SessionState {
     lastStallPartType: "",
     stallPatterns: {},
     wasBusy: false,
+    lastIdleSeen: 0,
+    lastUserMessage: 0,
+    lastContinuation: 0,
+    hourlyCount: 0,
+    hourStart: 0,
+    denyCount: 0,
+    lastDenyNudge: 0,
   };
 }
 

@@ -1,28 +1,22 @@
 # Project State
 
 ## Current Focus
-Added comprehensive session management infrastructure for the auto-force-resume plugin
+Enhanced session state tracking for idle handling and nudge cooldown management
 
 ## Context
-The plugin needs robust session state tracking and configuration management to handle complex workflow scenarios, including recovery from stalls, automatic compaction, and user interaction patterns.
+This change adds comprehensive tracking of session activity timestamps and counters to implement proper nudge cooldown behavior during idle periods. The new fields will enable more sophisticated session management for the auto-force-resume plugin.
 
 ## Completed
-- [x] Created session state tracking with 35+ state variables (timers, counters, flags, buffers)
-- [x] Implemented plugin configuration with 60+ configurable parameters
-- [x] Added default configuration with sensible production values
-- [x] Included validation for critical configuration relationships
-- [x] Defined token limit detection patterns
-- [x] Added comprehensive recovery metrics tracking
-- [x] Implemented status history tracking
-- [x] Added stall pattern detection capabilities
+- [x] Added timestamp tracking for last idle detection, user messages, and continuations
+- [x] Added counters for hourly activity and deny attempts
+- [x] Added timestamp tracking for last deny nudge to prevent duplicate nudges
 
 ## In Progress
-- [ ] Integration with session.ts implementation (69 lines added)
+- [ ] Implementation of nudge cooldown logic using these new fields
 
 ## Blockers
-- Implementation of session.ts needs to be completed to fully utilize the configuration
+- Implementation of the actual nudge logic that will use these new state fields
 
 ## Next Steps
-1. Complete session.ts implementation to handle state transitions
-2. Add unit tests for configuration validation
-3. Implement runtime configuration reloading
+1. Implement nudge cooldown logic using the new state fields
+2. Add tests for the nudge cooldown behavior

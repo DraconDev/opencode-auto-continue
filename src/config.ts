@@ -39,6 +39,13 @@ export interface SessionState {
   lastStallPartType: string;
   stallPatterns: Record<string, number>;
   wasBusy: boolean;
+  lastIdleSeen: number;
+  lastUserMessage: number;
+  lastContinuation: number;
+  hourlyCount: number;
+  hourStart: number;
+  denyCount: number;
+  lastDenyNudge: number;
 }
 
 export interface PluginConfig {
