@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced nudge notification system with tracking of nudge counts and pause state
+Added validation for new nudge notification configuration parameters
 
 ## Context
-This change supports the ongoing refactoring of the nudge notification system, which now needs to track how many times nudges have been shown and whether the nudge system is currently paused.
+The recent refactoring of the nudge notification system introduced new configuration parameters (nudgeIdleDelayMs and nudgeMaxSubmits) that needed validation to ensure they contain valid values.
 
 ## Completed
-- [x] Added `nudgeCount` to track how many times nudges have been shown
-- [x] Added `lastTodoSnapshot` to store the state of todos when nudges were last shown
-- [x] Added `nudgePaused` flag to control whether nudges should be shown
+- [x] Added validation for nudgeIdleDelayMs to ensure it's non-negative
+- [x] Added validation for nudgeMaxSubmits to ensure it's non-negative
 
 ## In Progress
-- [ ] Testing the new nudge tracking behavior in integration tests
+- [x] Configuration validation for nudge notification system
 
 ## Blockers
-- Need to verify the new tracking fields don't interfere with existing nudge logic
+- None identified
 
 ## Next Steps
-1. Update nudge notification logic to properly increment `nudgeCount` and update `lastTodoSnapshot`
-2. Implement proper handling of the `nudgePaused` flag in the notification system
+1. Verify the new validation works with existing configuration files
+2. Update documentation to reflect the new configuration parameters
