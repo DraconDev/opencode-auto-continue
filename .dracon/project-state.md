@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added session message guard reset on status updates to prevent stale message tracking
+Removed redundant message event filtering logic for session recovery
 
 ## Context
-This change addresses an issue where the `sentMessageAt` timestamp wasn't being properly reset when session status changed, potentially causing stale message tracking in the auto-force-resume plugin.
+The previous implementation had duplicate code for filtering message events triggered by our own prompts, which was causing unnecessary complexity. This change simplifies the code while maintaining the same functionality.
 
 ## Completed
-- [x] Added guard reset for `sentMessageAt` when session status updates
-- [x] Ensures message tracking is fresh when session state changes
+- [x] Removed duplicate message event filtering logic
+- [x] Simplified the progressTypes array by removing redundant entry
 
 ## In Progress
-- [x] Implementation of session status handling
+- [x] Code cleanup and simplification
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify this change prevents stale message tracking in integration tests
-2. Monitor for any regression in session recovery behavior
+1. Verify no regression in session recovery behavior
+2. Consider additional code simplification opportunities
