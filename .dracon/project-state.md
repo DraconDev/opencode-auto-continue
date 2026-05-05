@@ -1,23 +1,20 @@
 # Project State
 
 ## Current Focus
-Enhanced session continuation debugging with detailed logging for idle/busy states
+Added debug logging for session continuation event handling
 
 ## Context
-To improve session continuation reliability, we're adding more detailed logging to track when queued continues are sent and when sessions remain idle without continuation
+This change enhances debugging capabilities for session continuation by logging all incoming events to the console. This helps track the flow of session-related events during development and debugging.
 
 ## Completed
-- [x] Added event type logging for all session events
-- [x] Added session state logging for continuation needs and abort status
-- [x] Enhanced idle state logging to distinguish between sessions with queued continues and those without
-- [x] Added session ID to continue logging for better traceability
+- [x] Added console.log statement to log event types during session continuation processing
 
 ## In Progress
-- [x] Debug logging implementation for session continuation flow
+- [x] Debug logging implementation for session continuation events
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Verify logging captures all edge cases in session state transitions
-2. Review logged data to identify any remaining continuation timing issues
+1. Verify the debug logs provide sufficient information for session continuation issues
+2. Consider adding more detailed logging for specific event types if needed

@@ -561,6 +561,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   return {
     event: async ({ event }: { event: any }) => {
+      console.log('EVENT HANDLER CALLED:', event?.type);
       const e = event as any;
       log('EVENT:', event?.type);
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
