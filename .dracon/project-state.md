@@ -1,27 +1,22 @@
 # Project State
 
 ## Current Focus
-Enhanced nudge notification system with idle delay, submit limits, and pause functionality
+Enhanced nudge notification system with tracking of nudge counts and pause state
 
 ## Context
-The nudge notification system was being refactored to improve user experience and prevent notification spam. This change adds more granular control over when nudges are shown and how often they can be triggered.
+This change supports the ongoing refactoring of the nudge notification system, which now needs to track how many times nudges have been shown and whether the nudge system is currently paused.
 
 ## Completed
-- [x] Added `nudgeCount` to track how many times a nudge has been shown
-- [x] Added `lastTodoSnapshot` to compare current todos against previous state
-- [x] Added `nudgePaused` flag to temporarily disable nudges
-- [x] Renamed `nudgeTimeoutMs` to `nudgeIdleDelayMs` for clearer semantics
-- [x] Added `nudgeMaxSubmits` to limit how many times nudges can be triggered
+- [x] Added `nudgeCount` to track how many times nudges have been shown
+- [x] Added `lastTodoSnapshot` to store the state of todos when nudges were last shown
+- [x] Added `nudgePaused` flag to control whether nudges should be shown
 
 ## In Progress
-- [ ] Implement logic to compare `lastTodoSnapshot` with current todos
-- [ ] Implement cooldown behavior using `nudgePaused` flag
+- [ ] Testing the new nudge tracking behavior in integration tests
 
 ## Blockers
-- Need to implement the actual comparison logic between todo snapshots
-- Need to define exact behavior for when to pause/resume nudges
+- Need to verify the new tracking fields don't interfere with existing nudge logic
 
 ## Next Steps
-1. Implement todo snapshot comparison logic
-2. Add tests for the new nudge control features
-3. Document the new configuration options in the plugin documentation
+1. Update nudge notification logic to properly increment `nudgeCount` and update `lastTodoSnapshot`
+2. Implement proper handling of the `nudgePaused` flag in the notification system
