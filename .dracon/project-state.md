@@ -4,17 +4,19 @@
 Improved documentation for nudge cooldown behavior in idle session handling
 
 ## Context
-This change clarifies how the `nudgeCooldownMs` setting applies to both session idle events and busy→idle transitions, ensuring consistent behavior across different session state changes.
+The change adds clarity to the nudge system's behavior during session state transitions, particularly around the `wasBusy` flag which prevents duplicate nudges during busy→idle→idle sequences.
 
 ## Completed
-- [x] Updated documentation to explicitly state that `nudgeCooldownMs` applies to both session idle events and busy→idle transitions
+- [x] Added documentation for the `wasBusy` flag logic
+- [x] Clarified nudge trigger conditions in the flow diagram
 
 ## In Progress
-- [x] Documentation update for nudge cooldown behavior
+- [x] Documentation updates for idle session handling
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify that the updated documentation matches the actual implementation behavior
-2. Consider if additional documentation is needed for other related configuration options
+1. Review documentation changes for accuracy
+2. Consider additional edge cases for future documentation
+```

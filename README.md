@@ -126,7 +126,7 @@ Filter: pending/in_progress tasks
         │
         └──NO──► Cancel nudge timer
 
-[Nudge timer fires] or [session.status idle + busy→idle transition]
+[session.idle] or [Nudge timer fires] or [session.status idle + busy→idle transition]
         │
         ├──Check: session idle? (skip if busy)
         │
@@ -134,12 +134,16 @@ Filter: pending/in_progress tasks
         │
         ├──Check: cooldown passed?
         │
+        ├──Check: wasBusy? (prevents double-fire on busy→idle→idle sequences)
+        │
         └──ALL YES──► Fetch todos for context
                         │
                         ├──Send to agent: "You have {pending} tasks: {todoList}. Continue."
                         │
                         └──Record lastNudgeAt (cooldown)
 ```
+
+> **Note:** The `wasBusy` flag ensures the nudge fires only once per busy→idle transition, not on every idle event. It resets when the session goes busy again.
 
 ### Review Flow
 
