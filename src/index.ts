@@ -759,8 +759,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       });
       
       log('continue sent successfully');
+      s.recoverySuccessful++;
+      s.lastRecoverySuccess = Date.now();
+      writeStatusFile(sessionId);
     } catch (e: any) {
       log('continue failed:', e);
+      s.recoveryFailed++;
+      writeStatusFile(sessionId);
       
       // Handle token limit error
       if (isTokenLimitError(e)) {
