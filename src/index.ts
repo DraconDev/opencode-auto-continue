@@ -40,6 +40,7 @@ interface SessionState {
   recoveryTimes: number[];
   lastStallPartType: string;
   stallPatterns: Record<string, number>;
+  wasBusy: boolean;
 }
 
 interface PluginConfig {
@@ -331,6 +332,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         recoveryTimes: [],
         lastStallPartType: "",
         stallPatterns: {},
+        wasBusy: false,
       });
     }
     return sessions.get(id)!;
@@ -1441,6 +1443,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Proactive compaction when idle and message count is high
         if (status?.type === "idle" && !s.needsContinue) {
           await maybeProactiveCompact(sid);
+        }
+        // Auto-continue when idle with pending todos - tell agent to keep working
+        if (status?.type === "idle" && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
+          if (Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
+            log('session idle with pending todos, sending continue for:', sid);
+            await sendNudge(sid);
+          }
         }
         // Stop timer toast and clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {

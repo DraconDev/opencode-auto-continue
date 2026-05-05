@@ -1,25 +1,23 @@
 # Project State
 
 ## Current Focus
-Enhanced nudge message with session status checks and detailed todo context
+Added auto-continue functionality for idle sessions with pending todos
 
 ## Context
-Improved user engagement by providing more context in session nudges while preventing interruptions during busy work
+The plugin now needs to handle cases where sessions become idle but still have pending tasks. This prevents sessions from getting stuck when there are unresolved todos.
 
 ## Completed
-- [x] Added session status check to prevent nudging during busy/retry states
-- [x] Implemented detailed todo context in nudge messages when enabled
-- [x] Added comprehensive todo statistics (pending, completed, total counts)
-- [x] Included sample todo items in nudge messages for better context
-- [x] Maintained fallback behavior when todo context fails to load
+- [x] Added `wasBusy` flag to track session activity state
+- [x] Implemented auto-continue logic for idle sessions with pending todos
+- [x] Added nudge cooldown check to prevent rapid nudges
+- [x] Integrated with existing session status tracking
 
 ## In Progress
-- [x] Implementation of enhanced nudge messaging with session state awareness
+- [x] Auto-continue functionality for idle sessions with pending todos
 
 ## Blockers
 - None identified in this change
 
 ## Next Steps
-1. Verify nudge message formatting across different todo states
-2. Test session status checks with various session types
-3. Document new configuration options for nudge behavior
+1. Add tests for the new auto-continue behavior
+2. Document the new configuration options for nudge behavior
