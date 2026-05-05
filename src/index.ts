@@ -631,6 +631,39 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  // ── Terminal Progress Bar (OSC 9;4) ───────────────────────────────────
+
+  function updateTerminalProgress(sessionId: string) {
+    if (!config.terminalProgressEnabled) return;
+    const s = sessions.get(sessionId);
+    if (!s || s.actionStartedAt === 0) return;
+
+    const now = Date.now();
+    const actionDuration = now - s.actionStartedAt;
+    const progressAgo = now - s.lastProgressAt;
+    
+    // Calculate progress percentage based on stallTimeoutMs
+    // 0% = just started, 100% = about to trigger recovery
+    const progress = Math.min(Math.floor((progressAgo / config.stallTimeoutMs) * 100), 99);
+    
+    try {
+      // OSC 9;4;1;p - set progress (mode 1 = normal, p = percentage 0-100)
+      process.stdout.write(`\x1b]9;4;1;${progress}\x07`);
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearTerminalProgress() {
+    if (!config.terminalProgressEnabled) return;
+    try {
+      // OSC 9;4;0 - clear progress
+      process.stdout.write('\x1b]9;4;0\x07');
+    } catch {
+      // ignore
+    }
+  }
+
   // ── StatusLine Hook (future-proof) ────────────────────────────────────
 
   function registerStatusLineHook() {
@@ -1277,8 +1310,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (s.actionStartedAt === 0) {
             startTimerToast(sid);
           }
-          // Update terminal title
+          // Update terminal title and progress
           updateTerminalTitle(sid);
+          updateTerminalProgress(sid);
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
@@ -1289,10 +1323,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "idle" && !s.needsContinue) {
           await maybeProactiveCompact(sid);
         }
-        // Stop timer toast and clear terminal title when session becomes idle
+        // Stop timer toast and clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {
           stopTimerToast(sid);
           clearTerminalTitle();
+          clearTerminalProgress();
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
@@ -1324,6 +1359,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             updateProgress(s);
             s.attempts = 0;
             s.userCancelled = false;
+            // Track part type for stall pattern detection
+            s.lastStallPartType = partType || "unknown";
           }
           if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
