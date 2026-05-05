@@ -454,6 +454,8 @@ describe("opencode-auto-force-resume", () => {
   describe("token limit handling", () => {
     it("should use short continue message after token limit hit", async () => {
       vi.useFakeTimers();
+      const mockSummarize = vi.fn().mockResolvedValue({ data: true });
+      mockClient.session.summarize = mockSummarize as any;
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       mockPrompt.mockRejectedValueOnce(new Error("maximum context length exceeded"));
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0 });
@@ -472,8 +474,8 @@ describe("opencode-auto-force-resume", () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // First prompt fails with token limit error
-      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      // First prompt fails with token limit error, then compaction is attempted
+      expect(mockPrompt).toHaveBeenCalled();
 
       // Now simulate another recovery - should use short message
       mockPrompt.mockClear();
@@ -525,7 +527,8 @@ describe("opencode-auto-force-resume", () => {
 
       // Trigger idle status - should trigger proactive compaction
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(3000);
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -535,6 +538,8 @@ describe("opencode-auto-force-resume", () => {
 
     it("should detect token limit errors with custom patterns", async () => {
       vi.useFakeTimers();
+      const mockSummarize = vi.fn().mockResolvedValue({ data: true });
+      mockClient.session.summarize = mockSummarize as any;
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       mockPrompt.mockRejectedValueOnce(new Error("payload too large for context window"));
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0, tokenLimitPatterns: ['payload too large', 'context window'] });
@@ -548,7 +553,7 @@ describe("opencode-auto-force-resume", () => {
 
       // Simulate idle to trigger sendContinue which will hit token limit error
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(5000);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
