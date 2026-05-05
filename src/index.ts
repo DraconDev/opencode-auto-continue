@@ -478,30 +478,82 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   function isTokenLimitError(error: any): boolean {
     if (!error) return false;
     const message = error.message || String(error);
-    return message.includes('context length') || 
-           message.includes('maximum context length') ||
-           message.includes('token count exceeds') ||
-           message.includes('too many tokens');
+    return config.tokenLimitPatterns.some(pattern => 
+      message.toLowerCase().includes(pattern.toLowerCase())
+    );
   }
 
-  async function forceCompact(sessionId: string): Promise<boolean> {
+  async function attemptCompact(sessionId: string): Promise<boolean> {
     try {
-      log('forcing compaction for token limit');
+      log('attempting compaction for session:', sessionId);
       await (input.client.session as any).summarize({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" }
       });
       // Wait for compaction
-      await new Promise(r => setTimeout(r, 5000));
+      await new Promise(r => setTimeout(r, 2000));
       
       // Verify it worked
       const status = await input.client.session.status({});
       const data = status.data as Record<string, { type: string }>;
-      return data[sessionId]?.type !== "busy";
+      const isBusy = data[sessionId]?.type === "busy";
+      
+      if (!isBusy) {
+        log('compaction successful for session:', sessionId);
+        const s = sessions.get(sessionId);
+        if (s) {
+          s.lastCompactionAt = Date.now();
+          s.compacting = false;
+        }
+        return true;
+      }
+      
+      log('compaction did not clear busy state for session:', sessionId);
+      return false;
     } catch (e) {
-      log('force compaction failed:', e);
+      log('compaction attempt failed:', e);
       return false;
     }
+  }
+
+  async function forceCompact(sessionId: string): Promise<boolean> {
+    const s = sessions.get(sessionId);
+    if (!s) return false;
+    
+    s.compacting = true;
+    
+    // Try compaction with retries
+    for (let attempt = 0; attempt < config.compactMaxRetries; attempt++) {
+      if (attempt > 0) {
+        log(`compaction retry ${attempt + 1}/${config.compactMaxRetries} for session:`, sessionId);
+        await new Promise(r => setTimeout(r, config.compactRetryDelayMs * attempt));
+      }
+      
+      const success = await attemptCompact(sessionId);
+      if (success) {
+        s.tokenLimitHits = 0;
+        return true;
+      }
+    }
+    
+    log('compaction failed after all retries for session:', sessionId);
+    s.compacting = false;
+    return false;
+  }
+
+  async function maybeProactiveCompact(sessionId: string) {
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    if (!config.autoCompact) return;
+    if (config.proactiveCompactThreshold <= 0) return;
+    if (s.compacting) return;
+    if (s.messageCount < config.proactiveCompactThreshold) return;
+    
+    // Don't compact too frequently
+    if (Date.now() - s.lastCompactionAt < 300000) return; // 5 min cooldown
+    
+    log('proactive compaction triggered for session:', sessionId, 'message count:', s.messageCount);
+    await attemptCompact(sessionId);
   }
 
   async function recover(sessionId: string) {
