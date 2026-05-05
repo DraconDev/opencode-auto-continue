@@ -1,24 +1,23 @@
 # Project State
 
 ## Current Focus
-Added adaptive compaction threshold calculation based on model context limits from opencode.json
+Added adaptive compaction threshold calculation based on model context limits
 
 ## Context
-To improve token limit handling, we need to dynamically adjust compaction thresholds based on the actual model context limits configured in opencode.json rather than using fixed values.
+The proactive compaction system now dynamically calculates compaction thresholds based on the model's context window size, improving token management efficiency.
 
 ## Completed
-- [x] Added `getModelContextLimit` function to read and parse opencode.json for model context limits
-- [x] Implemented `getCompactionThreshold` function that calculates adaptive thresholds:
-  - Uses percentage-based thresholds for large models (≥200k tokens)
-  - Uses conservative fixed thresholds for small models (<200k tokens)
-  - Falls back to fixed thresholds when no model limit is detected
+- [x] Added `estimatedTokens` field to session state to track token usage
+- [x] Implemented adaptive compaction threshold calculation using model context limits
+- [x] Updated compaction logic to trigger based on token thresholds rather than message counts
+- [x] Added model context limit detection from opencode.json configuration
 
 ## In Progress
-- [x] Integration with existing proactive compaction logic
+- [ ] Testing edge cases with different model context sizes
 
 ## Blockers
-- None identified
+- Need to verify threshold calculations match expected model behavior
 
 ## Next Steps
-1. Verify adaptive thresholds work correctly with various model configurations
-2. Add unit tests for the new threshold calculation logic
+1. Complete test validation for adaptive thresholds
+2. Document the new adaptive compaction configuration options

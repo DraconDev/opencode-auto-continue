@@ -25,6 +25,7 @@ interface SessionState {
   continueMessageText: string;
   sessionCreatedAt: number;
   messageCount: number;
+  estimatedTokens: number;
   lastCompactionAt: number;
   tokenLimitHits: number;
 }
@@ -276,6 +277,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         continueMessageText: '',
         sessionCreatedAt: Date.now(),
         messageCount: 0,
+        estimatedTokens: 0,
         lastCompactionAt: 0,
         tokenLimitHits: 0,
       });
@@ -316,6 +318,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.needsContinue = false;
       s.continueMessageText = '';
       s.messageCount = 0;
+      s.estimatedTokens = 0;
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
     }
@@ -609,15 +612,20 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     const s = sessions.get(sessionId);
     if (!s) return;
     if (!config.autoCompact) return;
-    if (config.proactiveCompactThreshold <= 0) return;
     if (s.compacting) return;
-    if (s.messageCount < config.proactiveCompactThreshold) return;
     
     // Don't compact too frequently
     if (Date.now() - s.lastCompactionAt < 300000) return; // 5 min cooldown
     
-    log('proactive compaction triggered for session:', sessionId, 'message count:', s.messageCount);
-    await attemptCompact(sessionId);
+    // Detect model context limit from opencode.json
+    const opencodeConfigPath = join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json");
+    const modelLimit = getModelContextLimit(opencodeConfigPath);
+    const threshold = getCompactionThreshold(modelLimit, config);
+    
+    if (s.estimatedTokens >= threshold) {
+      log('proactive compaction triggered for session:', sessionId, 'estimated tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit);
+      await attemptCompact(sessionId);
+    }
   }
 
   async function recover(sessionId: string) {
