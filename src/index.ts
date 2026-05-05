@@ -509,27 +509,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         messageText = formatMessage(config.continueMessage, templateVars);
       }
 
-      const promptOptions = {
-        body: { parts: [{ type: "text", text: messageText, synthetic: true }] as any[] },
-        path: { id: sessionId },
-        query: { directory: (input as any).directory || "" }
-      };
-
-      try {
-        if (typeof (input.client.session as any).promptAsync === "function") {
-          await (input.client.session as any).promptAsync(promptOptions);
-        } else {
-          await input.client.session.prompt(promptOptions as any);
-        }
-      } catch (e) {
-        log('prompt failed:', e);
-      }
+      // Store message for later delivery (from event handler, not timer)
+      s.needsContinue = true;
+      s.continueMessageText = messageText;
+      log('queued continue message, waiting for stable state');
 
       s.attempts++;
       s.autoSubmitCount++;
       s.lastRecoveryTime = Date.now();
       s.backoffAttempts = 0;
-      s.sentMessageAt = Date.now();
 
       // Don't set timer here - event handlers will set it when new activity starts
     } catch (e) {

@@ -1,23 +1,23 @@
 # Project State
 
 ## Current Focus
-Added session continuation tracking with message support for unified session management
+Refactored session continuation message handling to queue messages for delivery during stable states
 
 ## Context
-This change extends the session state to track when a session needs continuation and stores the associated message text. This supports the unified session management system by providing a way to track pending continuation actions.
+The previous implementation attempted to send continuation messages immediately, which could disrupt session stability. This change defers message delivery until the session reaches a stable state, improving reliability.
 
 ## Completed
-- [x] Added `needsContinue` boolean flag to track continuation status
-- [x] Added `continueMessageText` string to store continuation message
-- [x] Initialized new fields in session creation
-- [x] Reset new fields during session cleanup
+- [x] Removed immediate message sending logic
+- [x] Added message queuing system with `needsContinue` flag
+- [x] Stored message text for later delivery
+- [x] Removed redundant timestamp tracking
 
 ## In Progress
-- [x] Implementation of continuation logic (not yet implemented)
+- [x] Message delivery implementation (not yet shown in diff)
 
 ## Blockers
-- Continuation logic implementation depends on message handling system
+- Message delivery mechanism needs implementation to handle queued messages
 
 ## Next Steps
-1. Implement continuation logic based on message content
-2. Add UI components to display continuation prompts
+1. Implement message delivery from event handlers
+2. Verify stable state detection logic works as expected
