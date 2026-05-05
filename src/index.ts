@@ -483,8 +483,34 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.statusHistory.shift();
       }
 
+      // Calculate histogram if enabled
+      let histogram = null;
+      if (config.recoveryHistogramEnabled && s.recoveryTimes.length > 0) {
+        const sorted = [...s.recoveryTimes].sort((a, b) => a - b);
+        const min = sorted[0];
+        const max = sorted[sorted.length - 1];
+        const median = sorted.length % 2 === 0
+          ? (sorted[Math.floor(sorted.length / 2) - 1] + sorted[Math.floor(sorted.length / 2)]) / 2
+          : sorted[Math.floor(sorted.length / 2)];
+        histogram = {
+          min: formatDuration(min),
+          max: formatDuration(max),
+          median: formatDuration(median),
+          samples: s.recoveryTimes.length,
+        };
+      }
+
+      // Get top stall patterns if enabled
+      let topStallPatterns = null;
+      if (config.stallPatternDetection && Object.keys(s.stallPatterns).length > 0) {
+        topStallPatterns = Object.entries(s.stallPatterns)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([type, count]) => ({ type, count }));
+      }
+
       const data = {
-        version: "3.108.1",
+        version: "3.110.0",
         timestamp: new Date().toISOString(),
         sessions: {
           [sessionId]: {
@@ -501,10 +527,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               nextRetryIn: nextRetryIn > 0 ? formatDuration(nextRetryIn) : null,
               avgRecoveryTime: avgRecoveryTime > 0 ? formatDuration(avgRecoveryTime) : null,
               recoveryRate: `${recoveryRate}%`,
+              histogram,
             },
             stall: {
               detections: s.stallDetections,
               lastDetectionAt: s.lastRecoveryTime > 0 ? new Date(s.lastRecoveryTime).toISOString() : null,
+              lastPartType: s.lastStallPartType || null,
+              patterns: topStallPatterns,
             },
             compaction: {
               proactiveTriggers: 0,
@@ -539,6 +568,29 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       };
 
       const statusFile = config.statusFilePath || defaultStatusFile;
+      
+      // Rotate old status files if enabled
+      if (config.statusFileRotate > 0 && existsSync(statusFile)) {
+        try {
+          const rotateExt = `.${config.statusFileRotate}`;
+          const rotateFile = statusFile + rotateExt;
+          if (existsSync(rotateFile)) {
+            // Shift all rotated files
+            for (let i = config.statusFileRotate - 1; i >= 1; i--) {
+              const oldFile = statusFile + `.${i}`;
+              const newFile = statusFile + `.${i + 1}`;
+              if (existsSync(oldFile)) {
+                renameSync(oldFile, newFile);
+              }
+            }
+          }
+          // Rotate current to .1
+          renameSync(statusFile, statusFile + ".1");
+        } catch {
+          // ignore rotation errors
+        }
+      }
+      
       const tmpFile = statusFile + ".tmp";
       writeFileSync(tmpFile, JSON.stringify(data, null, 2) + "\n");
       renameSync(tmpFile, statusFile);
