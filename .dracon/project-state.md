@@ -1,20 +1,23 @@
 # Project State
 
 ## Current Focus
-Added additional filesystem operations for session management in the plugin.
+Added session recovery tracking metrics to the SessionState interface
 
 ## Context
-The plugin needs more robust file handling capabilities for session state management, particularly for operations like writing, renaming, and moving session files.
+To improve monitoring of session recovery operations, we need to track various recovery-related metrics including detection counts, success/failure rates, and timestamps of successful recoveries.
 
 ## Completed
-- [x] Added `writeFileSync` and `renameSync` to the filesystem imports for enhanced session file operations
+- [x] Added `stallDetections` to count recovery attempts
+- [x] Added `recoverySuccessful` to track successful recoveries
+- [x] Added `recoveryFailed` to track failed recoveries
+- [x] Added `lastRecoverySuccess` to record timestamp of last successful recovery
 
 ## In Progress
-- [x] Implementation of session file management using the new filesystem operations
+- [ ] Implementation of recovery metrics tracking logic
 
 ## Blockers
-- None identified at this stage
+- Need to implement the actual tracking logic that populates these metrics
 
 ## Next Steps
-1. Implement session file management using the newly added filesystem operations
-2. Add error handling for filesystem operations in session management
+1. Implement the recovery tracking logic that updates these metrics
+2. Add corresponding test cases for the new metrics

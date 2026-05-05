@@ -30,6 +30,10 @@ interface SessionState {
   tokenLimitHits: number;
   actionStartedAt: number;
   toastTimer: ReturnType<typeof setInterval> | null;
+  stallDetections: number;
+  recoverySuccessful: number;
+  recoveryFailed: number;
+  lastRecoverySuccess: number;
 }
 
 interface PluginConfig {
