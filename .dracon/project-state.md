@@ -1,20 +1,23 @@
 # Project State
 
 ## Current Focus
-Improved documentation for session idle handling in AutoForceResumePlugin
+Update Vitest to v2.1.9 and bump project version to 3.136.3
 
 ## Context
-The recent feature work added automatic nudging for idle sessions with pending todos, but the documentation needed clarification about how `session.idle` events should trigger nudges (excluding terminal sessions) while `session.deleted` should clear all session state.
+The package updates were triggered by recent improvements to session idle handling and auto-continue functionality, which required updated testing capabilities.
 
 ## Completed
-- [x] Updated README.md to clarify that `session.idle` triggers nudges for non-terminal sessions while `session.deleted` clears all session state
+- [x] Updated Vitest from v1.6.0 to v2.1.9
+- [x] Updated project version from 3.126.3 to 3.136.3
+- [x] Updated rollup dependencies to v4.60.3
 
 ## In Progress
-- [x] Documentation updates for session idle handling
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the documentation change aligns with the latest implementation
-2. Consider additional documentation improvements for other session state transitions
+1. Verify test suite compatibility with Vitest v2.1.9
+2. Update test coverage for new session state tracking features
+```
