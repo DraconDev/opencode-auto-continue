@@ -395,6 +395,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         pending: s.hasOpenTodos ? 'some' : '0',
       });
       
+      s.messageCount++;
       await (input.client.session as any).prompt({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" },

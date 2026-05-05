@@ -4,17 +4,17 @@
 Increment token usage tracking during session continuation prompts
 
 ## Context
-This change is part of the ongoing work to improve token limit handling by tracking token usage more precisely. The recent commits have been adding infrastructure for token tracking and proactive compaction.
+This change is part of ongoing work to improve token limit handling in the system. The recent commits show a series of related improvements to token usage tracking, proactive compaction, and session management.
 
 ## Completed
-- [x] Added token usage counter increment during session continuation prompts
+- [x] Added token usage tracking by incrementing `messageCount` during session continuation prompts
 
 ## In Progress
-- [x] Token usage tracking implementation
+- [x] Ongoing work to improve token limit error handling and session management
 
 ## Blockers
-- Need to verify counter behavior with edge cases (empty responses, partial completions)
+- Need to ensure the new tracking field is properly utilized in the token limit checks
 
 ## Next Steps
-1. Add unit tests for token counter behavior
-2. Implement token limit enforcement using the new counter
+1. Verify the new `messageCount` field is being used in token limit calculations
+2. Continue implementing the proactive compaction and retry logic for token limit handling
