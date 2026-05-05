@@ -561,9 +561,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   return {
     event: async ({ event }: { event: any }) => {
-      console.log('EVENT HANDLER CALLED:', event?.type);
       const e = event as any;
-      log('EVENT:', event?.type);
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
       const progressTypes = [
@@ -620,7 +618,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const status = e?.properties?.status;
         log('session.status:', sid, status?.type);
         const s = getSession(sid);
-        log('session state - needsContinue:', s.needsContinue, 'aborting:', s.aborting);
         if (status?.type === "busy") {
           updateProgress(s);
           s.userCancelled = false;
