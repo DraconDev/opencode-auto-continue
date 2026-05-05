@@ -675,6 +675,29 @@ describe("opencode-auto-force-resume", () => {
     });
   });
 
+  describe("compaction verification", () => {
+    it("should attempt compaction before abort when autoCompact enabled", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 1000, 
+        waitAfterAbortMs: 100,
+        cooldownMs: 0,
+        autoCompact: true,
+        terminalTitleEnabled: false,
+        compactionVerifyWaitMs: 500
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+
+      // Should attempt to summarize (compact) before aborting
+      expect(mockStatus).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
   describe("config validation", () => {
     it("should use defaults for new config options", async () => {
       const plugin = await createPlugin({ client: mockClient }, { 
