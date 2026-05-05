@@ -517,7 +517,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       const data = {
-        version: "3.132.2",
+        version: "3.134.0",
         timestamp: new Date().toISOString(),
         sessions: {
           [sessionId]: {
