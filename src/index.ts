@@ -429,9 +429,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   // ── Status File ────────────────────────────────────────────────────────
 
-  const statusFile = join(logDir, "auto-force-resume.status");
+  const defaultStatusFile = join(logDir, "auto-force-resume.status");
 
   function writeStatusFile(sessionId: string) {
+    if (!config.statusFileEnabled) return;
+    
     try {
       ensureLogDir();
       const s = sessions.get(sessionId);
@@ -444,6 +446,25 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const nextRetryIn = s.attempts >= config.maxRecoveries && s.backoffAttempts > 0
         ? Math.min(config.stallTimeoutMs * Math.pow(2, s.backoffAttempts), config.maxBackoffMs)
         : 0;
+      
+      const avgRecoveryTime = s.recoverySuccessful > 0 
+        ? Math.round(s.totalRecoveryTimeMs / s.recoverySuccessful) 
+        : 0;
+      const recoveryRate = s.attempts > 0 
+        ? Math.round((s.recoverySuccessful / s.attempts) * 100) 
+        : 0;
+
+      // Update status history (keep last N entries)
+      const currentStatus = {
+        timestamp: new Date().toISOString(),
+        status: s.aborting ? "recovering" : (s.compacting ? "compacting" : (s.planning ? "planning" : "active")),
+        actionDuration: actionDuration > 0 ? formatDuration(actionDuration) : "idle",
+        progressAgo: formatDuration(lastProgressAgo),
+      };
+      s.statusHistory.push(currentStatus);
+      if (s.statusHistory.length > config.maxStatusHistory) {
+        s.statusHistory.shift();
+      }
 
       const data = {
         version: "3.102.4",
@@ -451,7 +472,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         sessions: {
           [sessionId]: {
             elapsed: formatDuration(elapsed),
-            status: s.aborting ? "recovering" : (s.compacting ? "compacting" : (s.planning ? "planning" : "active")),
+            status: currentStatus.status,
             recovery: {
               attempts: s.attempts,
               successful: s.recoverySuccessful,
@@ -461,13 +482,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               inBackoff: s.attempts >= config.maxRecoveries,
               backoffAttempts: s.backoffAttempts,
               nextRetryIn: nextRetryIn > 0 ? formatDuration(nextRetryIn) : null,
+              avgRecoveryTime: avgRecoveryTime > 0 ? formatDuration(avgRecoveryTime) : null,
+              recoveryRate: `${recoveryRate}%`,
             },
             stall: {
               detections: s.stallDetections,
               lastDetectionAt: s.lastRecoveryTime > 0 ? new Date(s.lastRecoveryTime).toISOString() : null,
             },
             compaction: {
-              proactiveTriggers: 0, // tracked separately if needed
+              proactiveTriggers: 0,
               tokenLimitTriggers: s.tokenLimitHits,
               successful: s.lastCompactionAt > 0 ? 1 : 0,
               lastCompactAt: s.lastCompactionAt > 0 ? new Date(s.lastCompactionAt).toISOString() : null,
@@ -493,10 +516,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             planning: s.planning,
             compacting: s.compacting,
             sessionCreatedAt: new Date(s.sessionCreatedAt).toISOString(),
+            history: s.statusHistory,
           },
         },
       };
 
+      const statusFile = config.statusFilePath || defaultStatusFile;
       const tmpFile = statusFile + ".tmp";
       writeFileSync(tmpFile, JSON.stringify(data, null, 2) + "\n");
       renameSync(tmpFile, statusFile);
