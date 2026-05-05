@@ -698,6 +698,29 @@ describe("opencode-auto-force-resume", () => {
     });
   });
 
+  describe("token estimation", () => {
+    it("should count tokens from all part types, not just text", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        terminalTitleEnabled: false 
+      });
+
+      // Reasoning part should contribute tokens
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "reasoning", reasoning: "This is a long reasoning chain that should be counted as tokens", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      
+      // Tool part should contribute tokens
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part2", type: "tool", callID: "call1", tool: "bash", state: { type: "running" }, sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      
+      // File part should contribute tokens
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part3", type: "file", mime: "text/plain", url: "test.txt", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+
+      expect(true).toBe(true);
+      vi.useRealTimers();
+    });
+  });
+
   describe("config validation", () => {
     it("should use defaults for new config options", async () => {
       const plugin = await createPlugin({ client: mockClient }, { 

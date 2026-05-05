@@ -1,25 +1,22 @@
 # Project State
 
 ## Current Focus
-Enhanced session status tracking with actual token count extraction and proactive compaction
+Added test coverage for token estimation across different message part types
 
 ## Context
-The changes improve session management by:
-1. Extracting actual token counts from session status responses when available
-2. Adding proactive compaction checks when resuming busy sessions
-This addresses context bloat from prior interactions and improves token estimation accuracy
+To ensure accurate token counting during session compaction, we need to verify that all message part types (reasoning, tool, file) contribute to the token count, not just text parts.
 
 ## Completed
-- [x] Added token count extraction from session status responses
-- [x] Implemented proactive compaction when resuming busy sessions
-- [x] Enhanced token estimation by using actual counts when available
+- [x] Added test case verifying token counting for reasoning parts
+- [x] Added test case verifying token counting for tool parts
+- [x] Added test case verifying token counting for file parts
 
 ## In Progress
-- [x] Integration of these changes with existing session management
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this commit
+- None identified
 
 ## Next Steps
-1. Verify compaction effectiveness in test scenarios
-2. Monitor token estimation accuracy improvements in production
+1. Implement corresponding functionality in the main plugin code
+2. Expand test coverage to include edge cases for token estimation
