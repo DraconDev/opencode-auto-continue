@@ -90,38 +90,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     sessions.delete(id);
   }
 
-  function updateProgress(s: SessionState) {
-    s.lastProgressAt = Date.now();
-  }
-
-  const PLAN_PATTERNS = [
-    /^here\s+is\s+(my|the)\s+plan/i,
-    /^here'[rs]\s+(my|the)\s+plan/i,
-    /^##\s*plan\b/i,
-    /^\*\*plan:\*\*$/i,
-    /^##\s*proposed\s+plan/i,
-    /^##\s*implementation\s+plan/i,
-    /^plan:\s*/i,
-    /^\d+[\.\)]\s*step\s+\d+/i,
-    /^-\s*\[x\]\s/i,
-    /^-\s*\[\s\]\s/i,
-    /^let\s+me\s+outline/i,
-    /^here'?s?\s+(my|the)\s+approach/i,
-    /^i('ll|'m going to| will)\s+start\s+by/i,
-    /^(first|to start|initially),?\s+(i('ll|'m)|we('ll|'re))/i,
-    /^here'?s?\s+(what i|what we|how i|how we)/i,
-    /^my\s+plan\s+is/i,
-    /^step\s+\d+[\:\.]/i,
-    /^\d+\.\s+[A-Z]/i,
-    /^-\s+[A-Z][^\.]*$/im,
-    /^\*\s+[A-Z][^\.]*$/im,
-  ];
-
-  function isPlanContent(text: string): boolean {
-    const trimmed = text.trim();
-    return PLAN_PATTERNS.some(p => p.test(trimmed));
-  }
-
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
   const logFile = join(logDir, "auto-force-resume.log");
 
