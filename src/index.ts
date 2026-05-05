@@ -86,6 +86,25 @@ const DEFAULT_CONFIG: PluginConfig = {
   nudgeCooldownMs: 60000,
   autoCompact: true,
   maxSessionAgeMs: 7200000,
+  proactiveCompactThreshold: 50,
+  compactRetryDelayMs: 3000,
+  compactMaxRetries: 3,
+  shortContinueMessage: "Continue.",
+  tokenLimitPatterns: [
+    'context length',
+    'maximum context length',
+    'token count exceeds',
+    'too many tokens',
+    'tokens exceeds',
+    'exceeds maximum token limit',
+    'payload too large',
+    'request too large',
+    'context window',
+    'input length',
+    'message too long',
+    'token limit',
+    'exceeds token',
+  ],
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -132,8 +151,20 @@ function validateConfig(config: PluginConfig): PluginConfig {
     errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
   }
 
-  if (config.maxSessionAgeMs < 0) {
-    errors.push(`maxSessionAgeMs must be >= 0, got ${config.maxSessionAgeMs}`);
+  if (config.proactiveCompactThreshold < 0) {
+    errors.push(`proactiveCompactThreshold must be >= 0, got ${config.proactiveCompactThreshold}`);
+  }
+  if (config.compactRetryDelayMs < 0) {
+    errors.push(`compactRetryDelayMs must be >= 0, got ${config.compactRetryDelayMs}`);
+  }
+  if (config.compactMaxRetries < 0) {
+    errors.push(`compactMaxRetries must be >= 0, got ${config.compactMaxRetries}`);
+  }
+  if (!config.shortContinueMessage || typeof config.shortContinueMessage !== 'string') {
+    errors.push(`shortContinueMessage must be a non-empty string`);
+  }
+  if (!Array.isArray(config.tokenLimitPatterns) || config.tokenLimitPatterns.length === 0) {
+    errors.push(`tokenLimitPatterns must be a non-empty array`);
   }
 
   if (errors.length > 0) {
