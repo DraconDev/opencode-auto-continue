@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced session recovery prompt with synthetic flag and empty directory fallback
+Version bump from 3.36.18 to 3.36.19 in package metadata
 
 ## Context
-This change improves the auto-force-resume plugin's session recovery behavior by:
-1. Adding a synthetic flag to recovery prompts for better tracking
-2. Adding a fallback for empty directory values to prevent undefined errors
+This is a routine version bump following recent improvements to session recovery logic and error handling in the auto-force-resume plugin. The version update reflects incremental progress in the project's stability and reliability.
 
 ## Completed
-- [x] Added `synthetic: true` flag to recovery prompt parts
-- [x] Added fallback for empty directory values in prompt query
+- [x] Updated package version in package.json from 3.36.18 to 3.36.19
+- [x] Synchronized version in package-lock.json to match package.json
 
 ## In Progress
-- [x] No active work in progress
+- [ ] No active development work is being tracked in this commit
 
 ## Blockers
-- None identified
+- None reported for this version bump
 
 ## Next Steps
-1. Verify the synthetic flag is properly handled by downstream systems
-2. Test the empty directory fallback with various session recovery scenarios
+1. Continue development of session recovery features
+2. Prepare for next feature release or bugfix cycle
