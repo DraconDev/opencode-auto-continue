@@ -112,6 +112,8 @@ const DEFAULT_CONFIG: PluginConfig = {
     'token limit',
     'exceeds token',
   ],
+  timerToastEnabled: true,
+  timerToastIntervalMs: 60000,
 };
 
 function validateConfig(config: PluginConfig): PluginConfig {
@@ -175,6 +177,9 @@ function validateConfig(config: PluginConfig): PluginConfig {
   }
   if (!Array.isArray(config.tokenLimitPatterns) || config.tokenLimitPatterns.length === 0) {
     errors.push(`tokenLimitPatterns must be a non-empty array`);
+  }
+  if (config.timerToastIntervalMs < 10000) {
+    errors.push(`timerToastIntervalMs must be >= 10000, got ${config.timerToastIntervalMs}`);
   }
 
   if (errors.length > 0) {
