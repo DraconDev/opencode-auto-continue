@@ -1043,13 +1043,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           await maybeProactiveCompact(sid);
         }
         // Auto-continue when transitioning busy→idle with pending todos
-        // Uses wasBusy flag to fire only once per busy→idle transition
         if (status?.type === "idle" && s.wasBusy && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
           s.wasBusy = false;
-          if (Date.now() - s.lastNudgeAt >= config.nudgeCooldownMs) {
-            log('session transitioned busy→idle with pending todos, sending continue');
-            await sendNudge(sid);
-          }
+          nudge.scheduleNudge(sid);
         }
         // Stop timer toast and clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {
