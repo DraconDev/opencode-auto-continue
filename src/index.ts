@@ -276,9 +276,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       const promptOptions = {
-        body: { parts: [{ type: "text", text: "Please continue from where you left off." }] as any[] },
+        body: { parts: [{ type: "text", text: "Please continue from where you left off.", synthetic: true }] as any[] },
         path: { id: sessionId },
-        query: { directory: (input as any).directory }
+        query: { directory: (input as any).directory || "" }
       };
 
       try {
