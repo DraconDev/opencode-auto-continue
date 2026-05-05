@@ -1,25 +1,20 @@
 # Project State
 
 ## Current Focus
-Improved session continuation handling by distinguishing between user messages and synthetic prompts during recovery
+Added session creation timestamp tracking to the session state interface
 
 ## Context
-The previous implementation ignored all message events during session recovery, which could lead to missed user interactions. This change adds proper handling for both user messages and synthetic prompts during recovery.
+This change supports enhanced session management by recording when a session was created, which will enable better tracking of session duration and potential timeout handling.
 
 ## Completed
-- [x] Added distinction between user messages and synthetic prompts during recovery
-- [x] When user sends message during recovery, cancels queued continue and processes normally
-- [x] Synthetic prompts during recovery are properly ignored
-- [x] Improved logging to track message roles during recovery
-- [x] Maintained all existing recovery behavior for non-message events
+- [x] Added `sessionCreatedAt` field to `SessionState` interface to track session creation time
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Implementation of session duration tracking and timeout handling
 
 ## Blockers
-- None identified
+- Need to implement the actual timestamp assignment logic when sessions are created
 
 ## Next Steps
-1. Verify the new handling works correctly with integration tests
-2. Monitor production logs for any unexpected behavior
-3. Consider adding metrics to track recovery message handling
+1. Implement session timestamp assignment in session initialization code
+2. Add session duration monitoring and timeout handling based on the creation timestamp

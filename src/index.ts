@@ -23,6 +23,7 @@ interface SessionState {
   hasOpenTodos: boolean;
   needsContinue: boolean;
   continueMessageText: string;
+  sessionCreatedAt: number;
 }
 
 interface PluginConfig {
