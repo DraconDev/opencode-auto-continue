@@ -380,8 +380,37 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       });
       
       log('continue sent successfully');
-    } catch (e) {
+    } catch (e: any) {
       log('continue failed:', e);
+      
+      // Handle token limit error
+      if (isTokenLimitError(e)) {
+        log('token limit error detected, forcing compaction');
+        const compacted = await forceCompact(sessionId);
+        if (compacted) {
+          log('compaction succeeded, retrying continue');
+          // Retry after compaction
+          await new Promise(r => setTimeout(r, 2000));
+          try {
+            await (input.client.session as any).prompt({
+              path: { id: sessionId },
+              query: { directory: (input as any).directory || "" },
+              body: {
+                parts: [{
+                  type: "text",
+                  text: "Please continue from where you left off.",
+                  synthetic: true,
+                }],
+              },
+            });
+            log('retry after compaction succeeded');
+          } catch (e2) {
+            log('retry after compaction failed:', e2);
+          }
+        } else {
+          log('compaction failed, giving up on this recovery');
+        }
+      }
     }
   }
 
