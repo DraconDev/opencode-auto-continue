@@ -17,6 +17,7 @@ import {
   formatMessage,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
+import { createNotificationModule } from "./notifications.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
@@ -115,6 +116,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // ignore file errors silently
     }
   }
+
+  const terminal = createTerminalModule({ config, sessions, log, input });
+  const notifications = createNotificationModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
   // ── Status File ────────────────────────────────────────────────────────
 

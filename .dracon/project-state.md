@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added input dependency to TerminalDeps interface for terminal integration features.
+Integrate notification module into the main plugin initialization flow
 
 ## Context
-This change prepares the terminal module to handle user input by adding an input dependency to the TerminalDeps interface. This is part of ongoing work to enhance terminal integration capabilities.
+This change follows recent work to modularize terminal and notification functionality. The goal is to provide a unified interface for session progress and notifications.
 
 ## Completed
-- [x] Added `input` property to TerminalDeps interface
-- [x] Updated destructuring in createTerminalModule to include the new input dependency
+- [x] Added notification module initialization alongside terminal module
+- [x] Passed consistent dependencies to both modules
 
 ## In Progress
-- [ ] Implementation of input handling logic in the terminal module
+- [x] Notification module integration
 
 ## Blockers
-- Implementation of actual input handling logic needs to be completed
+- None identified
 
 ## Next Steps
-1. Implement input handling logic in the terminal module
-2. Add tests for the new input functionality
+1. Verify notification module behavior in integration tests
+2. Document the new module interface for other developers
