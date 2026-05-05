@@ -16,6 +16,7 @@ import {
   updateProgress,
   formatMessage,
 } from "./shared.js";
+import { createTerminalModule } from "./terminal.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
