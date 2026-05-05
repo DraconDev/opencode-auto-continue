@@ -307,6 +307,46 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
 
+  async function sendNudge(sessionId: string) {
+    if (isDisposed) return;
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    
+    // Don't nudge if user recently engaged
+    if (s.lastUserMessageId) return;
+    
+    // Don't nudge if recently nudged
+    if (Date.now() - s.lastNudgeAt < config.nudgeCooldownMs) return;
+    
+    // Don't nudge if no open todos
+    if (!s.hasOpenTodos) return;
+    
+    log('sending nudge for session:', sessionId);
+    s.lastNudgeAt = Date.now();
+    
+    try {
+      const messageText = formatMessage(config.nudgeMessage, {
+        pending: s.hasOpenTodos ? 'some' : '0',
+      });
+      
+      await (input.client.session as any).prompt({
+        path: { id: sessionId },
+        query: { directory: (input as any).directory || "" },
+        body: {
+          parts: [{
+            type: "text",
+            text: messageText,
+            synthetic: true,
+          }],
+        },
+      });
+      
+      log('nudge sent successfully');
+    } catch (e) {
+      log('nudge failed:', e);
+    }
+  }
+
   async function recover(sessionId: string) {
     if (isDisposed) return;
     const s = sessions.get(sessionId);
