@@ -1,27 +1,20 @@
 # Project State
 
 ## Current Focus
-Enhanced stall recovery with plan/compaction awareness, exponential backoff, and debug logging
+Removed redundant session status tracking in auto-force-resume plugin
 
 ## Context
-Improved session recovery by adding awareness for planning/compaction phases, implementing exponential backoff after max recovery attempts, and adding file-based debug logging
+This change was part of ongoing work to improve session recovery reliability by cleaning up redundant tracking mechanisms.
 
 ## Completed
-- [x] Added plan detection to pause stall monitoring during planning
-- [x] Added compaction detection to pause stall monitoring during context compaction
-- [x] Implemented exponential backoff after max recovery attempts (up to 30 minutes)
-- [x] Added file-based debug logging with configurable output
-- [x] Expanded progress tracking to include more event types
-- [x] Updated documentation with new configuration options and behavior details
-- [x] Version bump to 3.35.20
+- [x] Removed "session.status" from progress tracking types in AutoForceResumePlugin
 
 ## In Progress
-- [x] Comprehensive testing of new features
+- [x] Refactoring of session recovery notification system
 
 ## Blockers
-- None identified
+- None identified in this change
 
 ## Next Steps
-1. Verify debug logging works correctly in production environments
-2. Monitor recovery behavior with new plan/compaction awareness
-3. Gather user feedback on exponential backoff timing
+1. Verify no regression in session recovery behavior
+2. Continue cleanup of redundant session tracking mechanisms
