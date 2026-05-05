@@ -1,30 +1,22 @@
 # Project State
 
 ## Current Focus
-Added comprehensive session status tracking and terminal integration for the AutoForceResume plugin
+Enhanced session terminal integration with status updates and cleanup
 
 ## Context
-To improve observability and user experience during long-running sessions, this adds:
-- Persistent status file with detailed session metrics
-- Terminal title updates showing action duration
-- Status line integration for TUI displays
-- Comprehensive recovery and compaction tracking
+The code adds terminal title updates and status file writing during session management to provide better visibility into session state and recovery status.
 
 ## Completed
-- [x] Added status file with session metrics (elapsed time, recovery attempts, compaction stats)
-- [x] Implemented terminal title updates with action timing
-- [x] Created status line hook for TUI integration
-- [x] Added atomic file writing with temp file pattern
-- [x] Included all relevant session state metrics in status file
-- [x] Added graceful error handling for file operations
+- [x] Added terminal title updates during session activity
+- [x] Added terminal title clearing when sessions become idle
+- [x] Added status file writing to persist session state information
 
 ## In Progress
-- [x] All status tracking features are implemented and tested
+- [x] Terminal integration for session status visualization
 
 ## Blockers
-- None identified in this commit
+- None identified in this change
 
 ## Next Steps
-1. Verify status file content matches all session state requirements
-2. Test terminal title updates across different terminal emulators
-3. Validate status line integration with TUI components
+1. Verify terminal updates don't interfere with existing session operations
+2. Confirm status file content is sufficient for recovery scenarios

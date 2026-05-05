@@ -1146,6 +1146,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (s.actionStartedAt === 0) {
             startTimerToast(sid);
           }
+          // Update terminal title
+          updateTerminalTitle(sid);
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
@@ -1156,9 +1158,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "idle" && !s.needsContinue) {
           await maybeProactiveCompact(sid);
         }
-        // Stop timer toast when session becomes idle
+        // Stop timer toast and clear terminal title when session becomes idle
         if (status?.type === "idle") {
           stopTimerToast(sid);
+          clearTerminalTitle();
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
@@ -1166,6 +1169,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             recover(sid);
           }, config.stallTimeoutMs);
         }
+        writeStatusFile(sid);
         return;
       }
 
