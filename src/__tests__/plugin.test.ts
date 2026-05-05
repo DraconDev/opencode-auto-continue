@@ -555,6 +555,34 @@ describe("opencode-auto-force-resume", () => {
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it("should NOT clear session on session.compacted — preserves state", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set pending todos (hasOpenTodos = true)
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test", status: "in_progress" }] } } });
+      
+      // Fire session.compacted — should NOT reset session state
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+      
+      // After compaction, session.idle with pending todos should still trigger nudge
+      // This proves hasOpenTodos and other state survived the compacted event
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      
+      expect(mockPrompt).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
   });
 
   describe("token limit handling", () => {
