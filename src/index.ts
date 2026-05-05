@@ -285,11 +285,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastRecoveryTime = now;
       s.backoffAttempts = 0;
 
-      s.timer = setTimeout(() => {
-        recover(sessionId);
-      }, config.stallTimeoutMs);
+      // Don't set timer here - event handlers will set it when new activity starts
     } catch {
-      s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
+      // Recovery failed, retry with longer delay
+      s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
     } finally {
       s.aborting = false;
     }

@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Removed redundant timer setup in session recovery logic
+Improved session recovery failure handling with exponential backoff
 
 ## Context
-This change addresses a refactoring of the notification system for stuck session recovery attempts, which was previously implemented but later removed. The redundant timer setup in the session recovery logic was identified and cleaned up.
+The previous implementation would set a timer for recovery regardless of success/failure. This change ensures recovery attempts fail faster when they're likely to fail (by doubling the delay on failure).
 
 ## Completed
-- [x] Removed duplicate timer setup in session recovery logic
-- [x] Cleaned up redundant code paths in the AutoForceResumePlugin
+- [x] Removed redundant timer setup in successful recovery cases
+- [x] Added exponential backoff for failed recovery attempts (doubles delay)
+- [x] Maintained consistent timer handling pattern across success/failure paths
 
 ## In Progress
-- [x] Ongoing work to improve session recovery reliability
+- [ ] Verify test coverage for this change (related to recent test coverage improvements)
 
 ## Blockers
-- None identified for this specific change
+- Need to confirm if this change affects the notification system (recently refactored)
 
 ## Next Steps
-1. Verify test coverage for session recovery timer behavior
-2. Continue refining the session recovery notification system
+1. Update integration tests to verify the new backoff behavior
+2. Document the recovery timing strategy in the session recovery documentation
