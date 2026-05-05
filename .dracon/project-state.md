@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Added recovery tracking metrics for successful and failed session recovery attempts.
+Added future-proof status line hook registration in the AutoForceResumePlugin
 
 ## Context
-This change enhances session recovery tracking by recording metrics for successful and failed recovery attempts, along with timestamps for successful recoveries. This provides better visibility into recovery performance and helps with debugging.
+This change prepares for potential future integration of status line updates in the session recovery system. It follows recent work on comprehensive session status tracking and recovery metrics.
 
 ## Completed
-- [x] Added `recoverySuccessful` counter incremented on successful recovery
-- [x] Added `lastRecoverySuccess` timestamp updated on successful recovery
-- [x] Added `recoveryFailed` counter incremented on failed recovery
-- [x] Added `writeStatusFile` call after both successful and failed recovery attempts
+- [x] Added `registerStatusLineHook()` call in the plugin initialization sequence
+- [x] Positioned the hook registration after other critical plugin setup
 
 ## In Progress
-- [x] Recovery tracking metrics implementation
+- [ ] Implementation of the actual status line hook functionality
 
 ## Blockers
-- None identified
+- Need to define the status line content and update frequency
 
 ## Next Steps
-1. Verify metrics are being written correctly to the status file
-2. Consider adding additional recovery metrics if needed
+1. Implement the status line hook functionality
+2. Add configuration options for status line behavior
