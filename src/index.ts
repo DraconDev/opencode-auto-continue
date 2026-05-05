@@ -508,6 +508,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "message.created" || event?.type === "message.part.added") {
+        // CRITICAL: Ignore synthetic messages to prevent infinite loops
+        const isSynthetic = e?.properties?.info?.synthetic === true || e?.properties?.part?.synthetic === true;
+        if (isSynthetic) {
+          log('ignoring synthetic message event:', event?.type);
+          return;
+        }
+        
         log('activity event:', event?.type, sid);
         const s = getSession(sid);
         updateProgress(s);
