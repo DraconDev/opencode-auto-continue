@@ -950,9 +950,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
           if (partType === "text") {
             const partText = e?.properties?.part?.text as string | undefined;
-            if (partText && isPlanContent(partText)) {
-              log('plan detected in updated text part, pausing stall monitoring');
-              s.planning = true;
+            if (partText) {
+              // Estimate tokens from text content
+              const estimatedTokens = estimateTokens(partText);
+              s.estimatedTokens += estimatedTokens;
+              
+              if (isPlanContent(partText)) {
+                log('plan detected in updated text part, pausing stall monitoring');
+                s.planning = true;
+              }
             }
           }
         }
@@ -1002,10 +1008,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         log('activity event:', event?.type, sid, 'role:', msgRole);
         const s = getSession(sid);
         
-        // Track message count for proactive compaction
+        // Track message count and estimate tokens for proactive compaction
         if (isUserMessage) {
           s.messageCount++;
-          log('message count incremented:', s.messageCount);
+          // Estimate tokens from message text
+          const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+          const estimatedTokens = estimateTokens(msgText);
+          s.estimatedTokens += estimatedTokens;
+          log('message count incremented:', s.messageCount, 'estimated tokens added:', estimatedTokens, 'total:', s.estimatedTokens);
+        } else {
+          // Also estimate tokens from assistant/tool responses
+          const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+          if (msgText) {
+            const estimatedTokens = estimateTokens(msgText);
+            s.estimatedTokens += estimatedTokens;
+          }
         }
         
         updateProgress(s);
