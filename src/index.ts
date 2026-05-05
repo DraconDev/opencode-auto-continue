@@ -913,6 +913,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
 
     s.aborting = true;
+    s.stallDetections++;
+    writeStatusFile(sessionId);
 
     try {
       const statusResult = await input.client.session.status({});
