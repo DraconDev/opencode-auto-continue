@@ -645,7 +645,7 @@ describe("opencode-auto-force-resume", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Should not contain OSC 9;4 sequences
+// Should not contain OSC 9;4 sequences
       const osc94Calls = writeSpy.mock.calls.filter(call => 
         typeof call[0] === 'string' && call[0].includes('\x1b]9;4')
       );
