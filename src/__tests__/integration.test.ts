@@ -69,10 +69,9 @@ describe("opencode-auto-force-resume integration", () => {
       query: expect.any(Object)
     }));
     
-    // Step 5: Should have called continue prompt (notification + continue = 2 calls)
-    expect(mockPromptAsync).toHaveBeenCalledTimes(2);
-    // Last call should be the continue message
-    const promptCall = mockPromptAsync.mock.calls[1][0];
+    // Step 5: Should have called continue prompt (only the continue message, no notification)
+    expect(mockPromptAsync).toHaveBeenCalledTimes(1);
+    const promptCall = mockPromptAsync.mock.calls[0][0];
     expect(promptCall.body.parts[0].text).toContain("continue");
     
     vi.useRealTimers();
@@ -111,8 +110,8 @@ describe("opencode-auto-force-resume integration", () => {
     await Promise.resolve();
     
     expect(mockAbort).toHaveBeenCalledTimes(1);
-    // notification + continue = 2 calls
-    expect(mockPrompt).toHaveBeenCalledTimes(2);
+    // only the continue message, no notification
+    expect(mockPrompt).toHaveBeenCalledTimes(1);
     
     vi.useRealTimers();
   });

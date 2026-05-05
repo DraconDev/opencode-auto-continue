@@ -267,26 +267,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         await new Promise(r => setTimeout(r, remainingWait));
       }
 
-      const timeStuck = now - s.lastProgressAt;
-      const minutesStuck = Math.floor(timeStuck / 60000);
-      const secondsStuck = Math.floor((timeStuck % 60000) / 1000);
-
-      const notificationOptions = {
-        body: { parts: [{ type: "text", text: `🤖 [auto-force-resume] Session was stuck for ${minutesStuck}m ${secondsStuck}s (no progress detected). Recovery attempt ${s.attempts + 1}/${config.maxRecoveries}.`, synthetic: true }] as any[] },
-        path: { id: sessionId },
-        query: { directory: (input as any).directory }
-      };
-
-      try {
-        if (typeof (input.client.session as any).promptAsync === "function") {
-          await (input.client.session as any).promptAsync(notificationOptions);
-        } else {
-          await input.client.session.prompt(notificationOptions as any);
-        }
-      } catch {
-        // notification failed, continue anyway
-      }
-
       const promptOptions = {
         body: { parts: [{ type: "text", text: "Please continue from where you left off." }] as any[] },
         path: { id: sessionId },
