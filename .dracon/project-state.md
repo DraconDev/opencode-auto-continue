@@ -1,21 +1,26 @@
 # Project State
 
 ## Current Focus
-Added terminal integration module for displaying session progress and status.
+Modularize terminal and notification functionality from the monolithic index.ts file
 
 ## Context
-This change enables the plugin to display real-time session information in a terminal interface, improving user visibility into the auto-force resume process.
+The index.ts file was growing too large and complex, making it difficult to maintain. This change extracts terminal and notification functionality into separate modules to improve code organization and maintainability.
 
 ## Completed
-- [x] Imported the terminal module for session progress display
-- [x] Integrated terminal output for session state tracking
+- [x] Created extract_modules.py script to safely extract terminal and notification functionality
+- [x] Extracted terminal-related functions into src/terminal.ts
+- [x] Extracted notification-related functions into src/notifications.ts
+- [x] Preserved all existing functionality while improving modularity
 
 ## In Progress
-- [x] Terminal module implementation is complete
+- [ ] Verify the extracted modules work correctly with the rest of the system
+- [ ] Update import statements in other files to use the new modules
 
 ## Blockers
-- None identified
+- Need to ensure all dependencies are properly imported in the new modules
+- May need to adjust type definitions for the extracted interfaces
 
 ## Next Steps
-1. Implement terminal display formatting for session events
-2. Add configuration options for terminal output verbosity
+1. Run integration tests to verify the extracted modules work as expected
+2. Update documentation to reflect the new module structure
+3. Consider additional module extractions if index.ts continues to grow
