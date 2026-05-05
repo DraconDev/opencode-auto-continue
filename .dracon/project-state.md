@@ -1,24 +1,23 @@
 # Project State
 
 ## Current Focus
-Added session age tracking to prevent indefinite stalled sessions
+Added proactive compaction configuration options for token limit handling
 
 ## Context
-To prevent sessions from getting stuck indefinitely, we need to enforce a maximum session lifetime. This addresses cases where sessions might remain open without progress for extended periods, consuming resources unnecessarily.
+This change extends the plugin configuration to support proactive compaction strategies when token limits are approached. It follows recent work on token limit error handling and session continuation improvements.
 
 ## Completed
-- [x] Added `maxSessionAgeMs` configuration option (default: 2 hours)
-- [x] Added session creation timestamp tracking
-- [x] Implemented session age check during recovery attempts
-- [x] Added validation for `maxSessionAgeMs` configuration
-- [x] Updated version numbers in package files
+- [x] Added proactive compaction threshold configuration
+- [x] Added retry delay and max retries for compaction attempts
+- [x] Added short continue message configuration
+- [x] Added token limit patterns configuration
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Implementation of the new compaction strategies
 
 ## Blockers
-- None identified
+- Need to implement the actual compaction logic using these new configuration options
 
 ## Next Steps
-1. Test session expiration behavior with various timeout values
-2. Consider adding notifications when sessions are about to expire
+1. Implement the proactive compaction logic
+2. Add tests for the new configuration options

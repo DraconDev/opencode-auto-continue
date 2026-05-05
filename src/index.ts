@@ -51,6 +51,11 @@ interface PluginConfig {
   nudgeCooldownMs: number;
   autoCompact: boolean;
   maxSessionAgeMs: number;
+  proactiveCompactThreshold: number;
+  compactRetryDelayMs: number;
+  compactMaxRetries: number;
+  shortContinueMessage: string;
+  tokenLimitPatterns: string[];
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
