@@ -562,6 +562,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   return {
     event: async ({ event }: { event: any }) => {
       const e = event as any;
+      log('EVENT:', event?.type);
       const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
       const progressTypes = [
@@ -618,6 +619,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const status = e?.properties?.status;
         log('session.status:', sid, status?.type);
         const s = getSession(sid);
+        log('session state - needsContinue:', s.needsContinue, 'aborting:', s.aborting);
         if (status?.type === "busy") {
           updateProgress(s);
           s.userCancelled = false;
@@ -632,8 +634,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
-          log('session idle, sending queued continue');
+          log('session idle, sending queued continue for:', sid);
           await sendContinue(sid);
+        } else if (status?.type === "idle") {
+          log('session idle but no queued continue for:', sid, 'needsContinue:', s.needsContinue);
         }
         clearTimer(sid);
         if (status?.type === "busy" || status?.type === "retry") {
