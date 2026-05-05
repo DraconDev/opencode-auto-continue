@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Improve session continuation handling by making `sendContinue` async and adding test coverage for async behavior
+Added debug logging to track session continuation prompt calls during integration tests
 
 ## Context
-The changes address race conditions in session continuation by ensuring proper async handling of queued continue messages. The test additions verify the async behavior when the session becomes idle.
+This change was made to improve test observability during session continuation handling improvements. The previous test relied on timing assumptions which could be flaky, and the new logging helps verify the correct sequence of prompt calls.
 
 ## Completed
-- [x] Made `sendContinue` async in the main plugin code to properly handle async operations
-- [x] Added test coverage for async session continuation behavior
-- [x] Added explicit async ticks in tests to properly simulate async message sending
+- [x] Added debug logging for mockPromptAsync and mockAbort calls
+- [x] Maintained existing test expectations while improving observability
 
 ## In Progress
-- [ ] No active work in progress beyond these changes
+- [x] Debug logging implementation for test verification
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for all session continuation scenarios
-2. Consider additional edge cases for session state transitions
+1. Verify test stability with the new logging
+2. Consider adding more detailed logging if needed for other test cases
