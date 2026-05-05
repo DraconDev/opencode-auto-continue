@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Added message event filtering to prevent processing events triggered by our own prompts within 5 seconds.
+Added session message guard reset on status updates to prevent stale message tracking
 
 ## Context
-This change addresses a race condition where message events might be processed immediately after sending a prompt, potentially causing infinite loops or incorrect state updates. The 5-second window provides a buffer to distinguish between our own messages and external events.
+This change addresses an issue where the `sentMessageAt` timestamp wasn't being properly reset when session status changed, potentially causing stale message tracking in the auto-force-resume plugin.
 
 ## Completed
-- [x] Added timestamp-based filtering for message events
-- [x] Implemented session ID lookup for tracking sent messages
-- [x] Added debug logging for ignored events
+- [x] Added guard reset for `sentMessageAt` when session status updates
+- [x] Ensures message tracking is fresh when session state changes
 
 ## In Progress
-- [x] Message event filtering implementation
+- [x] Implementation of session status handling
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the 5-second window is appropriate for all use cases
-2. Add unit tests for the new filtering logic
+1. Verify this change prevents stale message tracking in integration tests
+2. Monitor for any regression in session recovery behavior

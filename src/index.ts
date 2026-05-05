@@ -444,6 +444,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const status = e?.properties?.status;
         log('session.status:', sid, status?.type);
         const s = getSession(sid);
+        // Reset sentMessageAt guard on session status updates
+        if (s.sentMessageAt > 0) {
+          s.sentMessageAt = 0;
+        }
         if (status?.type === "busy") {
           updateProgress(s);
           s.userCancelled = false;
