@@ -1,26 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored nudge notification logic to simplify triggering and reduce redundant checks
+Refactored nudge notification test to verify cooldown behavior with pending todos
 
 ## Context
-The nudge system was previously triggering on both session idle events and todo updates, leading to potential double nudges. The refactor simplifies the logic by:
-1. Removing the nudge timer that was tracking pending todos
-2. Making the idle event the primary nudge trigger
-3. Adding explicit checks for needsContinue state
+The test was updated to verify that nudge notifications are properly rate-limited by the cooldown period, ensuring users aren't spammed with repeated notifications when they return from idle to busy states.
 
 ## Completed
-- [x] Removed redundant nudge timer logic
-- [x] Simplified nudge triggering to only occur on idle events
-- [x] Added needsContinue check to prevent nudges during continue operations
-- [x] Updated logging to reflect new nudge conditions
+- [x] Updated test to verify nudge cooldown prevents rapid notifications
+- [x] Simplified test setup by removing unnecessary wasBusy state tracking
+- [x] Added explicit cooldown period (60000ms) to test realistic behavior
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Test now verifies cooldown prevents duplicate nudges
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify nudge behavior in integration tests
-2. Update documentation to reflect new nudge triggering rules
+1. Verify test passes with current implementation
+2. Consider adding additional edge cases for different cooldown scenarios
