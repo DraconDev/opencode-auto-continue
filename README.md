@@ -277,6 +277,8 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | `proactiveCompactAtPercent` | `50` | Percentage of model context limit |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
+| `compactionVerifyWaitMs` | `10000` | Max wait time for compaction to complete (progressive checks at 2s/3s/5s) |
+| `compactCooldownMs` | `120000` | Min time between compaction attempts (2 min) |
 
 ### Timer & Display Options
 
