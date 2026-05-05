@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode-ai/plugin";
-import { appendFileSync, mkdirSync, existsSync } from "fs";
+import { appendFileSync, mkdirSync, existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 
 interface SessionState {
@@ -185,6 +185,60 @@ function validateConfig(config: PluginConfig): PluginConfig {
   }
   
   return config;
+}
+
+// Model context limit detection from opencode.json
+function getModelContextLimit(opencodeConfigPath: string): number | null {
+  try {
+    if (!existsSync(opencodeConfigPath)) return null;
+    const content = readFileSync(opencodeConfigPath, 'utf-8');
+    const config = JSON.parse(content);
+    
+    // Extract all model context limits from provider configurations
+    const limits: number[] = [];
+    if (config.provider) {
+      for (const provider of Object.values(config.provider)) {
+        const p = provider as any;
+        if (p.models) {
+          for (const model of Object.values(p.models)) {
+            const m = model as any;
+            if (m.limit?.context && typeof m.limit.context === 'number') {
+              limits.push(m.limit.context);
+            }
+          }
+        }
+      }
+    }
+    
+    // Return the smallest context limit (most restrictive)
+    if (limits.length > 0) {
+      return Math.min(...limits);
+    }
+    
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Calculate adaptive compaction threshold based on model context limit
+function getCompactionThreshold(modelContextLimit: number | null, config: PluginConfig): number {
+  if (!modelContextLimit || modelContextLimit <= 0) {
+    // Fallback to fixed token threshold if no model limit detected
+    return config.proactiveCompactAtTokens;
+  }
+  
+  const thresholdPercent = modelContextLimit * (config.proactiveCompactAtPercent / 100);
+  
+  // For large models (>= 200k): use min(fixed, percentage)
+  // For small models (< 200k): use min(fixed_small, percentage)
+  if (modelContextLimit >= 200000) {
+    return Math.min(config.proactiveCompactAtTokens, thresholdPercent);
+  } else {
+    // For smaller models, use a more conservative fixed threshold
+    const smallModelThreshold = Math.min(75000, config.proactiveCompactAtTokens);
+    return Math.min(smallModelThreshold, thresholdPercent);
+  }
 }
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {

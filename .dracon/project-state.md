@@ -1,23 +1,24 @@
 # Project State
 
 ## Current Focus
-Enhanced proactive compaction configuration with dual thresholds for token management
+Added adaptive compaction threshold calculation based on model context limits from opencode.json
 
 ## Context
-The proactive compaction system was previously configured with a single threshold value. This change introduces more granular control by allowing configuration based on both absolute token counts and percentage thresholds.
+To improve token limit handling, we need to dynamically adjust compaction thresholds based on the actual model context limits configured in opencode.json rather than using fixed values.
 
 ## Completed
-- [x] Replaced single `proactiveCompactThreshold` with dual thresholds: `proactiveCompactAtTokens` (absolute count) and `proactiveCompactAtPercent` (percentage of capacity)
-- [x] Updated validation to enforce proper ranges for both new threshold types
-- [x] Maintained backward compatibility with existing configuration structure
+- [x] Added `getModelContextLimit` function to read and parse opencode.json for model context limits
+- [x] Implemented `getCompactionThreshold` function that calculates adaptive thresholds:
+  - Uses percentage-based thresholds for large models (≥200k tokens)
+  - Uses conservative fixed thresholds for small models (<200k tokens)
+  - Falls back to fixed thresholds when no model limit is detected
 
 ## In Progress
-- [ ] Update related documentation to reflect the new configuration options
-- [ ] Add unit tests for the new threshold validation logic
+- [x] Integration with existing proactive compaction logic
 
 ## Blockers
-- None identified at this time
+- None identified
 
 ## Next Steps
-1. Update documentation to explain the new configuration options
-2. Implement comprehensive test coverage for the new threshold system
+1. Verify adaptive thresholds work correctly with various model configurations
+2. Add unit tests for the new threshold calculation logic
