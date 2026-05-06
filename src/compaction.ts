@@ -31,7 +31,7 @@ export function createCompactionModule(deps: CompactionDeps) {
 
       await input.client.session.summarize({
         path: { id: sessionId },
-        query: { directory: (input as any).directory || "" }
+        query: { directory: input.directory || "" }
       });
 
       // Wait for compaction with progressive checks
