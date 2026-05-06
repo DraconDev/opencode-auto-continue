@@ -3,46 +3,63 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 export interface SessionState {
+  // === Timer & Progress (terminal.ts, index.ts) ===
   timer: ReturnType<typeof setTimeout> | null;
+  lastProgressAt: number;
+  actionStartedAt: number;
+  toastTimer: ReturnType<typeof setInterval> | null;
+
+  // === Recovery (recovery.ts) ===
   attempts: number;
   lastRecoveryTime: number;
-  lastProgressAt: number;
+  backoffAttempts: number;
+  autoSubmitCount: number;
   aborting: boolean;
+  recoveryStartTime: number;
+  stallDetections: number;
+  recoverySuccessful: number;
+  recoveryFailed: number;
+  lastRecoverySuccess: number;
+  totalRecoveryTimeMs: number;
+  recoveryTimes: number[];
+  lastStallPartType: string;
+  stallPatterns: Record<string, number>;
+
+  // === Session Control (index.ts) ===
   userCancelled: boolean;
   planning: boolean;
   planBuffer: string;
   compacting: boolean;
-  backoffAttempts: number;
-  autoSubmitCount: number;
-  lastUserMessageId: string;
-  sentMessageAt: number;
-  reviewFired: boolean;
-  reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
+  sessionCreatedAt: number;
+  messageCount: number;
+
+  // === Compaction (compaction.ts) ===
+  estimatedTokens: number;
+  lastCompactionAt: number;
+  tokenLimitHits: number;
+
+  // === Nudge (nudge.ts) ===
   nudgeTimer: ReturnType<typeof setTimeout> | null;
   lastNudgeAt: number;
   nudgeCount: number;
   lastTodoSnapshot: string;
   nudgePaused: boolean;
   hasOpenTodos: boolean;
+
+  // === Continue Queue (recovery.ts, review.ts) ===
   needsContinue: boolean;
   continueMessageText: string;
-  sessionCreatedAt: number;
-  messageCount: number;
-  estimatedTokens: number;
-  lastCompactionAt: number;
-  tokenLimitHits: number;
-  actionStartedAt: number;
-  toastTimer: ReturnType<typeof setInterval> | null;
-  stallDetections: number;
-  recoverySuccessful: number;
-  recoveryFailed: number;
-  lastRecoverySuccess: number;
-  totalRecoveryTimeMs: number;
-  recoveryStartTime: number;
+
+  // === Review (review.ts) ===
+  reviewFired: boolean;
+  reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
+
+  // === Message Tracking (index.ts) ===
+  lastUserMessageId: string;
+  sentMessageAt: number;
+
+  // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
-  recoveryTimes: number[];
-  lastStallPartType: string;
-  stallPatterns: Record<string, number>;
 }
 
 export interface PluginConfig {
