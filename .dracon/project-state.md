@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Removed redundant token tracking logic from session status responses
+Removed redundant token tracking logic from session status responses in favor of more reliable sources
 
 ## Context
-This change removes duplicate token tracking code that was previously handling token information from status responses. The token tracking improvements were already implemented in other commits, making this redundant code unnecessary.
+The OpenCode SDK no longer exposes token counts in session.status() responses, making the previous implementation unreliable. We now rely on multiple sources for token tracking.
 
 ## Completed
-- [x] Removed duplicate token tracking logic from session status handling
-- [x] Cleaned up redundant code that was previously handling token information from status responses
+- [x] Removed redundant session status token tracking code
+- [x] Added documentation noting the new token tracking sources
 
 ## In Progress
-- [x] No active work in progress
+- [x] Verifying token tracking accuracy with new sources
 
 ## Blockers
-- None
+- Need to ensure all token tracking sources are properly implemented and tested
 
 ## Next Steps
-1. Verify no regression in token tracking functionality
-2. Consider if additional token tracking improvements are needed
+1. Verify token tracking accuracy with integration tests
+2. Update documentation to reflect the new token tracking approach

@@ -116,26 +116,12 @@ export function createCompactionModule(deps: CompactionDeps) {
     // Don't compact too frequently
     if (Date.now() - s.lastCompactionAt < config.compactCooldownMs) return;
 
-    // Try to read actual token count from session status for accuracy
-    try {
-      const statusResult = await input.client.session.status({});
-      const statusData = statusResult.data as Record<string, any>;
-      const sessionStatus = statusData[sessionId];
-      if (sessionStatus) {
-        let actualTokens = 0;
-        if (typeof sessionStatus.totalTokens === 'number') {
-          actualTokens = sessionStatus.totalTokens;
-        } else if (typeof sessionStatus.tokensInput === 'number' || typeof sessionStatus.tokensOutput === 'number') {
-          actualTokens = (sessionStatus.tokensInput || 0) + (sessionStatus.tokensOutput || 0);
-        }
-        if (actualTokens > 0) {
-          s.estimatedTokens = Math.max(s.estimatedTokens, actualTokens);
-          log('updated estimated tokens from status:', actualTokens, 'session:', sessionId);
-        }
-      }
-    } catch (e) {
-      // Ignore status read errors, use existing estimate
-    }
+    // NOTE: The OpenCode SDK does NOT expose token counts in session.status().
+    // We rely on token estimates accumulated from:
+    // 1. AssistantMessage.tokens from message.updated events
+    // 2. step-finish part.tokens from message.part.updated events
+    // 3. Error message parsing when token limit errors occur
+    // These sources are tracked in src/index.ts event handlers.
 
     // Detect model context limit from opencode.json
     const opencodeConfigPath = join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json");
