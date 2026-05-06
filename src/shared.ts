@@ -364,7 +364,6 @@ export function createSession(): SessionState {
     recoveryTimes: [],
     lastStallPartType: "",
     stallPatterns: {},
-    wasBusy: false,
   };
 }
 
