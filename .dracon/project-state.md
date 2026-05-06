@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Removed fake timers from token estimation test to simplify test setup
+Adjusting proactive compaction threshold in tests to prevent actual compaction during recovery testing
 
 ## Context
-The test was previously using fake timers (`vi.useFakeTimers()`) which added unnecessary complexity. The change simplifies the test by removing this dependency while maintaining the same functionality.
+The test was modified to prevent actual compaction from occurring during recovery scenarios, making the test focus solely on verifying crash resistance rather than compaction behavior.
 
 ## Completed
-- [x] Removed fake timers from token estimation test
-- [x] Added `Promise.resolve()` to maintain test timing behavior
-- [x] Kept all test assertions and mocking intact
+- [x] Increased proactive compaction threshold from 10 to 10,000,000 tokens to prevent actual compaction during tests
+- [x] Updated test comment to clarify the test now only verifies crash resistance
 
 ## In Progress
-- [x] No active work in progress
+- [ ] No active work in progress
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify test still passes with the simplified implementation
-2. Consider if other tests could similarly benefit from timer simplification
+1. Verify test continues to pass with the new threshold
+2. Consider if additional test cases are needed for actual compaction scenarios
