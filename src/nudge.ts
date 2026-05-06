@@ -220,8 +220,11 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
   }
 
-// Schedule a nudge after idle delay
-  function scheduleNudge(sessionId: string): void {
+  // Schedule a nudge after idle delay
+  function scheduleNudge(
+    sessionId: string,
+    knownTodos?: Array<{ id: string; status: string; content?: string; title?: string }>
+  ): void {
     cancelNudge(sessionId);
 
     const s = sessions.get(sessionId);
@@ -229,7 +232,7 @@ export function createNudgeModule(deps: NudgeDeps) {
 
     log("scheduling nudge", { sessionId, delayMs: config.nudgeIdleDelayMs });
     s.nudgeTimer = setTimeout(() => {
-      injectNudge(sessionId).catch((e) => log("nudge inject error", String(e)));
+      injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
     }, config.nudgeIdleDelayMs);
   }
 
