@@ -28,7 +28,7 @@ export function createReviewModule(deps: ReviewDeps) {
       if (config.showToasts) {
         try {
           await input.client.tui.showToast({
-            query: { directory: (input as any).directory || "" },
+            query: { directory: input.directory || "" },
             body: {
               title: "Session Complete",
               message: "All tasks completed. Initiating review...",
@@ -44,7 +44,7 @@ export function createReviewModule(deps: ReviewDeps) {
       s.messageCount++;
       await input.client.session.prompt({
         path: { id: sessionId },
-        query: { directory: (input as any).directory || "" },
+        query: { directory: input.directory || "" },
         body: {
           parts: [{
             type: "text",
@@ -79,7 +79,7 @@ export function createReviewModule(deps: ReviewDeps) {
       s.messageCount++;
       await input.client.session.prompt({
         path: { id: sessionId },
-        query: { directory: (input as any).directory || "" },
+        query: { directory: input.directory || "" },
         body: {
           parts: [{
             type: "text",
@@ -121,7 +121,7 @@ export function createReviewModule(deps: ReviewDeps) {
             s.messageCount++;
             await input.client.session.prompt({
               path: { id: sessionId },
-              query: { directory: (input as any).directory || "" },
+              query: { directory: input.directory || "" },
               body: {
                 parts: [{
                   type: "text",
