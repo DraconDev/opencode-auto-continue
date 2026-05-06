@@ -247,7 +247,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
           log('session idle, sending queued continue for:', sid);
-          await sendContinue(sid);
+          await review.sendContinue(sid);
         }
         // Proactive compaction when idle and message count is high
         if (status?.type === "idle" && !s.needsContinue) {

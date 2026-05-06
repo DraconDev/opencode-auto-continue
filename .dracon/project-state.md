@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Modularized session review and recovery functionality by extracting it into a dedicated module.
+Refactored session continuation handling to use the review module
 
 ## Context
-The code was refactoring session review and recovery operations to improve maintainability and separation of concerns. The changes extract these operations from the main plugin file into a dedicated module, making the codebase more modular and easier to maintain.
+This change improves session recovery by centralizing continuation logic through the review module, which was recently added to handle session review and recovery operations.
 
 ## Completed
-- [x] Extracted review and recovery logic into a dedicated module (`createReviewModule`)
-- [x] Removed inline functions for review and continue operations
-- [x] Integrated the new review module with the existing plugin system
+- [x] Moved `sendContinue` call to use `review.sendContinue` for consistency with the review module's API
 
 ## In Progress
-- [ ] No active work in progress
+- [x] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the new review module works correctly with existing functionality
-2. Update any tests to cover the new module structure
+1. Verify integration with the review module's continuation handling
+2. Test session recovery flows to ensure proper continuation behavior
