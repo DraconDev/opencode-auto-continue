@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Added re-export of `isTokenLimitError` from `compaction.ts` to improve module consistency.
+Removed redundant re-export of `isTokenLimitError` from `compaction.ts`
 
 ## Context
-This change ensures the `isTokenLimitError` utility function is properly exposed at the module level, making it available for external consumers without requiring direct imports from the internal implementation file.
+The re-export of `isTokenLimitError` was previously added but is no longer needed as the function is already exported directly from the module.
 
 ## Completed
-- [x] Added re-export of `isTokenLimitError` from `compaction.ts`
-- [x] Maintained existing type export for `CompactionModule`
+- [x] Removed redundant re-export of `isTokenLimitError` to clean up the module's exports
 
 ## In Progress
-- [ ] No active work in progress
+- [x] No active work in progress
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify no breaking changes in dependent modules
-2. Update documentation if needed to reflect the new export pattern
+1. Verify no downstream dependencies rely on the removed re-export
+2. Ensure all tests pass after this change

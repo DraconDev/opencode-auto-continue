@@ -137,6 +137,4 @@ export function createCompactionModule(deps: CompactionDeps) {
   return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact };
 }
 
-export { isTokenLimitError } from "./compaction.js";
-
 export type { CompactionModule } from "./types.js";
