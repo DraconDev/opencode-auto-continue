@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Refactored token limit error handling to use centralized compaction module
+Removed unused token limit and compaction threshold imports from the main index file.
 
 ## Context
-This change consolidates token limit error detection and handling by using the `compaction` module's `isTokenLimitError` function instead of the standalone `isTokenLimitError` utility.
+These imports were no longer used after recent refactoring of token management and proactive session compaction.
 
 ## Completed
-- [x] Updated token limit error detection to use `compaction.isTokenLimitError(e)` in both review and recovery paths
-- [x] Maintained all existing error handling logic while improving code organization
+- [x] Removed unused `getModelContextLimit` and `getCompactionThreshold` imports
 
 ## In Progress
-- [ ] No active work in progress
+- [x] No active work in progress related to this change
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify no regression in token limit error handling
-2. Consider additional compaction module integrations
+1. Verify no functionality was affected by this cleanup
+2. Continue with ongoing refactoring of token management systems

@@ -6,8 +6,6 @@ import {
   type PluginConfig,
   DEFAULT_CONFIG,
   validateConfig,
-  getModelContextLimit,
-  getCompactionThreshold,
   PLAN_PATTERNS,
   isPlanContent,
   estimateTokens,
