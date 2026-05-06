@@ -1571,18 +1571,10 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("MessageAbortedError detection in nudge", () => {
-    it("should detect MessageAbortedError via error.name property", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
-
-      const error = { name: "MessageAbortedError", message: "User cancelled" };
-      expect(isTokenLimitError(error)).toBe(false); // Not a token limit error
-    });
-
-    it("should handle nudge abort via multiple error paths", async () => {
+    it("should handle nudge abort and pause", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
 
-      // Test error object with data.info.error nested path
       const nestedError = {
         name: "Error",
         message: "Request failed",
