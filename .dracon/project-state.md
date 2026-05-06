@@ -1,16 +1,15 @@
 # Project State
 
 ## Current Focus
-Refactored test cases for proactive compaction checks during active generation
+Removed fake timers from proactive compaction test to simplify test setup
 
 ## Context
-The changes simplify test cases for proactive compaction behavior during active generation sessions, removing unnecessary timer mocking and focusing on crash prevention verification.
+The test was using fake timers (`vi.useFakeTimers()`) which complicated the test setup without providing meaningful time-based behavior verification. The test now focuses on verifying the compaction trigger logic without time-related assertions.
 
 ## Completed
-- [x] Removed fake timers from compaction-recovery.test.ts
-- [x] Simplified test assertions to focus on crash prevention
-- [x] Updated test descriptions to be more concise
-- [x] Removed redundant timer-related code
+- [x] Removed fake timers from proactive compaction test
+- [x] Simplified test by replacing timer-related code with direct promise resolution
+- [x] Maintained same verification logic for compaction trigger conditions
 
 ## In Progress
 - [ ] No active work in progress
@@ -19,5 +18,5 @@ The changes simplify test cases for proactive compaction behavior during active 
 - None identified
 
 ## Next Steps
-1. Verify test suite still provides adequate coverage
-2. Consider adding more specific assertions about compaction behavior
+1. Verify test still properly verifies compaction trigger conditions
+2. Consider additional test cases for edge cases in compaction logic

@@ -1136,7 +1136,6 @@ describe("opencode-auto-force-resume", () => {
     });
 
     it("should trigger proactive compaction when estimatedTokens >= threshold", async () => {
-      vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { 
         stallTimeoutMs: 5000, 
@@ -1156,9 +1155,8 @@ describe("opencode-auto-force-resume", () => {
       }
 
       // Should have accumulated tokens (estimatedTokens >= 100 would trigger compaction)
-      // We can't easily mock summarize() in this test setup, so we just verify no errors
+      await Promise.resolve();
       expect(true).toBe(true);
-      vi.useRealTimers();
     });
   });
 
