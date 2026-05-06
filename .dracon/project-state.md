@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-docs(agents): clarify session state transitions during plan generation and execution
+Prevent compaction during active planning to avoid disrupting ongoing session operations.
 
 ## Context
-The change addresses a bug where `session.status(busy)` during plan generation would incorrectly clear the `s.planning` flag, preventing proper handling of plan-aware continue messages. It also adds explicit handling for clearing `s.planning` during execution phases.
+The system was compacting sessions even when planning was in progress, which could interrupt active operations. This change ensures compaction only occurs when the session is idle.
 
 ## Completed
-- [x] docs(agents): added explicit note that `session.status(busy)` during plan generation must not clear `s.planning`
-- [x] docs(agents): added handling for clearing `s.planning` during execution phases (tool/file/subtask/step events)
+- [x] Added check to skip compaction when `s.planning` is true
 
 ## In Progress
-- [x] documentation update complete
+- [x] None (this is a focused bug fix)
 
 ## Blockers
-- none
+- None (this is a straightforward addition)
 
 ## Next Steps
-1. verify test coverage for plan-aware continue scenarios
-2. ensure related session state transitions are properly documented
+1. Verify no regression in compaction timing
+2. Update documentation if needed

@@ -111,6 +111,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     const s = sessions.get(sessionId);
     if (!s) return;
     if (!config.autoCompact) return;
+    if (s.planning) return;
     if (s.compacting) return;
 
     // Don't compact too frequently
