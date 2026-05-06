@@ -65,6 +65,19 @@ When plan content or compaction is detected, stall monitoring pauses until user 
 **5. Status File Writes**
 Every meaningful event writes the status file atomically. This enables external monitoring without debug mode.
 
+**6. Module Architecture**
+The plugin uses a factory pattern with focused modules:
+
+```typescript
+createStatusFileModule({ config, sessions, log })   // Atomic status file writes
+createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })  // Stall recovery
+createNudgeModule({ config, sessions, log, isDisposed, input })  // Idle nudges with loop protection
+createTerminalModule({ config, sessions, log, input })  // Terminal title/progress/hook
+createNotificationModule({ config, sessions, log, isDisposed, input })  // Timer toasts
+```
+
+Each module is initialized early and its API is called from event handlers in `index.ts`.
+
 ### Recovery State Machine
 
 ```
@@ -117,33 +130,47 @@ Filter: pending/in_progress tasks
         └──[No pending]──► Use default message
 ```
 
-### Nudge Flow
+### Nudge Flow (opencode-todo-reminder pattern)
+
+The nudge system prevents sessions from going idle with pending todos. It follows the same pattern as opencode-todo-reminder:
 
 ```
-[todo.updated] → hasPending?
-        │
-        ├──YES──► Start/reset nudge timer
-        │
-        └──NO──► Cancel nudge timer
-
-[session.idle] or [Nudge timer fires] or [session.status idle + busy→idle transition]
-        │
-        ├──Check: session idle? (skip if busy)
-        │
-        ├──Check: no user message recently?
-        │
-        ├──Check: cooldown passed?
-        │
-        ├──Check: wasBusy? (prevents double-fire on busy→idle→idle sequences)
-        │
-        └──ALL YES──► Fetch todos for context
-                        │
-                        ├──Send to agent: "You have {pending} tasks: {todoList}. Continue."
-                        │
-                        └──Record lastNudgeAt (cooldown)
+[session.idle] ──► scheduleNudge() ──► setTimeout(nudgeIdleDelayMs=500ms)
+                                                   │
+                                          [Timer fires] ──► injectNudge()
+                                                               │
+                                                    [Check cooldown] ──► YES ──► send nudge
+                                                               │
+                                                               NO ──► skip
 ```
 
-> **Note:** The `wasBusy` flag ensures the nudge fires only once per busy→idle transition, not on every idle event. It resets when the session goes busy again.
+**Nudge scheduling** (`scheduleNudge`):
+- Fires on every `session.idle` with pending todos (NO wasBusy dedup)
+- Schedules via `setTimeout` with `nudgeIdleDelayMs` (500ms default)
+- Resets nudge timer on `todo.updated` with pending todos
+- Cancels pending nudge on `message.updated` (user), `session.error`, `session.deleted`
+
+**Nudge injection** (`injectNudge`):
+1. Check cooldown (nudgeCooldownMs=60000ms)
+2. Check session status (skip if busy/retry)
+3. Check user message cooldown (skip if user messaged recently)
+4. Check `nudgePaused` flag (set on MessageAbortedError, cleared on user message)
+5. Check loop protection (nudgeMaxSubmits=3)
+   - Compare todo snapshot to detect real progress
+   - If snapshot unchanged after max submits → pause
+6. Fetch todos via API for context
+7. Send nudge via `session.promptAsync()`
+
+**Loop protection**:
+- `nudgeCount` increments each successful nudge
+- `lastTodoSnapshot` = serialized `id:status` of all todos
+- If snapshot unchanged after `nudgeMaxSubmits` nudges → pause next cycle
+- If snapshot changes (user added/completed todos) → reset counter
+
+**Abort detection**:
+- `MessageAbortedError` sets `nudgePaused = true`
+- Next nudge cycle is skipped
+- Cleared when user sends a message
 
 ### Review Flow
 
@@ -274,9 +301,11 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | Option | Default | Description |
 |--------|---------|-------------|
 | `nudgeEnabled` | `true` | Send continue prompts for incomplete todos |
-| `nudgeTimeoutMs` | `300000` | Idle time before nudge (5 min) |
+| `nudgeIdleDelayMs` | `500` | Delay after session.idle before sending nudge |
 | `nudgeMessage` | `"The session has {pending}..."` | Nudge message telling agent to continue |
-| `nudgeCooldownMs` | `60000` | Min time between nudges (1 min); applies to both `session.idle` events and busy→idle transitions |
+| `nudgeCooldownMs` | `60000` | Min time between nudges (1 min) |
+| `nudgeMaxSubmits` | `3` | Max nudges before loop protection pauses |
+| `nudgeTimeoutMs` | `300000` | (Deprecated) Idle time before nudge — use `nudgeIdleDelayMs` instead |
 
 ### Compaction Options
 

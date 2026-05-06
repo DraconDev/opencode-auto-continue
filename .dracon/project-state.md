@@ -1,21 +1,24 @@
 # Project State
 
 ## Current Focus
-Added status file module integration for session recovery
+Improved nudge system architecture with module separation and loop protection
 
 ## Context
-This change integrates the newly refactored status file module into the recovery system to ensure proper session state persistence during recovery operations.
+The nudge system was refactored to better handle edge cases and prevent infinite nudges. The new architecture uses dedicated modules and adds loop protection to prevent repeated nudges when no progress is made.
 
 ## Completed
-- [x] Integrated status file module with recovery module
-- [x] Connected writeStatusFile function to recovery module dependencies
+- [x] Added module architecture with focused components (status file, recovery, nudge, terminal, notification)
+- [x] Enhanced nudge flow with cooldown checks, loop protection, and abort detection
+- [x] Added configuration options for nudge timing and behavior
+- [x] Updated documentation with detailed nudge flow and module architecture
 
 ## In Progress
-- [x] Status file module integration for session recovery
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this change
+- None identified
 
 ## Next Steps
-1. Verify status file updates during recovery operations
-2. Add comprehensive tests for status file persistence
+1. Verify module integration with existing code
+2. Test nudge behavior with various edge cases
+3. Update tests to cover new module architecture
