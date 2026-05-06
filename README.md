@@ -352,7 +352,6 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | `nudgeMessage` | `"The session has {pending}..."` | Nudge message telling agent to continue |
 | `nudgeCooldownMs` | `60000` | Min time between nudges (1 min) |
 | `nudgeMaxSubmits` | `3` | Max nudges before loop protection pauses |
-| `nudgeTimeoutMs` | `300000` | (Deprecated) Idle time before nudge — use `nudgeIdleDelayMs` instead |
 
 ### Compaction Options
 
