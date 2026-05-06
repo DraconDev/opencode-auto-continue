@@ -239,6 +239,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.estimatedTokens += totalMsgTokens;
             log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
           }
+          // Check if this message pushed us over the proactive compaction threshold
+          if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
+            await compaction.maybeProactiveCompact(sid);
+          }
         }
         writeStatusFile(sid);
         return;
