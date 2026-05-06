@@ -54,7 +54,10 @@ export function createNudgeModule(deps: NudgeDeps) {
   }
 
   // Main nudge injection — called after idle delay
-  async function injectNudge(sessionId: string): Promise<void> {
+  async function injectNudge(
+    sessionId: string,
+    knownTodos?: Array<{ id: string; status: string; content?: string; title?: string }>
+  ): Promise<void> {
     if (isDisposed()) return;
 
     const s = sessions.get(sessionId);
@@ -77,14 +80,19 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    // Fetch todos from API
+    // Fetch todos from API if not provided
     let todos: Array<{ id: string; status: string; content?: string; title?: string }>;
-    try {
-      const resp = await input.client.session.todo({ path: { id: sessionId } });
-      todos = Array.isArray(resp.data) ? resp.data : [];
-    } catch (e) {
-      log("error fetching todos for nudge", String(e));
-      return;
+    if (knownTodos) {
+      todos = knownTodos;
+      log("using provided todos for nudge", { count: knownTodos.length });
+    } else {
+      try {
+        const resp = await input.client.session.todo({ path: { id: sessionId } });
+        todos = Array.isArray(resp.data) ? resp.data : [];
+      } catch (e) {
+        log("error fetching todos for nudge", String(e));
+        return;
+      }
     }
 
     // Which todos are still pending?

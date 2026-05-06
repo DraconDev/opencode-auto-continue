@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Added `statSync` to file system operations for more comprehensive file metadata access.
+Improved nudge injection with optional pre-fetched todos to reduce redundant API calls
 
 ## Context
-This change was prompted by the need for more detailed file information during model context caching operations. The addition of `statSync` provides access to file metadata like size and modification time, which can improve caching efficiency and accuracy.
+The nudge system was making redundant API calls to fetch todos when they might already be available in the calling context. This change optimizes performance by allowing pre-fetched todos to be passed directly to the nudge injection function.
 
 ## Completed
-- [x] Added `statSync` to file system imports for enhanced file metadata access
-- [x] Removed redundant `fs` import (cleanup)
+- [x] Added optional `knownTodos` parameter to `injectNudge` function
+- [x] Implemented conditional logic to use provided todos when available
+- [x] Maintained existing API call fallback when todos aren't provided
+- [x] Added logging for both cases (provided vs fetched todos)
 
 ## In Progress
-- [ ] None (this is a focused utility change)
+- [ ] No active work in progress
 
 ## Blockers
-- None (this is a small, self-contained change)
+- None identified
 
 ## Next Steps
-1. Verify the new metadata is being used in caching logic
-2. Consider if additional file system operations might be needed
+1. Verify performance improvements with integration tests
+2. Document the new parameter in the nudge module API docs
