@@ -394,7 +394,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   
 
   // Register statusLine hook if available (future-proof)
-  registerStatusLineHook();
+  terminal.registerStatusLineHook();
 
   return {
     event: async ({ event }: { event: any }) => {
