@@ -1765,12 +1765,17 @@ describe("opencode-auto-force-resume", () => {
         { id: "t1", content: "task", status: "in_progress" }
       ] } } });
 
-      // Then: all completed
+      // Transition to idle with open todos (would trigger nudge if we didn't clear it)
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(600);
+      mockPrompt.mockClear();
+
+      // Then: all completed - clears hasOpenTodos
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
         { id: "t1", content: "task", status: "completed" }
       ] } } });
 
-      // No pending todos, so no nudge should fire
+      // No pending todos, so no nudge should fire on idle
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(500);
 
