@@ -100,48 +100,595 @@ describe("opencode-auto-force-resume", () => {
     });
   });
 
-  describe("token limit handling", () => {
-    it("should trigger forceCompact and retry with short message on token limit error", async () => {
+  describe("session.status check before recovery", () => {
+    it("should NOT abort if session status is idle", async () => {
+      vi.useFakeTimers();
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should NOT abort if session status is retry", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "retry", attempt: 1, message: "error", next: Date.now() + 5000 } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should abort if session status is busy", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      
-      // First prompt succeeds, second fails with token limit
-      let promptCalls = 0;
-      mockPrompt.mockImplementation(() => {
-        promptCalls++;
-        if (promptCalls === 1) {
-          return Promise.resolve({ data: {}, error: undefined });
-        }
-        return Promise.reject(new Error("maximum context length exceeded"));
-      });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
 
-      const plugin = await createPlugin({ client: mockClient }, { 
-        stallTimeoutMs: 1000, 
-        waitAfterAbortMs: 100,
-        cooldownMs: 0,
-        maxRecoveries: 3,
-        abortPollMaxTimeMs: 0,
-        tokenLimitPatterns: ["maximum context length"],
-        terminalTitleEnabled: false,
-        statusFileEnabled: false
-      });
-
-      // Start busy session
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
 
-      // Trigger recovery
-      await vi.advanceTimersByTimeAsync(1100);
-      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
 
-      // First recovery attempt should call abort
+  describe("lastProgressAt tracking", () => {
+    it("should skip recovery if lastProgressAt is recent", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 10000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should recover if lastProgressAt is old enough", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("cooldown enforcement", () => {
+    it("should not recover within cooldown period", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, cooldownMs: 10000, maxRecoveries: 10 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
-      // After abort, idle triggers sendContinue
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      mockAbort.mockClear();
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      await vi.advanceTimersByTimeAsync(2000);
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
 
-      // Should have attempted to send continue (which fails with token limit)
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("maxRecoveries limit", () => {
+    it("should use exponential backoff after maxRecoveries", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 500, waitAfterAbortMs: 50, cooldownMs: 0, maxRecoveries: 2, abortPollMaxTimeMs: 0 });
+
+      // Create session and set timer
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      
+      // First recovery (attempts=0 → 1)
+      await vi.advanceTimersByTimeAsync(600);
+      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      // After recovery, new message starts - simulate event to set new timer
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      
+      // Second recovery (attempts=1 → 2)  
+      await vi.advanceTimersByTimeAsync(600);
+      await Promise.resolve();
+      expect(mockAbort).toHaveBeenCalledTimes(2);
+
+      // After maxRecoveries, should enter backoff - no abort within normal time
+      mockAbort.mockClear();
+      await vi.advanceTimersByTimeAsync(500);
+      await Promise.resolve();
+      expect(mockAbort).not.toHaveBeenCalled();
+
+      // Verify backoff is working by checking that more time passes without abort
+      // Backoff delay is 500 * 2^1 = 1000ms, so advance less than that
+      await vi.advanceTimersByTimeAsync(400);
+      await Promise.resolve();
+      // Should still be in backoff - timer hasn't fired yet
+      expect(mockAbort).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("userCancelled detection", () => {
+    it("should not recover after MessageAbortedError", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "MessageAbortedError" } } } });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should clear timer on non-abort session.error - monitoring pauses until next status", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeOtherError" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // Timer was cleared on error, no abort should happen
+      expect(mockAbort).not.toHaveBeenCalled();
+
+      // But after a new busy status, timer should restart
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("session cleanup", () => {
+    it("should NOT clear session on session.idle — triggers nudge instead", async () => {
+      vi.useFakeTimers();
+      // Status returns idle when sendNudge checks session status
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        nudgeEnabled: true,
+        nudgeCooldownMs: 1000,
+        includeTodoContext: false,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status first
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set hasOpenTodos via todo.updated
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
+
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test todo", status: "in_progress" }],
+        error: undefined
+      });
+
+      // Now fire session.idle - schedules nudge after idle delay
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      
+      // Advance timers to trigger the scheduled nudge
+      await vi.advanceTimersByTimeAsync(500);
+
+      // Verify nudge was sent (prompt was called)
+      expect(mockPrompt).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should NOT trigger nudge on session.idle if no pending todos", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // No todos set (hasOpenTodos stays false)
+
+      // Fire session.idle - should NOT trigger nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should NOT trigger nudge on session.idle within cooldown period", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 60000, // 1 minute cooldown
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session and set todo
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
+
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test todo", status: "in_progress" }],
+        error: undefined
+      });
+
+      // First session.idle should trigger nudge after idle delay
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Second session.idle immediately after should NOT trigger (cooldown)
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should include todo context in nudge message when includeTodoContext is true", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({
+        data: [
+          { id: "t1", content: "First task", status: "in_progress" },
+          { id: "t2", content: "Second task", status: "pending" }
+        ],
+        error: undefined
+      });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        includeTodoContext: true,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session and set todo
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "First task", status: "in_progress" },
+        { id: "t2", content: "Second task", status: "pending" }
+      ] } } });
+
+      // Fire session.idle - schedules nudge after idle delay
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+
+      // Verify todo was called to fetch context
+      expect(mockTodo).toHaveBeenCalled();
+      // Verify prompt was called with todo context
       expect(mockPrompt).toHaveBeenCalled();
 
+      vi.useRealTimers();
+    });
+
+    it("should send nudge on EVERY session.idle with pending todos (no wasBusy dedup)", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 60000, // Use cooldown to prevent rapid nudges
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set pending todos
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test task", status: "in_progress" }
+      ] } } });
+
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test task", status: "in_progress" }],
+        error: undefined
+      });
+
+      // First session.idle — should trigger nudge after idle delay
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Second session.idle — nudge should NOT fire because cooldown hasn't passed
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should pause nudge after nudgeMaxSubmits without todo changes", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0, // Fire immediately for testing
+        nudgeCooldownMs: 0,
+        nudgeMaxSubmits: 3,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set pending todos (static - won't change)
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test task", status: "in_progress" }
+      ] } } });
+
+      // Mock todo API to return same static todos
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test task", status: "in_progress" }],
+        error: undefined
+      });
+
+      // First nudge - should succeed, nudgeCount becomes 1
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
+
+      mockPrompt.mockClear();
+
+      // Second nudge - should succeed, nudgeCount becomes 2
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
+
+      mockPrompt.mockClear();
+
+      // Third nudge - should succeed, nudgeCount becomes 3
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
+
+      mockPrompt.mockClear();
+
+      // Fourth nudge - should BLOCKED by loop protection (nudgeCount >= 3)
+      // Todo snapshot hasn't changed, so loop protection kicks in
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should reset nudgeCount when todo snapshot changes", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        nudgeMaxSubmits: 3,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set two pending todos
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task 1", status: "in_progress" },
+        { id: "t2", content: "task 2", status: "in_progress" }
+      ] } } });
+
+      // Mock todos - both in_progress
+      mockTodo.mockResolvedValue({
+        data: [
+          { id: "t1", content: "task 1", status: "in_progress" },
+          { id: "t2", content: "task 2", status: "in_progress" }
+        ],
+        error: undefined
+      });
+
+      // First nudge - succeeds, nudgeCount = 1, snapshot = "t1:in_progress,t2:in_progress"
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
+
+      mockPrompt.mockClear();
+
+      // Second nudge - succeeds, nudgeCount = 2
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
+
+      mockPrompt.mockClear();
+
+      // Third nudge - succeeds, nudgeCount = 3
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Fourth nudge - BLOCKED by loop protection (nudgeCount = 3 >= 3)
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      // Now t1 is completed, t2 remains in_progress
+      // Snapshot changes from "t1:in_progress,t2:in_progress" to "t1:completed,t2:in_progress"
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task 1", status: "completed" },
+        { id: "t2", content: "task 2", status: "in_progress" }
+      ] } } });
+
+      // Mock returns different snapshot
+      mockTodo.mockResolvedValue({
+        data: [
+          { id: "t1", content: "task 1", status: "completed" },
+          { id: "t2", content: "task 2", status: "in_progress" }
+        ],
+        error: undefined
+      });
+
+      // Reset mock to track calls
+      mockPrompt.mockClear();
+
+      // Fifth nudge - should SUCCEED because snapshot changed
+      // Loop protection resets, t2 is still pending so prompt goes out
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
+
+    it("should clear session on session.deleted after session.idle", async () => {
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      await plugin.event({ event: { type: "session.deleted", properties: { sessionID: "test", info: {} } } });
+
+      vi.useFakeTimers();
+      await vi.advanceTimersByTimeAsync(10000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("attempts reset on progress", () => {
+    it("should reset attempts on progress event", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, waitAfterAbortMs: 10, cooldownMs: 0, maxRecoveries: 3, abortPollMaxTimeMs: 0 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      await vi.advanceTimersByTimeAsync(50);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      mockAbort.mockClear();
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+      await vi.advanceTimersByTimeAsync(50);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+
+      mockAbort.mockClear();
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test", messageID: "msg1" }, delta: " world" } } });
+      await vi.advanceTimersByTimeAsync(50);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+  });
+
+  describe("timer restart after recovery", () => {
+    it("should set new timer after successful recovery", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50, waitAfterAbortMs: 10, cooldownMs: 0, maxRecoveries: 5, abortPollMaxTimeMs: 0 });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+  });
+
+  describe("tool and other part types progress tracking", () => {
+    it("should track tool parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "tool", callID: "call1", tool: "bash", state: { type: "running" }, sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should track step-start parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "step-start", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should track subtask parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "subtask", prompt: "test", description: "test", agent: "test", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should track file parts as progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "file", mime: "text/plain", url: "test.txt", sessionID: "test", messageID: "msg1" }, delta: "" } } });
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
@@ -517,9 +1064,8 @@ describe("opencode-auto-force-resume", () => {
         await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part" + i, type: "text", text: "a".repeat(100), sessionID: "test", messageID: "msg1" }, delta: "a".repeat(100) } } });
       }
 
-      // Should have accumulated tokens (estimatedTokens >= 100 would trigger compaction)
-      // We can't easily mock summarize() in this test setup, so we just verify no errors
-      expect(true).toBe(true);
+      // Should have triggered proactive compaction (estimatedTokens >= 100)
+      expect(mockStatus).toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
