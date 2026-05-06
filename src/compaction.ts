@@ -1,12 +1,13 @@
 import { join } from "path";
 import type { PluginConfig, SessionState } from "./shared.js";
 import { getModelContextLimit, getCompactionThreshold } from "./shared.js";
+import type { TypedPluginInput } from "./types.js";
 
 export interface CompactionDeps {
   config: PluginConfig;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
-  input: unknown;
+  input: TypedPluginInput;
 }
 
 export function createCompactionModule(deps: CompactionDeps) {
