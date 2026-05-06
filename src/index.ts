@@ -534,11 +534,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         writeStatusFile(sid);
         return;
       }
-    } catch (err) {
-      log('event handler error:', err);
-      // Don't crash the plugin — errors in one event shouldn't break the pipeline
-    }
-  },
+      }, log);
+    },
     dispose: () => {
       log('disposing plugin');
       isDisposed = true;
