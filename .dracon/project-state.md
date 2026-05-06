@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Added a note about a bug in the build mode where a "continue" action is being pushed instead of the expected behavior.
+Fixed a typo in a bug note about mode switching behavior.
 
 ## Context
-This appears to be a bug report or observation about incorrect behavior in the build mode when handling long-running operations in plan mode.
+The note previously contained a typo ("faily long tie") and incorrectly mentioned "p" instead of "plan" in the expected behavior description. This was a documentation-only correction to clarify the bug report.
 
 ## Completed
-- [x] Added a note documenting the bug where "continue" is incorrectly pushed in build mode during long-running plan operations
+- [x] Corrected typo in bug note ("faily" → "failing")
+- [x] Fixed incorrect mode name ("p" → "plan")
 
 ## In Progress
-- [x] Investigating the root cause of the bug
+- [ ] None (documentation-only change)
 
 ## Blockers
-- Need to verify the exact conditions under which this bug occurs
+- None (documentation update complete)
 
 ## Next Steps
-1. Investigate and reproduce the bug
-2. Implement a fix for the incorrect "continue" action in build mode
+1. Review other documentation for similar issues
+2. Verify if the described bug needs additional testing
