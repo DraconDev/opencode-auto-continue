@@ -498,7 +498,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // session.idle fires when the model stops generating and goes idle
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
-        nudge.scheduleNudge(sid);
+        const s = getSession(sid);
+        nudge.scheduleNudge(sid, s.lastKnownTodos);
         writeStatusFile(sid);
         return;
       }

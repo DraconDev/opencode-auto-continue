@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Added tracking of last known todos in session state for recovery purposes
+Enhanced nudge scheduling with pre-fetched todos for recovery purposes
 
 ## Context
-This change enables better session recovery by storing the most recent todo list state, which can be used to restore the user's context if they need to resume an interrupted session.
+The change improves session recovery by passing the last known todos to the nudge scheduler, reducing redundant work during session resumption.
 
 ## Completed
-- [x] Added `lastKnownTodos` property to session state to store the current todo list
-- [x] Updated the todo tracking logic to maintain this state alongside the existing `hasOpenTodos` flag
+- [x] Modified nudge scheduling to include last known todos from session state
 
 ## In Progress
-- [x] Implementation of recovery logic that will use this stored state
+- [x] Integration of todo tracking with session recovery workflows
 
 ## Blockers
-- Need to implement the actual recovery mechanism that will utilize this stored state
+- None identified in this change
 
 ## Next Steps
-1. Implement session recovery logic using the stored todo state
-2. Add tests for the recovery functionality
+1. Verify nudge scheduling behavior with todo data in test environments
+2. Document the new nudge scheduling parameters for maintenance
