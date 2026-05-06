@@ -204,55 +204,68 @@ export function validateConfig(config: PluginConfig): PluginConfig {
 }
 
 // Cache for model context limit to avoid re-reading opencode.json
-let cachedModelLimit: number | null = null;
-let cachedConfigPath: string | null = null;
-let cachedConfigMtime: number = 0;
+// Encapsulated in a class to avoid module-level state pollution and improve testability
+interface ModelCache {
+  path: string | null;
+  mtime: number;
+  limit: number | null;
+}
 
-export function getModelContextLimit(opencodeConfigPath: string): number | null {
-  try {
-    if (!existsSync(opencodeConfigPath)) return null;
-    
-    // Check if cache is still valid (same path and mtime)
-    const stats = statSync(opencodeConfigPath, { throwIfNoEntry: false });
-    const mtime = stats?.mtimeMs || 0;
-    
-    if (cachedConfigPath === opencodeConfigPath && cachedConfigMtime === mtime && cachedModelLimit !== null) {
-      return cachedModelLimit;
-    }
-    
-    const content = readFileSync(opencodeConfigPath, 'utf-8');
-    const config = JSON.parse(content);
-    
-    const limits: number[] = [];
-    if (config.provider) {
-      for (const provider of Object.values(config.provider)) {
-        const p = provider as any;
-        if (p.models) {
-          for (const model of Object.values(p.models)) {
-            const m = model as any;
-            if (m.limit?.context && typeof m.limit.context === 'number') {
-              limits.push(m.limit.context);
+class ModelContextCache {
+  private cache: ModelCache = { path: null, mtime: 0, limit: null };
+
+  get(opencodeConfigPath: string): number | null {
+    try {
+      if (!existsSync(opencodeConfigPath)) return null;
+
+      const stats = statSync(opencodeConfigPath, { throwIfNoEntry: false });
+      const mtime = stats?.mtimeMs || 0;
+
+      if (this.cache.path === opencodeConfigPath && this.cache.mtime === mtime && this.cache.limit !== null) {
+        return this.cache.limit;
+      }
+
+      const content = readFileSync(opencodeConfigPath, 'utf-8');
+      const config = JSON.parse(content);
+
+      const limits: number[] = [];
+      if (config.provider) {
+        for (const provider of Object.values(config.provider)) {
+          const p = provider as any;
+          if (p.models) {
+            for (const model of Object.values(p.models)) {
+              const m = model as any;
+              if (m.limit?.context && typeof m.limit.context === 'number') {
+                limits.push(m.limit.context);
+              }
             }
           }
         }
       }
+
+      this.cache.path = opencodeConfigPath;
+      this.cache.mtime = mtime;
+      this.cache.limit = limits.length > 0 ? Math.min(...limits) : null;
+
+      return this.cache.limit;
+    } catch {
+      return null;
     }
-    
-    // Update cache
-    cachedConfigPath = opencodeConfigPath;
-    cachedConfigMtime = mtime;
-    cachedModelLimit = limits.length > 0 ? Math.min(...limits) : null;
-    
-    return cachedModelLimit;
-  } catch {
-    return null;
+  }
+
+  invalidate(): void {
+    this.cache = { path: null, mtime: 0, limit: null };
   }
 }
 
+const modelContextCache = new ModelContextCache();
+
+export function getModelContextLimit(opencodeConfigPath: string): number | null {
+  return modelContextCache.get(opencodeConfigPath);
+}
+
 export function invalidateModelLimitCache(): void {
-  cachedModelLimit = null;
-  cachedConfigPath = null;
-  cachedConfigMtime = 0;
+  modelContextCache.invalidate();
 }
 
 export function getCompactionThreshold(modelContextLimit: number | null, config: PluginConfig): number {
