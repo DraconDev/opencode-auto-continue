@@ -27,7 +27,7 @@ export function createReviewModule(deps: ReviewDeps) {
       // Show toast if enabled
       if (config.showToasts) {
         try {
-          await (input as any).client.tui.showToast({
+          await input.client.tui.showToast({
             query: { directory: (input as any).directory || "" },
             body: {
               title: "Session Complete",
@@ -42,7 +42,7 @@ export function createReviewModule(deps: ReviewDeps) {
 
       // Send review prompt
       s.messageCount++;
-      await (input as any).client.session.prompt({
+      await input.client.session.prompt({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" },
         body: {
@@ -77,7 +77,7 @@ export function createReviewModule(deps: ReviewDeps) {
 
     try {
       s.messageCount++;
-      await (input as any).client.session.prompt({
+      await input.client.session.prompt({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" },
         body: {
@@ -119,7 +119,7 @@ export function createReviewModule(deps: ReviewDeps) {
           await new Promise(r => setTimeout(r, 2000));
           try {
             s.messageCount++;
-            await (input as any).client.session.prompt({
+            await input.client.session.prompt({
               path: { id: sessionId },
               query: { directory: (input as any).directory || "" },
               body: {
