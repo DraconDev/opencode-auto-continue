@@ -1,23 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for nudge behavior when todos are completed
+Refactored test cases for nudge behavior when todos are completed
 
 ## Context
-The test case verifies that the nudge system properly clears its state when all todos are completed, preventing unnecessary nudges during idle periods.
+The test cases were improved to ensure proper handling of nudge behavior when all todos are marked as completed. This prevents unnecessary nudges from being sent when there are no pending tasks.
 
 ## Completed
-- [x] Added mock for prompt response in idle state test
-- [x] Refactored test to verify nudge behavior with completed todos
-- [x] Added explicit mock for todo fetch to ensure test isolation
-- [x] Updated timer advancement to match nudge timing requirements
+- [x] Simplified test case by removing redundant todo state transitions
+- [x] Reduced test timing from 600ms to 100ms for faster execution
+- [x] Added new configuration option `nudgeIdleDelayMs` for better test control
 
 ## In Progress
-- [x] Comprehensive test coverage for nudge state management
+- [x] Refactored test cases for completed todo scenarios
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review test coverage for other nudge-related scenarios
-2. Consider adding edge cases for mixed todo statuses
+1. Verify test coverage for other edge cases
+2. Consider adding more configuration options for test flexibility
