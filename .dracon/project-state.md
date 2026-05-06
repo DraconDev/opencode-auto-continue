@@ -1,20 +1,20 @@
 # Project State
 
 ## Current Focus
-Refactored nudge module to simplify client API access patterns
+Refactored nudge toast notification to use input.client instead of client.client
 
 ## Context
-This change was prompted by the ongoing refactoring of the nudge system to improve architecture and reduce redundancy in client API access patterns.
+This change simplifies the nudge module's API access pattern by removing an unnecessary intermediate client reference.
 
 ## Completed
-- [x] Simplified client API access in nudge module by consolidating the client property access
+- [x] Changed toast notification to use `input.client.tui` instead of `client.client.tui`
 
 ## In Progress
-- [x] Ongoing refactoring of the nudge system architecture
+- [x] No active work in progress
 
 ## Blockers
-- None identified for this specific change
+- None
 
 ## Next Steps
-1. Continue refactoring related modules in the nudge system
-2. Verify test coverage for the updated nudge functionality
+1. Verify no runtime errors occur with this change
+2. Update related tests to reflect the new API pattern

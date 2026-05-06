@@ -196,7 +196,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       // Show info toast
       if (config.showToasts) {
         try {
-          await client.client.tui.showToast({
+          await (input as any).client.tui.showToast({
             query: { directory: (input as any).directory || "" },
             body: {
               title: "Nudge Sent",
