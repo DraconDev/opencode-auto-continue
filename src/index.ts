@@ -138,7 +138,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   return {
     event: async ({ event }: { event: any }) => {
-      try {
+      await safeHook("event", async () => {
         const e = event as any;
         const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
