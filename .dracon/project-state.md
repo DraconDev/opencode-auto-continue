@@ -1,27 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved session event handling with more granular token tracking and proactive compaction.
+Improved token tracking accuracy by adding multiple data sources for session token estimation.
 
 ## Context
-The changes enhance token tracking accuracy and session management by:
-1. Adding explicit handling for token limit errors
-2. Improving token tracking for different message types
-3. Refining session state transitions
+The change enhances session management by incorporating token estimates from three sources: error messages, step-finish tokens, and AssistantMessage tokens. This improves the precision of token tracking during session lifecycle events.
 
 ## Completed
-- [x] Added token limit error handling with emergency compaction
-- [x] Enhanced token tracking for assistant messages
-- [x] Improved step-finish token extraction
-- [x] Added message.updated event handling for user messages
-- [x] Refined session.status (idle) logic with nudge conditions
+- [x] Added token estimation from error messages, step-finish tokens, and AssistantMessage tokens
+- [x] Updated documentation to reflect the new token tracking approach
 
 ## In Progress
-- [x] Documentation updates for session event handling
+- [ ] Verifying edge cases where token estimates might conflict between sources
 
 ## Blockers
-- None identified
+- None identified at this stage
 
 ## Next Steps
-1. Verify test coverage for new token tracking logic
-2. Review session compaction thresholds and behavior
+1. Verify consistency in token estimates across different session states
+2. Optimize the token estimation logic for performance

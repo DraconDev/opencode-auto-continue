@@ -58,7 +58,7 @@ session.deleted / session.ended → cleanup
 1. **`session.idle` is NOT terminal** — unlike `session.deleted`/`session.ended`, it preserves session state
 2. **`session.compacted` is NOT terminal** — it preserves session state, clears compacting flag, resets token estimates
 3. **Synthetic messages are filtered** — `part.synthetic === true` is ignored in `message.part.updated`
-4. **`wasBusy` dedup** — once per busy→idle transition, nudge fires exactly once (prevents infinite loops)
+4. **Token estimation from three sources** — error messages, step-finish tokens, AssistantMessage tokens (see above)
 5. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
 6. **Plan/compaction pause** — stall timer and nudge timer both pause during these states
 
