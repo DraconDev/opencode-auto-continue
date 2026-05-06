@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved type safety for the recovery module's input handling
+Improved type safety in the recovery module by removing unnecessary type assertions.
 
 ## Context
-This change was prompted by the need to enhance type safety in the recovery module, following recent improvements in the nudge module's type handling. The change aligns with ongoing efforts to modularize session review and recovery functionality.
+The recovery module was previously using type assertions (`as any`) to bypass TypeScript type checking, which could lead to runtime errors. This change eliminates those assertions by properly typing the client API calls.
 
 ## Completed
-- [x] Added explicit type import for `TypedPluginInput` to ensure proper typing of the recovery module's input
-- [x] Updated the `RecoveryDeps` interface to use the strongly-typed input instead of `unknown`
+- [x] Removed all `as any` type assertions in recovery module API calls
+- [x] Maintained all existing functionality while improving type safety
+- [x] Kept the same behavior for session status, summarize, abort, and todo operations
 
 ## In Progress
-- [ ] None (this is a focused type safety improvement)
+- [x] Type safety improvements for recovery module
 
 ## Blockers
-- None (this is a straightforward type safety enhancement)
+- None identified
 
 ## Next Steps
-1. Verify that the new type is properly used throughout the recovery module
-2. Ensure all dependent modules are updated to use the new type definition
+1. Verify no runtime errors occur after these changes
+2. Consider adding more specific type definitions for the session API responses

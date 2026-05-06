@@ -56,7 +56,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     writeStatusFile(sessionId);
 
     try {
-      const statusResult = await (input as any).client.session.status({});
+      const statusResult = await input.client.session.status({});
       const statusData = statusResult.data as Record<string, { type: string }>;
       const sessionStatus = statusData[sessionId];
 
@@ -88,14 +88,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       if (config.autoCompact) {
         try {
           log('attempting auto-compaction for session:', sessionId);
-          await (input as any).client.session.summarize({
+          await input.client.session.summarize({
             path: { id: sessionId },
             query: { directory: (input as any).directory || "" }
           });
           log('auto-compaction successful, waiting for session to resume');
           await new Promise(r => setTimeout(r, 3000));
 
-          const postCompactStatus = await (input as any).client.session.status({});
+          const postCompactStatus = await input.client.session.status({});
           const postData = postCompactStatus.data as Record<string, { type: string }>;
           if (postData[sessionId]?.type === "busy") {
             log('session still busy after compaction, proceeding with abort');
@@ -110,7 +110,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
 
       try {
-        await (input as any).client.session.abort({
+        await input.client.session.abort({
           path: { id: sessionId },
           query: { directory: (input as any).directory || "" }
         });
@@ -129,7 +129,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         while (!isIdle && Date.now() - startTime < config.abortPollMaxTimeMs && statusFailures < config.abortPollMaxFailures) {
           await new Promise(r => setTimeout(r, config.abortPollIntervalMs));
           try {
-            const pollResult = await (input as any).client.session.status({});
+            const pollResult = await input.client.session.status({});
             const pollData = pollResult.data as Record<string, { type: string }>;
             const pollStatus = pollData[sessionId];
             if (pollStatus?.type === "idle") {
@@ -162,7 +162,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       if (config.includeTodoContext) {
         try {
-          const todoResult = await (input as any).client.session.todo({ path: { id: sessionId } });
+          const todoResult = await input.client.session.todo({ path: { id: sessionId } });
           const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
           const pending = todos.filter((t: any) => t.status === 'in_progress' || t.status === 'pending');
           const completed = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
