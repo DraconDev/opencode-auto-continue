@@ -296,17 +296,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.clearTerminalTitle();
           terminal.clearTerminalProgress();
         }
-        clearTimer(sid);
-        if (!s.planning && !s.compacting) {
-          s.timer = setTimeout(() => {
-            recover(sid);
-          }, config.stallTimeoutMs);
+
+        // Only set recovery timer for busy/retry sessions, not for idle
+        // Idle sessions should not have a stall recovery timer running
+        if (status?.type === "busy" || status?.type === "retry") {
+          clearTimer(sid);
+          if (!s.planning && !s.compacting) {
+            s.timer = setTimeout(() => {
+              recover(sid);
+            }, config.stallTimeoutMs);
+          }
         }
-        // Check for proactive compaction on every progress event
-        // This ensures we catch context bloat during active sessions
-        if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
-          await compaction.maybeProactiveCompact(sid);
-        }
+
         writeStatusFile(sid);
         return;
       }

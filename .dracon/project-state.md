@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added documentation for the last-known todos cache mechanism in the agents system.
+Optimize stall recovery timing by only setting timers for active sessions
 
 ## Context
-The change documents a performance optimization that eliminates redundant todo fetching in the nudge system by caching the last-known todos state.
+The previous implementation set recovery timers for all sessions regardless of activity state, which could lead to unnecessary timers running for idle sessions. This change ensures timers are only set for busy or retrying sessions.
 
 ## Completed
-- [x] Documented the last-known todos cache mechanism
-- [x] Explained how it prevents double-fetching in nudge.ts
-- [x] Clarified that it only updates on todo.updated events
+- [x] Modified stall recovery logic to only set timers for "busy" or "retry" sessions
+- [x] Removed redundant timer clearing for idle sessions
+- [x] Maintained all existing functionality for active sessions
 
 ## In Progress
-- [x] Documentation update for this specific optimization
+- [ ] None
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Review and merge the documentation changes
-2. Consider if additional documentation is needed for related systems
+1. Verify no regression in session recovery behavior
+2. Monitor for any performance improvements in resource usage
