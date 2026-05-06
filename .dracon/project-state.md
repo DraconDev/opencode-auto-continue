@@ -1,28 +1,21 @@
 # Project State
 
 ## Current Focus
-Added comprehensive test coverage for compaction module's token limit detection and proactive compaction triggers
+Improved error handling in shared utility tests to ensure non-Error objects are properly caught and logged
 
 ## Context
-The compaction module needs robust testing to ensure reliable token management and automatic compaction behavior. This test suite verifies:
-- Token limit error detection patterns
-- Proactive compaction triggers
-- State management during compaction
-- Cooldown period enforcement
+The change addresses a bug in the shared utility test where non-Error objects were being propagated instead of being caught and logged. This aligns with the broader effort to improve comprehensive test coverage for shared utility functions.
 
 ## Completed
-- [x] Added test cases for token limit error detection (12 patterns)
-- [x] Implemented tests for proactive compaction triggers
-- [x] Created test coverage for compaction state management
-- [x] Added mock client setup for isolated testing
-- [x] Included tests for cooldown period enforcement
+- [x] Updated test to verify non-Error objects are caught and never propagated
+- [x] Added verification that the error logging function is called when catching non-Error objects
 
 ## In Progress
-- [ ] Additional test cases for edge cases in compaction state management
+- [ ] None
 
 ## Blockers
-- Need to verify test coverage for all compaction scenarios
+- None
 
 ## Next Steps
-1. Complete remaining test cases for compaction state management
-2. Add integration tests with actual compaction implementation
+1. Verify the change doesn't break existing functionality in other test cases
+2. Consider expanding test coverage for other edge cases in shared utilities

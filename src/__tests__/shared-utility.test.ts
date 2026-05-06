@@ -56,7 +56,7 @@ describe("shared.ts utilities", () => {
       expect(logMock).toHaveBeenCalled();
     });
 
-    it("should propagate non-Error objects", async () => {
+    it("should catch and never propagate non-Error objects", async () => {
       const logMock = vi.fn();
       const { safeHook } = await import('../shared.js');
 
@@ -69,7 +69,8 @@ describe("shared.ts utilities", () => {
         caught = true;
       }
 
-      expect(caught).toBe(true); // Non-Error objects propagate
+      expect(caught).toBe(false); // safeHook catches everything, never propagates
+      expect(logMock).toHaveBeenCalled();
     });
   });
 
