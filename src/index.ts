@@ -151,7 +151,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "session.error") {
         const err = e?.properties?.error;
-        log('session.error:', err?.name);
+        log('session.error:', err?.name, err?.message);
         if (err?.name === "MessageAbortedError") {
           const s = sessions.get(sid);
           if (s) {
@@ -159,6 +159,26 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             nudge.pauseNudge(sid);
           }
           log('user cancelled session:', sid);
+        } else if (compaction.isTokenLimitError(err)) {
+          const s = sessions.get(sid);
+          if (s) {
+            s.tokenLimitHits++;
+            log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
+            // Attempt emergency compaction asynchronously
+            compaction.forceCompact(sid).then(async (compacted) => {
+              if (compacted) {
+                log('emergency compaction succeeded for session:', sid);
+                // Queue a short continue after emergency compaction
+                s.needsContinue = true;
+                s.continueMessageText = config.shortContinueMessage;
+                await review.sendContinue(sid);
+              } else {
+                log('emergency compaction failed for session:', sid);
+              }
+            }).catch((e) => {
+              log('emergency compaction error:', e);
+            });
+          }
         }
         clearTimer(sid);
         writeStatusFile(sid);

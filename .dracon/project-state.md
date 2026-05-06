@@ -1,26 +1,24 @@
 # Project State
 
 ## Current Focus
-Added comprehensive event handling system for session management and state transitions
+Enhanced error handling for token limit errors with emergency compaction
 
 ## Context
-This implements core functionality for tracking session state across various events (creation, updates, errors, etc.) and coordinating between different system modules (nudge, terminal, notifications, etc.)
+The change improves session recovery when token limits are hit by adding emergency compaction and retry logic. This addresses scenarios where the system encounters token limit errors during session processing.
 
 ## Completed
-- [x] Added event handler for session lifecycle events (create, update, error, etc.)
-- [x] Implemented progress tracking for message parts and session status
-- [x] Added token estimation and tracking for sessions
-- [x] Integrated with nudge, terminal, notifications, and compaction modules
-- [x] Added session recovery and status file writing capabilities
-- [x] Implemented proactive compaction triggering based on session state
+- [x] Added detection for token limit errors using `compaction.isTokenLimitError()`
+- [x] Implemented emergency compaction when token limits are hit
+- [x] Added tracking of token limit hits per session
+- [x] Implemented automatic retry after successful compaction
+- [x] Enhanced logging for token limit error handling
 
 ## In Progress
-- [x] Comprehensive event handling system is complete
+- [x] Comprehensive error handling for token limit scenarios
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Add comprehensive test coverage for all event handling scenarios
-2. Implement additional event types as needed by other modules
-```
+1. Verify emergency compaction works in integration tests
+2. Add monitoring for emergency compaction success/failure rates
