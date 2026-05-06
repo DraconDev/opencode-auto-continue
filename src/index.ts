@@ -440,7 +440,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
           s.reviewDebounceTimer = setTimeout(() => {
             s.reviewDebounceTimer = null;
-            triggerReview(sid);
+            review.triggerReview(sid);
           }, config.reviewDebounceMs);
         } else if (!allCompleted && s.reviewDebounceTimer) {
           clearTimeout(s.reviewDebounceTimer);

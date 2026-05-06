@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored session continuation handling to use the review module
+Refactored session review triggering to use the dedicated review module
 
 ## Context
-This change improves session recovery by centralizing continuation logic through the review module, which was recently added to handle session review and recovery operations.
+This change modularizes session review functionality by moving the review triggering logic from the main plugin to the dedicated review module, improving code organization and maintainability.
 
 ## Completed
-- [x] Moved `sendContinue` call to use `review.sendContinue` for consistency with the review module's API
+- [x] Moved `triggerReview` call from direct invocation to `review.triggerReview` method
+- [x] Maintained same functionality while improving code structure
 
 ## In Progress
-- [x] No active work in progress
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify integration with the review module's continuation handling
-2. Test session recovery flows to ensure proper continuation behavior
+1. Verify no regression in session review functionality
+2. Consider additional review module features if needed
