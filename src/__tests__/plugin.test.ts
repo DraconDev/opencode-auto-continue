@@ -371,8 +371,9 @@ describe("opencode-auto-force-resume", () => {
         { id: "t2", content: "Second task", status: "pending" }
       ] } } });
 
-      // Fire session.idle - should call todo() to get context
+      // Fire session.idle - schedules nudge after idle delay
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
 
       // Verify todo was called to fetch context
       expect(mockTodo).toHaveBeenCalled();
