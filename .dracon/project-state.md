@@ -1,16 +1,17 @@
 # Project State
 
 ## Current Focus
-Refactored snapshot testing to focus on message formatting behavior rather than internal snapshot implementation
+Enhanced token limit error detection and emergency compaction handling in the compaction module
 
 ## Context
-The snapshot functionality was previously tested through its internal implementation, which made tests brittle. By shifting focus to the public `formatMessage` API, we ensure more stable and meaningful test coverage of the actual message formatting behavior used by the application.
+The changes improve error detection for token limit issues and implement automatic emergency compaction when these errors occur, preventing session failures due to context length limitations.
 
 ## Completed
-- [x] Replaced snapshot tests with direct tests of `formatMessage` functionality
-- [x] Added comprehensive tests for template variable replacement
-- [x] Improved test coverage for edge cases in message formatting
-- [x] Simplified test cases by removing redundant snapshot comparisons
+- [x] Added comprehensive test coverage for token limit error detection patterns
+- [x] Implemented automatic emergency compaction when token limit errors are detected
+- [x] Added case-insensitive matching for token limit error messages
+- [x] Enhanced test coverage for various token limit error scenarios
+- [x] Refactored test structure to better isolate error detection logic
 
 ## In Progress
 - [ ] No active work in progress
@@ -19,5 +20,5 @@ The snapshot functionality was previously tested through its internal implementa
 - None identified
 
 ## Next Steps
-1. Review and merge the refactored tests
-2. Update any dependent documentation or examples that referenced the old snapshot behavior
+1. Verify integration with other compaction features
+2. Test with different model configurations to ensure robust error handling

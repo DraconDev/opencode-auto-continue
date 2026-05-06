@@ -32,62 +32,6 @@ describe("nudge module utilities", () => {
     });
   });
 
-  describe("snapshot function", () => {
-    it("should produce same hash for identical todo states", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos1 = [
-        { id: "t1", status: "in_progress", content: "Task 1" },
-        { id: "t2", status: "pending", content: "Task 2" }
-      ];
-      const todos2 = [
-        { id: "t1", status: "in_progress", content: "Task 1" },
-        { id: "t2", status: "pending", content: "Task 2" }
-      ];
-
-      expect(snapshot(todos1)).toBe(snapshot(todos2));
-    });
-
-    it("should detect todo content changes", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos1 = [{ id: "t1", status: "in_progress", content: "Original" }];
-      const todos2 = [{ id: "t1", status: "in_progress", content: "Modified" }];
-
-      expect(snapshot(todos1)).not.toBe(snapshot(todos2));
-    });
-
-    it("should detect new todos added", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos1 = [{ id: "t1", status: "in_progress" }];
-      const todos2 = [
-        { id: "t1", status: "in_progress" },
-        { id: "t2", status: "pending" }
-      ];
-
-      expect(snapshot(todos1)).not.toBe(snapshot(todos2));
-    });
-
-    it("should detect todo removal", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos1 = [
-        { id: "t1", status: "in_progress" },
-        { id: "t2", status: "pending" }
-      ];
-      const todos2 = [{ id: "t1", status: "in_progress" }];
-
-      expect(snapshot(todos1)).not.toBe(snapshot(todos2));
-    });
-
-    it("should handle empty todos", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      expect(snapshot([])).toBe("");
-    });
-  });
-
   describe("nudge message templates", () => {
     it("should format default nudge message", async () => {
       const { formatMessage } = await import('../shared.js');

@@ -39,87 +39,230 @@ describe("compaction module", () => {
     return AutoForceResumePlugin(input as any, options as any);
   }
 
-  describe("isTokenLimitError", () => {
-    it("should detect context length error", async () => {
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+  describe("token limit error detection via plugin", () => {
+    it("should trigger emergency compaction on token limit error", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
 
-      // Verify plugin loaded
-      expect(plugin).toBeDefined();
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        shortContinueMessage: "Continue."
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Fire token limit error
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Requested token count exceeds the model's maximum context length of 262144 tokens" } } } });
+
+      // Should trigger emergency compaction (summarize)
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
-    it("should match 'maximum context length' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+    it("should not trigger compaction on non-token-limit errors", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
 
-      const error = { message: "maximum context length exceeded" };
-      expect(isTokenLimitError(error)).toBe(true);
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Fire generic error (not token limit)
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeError", message: "Something went wrong" } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      // Should NOT trigger compaction
+      expect(mockSummarize).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
-    it("should match 'token count exceeds' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+    it("should detect 'context length' pattern", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
 
-      const error = { message: "Token count exceeds limit" };
-      expect(isTokenLimitError(error)).toBe(true);
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: {
+        name: "Error",
+        message: "context length exceeded"
+      } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should detect 'too many tokens' pattern", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: {
+        name: "Error",
+        message: "too many tokens"
+      } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should detect 'payload too large' pattern", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: {
+        name: "Error",
+        message: "payload too large"
+      } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should be case insensitive", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
 
-      const error = { message: "TOO MANY TOKENS" };
-      expect(isTokenLimitError(error)).toBe(true);
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: {
+        name: "Error",
+        message: "TOO MANY TOKENS"
+      } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should not match unrelated errors", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
 
-      const error = { message: "Connection timeout" };
-      expect(isTokenLimitError(error)).toBe(false);
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: {
+        name: "Error",
+        message: "Connection timeout"
+      } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should handle null error", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
 
-      expect(isTokenLimitError(null)).toBe(false);
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: null } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should handle error with no message", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
 
-      expect(isTokenLimitError({})).toBe(false);
-    });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
 
-    it("should match 'payload too large' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      const error = { message: "Payload too large" };
-      expect(isTokenLimitError(error)).toBe(true);
-    });
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "Error" } } } });
 
-    it("should match 'request too large' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
 
-      const error = { message: "Request too large" };
-      expect(isTokenLimitError(error)).toBe(true);
-    });
-
-    it("should match 'context window' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
-
-      const error = { message: "exceeds context window" };
-      expect(isTokenLimitError(error)).toBe(true);
-    });
-
-    it("should match 'input length' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
-
-      const error = { message: "Input length too long" };
-      expect(isTokenLimitError(error)).toBe(true);
-    });
-
-    it("should match 'message too long' pattern", async () => {
-      const { isTokenLimitError } = await import('../compaction.js');
-
-      const error = { message: "Message too long" };
-      expect(isTokenLimitError(error)).toBe(true);
+      expect(mockSummarize).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 
