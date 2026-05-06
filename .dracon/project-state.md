@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored nudge notification scheduling to delegate to the nudge module
+Improved test coverage for nudge notification scheduling by adding timer advancement
 
 ## Context
-The nudge notification system was previously handling scheduling directly in the main plugin. This change moves the scheduling logic to the centralized nudge module, improving separation of concerns and making the code more maintainable.
+The test needed to verify that the nudge notification is properly scheduled after idle detection, which was previously missing the timer advancement step required to trigger the scheduled action.
 
 ## Completed
-- [x] Moved nudge scheduling logic from the main plugin to the nudge module
-- [x] Removed redundant cooldown check that was previously handled by the nudge module
+- [x] Added timer advancement in test to properly verify nudge scheduling
+- [x] Updated test comment to accurately reflect the verification process
 
 ## In Progress
-- [x] N/A (change is complete)
+- [x] Test verification of nudge scheduling behavior
 
 ## Blockers
-- None
+- None identified
 
 ## Next Steps
-1. Verify the new nudge scheduling works correctly in integration tests
-2. Update documentation to reflect the new nudge module responsibilities
+1. Verify all related nudge notification tests are properly updated
+2. Ensure the nudge scheduling logic matches the test expectations
