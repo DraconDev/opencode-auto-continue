@@ -1099,7 +1099,8 @@ describe("opencode-auto-force-resume", () => {
         waitAfterAbortMs: 100, 
         cooldownMs: 0,
         terminalTitleEnabled: false,
-        stallPatternDetection: true 
+        stallPatternDetection: true,
+        autoCompact: false
       });
 
       // Simulate progress then stall
