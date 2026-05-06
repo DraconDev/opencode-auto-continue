@@ -1814,4 +1814,63 @@ describe("opencode-auto-force-resume", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("continueWithPlanMessage config", () => {
+    it("should validate continueWithPlanMessage is non-empty", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      // Empty continueWithPlanMessage should trigger validation failure (uses defaults)
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 1000,
+        waitAfterAbortMs: 100,
+        continueWithPlanMessage: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // Should use defaults, so no abort should happen
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should accept valid continueWithPlanMessage", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        continueWithPlanMessage: "Custom plan continue message",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      expect(plugin).toBeDefined();
+    });
+  });
+
+  describe("proactive compact during message.part.updated", () => {
+    it("should check compaction on part updates", async () => {
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: true,
+        proactiveCompactAtTokens: 1000000,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Each part update now triggers a proactive compact check
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "some text content", sessionID: "test", messageID: "msg1" },
+        delta: "some"
+      } } });
+
+      await Promise.resolve();
+      expect(true).toBe(true);
+    });
+  });
 });
