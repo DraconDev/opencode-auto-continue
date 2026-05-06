@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Added robust token parsing from error messages to improve token tracking accuracy
+Improved token tracking accuracy by adding robust parsing of token counts from error messages
 
 ## Context
-To handle token limit errors more effectively, we need to extract precise token counts from error messages. This is particularly important for OpenCode's token management system.
+To enhance session token tracking, we need to accurately capture token usage when token limit errors occur. This change addresses gaps in the current token estimation system by directly parsing token counts from error messages.
 
 ## Completed
-- [x] Added `parseTokensFromError` function to extract token counts from error messages
-- [x] Implemented three parsing patterns to handle different error message formats
-- [x] Returns structured token data or null if parsing fails
+- [x] Added `parseTokensFromError` utility function to extract token counts from error messages
+- [x] Implemented token count updates when token limit errors occur
+- [x] Added logging for parsed token values to aid debugging
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Comprehensive test coverage for the new token parsing functionality
 
 ## Blockers
-- None identified
+- Need to verify the error message format consistency across different API versions
 
 ## Next Steps
-1. Write unit tests for the new token parsing functionality
-2. Integrate with existing token tracking system
+1. Add unit tests for the token parsing functionality
+2. Validate error message formats from different API versions
+3. Document the new token tracking behavior in the project documentation

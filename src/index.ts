@@ -10,6 +10,7 @@ import {
   isPlanContent,
   estimateTokens,
   formatDuration,
+  parseTokensFromError,
   createSession,
   updateProgress,
   formatMessage,
@@ -163,6 +164,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           const s = sessions.get(sid);
           if (s) {
             s.tokenLimitHits++;
+            
+            // Parse exact token counts from error message
+            const parsedTokens = parseTokensFromError(err);
+            if (parsedTokens) {
+              s.estimatedTokens = Math.max(s.estimatedTokens, parsedTokens.total);
+              log('parsed tokens from error:', parsedTokens.total, 'input:', parsedTokens.input, 'output:', parsedTokens.output, 'session:', sid);
+            }
+            
             log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
             // Attempt emergency compaction asynchronously
             compaction.forceCompact(sid).then(async (compacted) => {
