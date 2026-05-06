@@ -1,22 +1,27 @@
 # Project State
 
 ## Current Focus
-Add session state tracking for compaction operations
+Improve token estimation accuracy by reading actual token counts from session status
 
 ## Context
-To improve reliability during compaction operations, we need to track when a session is being compacted to prevent concurrent operations and ensure proper cleanup.
+The compaction module previously relied on estimated token counts. This change adds more accurate token tracking by:
+1. Reading actual token counts from session status
+2. Updating the estimated token count when real data is available
+3. Maintaining existing estimates as fallback
 
 ## Completed
-- [x] Added `compacting` flag to session state
-- [x] Set `compacting = true` at start of compaction
-- [x] Set `compacting = false` on completion or failure
+- [x] Added session status read to get accurate token counts
+- [x] Implemented token count extraction from status data
+- [x] Updated estimated token count when real data is available
+- [x] Maintained graceful fallback for status read failures
 
 ## In Progress
-- [x] Session state tracking for compaction operations
+- [x] Implementation of accurate token tracking
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Add tests for compaction state tracking
-2. Document the new session state management
+1. Verify token count accuracy in integration tests
+2. Monitor performance impact of status reads
+3. Consider adding metrics for token estimation accuracy
