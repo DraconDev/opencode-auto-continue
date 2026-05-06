@@ -6,15 +6,16 @@ export interface RecoveryDeps {
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: unknown;
+  isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
 }
 
 export function createRecoveryModule(deps: RecoveryDeps) {
-  const { config, sessions, log, input, writeStatusFile, cancelNudge } = deps;
+  const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
 
   async function recover(sessionId: string) {
-    if ((deps as any).isDisposed) return;
+    if (isDisposed()) return;
     const s = sessions.get(sessionId);
     if (!s) return;
 
