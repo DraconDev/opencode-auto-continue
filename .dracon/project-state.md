@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Added tracking of last known todos in session state for recovery purposes.
+Added tracking of last known todos in session state for recovery purposes
 
 ## Context
-This change supports session recovery by maintaining a snapshot of todos when they were last known to be valid. This helps reconstruct the user's state if the session needs to be restored.
+This change enables better session recovery by storing the most recent todo list state, which can be used to restore the user's context if they need to resume an interrupted session.
 
 ## Completed
-- [x] Added `lastKnownTodos` array to session state to store todo snapshots
+- [x] Added `lastKnownTodos` property to session state to store the current todo list
+- [x] Updated the todo tracking logic to maintain this state alongside the existing `hasOpenTodos` flag
 
 ## In Progress
-- [x] Implementation of todo snapshot capture during session operations
+- [x] Implementation of recovery logic that will use this stored state
 
 ## Blockers
-- Need to verify snapshot integrity during session recovery flows
+- Need to implement the actual recovery mechanism that will utilize this stored state
 
 ## Next Steps
-1. Implement snapshot capture during todo operations
-2. Add recovery logic to restore from `lastKnownTodos` when needed
+1. Implement session recovery logic using the stored todo state
+2. Add tests for the recovery functionality

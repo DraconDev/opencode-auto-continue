@@ -474,6 +474,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         
         // Track open todos for nudging
         s.hasOpenTodos = hasPending;
+        s.lastKnownTodos = todos;
         
         // Handle review on completion
         if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
