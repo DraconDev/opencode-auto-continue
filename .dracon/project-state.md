@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Made compaction token reduction configurable via `compactReductionFactor`
+Removed redundant type re-export of `CompactionModule` from `compaction.ts`
 
 ## Context
-The compaction process now uses a configurable reduction factor instead of a hardcoded 70% value, allowing for more flexible token management in the system.
+This change eliminates a redundant type re-export that was previously causing type safety issues in the codebase. The re-export was moved to a more appropriate location in the type definitions.
 
 ## Completed
-- [x] Replaced hardcoded 70% reduction with configurable `compactReductionFactor`
-- [x] Updated token estimation calculation to use the new configuration
+- [x] Removed redundant re-export of `CompactionModule` type from `compaction.ts`
 
 ## In Progress
-- [ ] None (this is a completed feature)
+- [x] No active work in progress
 
 ## Blockers
-- None (this change is complete)
+- None
 
 ## Next Steps
-1. Verify the new configuration works as expected in integration tests
-2. Document the new configuration option in relevant documentation
+1. Verify no type resolution issues remain in dependent modules
+2. Ensure all type references are properly updated in the codebase
