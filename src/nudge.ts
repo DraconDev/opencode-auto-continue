@@ -166,8 +166,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     // Send it!
     log("sending nudge prompt", { sessionId, messageText });
     try {
-      const client = input as any;
-      const promptResponse = await client.client.session.prompt({
+      const promptResponse = await (input as any).client.session.prompt({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" },
         body: {
