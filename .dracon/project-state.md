@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced error handling for token limit errors with emergency compaction
+Improved token calculation robustness by handling undefined `tokensInput` values
 
 ## Context
-The change improves session recovery when token limits are hit by adding emergency compaction and retry logic. This addresses scenarios where the system encounters token limit errors during session processing.
+The previous token calculation could fail when `rawStatus.tokensInput` was undefined, potentially causing incorrect token estimates. This change ensures graceful handling of missing values.
 
 ## Completed
-- [x] Added detection for token limit errors using `compaction.isTokenLimitError()`
-- [x] Implemented emergency compaction when token limits are hit
-- [x] Added tracking of token limit hits per session
-- [x] Implemented automatic retry after successful compaction
-- [x] Enhanced logging for token limit error handling
+- [x] Added fallback to 0 for undefined `tokensInput` in token calculation
+- [x] Maintained existing logic for defined values
 
 ## In Progress
-- [x] Comprehensive error handling for token limit scenarios
+- [x] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify emergency compaction works in integration tests
-2. Add monitoring for emergency compaction success/failure rates
+1. Verify test coverage for edge cases
+2. Monitor production behavior for any related issues

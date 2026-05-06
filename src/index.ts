@@ -235,7 +235,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.tokensInput);
           }
           if (typeof rawStatus.tokensOutput === 'number') {
-            s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.tokensInput + rawStatus.tokensOutput);
+            s.estimatedTokens = Math.max(s.estimatedTokens, (rawStatus.tokensInput || 0) + rawStatus.tokensOutput);
           }
           if (typeof rawStatus.totalTokens === 'number') {
             s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.totalTokens);
