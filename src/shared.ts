@@ -341,46 +341,63 @@ export function parseTokensFromError(error: any): { total: number; input: number
 export function createSession(): SessionState {
   const now = Date.now();
   return {
+    // Timer & Progress
     timer: null,
+    lastProgressAt: now,
+    actionStartedAt: 0,
+    toastTimer: null,
+
+    // Recovery
     attempts: 0,
     lastRecoveryTime: 0,
-    lastProgressAt: now,
+    backoffAttempts: 0,
+    autoSubmitCount: 0,
     aborting: false,
+    recoveryStartTime: 0,
+    stallDetections: 0,
+    recoverySuccessful: 0,
+    recoveryFailed: 0,
+    lastRecoverySuccess: 0,
+    totalRecoveryTimeMs: 0,
+    recoveryTimes: [],
+    lastStallPartType: "",
+    stallPatterns: {},
+
+    // Session Control
     userCancelled: false,
     planning: false,
     planBuffer: '',
     compacting: false,
-    backoffAttempts: 0,
-    autoSubmitCount: 0,
-    lastUserMessageId: '',
-    sentMessageAt: 0,
-    reviewFired: false,
-    reviewDebounceTimer: null,
+    sessionCreatedAt: now,
+    messageCount: 0,
+
+    // Compaction
+    estimatedTokens: 0,
+    lastCompactionAt: 0,
+    tokenLimitHits: 0,
+
+    // Nudge
     nudgeTimer: null,
     lastNudgeAt: 0,
     nudgeCount: 0,
     lastTodoSnapshot: '',
     nudgePaused: false,
     hasOpenTodos: false,
+
+    // Continue Queue
     needsContinue: false,
     continueMessageText: '',
-    sessionCreatedAt: now,
-    messageCount: 0,
-    estimatedTokens: 0,
-    lastCompactionAt: 0,
-    tokenLimitHits: 0,
-    actionStartedAt: 0,
-    toastTimer: null,
-    stallDetections: 0,
-    recoverySuccessful: 0,
-    recoveryFailed: 0,
-    lastRecoverySuccess: 0,
-    totalRecoveryTimeMs: 0,
-    recoveryStartTime: 0,
+
+    // Review
+    reviewFired: false,
+    reviewDebounceTimer: null,
+
+    // Message Tracking
+    lastUserMessageId: '',
+    sentMessageAt: 0,
+
+    // Status File
     statusHistory: [],
-    recoveryTimes: [],
-    lastStallPartType: "",
-    stallPatterns: {},
   };
 }
 

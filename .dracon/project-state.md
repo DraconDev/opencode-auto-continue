@@ -1,25 +1,19 @@
 # Project State
 
 ## Current Focus
-Expanded session state tracking with detailed metrics for recovery, compaction, and message handling
+Enhanced session state tracking with detailed metrics for recovery, compaction, and progress tracking
 
 ## Context
-The changes improve observability and recovery mechanisms by adding comprehensive tracking of:
-- Recovery attempts and patterns
-- Compaction events and token usage
-- Message timing and review states
-- Nudge system activity
-- Status history
-This follows recent work on token tracking improvements and proactive session management.
+The codebase needed improved session state management to better handle recovery scenarios, token usage, and progress tracking. This change organizes the session state into logical sections with comprehensive metrics for monitoring and debugging.
 
 ## Completed
 - [x] Added detailed recovery metrics (attempts, backoff, success/failure tracking)
-- [x] Expanded compaction tracking (token estimates, limit hits)
-- [x] Added message tracking (timestamps, counts)
-- [x] Included review system state (debounce timers, triggers)
-- [x] Organized state by functional areas with clear section headers
-- [x] Added nudge system tracking (timers, counts, pause states)
-- [x] Included status history for session auditing
+- [x] Organized session state into logical sections (Timer/Progress, Recovery, Session Control, etc.)
+- [x] Added comprehensive token tracking metrics (estimated tokens, limit hits, compaction)
+- [x] Included nudge system metrics (count, timing, pause state)
+- [x] Added review system tracking (fired status, debounce timer)
+- [x] Included message tracking (last user message ID, send timing)
+- [x] Added status history tracking
 
 ## In Progress
 - [ ] None (all changes are complete)
@@ -28,6 +22,5 @@ This follows recent work on token tracking improvements and proactive session ma
 - None (all changes are complete)
 
 ## Next Steps
-1. Update dependent modules to utilize the new state fields
-2. Add tests for the expanded state tracking
-3. Document the new state fields in the architecture docs
+1. Update documentation to reflect new session state structure
+2. Add tests for the new session state metrics and tracking systems
