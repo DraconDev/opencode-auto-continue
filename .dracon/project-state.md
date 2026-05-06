@@ -1,24 +1,20 @@
 # Project State
 
 ## Current Focus
-Removed proactive session compaction logic to simplify token management
+Refactored proactive session compaction calls to use the `compaction` module.
 
 ## Context
-The proactive session compaction system was removed to streamline the codebase and reduce complexity. This change was prompted by the observation that the compaction logic was not being actively used and was adding unnecessary complexity to the session management system.
+This change consolidates all proactive session compaction calls to use the centralized `compaction` module, improving code organization and maintainability.
 
 ## Completed
-- [x] Removed token limit error detection helper function
-- [x] Eliminated session compaction attempt logic
-- [x] Removed force compaction retry mechanism
-- [x] Deleted proactive compaction trigger logic
-- [x] Cleaned up related session state tracking
+- [x] Updated all proactive compaction calls to use `compaction.maybeProactiveCompact(sid)` instead of the direct function call
 
 ## In Progress
-- [ ] None (all compaction-related code has been removed)
+- [x] No active work in progress
 
 ## Blockers
-- None (this was a straightforward removal of unused functionality)
+- None
 
 ## Next Steps
-1. Verify that the removal doesn't affect any existing session recovery functionality
-2. Consider if any of the removed compaction logic should be reintroduced in a more simplified form
+1. Verify no runtime behavior changes occurred with the refactoring
+2. Consider additional module consolidation opportunities in the session management code

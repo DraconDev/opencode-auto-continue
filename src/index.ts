@@ -398,7 +398,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.updateTerminalProgress(sid);
           // Check for proactive compaction when resuming busy
           // Catches pre-existing context bloat from prior interactions
-          await maybeProactiveCompact(sid);
+          await compaction.maybeProactiveCompact(sid);
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
@@ -407,7 +407,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         // Proactive compaction when idle and message count is high
         if (status?.type === "idle" && !s.needsContinue) {
-          await maybeProactiveCompact(sid);
+          await compaction.maybeProactiveCompact(sid);
         }
         // Auto-continue when transitioning busy→idle with pending todos
         if (status?.type === "idle" && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
@@ -428,7 +428,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Check for proactive compaction on every progress event
         // This ensures we catch context bloat during active sessions
         if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
-          await maybeProactiveCompact(sid);
+          await compaction.maybeProactiveCompact(sid);
         }
         writeStatusFile(sid);
         return;
