@@ -4,20 +4,19 @@
 Enhanced test reliability for nudge loop protection in session idle event handling
 
 ## Context
-The test suite was improved to verify that the nudge loop protection mechanism correctly resets when the todo snapshot changes, preventing infinite nudges when tasks complete.
+The test suite was improved to better verify the nudge loop protection mechanism in the plugin system. The changes ensure the system correctly handles multiple pending todos and resets the nudge counter when todo statuses change.
 
 ## Completed
 - [x] Added comprehensive test cases for nudge loop protection
-- [x] Improved test reliability by adding detailed comments explaining each test step
-- [x] Verified that nudgeCount resets when todo snapshot changes
-- [x] Confirmed loop protection works by testing edge cases (3+ nudges blocked)
+- [x] Enhanced test reliability for session idle event handling
+- [x] Improved test coverage for todo status change scenarios
 
 ## In Progress
-- [x] Test suite now fully verifies nudge loop protection behavior
+- [x] Finalizing test assertions for nudge counter reset behavior
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review test coverage for other edge cases in nudge handling
-2. Consider adding integration tests for real-world scenarios
+1. Review test coverage for edge cases in nudge loop protection
+2. Consider additional test scenarios for complex todo state transitions

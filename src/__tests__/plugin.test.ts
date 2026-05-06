@@ -512,18 +512,22 @@ describe("opencode-auto-force-resume", () => {
 
       // Create session with busy status
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      // Set pending todos
+      // Set two pending todos
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
-        { id: "t1", content: "test task", status: "in_progress" }
+        { id: "t1", content: "task 1", status: "in_progress" },
+        { id: "t2", content: "task 2", status: "in_progress" }
       ] } } });
 
-      // Mock todos with same status - t1 is in_progress
+      // Mock todos - both in_progress
       mockTodo.mockResolvedValue({
-        data: [{ id: "t1", content: "test task", status: "in_progress" }],
+        data: [
+          { id: "t1", content: "task 1", status: "in_progress" },
+          { id: "t2", content: "task 2", status: "in_progress" }
+        ],
         error: undefined
       });
 
-      // First nudge - succeeds, nudgeCount = 1
+      // First nudge - succeeds, nudgeCount = 1, snapshot = "t1:in_progress,t2:in_progress"
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
@@ -553,14 +557,19 @@ describe("opencode-auto-force-resume", () => {
       await vi.advanceTimersByTimeAsync(100);
       expect(mockPrompt).not.toHaveBeenCalled();
 
-      // Now todo changes - mark t1 as completed
+      // Now t1 is completed, t2 remains in_progress
+      // Snapshot changes from "t1:in_progress,t2:in_progress" to "t1:completed,t2:in_progress"
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
-        { id: "t1", content: "test task", status: "completed" }
+        { id: "t1", content: "task 1", status: "completed" },
+        { id: "t2", content: "task 2", status: "in_progress" }
       ] } } });
 
       // Mock returns different snapshot
       mockTodo.mockResolvedValue({
-        data: [{ id: "t1", content: "test task", status: "completed" }],
+        data: [
+          { id: "t1", content: "task 1", status: "completed" },
+          { id: "t2", content: "task 2", status: "in_progress" }
+        ],
         error: undefined
       });
 
@@ -568,14 +577,11 @@ describe("opencode-auto-force-resume", () => {
       mockPrompt.mockClear();
 
       // Fifth nudge - should SUCCEED because snapshot changed
-      // BUT - pending is now 0 (t1 is completed), so injectNudge returns early anyway
-      // The test expectation is that we get past the loop protection, which we do
+      // Loop protection resets, t2 is still pending so prompt goes out
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
-      // pending.length === 0, so we return early after resetting nudgeCount
-      expect(mockPrompt).not.toHaveBeenCalled();
-      // But the loop protection DID reset (nudgeCount was 0 before this call)
-      // This is the key assertion - we got past the `nudgeCount >= 3` check
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
       vi.useRealTimers();
     });
 
