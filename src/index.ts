@@ -2,6 +2,18 @@ import type { Plugin } from "@opencode-ai/plugin";
 import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import {
+  type SessionState,
+  type PluginConfig,
+  DEFAULT_CONFIG,
+  validateConfig,
+  PLAN_PATTERNS,
+  isPlanContent,
+  estimateTokens,
+  formatDuration,
+  parseTokensFromError,
+  createSession,
+  updateProgress,
+  formatMessage,
   safeHook,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
