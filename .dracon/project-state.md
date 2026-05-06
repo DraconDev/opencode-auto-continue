@@ -1,21 +1,24 @@
 # Project State
 
 ## Current Focus
-Removed redundant token tracking logic from session status responses
+Improved token tracking accuracy across multiple data sources for session compaction
 
 ## Context
-This change addresses over-engineering in the token tracking system by removing redundant code that was previously handling token calculations from session status responses.
+The plugin needed more reliable token counting to trigger compaction at the right time. Previous implementations either missed token sources or had inconsistent counting.
 
 ## Completed
-- [x] Removed redundant token tracking logic from session status responses
-- [x] Simplified session status handling by removing token calculation code
+- [x] Added token parsing from error messages (most accurate source)
+- [x] Integrated step-finish part tokens (per-completion counts)
+- [x] Added assistant message token tracking (per-message counts)
+- [x] Documented why session.status() can't provide token counts
+- [x] Clarified that estimated tokens will over-count intentionally
 
 ## In Progress
-- [x] No active work in progress
+- [ ] No active work in progress
 
 ## Blockers
-- None identified
+- No blockers identified
 
 ## Next Steps
-1. Verify no regression in token tracking functionality
-2. Review related test coverage for token handling
+1. Verify compaction triggers work correctly with new token sources
+2. Add tests for edge cases in token counting

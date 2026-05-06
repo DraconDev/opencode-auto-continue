@@ -559,23 +559,55 @@ Triggers when a stall is detected during recovery. Before aborting the session, 
 
 ### Token Estimation
 
-The plugin estimates token usage from ALL message part types, not just text:
+The plugin estimates token usage from three actual data sources:
 
-| Part Type | Estimation Source |
-|-----------|------------------|
-| `text` | Full text content |
-| `reasoning` | Reasoning chain text |
-| `tool` | Tool call JSON (serialized) |
-| `file` | URL + MIME type |
-| `subtask` | Prompt + description |
-| `step-start` | Step name |
+#### Token Sources (in order of accuracy)
 
-**Ratios used**:
-- English text: ~0.75 tokens/char (industry standard for Claude, GPT-4)
-- Code: ~1.0 tokens/char (dense tokenization)
+| Source | Event | What's Available |
+|--------|-------|------------------|
+| **1. Error messages** | `session.error` | Exact counts: "You requested a total of 264230 tokens: 232230 input, 32000 output" |
+| **2. step-finish parts** | `message.part.updated` | `{ input, output, reasoning, cache }` per completion |
+| **3. AssistantMessage** | `message.updated` | `{ input, output, reasoning, cache }` per message |
+
+#### How Tokens Are Tracked
+
+```typescript
+// message.updated (AssistantMessage.tokens)
+if (info?.role === "assistant" && info?.tokens) {
+    s.estimatedTokens += tokens.input + tokens.output + tokens.reasoning;
+}
+
+// message.part.updated (step-finish.tokens)
+if (partType === "step-finish" && part?.tokens) {
+    s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
+}
+
+// session.error (parseTokensFromError)
+const { total, input, output } = parseTokensFromError(err);
+s.estimatedTokens = Math.max(s.estimatedTokens, total);
+```
+
+**Ratios used for text-based estimation** (fallback only):
+- English text: ~0.75 tokens/char
+- Code: ~1.0 tokens/char
 - Digits/numbers: ~0.5 tokens/char
 
-If OpenCode's API returns real token counts (via `session.status()`), those are used instead of estimates.
+#### Why session.status() Doesn't Help
+
+The OpenCode SDK's `SessionStatus` type is only:
+```typescript
+type SessionStatus = { type: "idle" } | { type: "busy" } | { type: "retry", attempt, message, next }
+```
+
+There are NO token count fields in `session.status()`. The plugin relies on the three sources above instead.
+
+#### Estimated vs Actual Context
+
+**Important**: Our `estimatedTokens` is a running sum of all message tokens we've seen. This WILL exceed the actual context window because:
+- Old messages get dropped from context as new ones are added
+- Pre-existing context (before plugin started) isn't counted
+
+This is intentional — we'd rather over-estimate and compact early than hit the limit.
 
 ### Why Compaction Might Not Fire
 
