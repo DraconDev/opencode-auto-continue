@@ -21,6 +21,7 @@ describe("opencode-auto-force-resume", () => {
   let mockPrompt: ReturnType<typeof vi.fn>;
   let mockStatus: ReturnType<typeof vi.fn>;
   let mockTodo: ReturnType<typeof vi.fn>;
+  let mockSummarize: ReturnType<typeof vi.fn>;
   let mockClient: MockClient;
 
   beforeEach(() => {
@@ -30,6 +31,7 @@ describe("opencode-auto-force-resume", () => {
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
     mockStatus = vi.fn().mockResolvedValue({ data: { "default": { type: "idle" } }, error: undefined });
     mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
+    mockSummarize = vi.fn().mockResolvedValue({ data: {}, error: undefined });
 
     mockClient = {
       session: {
@@ -37,6 +39,7 @@ describe("opencode-auto-force-resume", () => {
         prompt: mockPrompt,
         status: mockStatus,
         todo: mockTodo,
+        summarize: mockSummarize,
       },
     };
   });

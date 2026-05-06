@@ -4,17 +4,18 @@
 Added mock `summarize` method to test client interface for plugin testing
 
 ## Context
-This change prepares the test suite for upcoming plugin functionality that requires summarization capabilities. The mock interface now includes a `summarize` method to support testing of this new feature.
+To support testing of the new `summarize` functionality in the plugin, we need to mock the client interface to simulate API responses during testing.
 
 ## Completed
-- [x] Added `summarize` method to mock client interface in test setup
+- [x] Added mock `summarize` method to the test client interface
+- [x] Initialized the mock to return a default resolved value for consistent test behavior
 
 ## In Progress
-- [x] Preparing test cases for summarization functionality
+- [ ] Implement actual test cases that utilize the `summarize` mock
 
 ## Blockers
-- Implementation of actual summarization logic in the plugin
+- Need to implement test cases that verify the plugin's interaction with the summarize endpoint
 
 ## Next Steps
-1. Implement corresponding test cases for summarization
-2. Develop the actual summarization functionality in the plugin
+1. Write test cases that verify the plugin's behavior with the summarize endpoint
+2. Expand test coverage to include error scenarios for the summarize functionality
