@@ -212,12 +212,11 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
   }
 
-  // Schedule a nudge after idle delay
+// Schedule a nudge after idle delay
   function scheduleNudge(sessionId: string): void {
-    const s = sessions.get(sessionId);
-    log("scheduleNudge called", { sessionId, sExists: !!s, nudgeEnabled: config.nudgeEnabled, nudgeTimerExists: !!s?.nudgeTimer });
     cancelNudge(sessionId);
 
+    const s = sessions.get(sessionId);
     if (!s || !config.nudgeEnabled) return;
 
     log("scheduling nudge", { sessionId, delayMs: config.nudgeIdleDelayMs });
