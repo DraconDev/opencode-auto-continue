@@ -3,13 +3,7 @@ import type { PluginConfig, SessionState } from "./shared.js";
 import { getModelContextLimit, getCompactionThreshold } from "./shared.js";
 
 export interface CompactionDeps {
-  config: Pick<PluginConfig,
-    | "autoCompact"
-    | "compactMaxRetries"
-    | "compactRetryDelayMs"
-    | "compactionVerifyWaitMs"
-    | "compactCooldownMs"
-    | "tokenLimitPatterns">;
+  config: PluginConfig;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: unknown;
