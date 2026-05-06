@@ -434,6 +434,131 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
+    it("should pause nudge after nudgeMaxSubmits without todo changes", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0, // Fire immediately for testing
+        nudgeCooldownMs: 0,
+        nudgeMaxSubmits: 3,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set pending todos (static - won't change)
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test task", status: "in_progress" }
+      ] } } });
+
+      // Mock todo API to return same static todos
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test task", status: "in_progress" }],
+        error: undefined
+      });
+
+      // First nudge - should succeed, nudgeCount becomes 1
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Second nudge - should succeed, nudgeCount becomes 2
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Third nudge - should succeed, nudgeCount becomes 3
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Fourth nudge - should BLOCKED by loop protection (nudgeCount >= 3)
+      // Todo snapshot hasn't changed, so loop protection kicks in
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should reset nudgeCount when todo changes (snapshot diff)", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        nudgeMaxSubmits: 3,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set pending todos
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test task", status: "in_progress" }
+      ] } } });
+
+      // Mock todos with same status
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test task", status: "in_progress" }],
+        error: undefined
+      });
+
+      // First nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Second nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Third nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+
+      // Now todo changes - mark t1 as completed
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test task", status: "completed" }
+      ] } } });
+
+      // Mock returns different snapshot
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test task", status: "completed" }],
+        error: undefined
+      });
+
+      // Fourth nudge - should SUCCEED because snapshot changed (completed vs in_progress)
+      // Loop protection resets because todos changed
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
+
     it("should clear session on session.deleted after session.idle", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
 
