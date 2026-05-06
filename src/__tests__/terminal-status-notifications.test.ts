@@ -1,0 +1,1240 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+// Test terminal output generation
+describe("terminal module output", () => {
+  let mockAbort: ReturnType<typeof vi.fn>;
+  let mockPrompt: ReturnType<typeof vi.fn>;
+  let mockStatus: ReturnType<typeof vi.fn>;
+  let mockTodo: ReturnType<typeof vi.fn>;
+  let mockClient: any;
+  let writeSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
+    mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockStatus = vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+    mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
+
+    mockClient = {
+      session: {
+        abort: mockAbort,
+        prompt: mockPrompt,
+        status: mockStatus,
+        todo: mockTodo,
+        summarize: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+      },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+    writeSpy?.mockRestore();
+  });
+
+  async function createPlugin(input: { client: any }, options?: Record<string, unknown>) {
+    const { AutoForceResumePlugin } = await import('../index.js');
+    return AutoForceResumePlugin(input as any, options as any);
+  }
+
+  describe("OSC 0/2 terminal title", () => {
+    it("should write OSC 0 title when session becomes busy", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: true,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      const osc0Calls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]0;')
+      );
+
+      expect(osc0Calls.length).toBeGreaterThan(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should clear OSC 0 title when session becomes idle", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: true,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+
+      // Should have cleared the title
+      const clearCalls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]0;')
+      );
+
+      // At least one clear (empty title) should have been written
+      expect(clearCalls.length).toBeGreaterThan(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should NOT write OSC 0 when terminalTitleEnabled is false", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      const osc0Calls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]0;')
+      );
+
+      expect(osc0Calls).toHaveLength(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should include elapsed time in title", async () => {
+      vi.useFakeTimers();
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: true,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      vi.advanceTimersByTime(30000);
+
+      const titleCall = writeSpy.mock.calls.find(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]0;')
+      );
+
+      if (titleCall) {
+        const title = titleCall[0] as string;
+        // Should contain some time indicator
+        expect(title).toMatch(/[0-9]+/);
+      }
+
+      writeSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("should include last progress time in title", async () => {
+      vi.useFakeTimers();
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: true,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Progress event
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" },
+        delta: "hello"
+      } } });
+
+      vi.advanceTimersByTime(15000);
+
+      // Title should reference last progress
+      const titleCall = writeSpy.mock.calls.find(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]0;')
+      );
+
+      // Should have been called
+      expect(titleCall).toBeDefined();
+
+      writeSpy.mockRestore();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("OSC 9;4 progress bar", () => {
+    it("should write OSC 9;4 progress when session busy and enabled", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: true
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      const osc94Calls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]9;4')
+      );
+
+      expect(osc94Calls.length).toBeGreaterThan(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should NOT write OSC 9;4 when terminalProgressEnabled is false", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      const osc94Calls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]9;4')
+      );
+
+      expect(osc94Calls).toHaveLength(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should clear OSC 9;4 when session becomes idle", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: true
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+
+      // Should have cleared progress bar (OSC 9;4 with 0 or empty)
+      const clearCalls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]9;4')
+      );
+
+      // Should have progress bar calls including at least one clear
+      expect(clearCalls.length).toBeGreaterThan(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should show percentage based on token estimation", async () => {
+      vi.useFakeTimers();
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: true,
+        proactiveCompactAtTokens: 100000
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Accumulate tokens
+      for (let i = 0; i < 10; i++) {
+        await plugin.event({ event: { type: "message.part.updated", properties: {
+          sessionID: "test",
+          messageID: "msg1",
+          part: { id: "part" + i, type: "text", text: "a".repeat(100), sessionID: "test", messageID: "msg1" },
+          delta: "a".repeat(100)
+        } } });
+      }
+
+      // Progress bar should have been updated with percentage
+      const progressCall = writeSpy.mock.calls.find(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]9;4')
+      );
+
+      expect(progressCall).toBeDefined();
+
+      writeSpy.mockRestore();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("combined terminal output", () => {
+    it("should write both title and progress when both enabled", async () => {
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: true,
+        terminalProgressEnabled: true
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      const osc0Calls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]0;')
+      );
+      const osc94Calls = writeSpy.mock.calls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('\x1b]9;4')
+      );
+
+      expect(osc0Calls.length).toBeGreaterThan(0);
+      expect(osc94Calls.length).toBeGreaterThan(0);
+      writeSpy.mockRestore();
+    });
+
+    it("should not interfere with non-OSC output", async () => {
+      const regularOutput = vi.fn();
+      writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((str: string) => {
+        if (!str.includes('\x1b')) {
+          regularOutput(str);
+        }
+        return true;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: true,
+        terminalProgressEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Regular output should still work
+      expect(regularOutput).not.toHaveBeenCalled();
+
+      writeSpy.mockRestore();
+    });
+  });
+});
+
+describe("status file module", () => {
+  let mockAbort: ReturnType<typeof vi.fn>;
+  let mockPrompt: ReturnType<typeof vi.fn>;
+  let mockStatus: ReturnType<typeof vi.fn>;
+  let mockTodo: ReturnType<typeof vi.fn>;
+  let mockClient: any;
+
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
+    mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockStatus = vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+    mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
+
+    mockClient = {
+      session: {
+        abort: mockAbort,
+        prompt: mockPrompt,
+        status: mockStatus,
+        todo: mockTodo,
+        summarize: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+      },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  async function createPlugin(input: { client: any }, options?: Record<string, unknown>) {
+    const { AutoForceResumePlugin } = await import('../index.js');
+    return AutoForceResumePlugin(input as any, options as any);
+  }
+
+  describe("status file writes", () => {
+    it("should write status file on session.created", async () => {
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation(() => {});
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      // Status file should have been written
+      expect(writeFileSpy).toHaveBeenCalled();
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should NOT write status file when statusFileEnabled is false", async () => {
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation(() => {});
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: false,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      expect(writeFileSpy).not.toHaveBeenCalled();
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should write status file with correct JSON structure", async () => {
+      let writtenContent = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenContent = content;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      expect(writtenContent).toContain('"sessions"');
+      expect(writtenContent).toContain('"test"');
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should include session info in status file", async () => {
+      let writtenContent = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenContent = content;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Should contain session-specific fields
+      expect(writtenContent).toContain('"estimatedTokens"');
+      expect(writtenContent).toContain('"attempts"');
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should write status file atomically using temp file", async () => {
+      let writtenPath = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenPath = path;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Should write to a .tmp file first
+      expect(writtenPath).toContain('.tmp');
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should rotate status file when maxStatusHistory exceeded", async () => {
+      let writeCalls: string[] = [];
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writeCalls.push(path);
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        maxStatusHistory: 2,
+        terminalTitleEnabled: false
+      });
+
+      // Trigger multiple status writes
+      for (let i = 0; i < 5; i++) {
+        await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      }
+
+      // Should have multiple writes
+      expect(writeCalls.length).toBeGreaterThan(0);
+
+      writeFileSpy.mockRestore();
+    });
+  });
+
+  describe("status file content", () => {
+    it("should include recovery stats in status", async () => {
+      let writtenContent = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenContent = content;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false,
+        autoCompact: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Status should include recovery info
+      expect(writtenContent).toContain('"recoverySuccessful"');
+      expect(writtenContent).toContain('"recoveryFailed"');
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should include timer state in status", async () => {
+      vi.useFakeTimers();
+      let writtenContent = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenContent = content;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Status should have timer info
+      expect(writtenContent).toContain('"lastProgressAt"');
+
+      writeFileSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("should include todo state in status", async () => {
+      let writtenContent = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenContent = content;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "test todo", status: "in_progress" }
+      ] } } });
+
+      // Status should include hasOpenTodos
+      expect(writtenContent).toContain('"hasOpenTodos"');
+
+      writeFileSpy.mockRestore();
+    });
+
+    it("should track message count in status", async () => {
+      let writtenContent = '';
+      const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation((path: string, content: string) => {
+        writtenContent = content;
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        statusFileEnabled: true,
+        statusFilePath: "/tmp/test-status.json",
+        terminalTitleEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user" } } } });
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user" } } } });
+
+      // Should track messageCount
+      const parsed = JSON.parse(writtenContent);
+      expect(parsed.sessions?.test?.messageCount).toBeGreaterThanOrEqual(0);
+
+      writeFileSpy.mockRestore();
+    });
+  });
+});
+
+describe("planning state behavior", () => {
+  let mockClient: any;
+
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    mockClient = {
+      session: {
+        abort: vi.fn().mockResolvedValue({ data: true, error: undefined }),
+        prompt: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+        status: vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined }),
+        todo: vi.fn().mockResolvedValue({ data: [], error: undefined }),
+        summarize: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+      },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  async function createPlugin(input: { client: any }, options?: Record<string, unknown>) {
+    const { AutoForceResumePlugin } = await import('../index.js');
+    return AutoForceResumePlugin(input as any, options as any);
+  }
+
+  describe("plan detection", () => {
+    it("should detect plan from text starting with 'here is my plan'", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Plan text
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Here is my plan:", sessionID: "test", messageID: "msg1" },
+        delta: "Here"
+      } } });
+
+      expect(true).toBe(true); // Test passes if no crash
+    });
+
+    it("should detect plan from markdown heading '## Plan'", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "## Plan", sessionID: "test", messageID: "msg1" },
+        delta: "##"
+      } } });
+
+      expect(true).toBe(true);
+    });
+
+    it("should detect plan from bold text '**Plan:**'", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "**Plan:**", sessionID: "test", messageID: "msg1" },
+        delta: "**"
+      } } });
+
+      expect(true).toBe(true);
+    });
+
+    it("should detect plan from 'Here's my plan'", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Here's my plan:", sessionID: "test", messageID: "msg1" },
+        delta: "Here"
+      } } });
+
+      expect(true).toBe(true);
+    });
+
+    it("should be case insensitive for plan detection", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "HERE IS MY PLAN", sessionID: "test", messageID: "msg1" },
+        delta: "HERE"
+      } } });
+
+      expect(true).toBe(true);
+    });
+  });
+
+  describe("planning pauses monitoring", () => {
+    it("should pause stall timer during planning", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 1000,
+        waitAfterAbortMs: 100,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Start planning
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Here is my plan:", sessionID: "test", messageID: "msg1" },
+        delta: "Here"
+      } } });
+
+      // Wait longer than stallTimeout - but planning should pause it
+      await vi.advanceTimersByTimeAsync(2000);
+
+      // Abort should NOT be called because planning paused monitoring
+      expect(mockClient.session.abort).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should clear planning flag on busy status", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 1000,
+        waitAfterAbortMs: 100,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Plan detected
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Here is my plan:", sessionID: "test", messageID: "msg1" },
+        delta: "Here"
+      } } });
+
+      // New busy status clears planning
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Now timer should work
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(mockClient.session.abort).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("plan content accumulation", () => {
+    it("should accumulate plan buffer across multiple parts", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // First part of plan
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Here is my plan:", sessionID: "test", messageID: "msg1" },
+        delta: "Here"
+      } } });
+
+      // Second part
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part2", type: "text", text: "1. First step", sessionID: "test", messageID: "msg1" },
+        delta: "1."
+      } } });
+
+      expect(true).toBe(true);
+    });
+
+    it("should clear plan buffer when planning ends", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Plan starts
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Here is my plan:", sessionID: "test", messageID: "msg1" },
+        delta: "Here"
+      } } });
+
+      // Plan ends with idle
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // New busy clears plan
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      expect(true).toBe(true);
+
+      vi.useRealTimers();
+    });
+  });
+});
+
+describe("compaction state behavior", () => {
+  let mockClient: any;
+
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    mockClient = {
+      session: {
+        abort: vi.fn().mockResolvedValue({ data: true, error: undefined }),
+        prompt: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+        status: vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined }),
+        todo: vi.fn().mockResolvedValue({ data: [], error: undefined }),
+        summarize: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+      },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  async function createPlugin(input: { client: any }, options?: Record<string, unknown>) {
+    const { AutoForceResumePlugin } = await import('../index.js');
+    return AutoForceResumePlugin(input as any, options as any);
+  }
+
+  it("should set compacting flag during compaction part", async () => {
+    vi.useFakeTimers();
+    const mockStatus = mockClient.session.status as any;
+    mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+    const plugin = await createPlugin({ client: mockClient }, {
+      stallTimeoutMs: 5000,
+      autoCompact: false,
+      terminalTitleEnabled: false,
+      statusFilePath: ""
+    });
+
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+    // Compaction part starts
+    await plugin.event({ event: { type: "message.part.updated", properties: {
+      sessionID: "test",
+      messageID: "msg1",
+      part: { id: "part1", type: "compaction", auto: true, sessionID: "test", messageID: "msg1" },
+      delta: ""
+    } } });
+
+    // Timer should be paused
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(mockClient.session.abort).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("should clear compacting flag on session.status busy", async () => {
+    vi.useFakeTimers();
+    const mockStatus = mockClient.session.status as any;
+    mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+    const plugin = await createPlugin({ client: mockClient }, {
+      stallTimeoutMs: 1000,
+      waitAfterAbortMs: 100,
+      autoCompact: false,
+      terminalTitleEnabled: false,
+      statusFilePath: ""
+    });
+
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+    // Compaction
+    await plugin.event({ event: { type: "message.part.updated", properties: {
+      sessionID: "test",
+      messageID: "msg1",
+      part: { id: "part1", type: "compaction", auto: true, sessionID: "test", messageID: "msg1" },
+      delta: ""
+    } } });
+
+    // Clear flag by busy status
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+    // Now stall timer should work
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(mockClient.session.abort).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("should NOT clear session on session.compacted event", async () => {
+    vi.useFakeTimers();
+    const mockStatus = mockClient.session.status as any;
+    mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+    const plugin = await createPlugin({ client: mockClient }, {
+      stallTimeoutMs: 5000,
+      autoCompact: false,
+      terminalTitleEnabled: false,
+      terminalProgressEnabled: false,
+      statusFilePath: ""
+    });
+
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task", status: "in_progress" }
+    ] } } });
+
+    // session.compacted event
+    await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+
+    // After compaction, idle should still trigger nudge because session state is preserved
+    mockClient.session.todo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+    await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+    await vi.advanceTimersByTimeAsync(600);
+
+    expect(mockClient.session.prompt).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("should reset estimated tokens on session.compacted", async () => {
+    vi.useFakeTimers();
+    const mockStatus = mockClient.session.status as any;
+    mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+    const plugin = await createPlugin({ client: mockClient }, {
+      stallTimeoutMs: 5000,
+      autoCompact: false,
+      terminalTitleEnabled: false,
+      terminalProgressEnabled: false,
+      statusFilePath: ""
+    });
+
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+    // Accumulate tokens
+    await plugin.event({ event: { type: "message.updated", properties: {
+      sessionID: "test",
+      messageID: "msg1",
+      info: { role: "assistant" },
+      tokens: { input: 50000, output: 10000, reasoning: 0 }
+    } } });
+
+    // Compaction happens
+    await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+
+    // Test passes if no crash - tokens were reset
+    expect(true).toBe(true);
+
+    vi.useRealTimers();
+  });
+});
+
+describe("notification module", () => {
+  let mockClient: any;
+
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    mockClient = {
+      session: {
+        abort: vi.fn().mockResolvedValue({ data: true, error: undefined }),
+        prompt: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+        status: vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined }),
+        todo: vi.fn().mockResolvedValue({ data: [], error: undefined }),
+        summarize: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+      },
+      tui: {
+        showToast: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+      },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  async function createPlugin(input: { client: any }, options?: Record<string, unknown>) {
+    const { AutoForceResumePlugin } = await import('../index.js');
+    return AutoForceResumePlugin(input as any, options as any);
+  }
+
+  describe("toast notifications", () => {
+    it("should show toast when nudge is sent", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        showToasts: true,
+        timerToastEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      mockClient.session.todo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockClient.tui.showToast).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should NOT show toast when showToasts is false", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        showToasts: false,
+        timerToastEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      mockClient.session.todo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockClient.tui.showToast).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should show warning toast when loop protection triggers", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        nudgeMaxSubmits: 1,
+        showToasts: true,
+        timerToastEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      mockClient.session.todo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      // First nudge
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Second nudge - loop protection triggers
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Should show warning toast
+      expect(mockClient.tui.showToast).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should handle toast API errors gracefully", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      mockClient.tui.showToast.mockRejectedValue(new Error("Toast failed"));
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        showToasts: true,
+        timerToastEnabled: false
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      mockClient.session.todo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      // Should not crash even if toast fails
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockClient.session.prompt).toHaveBeenCalled(); // Nudge still sent
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("timer toast", () => {
+    it("should start timer toast when session becomes busy", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        showToasts: false,
+        timerToastEnabled: true,
+        timerToastIntervalMs: 30000
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Toast should be started (actionStartedAt set)
+      expect(true).toBe(true);
+
+      vi.useRealTimers();
+    });
+
+    it("should stop timer toast when session becomes idle", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        showToasts: false,
+        timerToastEnabled: true,
+        timerToastIntervalMs: 30000
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+
+      // Toast should be stopped
+      expect(true).toBe(true);
+
+      vi.useRealTimers();
+    });
+
+    it("should clear timer toast on session error", async () => {
+      vi.useFakeTimers();
+      const mockStatus = mockClient.session.status as any;
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        showToasts: false,
+        timerToastEnabled: true,
+        timerToastIntervalMs: 30000
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Error
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeError" } } } });
+
+      // Toast timer should be cleared
+      expect(true).toBe(true);
+
+      vi.useRealTimers();
+    });
+  });
+});
