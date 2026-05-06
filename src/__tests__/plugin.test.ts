@@ -1723,6 +1723,7 @@ describe("opencode-auto-force-resume", () => {
     it("should clear hasOpenTodos when all todos are completed", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
 
       const plugin = await createPlugin({ client: mockClient }, {
         nudgeEnabled: true,
@@ -1739,20 +1740,29 @@ describe("opencode-auto-force-resume", () => {
         { id: "t1", content: "task", status: "in_progress" }
       ] } } });
 
-      // Transition to idle with open todos (would trigger nudge if we didn't clear it)
+      // Set up mock for first nudge fetch
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "task", status: "in_progress" }],
+        error: undefined
+      });
+
+      // First idle - nudge fires
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(600);
+
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
       mockPrompt.mockClear();
 
-      // Then: all completed - clears hasOpenTodos
+      // Now all todos completed - hasOpenTodos becomes false
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
         { id: "t1", content: "task", status: "completed" }
       ] } } });
 
-      // No pending todos, so no nudge should fire on idle
+      // Second idle with no pending todos - should NOT send nudge
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(600);
 
+      // No nudge should fire since no pending todos
       expect(mockPrompt).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
