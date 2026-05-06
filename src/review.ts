@@ -1,10 +1,11 @@
 import type { PluginConfig, SessionState } from "./shared.js";
+import type { TypedPluginInput } from "./types.js";
 
 export interface ReviewDeps {
   config: Pick<PluginConfig, "reviewMessage" | "showToasts" | "shortContinueMessage">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
-  input: unknown;
+  input: TypedPluginInput;
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   isTokenLimitError: (error: any) => boolean;
