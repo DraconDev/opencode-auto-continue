@@ -1,24 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved stall recovery handling in review module by ensuring state is only cleared after successful message sending.
+Added type export for `CompactionModule` to improve type safety in compaction operations
 
 ## Context
-The previous implementation cleared the `needsContinue` and `continueMessageText` flags immediately after sending a continue prompt, which could lead to lost recovery attempts if the send fails. This change ensures recovery state is only cleared after successful message delivery.
+This change was prompted by the need to properly expose the `CompactionModule` type for external use, which was previously only available internally in the module.
 
 ## Completed
-- [x] Fixed race condition where recovery state was cleared before message send completion
-- [x] Added explicit clearing of state only after successful message send
-- [x] Maintained same behavior for retry-after-compaction case
-- [x] Kept existing memory management for recovery time tracking
+- [x] Added type export for `CompactionModule` from the types file
+- [x] Maintained existing functionality while improving type visibility
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] None
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify no regression in recovery success rate
-2. Monitor memory usage for recovery time tracking
-3. Consider adding metrics for recovery attempt counts
+1. Verify type usage in dependent modules
+2. Consider additional type exports if needed
+```
