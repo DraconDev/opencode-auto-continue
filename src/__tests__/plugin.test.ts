@@ -7,6 +7,7 @@ interface MockClient {
     prompt: ReturnType<typeof vi.fn>;
     status: ReturnType<typeof vi.fn>;
     todo: ReturnType<typeof vi.fn>;
+    summarize: ReturnType<typeof vi.fn>;
   };
 }
 
