@@ -28,6 +28,9 @@ export function createCompactionModule(deps: CompactionDeps) {
       // Record pre-compaction state
       const s = sessions.get(sessionId);
       const preTokens = s?.estimatedTokens || 0;
+      if (s) {
+        s.compacting = true;
+      }
 
       await input.client.session.summarize({
         path: { id: sessionId },
@@ -65,9 +68,16 @@ export function createCompactionModule(deps: CompactionDeps) {
       }
 
       log('compaction did not complete within expected time for session:', sessionId);
+      if (s) {
+        s.compacting = false;
+      }
       return false;
     } catch (e) {
       log('compaction attempt failed:', e);
+      const s = sessions.get(sessionId);
+      if (s) {
+        s.compacting = false;
+      }
       return false;
     }
   }

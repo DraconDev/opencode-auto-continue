@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved token calculation robustness by handling undefined `tokensInput` values
+Add session state tracking for compaction operations
 
 ## Context
-The previous token calculation could fail when `rawStatus.tokensInput` was undefined, potentially causing incorrect token estimates. This change ensures graceful handling of missing values.
+To improve reliability during compaction operations, we need to track when a session is being compacted to prevent concurrent operations and ensure proper cleanup.
 
 ## Completed
-- [x] Added fallback to 0 for undefined `tokensInput` in token calculation
-- [x] Maintained existing logic for defined values
+- [x] Added `compacting` flag to session state
+- [x] Set `compacting = true` at start of compaction
+- [x] Set `compacting = false` on completion or failure
 
 ## In Progress
-- [x] No active work in progress
+- [x] Session state tracking for compaction operations
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for edge cases
-2. Monitor production behavior for any related issues
+1. Add tests for compaction state tracking
+2. Document the new session state management
