@@ -4,18 +4,19 @@
 Refactored terminal and notification functionality into dedicated modules
 
 ## Context
-This change follows recent refactoring efforts to modularize session recovery and nudge notification systems. The goal is to improve maintainability and separation of concerns.
+This change follows recent refactoring efforts to improve modularity and separation of concerns. The previous implementation had terminal and notification functions directly in the main plugin file, which made the code harder to maintain.
 
 ## Completed
-- [x] Moved terminal title and progress updates to `terminal` module
-- [x] Moved timer toast functionality to `notifications` module
+- [x] Moved terminal-related functions (`clearTerminalTitle`, `clearTerminalProgress`) to a dedicated `terminal` module
+- [x] Moved notification-related functions (`stopTimerToast`) to a dedicated `notifications` module
+- [x] Updated the plugin to use the new module functions instead of direct calls
 
 ## In Progress
-- [x] Ongoing refactoring of related systems
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this change
+- None identified
 
 ## Next Steps
-1. Verify all terminal-related functionality remains consistent
-2. Update tests to reflect the new module structure
+1. Update tests to verify the new module structure
+2. Review other parts of the codebase for similar refactoring opportunities

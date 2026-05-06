@@ -524,9 +524,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         // Stop timer toast and clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {
-          stopTimerToast(sid);
-          clearTerminalTitle();
-          clearTerminalProgress();
+          notifications.stopTimerToast(sid);
+          terminal.clearTerminalTitle();
+          terminal.clearTerminalProgress();
         }
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
