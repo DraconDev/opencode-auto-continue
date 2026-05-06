@@ -34,7 +34,7 @@ session.deleted / session.ended → cleanup
 
 | Event | Effect |
 |-------|--------|
-| `session.status (busy)` | Start stall timer, update progress |
+| `session.status (busy)` | Start stall timer, update progress. **Does NOT clear `s.planning`** — session.status(busy) fires during plan generation too and must not destroy the plan flag |
 | `session.status (idle)` | If `needsContinue` → send queued continue. If `wasBusy && hasOpenTodos` → send nudge. |
 | `session.status (retry)` | Treat as busy (valid progress) |
 | `message.updated` (assistant tokens) | Update `estimatedTokens`, check proactive compaction |
@@ -44,6 +44,7 @@ session.deleted / session.ended → cleanup
 | `message.part.updated` (synthetic) | **Ignore** — prevents infinite loop |
 | `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
 | `message.part.updated` (text with plan) | Set `planning = true`, pause monitoring |
+| `message.part.updated` (tool/file/subtask/step-start/step-finish) | **Clear `s.planning = false`** — model has moved past planning into execution |
 | `todo.updated` (all done) | Trigger review after debounce |
 | `todo.updated` (has pending) | Set `hasOpenTodos = true`, start nudge timer |
 | `session.error` (MessageAbortedError) | Set `userCancelled = true`, clear timer |
