@@ -1,11 +1,12 @@
 import { type PluginConfig, type SessionState, formatDuration } from "./shared.js";
+import type { TypedPluginInput } from "./types.js";
 
 export interface NotificationDeps {
   config: Pick<PluginConfig, "timerToastEnabled" | "timerToastIntervalMs">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   isDisposed: boolean;
-  input: unknown;
+  input: TypedPluginInput;
 }
 
 export function createNotificationModule(deps: NotificationDeps) {
