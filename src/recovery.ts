@@ -90,7 +90,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
           log('attempting auto-compaction for session:', sessionId);
           await input.client.session.summarize({
             path: { id: sessionId },
-            query: { directory: (input as any).directory || "" }
+            query: { directory: input.directory || "" }
           });
           log('auto-compaction successful, waiting for session to resume');
           await new Promise(r => setTimeout(r, 3000));
@@ -112,7 +112,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       try {
         await input.client.session.abort({
           path: { id: sessionId },
-          query: { directory: (input as any).directory || "" }
+          query: { directory: input.directory || "" }
         });
       } catch (e) {
         log('abort failed:', e);
