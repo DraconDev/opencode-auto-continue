@@ -391,8 +391,8 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(500);
 
-      // Verify todo was called to fetch context
-      expect(mockTodo).toHaveBeenCalled();
+      // Verify todo was NOT called because todos were provided from event
+      expect(mockTodo).not.toHaveBeenCalled();
       // Verify prompt was called with todo context
       expect(mockPrompt).toHaveBeenCalled();
 
