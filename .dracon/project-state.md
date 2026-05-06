@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Added comprehensive test coverage for proactive compaction triggering based on token thresholds
+Refactored test suite to focus on token limit handling and recovery logic
 
 ## Context
-This change addresses the need to verify that the plugin properly triggers proactive compaction when the accumulated tokens exceed the configured threshold (100 tokens in this test case). It follows recent refactoring work on the plugin architecture and nudge scheduling.
+The test suite was previously overly comprehensive with many redundant test cases. This refactor focuses on the core functionality of handling token limits and recovery scenarios, which are critical for the plugin's reliability.
 
 ## Completed
-- [x] Added test case verifying proactive compaction triggers when estimatedTokens ≥ threshold
-- [x] Implemented test scenario with busy session and token accumulation
-- [x] Verified mock status calls during compaction process
+- [x] Removed all test cases related to session status checks and recovery timing
+- [x] Kept only the essential test case for token limit handling
+- [x] Simplified the test structure to focus on the most critical functionality
 
 ## In Progress
-- [x] Comprehensive test coverage for token-based compaction logic
+- [ ] None - this is a focused refactor
 
 ## Blockers
-- None identified
+- None - this is a cleanup of existing test cases
 
 ## Next Steps
-1. Review test coverage for other compaction scenarios
-2. Verify integration with existing compaction logic
+1. Add new test cases for the proactive compaction feature
+2. Expand test coverage for the nudge functionality
+```
