@@ -1197,4 +1197,60 @@ describe("opencode-auto-force-resume", () => {
       expect(plugin.event).toBeDefined();
     });
   });
+
+  describe("safeHook utility", () => {
+    it("should catch errors and not throw", async () => {
+      const { safeHook } = await import('../shared.js');
+      
+      let errorThrown = false;
+      try {
+        await safeHook("test", async () => {
+          throw new Error("test error");
+        }, console.log);
+      } catch {
+        errorThrown = true;
+      }
+      
+      expect(errorThrown).toBe(false);
+    });
+
+    it("should call log on error", async () => {
+      const logMock = vi.fn();
+      const { safeHook } = await import('../shared.js');
+      
+      await safeHook("test", async () => {
+        throw new Error("test error");
+      }, logMock);
+      
+      expect(logMock).toHaveBeenCalledWith("[test] hook failed:", expect.any(Error));
+    });
+
+    it("should pass through successful results", async () => {
+      const { safeHook } = await import('../shared.js');
+      const logMock = vi.fn();
+      
+      let result = false;
+      await safeHook("test", async () => {
+        result = true;
+      }, logMock);
+      
+      expect(result).toBe(true);
+      expect(logMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("experimental.compaction.autocontinue hook", () => {
+    it("should return enabled: false when plugin has needsContinue", async () => {
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+
+      const output = { enabled: true };
+      await (plugin as any)["experimental.compaction.autocontinue"](
+        { sessionID: "test" },
+        output
+      );
+
+      // With no needsContinue, should still disable the generic continue
+      expect(output.enabled).toBe(false);
+    });
+  });
 });
