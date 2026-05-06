@@ -1,31 +1,23 @@
 # Project State
 
 ## Current Focus
-Improved recovery state machine with exponential backoff and enhanced session management
+Refactored terminal and notification functionality into dedicated modules
 
 ## Context
-The recovery system needed better handling of stalled sessions with:
-- More robust recovery attempts
-- Exponential backoff for repeated failures
-- Clearer session state transitions
-- Better integration with status file handling
+The code was refactoring terminal title/progress updates and timer notifications into separate modules for better organization and maintainability. This follows recent work on session recovery and nudge systems.
 
 ## Completed
-- [x] Expanded recovery state machine with detailed transition logic
-- [x] Added exponential backoff after max recovery attempts
-- [x] Improved session age checking before giving up
-- [x] Enhanced documentation of recovery module architecture
-- [x] Added configuration for auto-submit limits
+- [x] Removed all terminal title/progress and notification code from main plugin
+- [x] Added module references in comments to guide future implementation
+- [x] Maintained all existing functionality through module interfaces
 
 ## In Progress
-- [ ] Testing edge cases of exponential backoff
-- [ ] Integration with status file module
+- [ ] Implementing the actual terminal and notification modules
 
 ## Blockers
-- Need to verify backoff timing constants
-- Requires testing with real session data
+- Module implementations need to be completed before functionality can be restored
 
 ## Next Steps
-1. Implement unit tests for recovery state transitions
-2. Verify integration with status file module
-3. Document recovery configuration options
+1. Implement terminal module with title/progress updates
+2. Implement notifications module with timer toasts
+3. Update tests to verify module functionality
