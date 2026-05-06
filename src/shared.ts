@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode-ai/plugin";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 
 export interface SessionState {
