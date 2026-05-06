@@ -183,6 +183,34 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | `needsContinue` queue mechanism | Prevents abort+prompt race condition with TUI | Extra flag to track |
 | `compactCooldownMs` 2min | Prevents excessive compaction API calls | May miss some bloat scenarios between checks |
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
+| safeHook fail-open wrapper | Prevents plugin errors from crashing the host | Errors are logged but never propagated |
+
+## OpenCode Hooks
+
+### experimental.compaction.autocontinue
+
+The plugin registers this hook to disable OpenCode's generic synthetic "continue" message that fires after compaction. Instead, the plugin sends its own todo-aware continue message via `review.sendContinue()`.
+
+**Hook behavior**: Sets `output.enabled = false` to disable the generic continue.
+
+### safeHook Utility
+
+Fail-open hook wrapper in `shared.ts` that catches errors and logs them without propagating:
+
+```typescript
+await safeHook("event", async () => { /* ... */ }, log);
+```
+
+Used in `index.ts` to wrap the main event handler. Prevents plugin bugs from crashing the OpenCode host.
+
+### Model Config Caching
+
+`getModelContextLimit()` caches the parsed `opencode.json` with mtime checking:
+- First call reads and parses the file
+- Subsequent calls return cached value if mtime hasn't changed
+- Cache is invalidated when file modification time changes
+
+This avoids repeated `fs.readFileSync` + `JSON.parse` on every proactive compaction check.
 
 ## Debugging
 
