@@ -630,6 +630,12 @@ describe("opencode-auto-force-resume", () => {
       // Set pending todos (hasOpenTodos = true)
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test", status: "in_progress" }] } } });
       
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test", status: "in_progress" }],
+        error: undefined
+      });
+      
       // Fire session.compacted — should NOT reset session state
       await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
       

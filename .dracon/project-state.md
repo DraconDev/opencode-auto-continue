@@ -4,18 +4,18 @@
 Improved test coverage for nudge notification scheduling by adding mock todo API responses
 
 ## Context
-To verify the nudge notification system works correctly when handling todo updates and idle events, we need to mock the todo API responses to ensure consistent test behavior.
+This change was prompted by the ongoing refactoring of the nudge notification system and the need to ensure proper test coverage for the notification scheduling functionality.
 
 ## Completed
-- [x] Added mock todo API responses for nudge notification tests
-- [x] Ensured test coverage for nudge scheduling during session idle events
+- [x] Added mock todo API response for nudge notification tests
+- [x] Ensured test coverage for nudge notification scheduling scenarios
 
 ## In Progress
-- [x] Verifying test behavior with mocked responses
+- [x] Ongoing work to improve test coverage for nudge notification system
 
 ## Blockers
-- None identified
+- None identified at this stage
 
 ## Next Steps
-1. Verify all test cases pass with the new mock responses
-2. Consider adding more edge cases for nudge notification scenarios
+1. Continue expanding test coverage for nudge notification scenarios
+2. Verify all edge cases are properly tested in the nudge notification system
