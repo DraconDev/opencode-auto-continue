@@ -81,8 +81,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     // Fetch todos from API
     let todos: Array<{ id: string; status: string; content?: string; title?: string }>;
     try {
-      const client = input as any;
-      const resp = await client.client.session.todo({ path: { id: sessionId } });
+      const resp = await (input as any).client.session.todo({ path: { id: sessionId } });
       todos = Array.isArray(resp.data) ? resp.data : [];
     } catch (e) {
       log("error fetching todos for nudge", String(e));
@@ -131,8 +130,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       // Show warning toast
       if (config.showToasts) {
         try {
-          const client = input as any;
-          await client.client.tui.showToast({
+          await (input as any).client.tui.showToast({
             query: { directory: (input as any).directory || "" },
             body: {
               title: "Nudge Paused",
