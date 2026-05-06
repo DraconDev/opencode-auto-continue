@@ -819,6 +819,89 @@ describe("opencode-auto-force-resume", () => {
       vi.useRealTimers();
     });
 
+    it("should trigger emergency compaction on token limit error", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        shortContinueMessage: "Continue."
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Fire token limit error
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Requested token count exceeds the model's maximum context length of 262144 tokens" } } } });
+
+      // Should trigger emergency compaction (summarize)
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should send short continue after successful emergency compaction", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        shortContinueMessage: "Continue."
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Fire token limit error
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Requested token count exceeds the model's maximum context length of 262144 tokens" } } } });
+
+      // Wait for async emergency compaction and continue
+      await vi.advanceTimersByTimeAsync(200);
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(200);
+      await Promise.resolve();
+
+      // Should send continue prompt after compaction
+      expect(mockPrompt).toHaveBeenCalled();
+      const promptCall = mockPrompt.mock.calls[0] as any;
+      expect(promptCall[0].path.id).toBe("test");
+      expect(promptCall[0].body.parts[0].text).toBe("Continue.");
+      vi.useRealTimers();
+    });
+
+    it("should not trigger emergency compaction on non-token-limit errors", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Fire generic error (not token limit)
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeError", message: "Something went wrong" } } } });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      // Should NOT trigger compaction
+      expect(mockSummarize).not.toHaveBeenCalled();
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
     it("should track message count on user messages", async () => {
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, proactiveCompactAtTokens: 100000 });
 
