@@ -202,9 +202,23 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   return config;
 }
 
+// Cache for model context limit to avoid re-reading opencode.json
+let cachedModelLimit: number | null = null;
+let cachedConfigPath: string | null = null;
+let cachedConfigMtime: number = 0;
+
 export function getModelContextLimit(opencodeConfigPath: string): number | null {
   try {
     if (!existsSync(opencodeConfigPath)) return null;
+    
+    // Check if cache is still valid (same path and mtime)
+    const stats = statSync(opencodeConfigPath, { throwIfNoEntry: false });
+    const mtime = stats?.mtimeMs || 0;
+    
+    if (cachedConfigPath === opencodeConfigPath && cachedConfigMtime === mtime && cachedModelLimit !== null) {
+      return cachedModelLimit;
+    }
+    
     const content = readFileSync(opencodeConfigPath, 'utf-8');
     const config = JSON.parse(content);
     
@@ -223,14 +237,21 @@ export function getModelContextLimit(opencodeConfigPath: string): number | null 
       }
     }
     
-    if (limits.length > 0) {
-      return Math.min(...limits);
-    }
+    // Update cache
+    cachedConfigPath = opencodeConfigPath;
+    cachedConfigMtime = mtime;
+    cachedModelLimit = limits.length > 0 ? Math.min(...limits) : null;
     
-    return null;
+    return cachedModelLimit;
   } catch {
     return null;
   }
+}
+
+export function invalidateModelLimitCache(): void {
+  cachedModelLimit = null;
+  cachedConfigPath = null;
+  cachedConfigMtime = 0;
 }
 
 export function getCompactionThreshold(modelContextLimit: number | null, config: PluginConfig): number {
