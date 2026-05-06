@@ -1,24 +1,31 @@
 # Project State
 
 ## Current Focus
-Improved nudge system architecture with module separation and loop protection
+Improved recovery state machine with exponential backoff and enhanced session management
 
 ## Context
-The nudge system was refactored to better handle edge cases and prevent infinite nudges. The new architecture uses dedicated modules and adds loop protection to prevent repeated nudges when no progress is made.
+The recovery system needed better handling of stalled sessions with:
+- More robust recovery attempts
+- Exponential backoff for repeated failures
+- Clearer session state transitions
+- Better integration with status file handling
 
 ## Completed
-- [x] Added module architecture with focused components (status file, recovery, nudge, terminal, notification)
-- [x] Enhanced nudge flow with cooldown checks, loop protection, and abort detection
-- [x] Added configuration options for nudge timing and behavior
-- [x] Updated documentation with detailed nudge flow and module architecture
+- [x] Expanded recovery state machine with detailed transition logic
+- [x] Added exponential backoff after max recovery attempts
+- [x] Improved session age checking before giving up
+- [x] Enhanced documentation of recovery module architecture
+- [x] Added configuration for auto-submit limits
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Testing edge cases of exponential backoff
+- [ ] Integration with status file module
 
 ## Blockers
-- None identified
+- Need to verify backoff timing constants
+- Requires testing with real session data
 
 ## Next Steps
-1. Verify module integration with existing code
-2. Test nudge behavior with various edge cases
-3. Update tests to cover new module architecture
+1. Implement unit tests for recovery state transitions
+2. Verify integration with status file module
+3. Document recovery configuration options

@@ -81,36 +81,71 @@ Each module is initialized early and its API is called from event handlers in `i
 ### Recovery State Machine
 
 ```
-IDLE/BUSY
-    │
-    ▼
 [session.status busy]
-    │
-    ▼
-Set stall timer (stallTimeoutMs)
-    │
-    ├──[Timer fires]──► Check: still busy? ──► YES ──► Try compact? ──► YES ──► summarize()
-    │                              │                    │                    │
-    │                              │                    NO                  Wait 3s
-    │                              NO                   │                    │
-    │                              │                    ▼                    ▼
-    │                              ▼              [Check busy again]    still busy?
-    │                        [Clear timer]               │                    │
-    │                              │                     ▼                    ▼
-    │                              │              [Proceed with abort]   YES ──► abort()
-    │                              │                     │                    │
-    │                              ▼                     ▼                    ▼
-    │                         [Wait idle]           [Fetch todos]     [Poll until idle]
-    │                              │                     │                    │
-    │                              │                     ▼                    ▼
-    │                              │              [Build message]    [Wait waitAfterAbort]
-    │                              │                     │                    │
-    │                              │                     ▼                    ▼
-    │                              │            [Set needsContinue]   [Send continue prompt]
-    │                              │                     │                    │
-    │                              │                     ▼                    ▼
-    └──────────────────────────────┴──────────────────────────────► [Reset counter, new timer]
+        │
+        ▼
+Start stall timer (stallTimeoutMs)
+        │
+        ├──[Progress event]──► Reset timer, reset attempts
+        │
+        ├──[Timer fires]──► Check: still busy?
+        │                        │
+        │                   YES   │ NO (idle) ──► Clear timer, wait for session.idle
+        │                        │
+        │                   Check: attempts < maxRecoveries?
+        │                        │
+        │                   NO──► Exponential backoff
+        │                        │
+        │                   Check: session too old? (maxSessionAgeMs)
+        │                        │
+        │                   YES──► Give up
+        │                        │
+        │                   Check: try autoCompact?
+        │                        │
+        │                   YES──► session.summarize()
+        │                        │        │
+        │                        │   Wait 3s
+        │                        │        │
+        │                        │   Check: still busy?
+        │                        │        │
+        │                        │   YES──► Proceed with abort
+        │                        │   NO ──► Recovery complete
+        │                        │
+        │                   NO──► Proceed with abort
+        │                        │
+        │                   session.abort()
+        │                        │
+        │                   Poll until idle (abortPollIntervalMs)
+        │                        │
+        │                   Wait waitAfterAbortMs
+        │                        │
+        │                   Check: autoSubmitCount < maxAutoSubmits?
+        │                        │
+        │                   NO──► Give up (loop protection)
+        │                        │
+        │                   Fetch todos for context (if includeTodoContext)
+        │                        │
+        │                   Build message with template vars
+        │                        │
+        │                   Set needsContinue + continueMessageText
+        │                        │
+        │                   Increment attempts, autoSubmitCount
+        │                        │
+        │                   Cancel any pending nudge
+        │
+        └──[session.idle]──► Clear timer, send any queued continue
 ```
+
+**Recovery module** (`createRecoveryModule`):
+- Located in `src/recovery.ts` (214 lines)
+- Called from event handlers in `index.ts`
+- Receives `writeStatusFile` and `cancelNudge` as dependencies
+- Uses `input as any` for all client API calls
+
+**Exponential backoff**:
+- After `maxRecoveries` attempts, delay doubles each time
+- Max delay capped at `maxBackoffMs` (30 min default)
+- Backoff resets when recovery succeeds
 
 ### Todo Context Injection
 
