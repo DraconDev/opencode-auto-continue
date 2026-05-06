@@ -1,4 +1,5 @@
 import { type PluginConfig, type SessionState, formatMessage } from "./shared.js";
+import type { TypedPluginInput } from "./types.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
@@ -8,7 +9,7 @@ export interface NudgeDeps {
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   isDisposed: () => boolean;
-  input: unknown;
+  input: TypedPluginInput;
 }
 
 export function createNudgeModule(deps: NudgeDeps) {
@@ -81,7 +82,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     // Fetch todos from API
     let todos: Array<{ id: string; status: string; content?: string; title?: string }>;
     try {
-      const resp = await (input as any).client.session.todo({ path: { id: sessionId } });
+      const resp = await input.client.session.todo({ path: { id: sessionId } });
       todos = Array.isArray(resp.data) ? resp.data : [];
     } catch (e) {
       log("error fetching todos for nudge", String(e));
