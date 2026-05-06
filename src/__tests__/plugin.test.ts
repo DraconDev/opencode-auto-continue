@@ -1056,7 +1056,8 @@ describe("opencode-auto-force-resume", () => {
         stallTimeoutMs: 1000, 
         waitAfterAbortMs: 100, 
         cooldownMs: 0,
-        terminalTitleEnabled: false 
+        terminalTitleEnabled: false,
+        autoCompact: false
       });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
