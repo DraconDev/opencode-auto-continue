@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Updated test expectations to reflect changes in todo handling during session recovery
+Added a fail-open hook wrapper to prevent plugin errors from breaking the host application.
 
 ## Context
-Recent changes added tracking of last known todos in session state for recovery purposes. This test update reflects the new behavior where todos can be provided from events, eliminating the need to fetch them again.
+The change addresses the need to ensure plugin errors don't crash the host application. This is particularly important for extensibility where third-party plugins might introduce instability.
 
 ## Completed
-- [x] Updated test expectations to verify todos are not fetched when provided via event
-- [x] Maintained verification of prompt calls with todo context
+- [x] Added `safeHook` utility function that wraps plugin hooks with error handling
+- [x] Implements fail-open pattern where errors are logged but don't propagate
+- [x] Includes optional logging parameter for error reporting
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] None (this is a complete feature addition)
 
 ## Blockers
-- None
+- None (this is a standalone utility)
 
 ## Next Steps
-1. Verify all related tests are updated to reflect the new session recovery behavior
-2. Consider adding tests for edge cases where todos might be partially provided
+1. Integrate `safeHook` into existing plugin systems
+2. Add unit tests for error handling scenarios

@@ -431,3 +431,19 @@ export function updateProgress(s: SessionState) {
 export function formatMessage(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
 }
+
+/**
+ * Fail-open hook wrapper — prevents plugin errors from breaking the host.
+ * Logs errors but never throws.
+ */
+export async function safeHook(
+  name: string,
+  fn: () => Promise<void>,
+  log?: (...args: unknown[]) => void
+): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    log?.(`[${name}] hook failed:`, err);
+  }
+}
