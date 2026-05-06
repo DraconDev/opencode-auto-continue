@@ -654,7 +654,7 @@ describe("planning state behavior", () => {
       vi.useRealTimers();
     });
 
-    it("should clear planning flag on busy status", async () => {
+    it("should clear planning flag on non-plan progress", async () => {
       vi.useFakeTimers();
       const mockStatus = mockClient.session.status as any;
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
@@ -677,8 +677,12 @@ describe("planning state behavior", () => {
         delta: "Here"
       } } });
 
-      // New busy status clears planning
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Non-plan progress (tool call) clears planning
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part2", type: "tool", sessionID: "test", messageID: "msg1" },
+      } } });
 
       // Now timer should work
       await vi.advanceTimersByTimeAsync(2000);

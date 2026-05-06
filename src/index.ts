@@ -380,16 +380,24 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             log('compaction started, pausing stall monitoring');
             s.compacting = true;
           }
-          if (partType === "text") {
-            const partText = e?.properties?.part?.text as string | undefined;
-            if (partText) {
-              if (isPlanContent(partText)) {
-                log('plan detected in updated text part, pausing stall monitoring');
-                s.planning = true;
+            if (partType === "text") {
+              const partText = e?.properties?.part?.text as string | undefined;
+              if (partText) {
+                if (isPlanContent(partText)) {
+                  log('plan detected in updated text part, pausing stall monitoring');
+                  s.planning = true;
+                }
               }
             }
+            // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
+            // These indicate the model has moved from planning to execution, so:
+            // 1. Stall monitoring resumes (planning pauses it)
+            // 2. Continue messages use generic text instead of plan-aware message
+            if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
+              log('non-plan progress detected, clearing plan flag');
+              s.planning = false;
+            }
           }
-        }
 
         // Check if this is a delta update containing plan content
         const deltaText = e?.properties?.delta as string | undefined;
@@ -400,16 +408,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.planning = true;
             s.planBuffer = '';
           }
-        }
-
-        // Clear plan flag when model moves from planning to execution
-        // Non-text/non-reasoning progress parts (tool calls, file ops, step transitions)
-        // indicate the model has moved past planning. This ensures:
-        // 1. Stall monitoring resumes (planning pauses it)
-        // 2. Plan-aware continue messages use the generic message when not planning
-        if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
-          log('non-plan progress detected, clearing plan flag');
-          s.planning = false;
         }
 
         clearTimer(sid);

@@ -4,19 +4,20 @@
 Improved handling of plan-aware continue messages during session recovery
 
 ## Context
-The change addresses an issue where the `s.planning` flag was being prematurely cleared during session recovery, causing plan-aware continue messages to use generic messages instead of specialized recovery messages.
+The changes address how the system detects and handles planning vs. execution phases in sessions, particularly during recovery scenarios. This ensures proper stall monitoring and message generation when models transition from planning to execution.
 
 ## Completed
-- [x] Added specific conditions to clear `s.planning` only when non-planning progress parts are detected
-- [x] Added documentation explaining why `s.planning` isn't cleared during busy states
-- [x] Maintained plan-aware continue message functionality during recovery sessions
+- [x] Refactored plan detection logic to handle both text parts and delta updates
+- [x] Added detection of non-plan progress (tool calls, file operations, step transitions) to clear planning flags
+- [x] Updated test to verify clearing of planning flag on non-plan progress events
+- [x] Improved documentation of plan-aware continue message behavior
 
 ## In Progress
-- [x] Implementation of plan-aware continue message logic
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify plan-aware continue messages work correctly during recovery scenarios
-2. Ensure stall monitoring resumes properly after planning phase
+1. Verify all related test cases pass with the new implementation
+2. Review documentation updates for accuracy and completeness
