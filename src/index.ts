@@ -259,10 +259,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "busy" || status?.type === "retry") {
           updateProgress(s);
           s.userCancelled = false;
-          if (s.planning) {
-            log('session busy, clearing plan flag');
-            s.planning = false;
-          }
+          // NOTE: s.planning is NOT cleared here — session.status(busy) fires
+          // during plan generation too (the session IS busy). Clearing it would
+          // cause plan-aware continue messages to use the generic message instead.
+          // Instead, s.planning is cleared by message.part.updated when non-plan
+          // progress parts (tool, file, subtask, step-start, step-finish) arrive.
           if (s.compacting) {
             log('session busy, clearing compacting flag (compaction likely finished)');
             s.compacting = false;
@@ -399,6 +400,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.planning = true;
             s.planBuffer = '';
           }
+        }
+
+        // Clear plan flag when model moves from planning to execution
+        // Non-text/non-reasoning progress parts (tool calls, file ops, step transitions)
+        // indicate the model has moved past planning. This ensures:
+        // 1. Stall monitoring resumes (planning pauses it)
+        // 2. Plan-aware continue messages use the generic message when not planning
+        if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
+          log('non-plan progress detected, clearing plan flag');
+          s.planning = false;
         }
 
         clearTimer(sid);
