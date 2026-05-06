@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved nudge injection with optional pre-fetched todos to reduce redundant data fetching
+Added tracking of last known todos in session state for recovery purposes.
 
 ## Context
-The nudge system was previously injecting nudges without access to pre-fetched todo data, leading to potential redundant API calls. This change allows passing known todos directly to the nudge injection to improve performance.
+This change supports improved session recovery by maintaining a snapshot of todos during the session. It complements existing nudge injection improvements and session state tracking features.
 
 ## Completed
-- [x] Added optional `knownTodos` parameter to `scheduleNudge` function
-- [x] Updated `injectNudge` call to pass the optional todos parameter
+- [x] Added `lastKnownTodos` property to `SessionState` interface
+- [x] Included todo structure with id, status, and optional content/title fields
 
 ## In Progress
-- [ ] Testing the performance impact of this change in different scenarios
+- [ ] No active work in progress
 
 ## Blockers
-- Need to verify if the optional parameter breaks any existing nudge triggers
+- None identified
 
 ## Next Steps
-1. Run performance tests with and without the pre-fetched todos
-2. Verify backward compatibility with existing nudge triggers
+1. Verify this structure works with existing session recovery mechanisms
+2. Consider adding similar tracking for other session-critical data
