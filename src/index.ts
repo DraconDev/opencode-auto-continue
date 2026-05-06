@@ -20,7 +20,7 @@ import { createTerminalModule } from "./terminal.js";
 import { createNotificationModule } from "./notifications.js";
 import { createNudgeModule } from "./nudge.js";
 import { createStatusFileModule } from "./status-file.js";
-import { createRecoveryModule } from "./recovery.js";
+import { createCompactionModule } from "./compaction.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
@@ -126,6 +126,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
 
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge });
+
+  const compaction = createCompactionModule({ config, sessions, log, input });
 
   // ── Inline functions replaced by modules ───────────────────────────────
   // Terminal: use terminal.updateTerminalTitle, terminal.clearTerminalTitle, etc.
