@@ -586,6 +586,17 @@ Triggers when a stall is detected during recovery. Before aborting the session, 
 3. Wait 5 seconds → check again
 4. If still busy → proceed with abort+continue
 
+**Post-compaction token estimation**:
+After successful compaction, `estimatedTokens` is reduced using `compactReductionFactor` (default 0.7):
+```
+estimatedTokens = max(estimatedTokens - preTokens * 0.7, preTokens * 0.3)
+```
+
+For example, with 100k pre-compaction tokens:
+```
+estimatedTokens = max(100000 - 70000, 30000) = 30000
+```
+
 ### Token Estimation
 
 The plugin estimates token usage from three actual data sources:

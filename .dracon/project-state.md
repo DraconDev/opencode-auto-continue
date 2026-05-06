@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Added configuration for compaction reduction factor in context window management
+Added documentation for post-compaction token estimation logic
 
 ## Context
-This change was prompted by the need to optimize memory usage during compaction operations. The new `compactReductionFactor` parameter allows fine-tuning how aggressively the system reduces token counts during compaction.
+The change documents how token estimates are recalculated after compaction operations, which is part of the ongoing work on context window sizing and compaction configuration.
 
 ## Completed
-- [x] Added `compactReductionFactor` configuration option with default value of 0.7
+- [x] Added documentation for token estimation reduction formula
+- [x] Included example calculation for clarity
 
 ## In Progress
-- [x] Documentation update for compaction configuration
+- [x] Documentation for compaction behavior
 
 ## Blockers
 - None identified for this specific change
 
 ## Next Steps
-1. Verify the impact of the new factor on memory usage in integration tests
-2. Document the purpose and effect of the new configuration parameter
+1. Review and finalize documentation for consistency
+2. Implement corresponding configuration options for the reduction factor
