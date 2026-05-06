@@ -405,6 +405,7 @@ export function createSession(): SessionState {
     lastTodoSnapshot: '',
     nudgePaused: false,
     hasOpenTodos: false,
+    lastKnownTodos: [],
 
     // Continue Queue
     needsContinue: false,

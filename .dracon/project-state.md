@@ -4,18 +4,17 @@
 Added tracking of last known todos in session state for recovery purposes.
 
 ## Context
-This change supports improved session recovery by maintaining a snapshot of todos during the session. It complements existing nudge injection improvements and session state tracking features.
+This change supports session recovery by maintaining a snapshot of todos when they were last known to be valid. This helps reconstruct the user's state if the session needs to be restored.
 
 ## Completed
-- [x] Added `lastKnownTodos` property to `SessionState` interface
-- [x] Included todo structure with id, status, and optional content/title fields
+- [x] Added `lastKnownTodos` array to session state to store todo snapshots
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Implementation of todo snapshot capture during session operations
 
 ## Blockers
-- None identified
+- Need to verify snapshot integrity during session recovery flows
 
 ## Next Steps
-1. Verify this structure works with existing session recovery mechanisms
-2. Consider adding similar tracking for other session-critical data
+1. Implement snapshot capture during todo operations
+2. Add recovery logic to restore from `lastKnownTodos` when needed
