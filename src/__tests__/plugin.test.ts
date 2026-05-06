@@ -465,6 +465,8 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
 
       mockPrompt.mockClear();
 
@@ -472,6 +474,8 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
 
       mockPrompt.mockClear();
 
@@ -479,6 +483,8 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+      vi.useFakeTimers();
 
       mockPrompt.mockClear();
 
@@ -487,7 +493,6 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
       expect(mockPrompt).not.toHaveBeenCalled();
-
       vi.useRealTimers();
     });
 
