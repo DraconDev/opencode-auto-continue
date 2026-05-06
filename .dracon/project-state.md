@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved token tracking accuracy by adding multiple data sources for session token estimation.
+Documented token tracking improvements and configuration trade-offs in AGENTS.md
 
 ## Context
-The change enhances session management by incorporating token estimates from three sources: error messages, step-finish tokens, and AssistantMessage tokens. This improves the precision of token tracking during session lifecycle events.
+This documentation update reflects recent improvements to token tracking accuracy and session management features. The changes clarify the rationale behind multiple token estimation sources and configuration options.
 
 ## Completed
-- [x] Added token estimation from error messages, step-finish tokens, and AssistantMessage tokens
-- [x] Updated documentation to reflect the new token tracking approach
+- [x] Documented trade-offs for token estimation from multiple sources
+- [x] Clarified `compactCooldownMs` behavior between checks
+- [x] Updated documentation for status file atomic writes
 
 ## In Progress
-- [ ] Verifying edge cases where token estimates might conflict between sources
+- [x] Documentation of current token tracking implementation
 
 ## Blockers
-- None identified at this stage
+- None identified
 
 ## Next Steps
-1. Verify consistency in token estimates across different session states
-2. Optimize the token estimation logic for performance
+1. Review documentation for consistency with recent code changes
+2. Update related documentation sections as needed

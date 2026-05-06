@@ -178,11 +178,10 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 
 | Decision | Rationale | Trade-off |
 |----------|-----------|-----------|
+| Token estimation from three sources | Error messages give exact counts; step-finish gives per-completion; AssistantMessage gives per-message | Running sum overestimates context (old msgs dropped) — but better early than late |
 | `synthetic` filter in message events | Prevents plugin's own prompts from resetting timers | Need to explicitly mark plugin prompts as synthetic |
 | `needsContinue` queue mechanism | Prevents abort+prompt race condition with TUI | Extra flag to track |
-| Token estimation from ALL part types | More accurate than text-only | Estimates still miss pre-existing context |
-| `compactCooldownMs` 2min | Prevents excessive compaction API calls | May miss some bloat scenarios |
-| `wasBusy` dedup flag | Prevents nudge loops on repeated idle events | One extra boolean per session |
+| `compactCooldownMs` 2min | Prevents excessive compaction API calls | May miss some bloat scenarios between checks |
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
 
 ## Debugging
