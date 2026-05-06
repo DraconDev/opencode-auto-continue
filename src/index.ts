@@ -355,6 +355,17 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               const estimatedTokens = estimateTokens(partText);
               s.estimatedTokens += estimatedTokens;
             }
+            // Extract actual tokens from step-finish parts (most accurate source)
+            if (partType === "step-finish" && part?.tokens) {
+              const stepTokens = part.tokens;
+              const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
+              if (totalStepTokens > 0) {
+                // step-finish tokens represent the actual tokens used in this completion step
+                // This is the most accurate token count available
+                s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
+                log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
+              }
+            }
           }
           if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');

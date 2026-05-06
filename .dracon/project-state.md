@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added token tracking for assistant messages to improve session token estimation accuracy.
+Improved token tracking accuracy by adding step-finish token extraction
 
 ## Context
-The code previously didn't track actual token usage from assistant messages, leading to potential inaccuracies in token counting. This change ensures we account for all message tokens in the session's estimated token count.
+The previous token estimation was based on text length, which could be inaccurate. Step-finish events now provide precise token counts from the completion step, which should be more reliable for session token management.
 
 ## Completed
-- [x] Added token tracking for assistant messages
-- [x] Accumulates input, output, and reasoning tokens
-- [x] Logs token breakdown for debugging
+- [x] Added step-finish token extraction logic
+- [x] Implemented fallback to estimated tokens when step-finish tokens aren't available
+- [x] Added debug logging for token tracking
 
 ## In Progress
-- [x] Token tracking implementation
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify token tracking works correctly in integration tests
-2. Consider adding token limit enforcement based on these counts
+1. Verify token tracking accuracy in integration tests
+2. Consider adding token tracking for other message types if needed
