@@ -57,8 +57,8 @@ export function createCompactionModule(deps: CompactionDeps) {
             s.lastCompactionAt = Date.now();
             s.compacting = false;
             // Reset estimated tokens since context was compacted
-            const reduction = Math.floor(preTokens * 0.7); // Assume ~70% reduction
-            s.estimatedTokens = Math.max(s.estimatedTokens - reduction, Math.floor(preTokens * 0.3));
+            const reduction = Math.floor(preTokens * config.compactReductionFactor); // Configurable reduction factor
+            s.estimatedTokens = Math.max(s.estimatedTokens - reduction, Math.floor(preTokens * (1 - config.compactReductionFactor)));
             log('compaction reduced tokens from ~', preTokens, 'to ~', s.estimatedTokens);
           }
           return true;

@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added `compactReductionFactor` configuration option for compaction optimization
+Made compaction token reduction configurable via `compactReductionFactor`
 
 ## Context
-This change introduces a new configuration parameter to control how aggressively the system reduces data during compaction operations. The factor determines the target size reduction during compaction, allowing for more precise control over storage optimization.
+The compaction process now uses a configurable reduction factor instead of a hardcoded 70% value, allowing for more flexible token management in the system.
 
 ## Completed
-- [x] Added `compactReductionFactor` to `DEFAULT_CONFIG` with value 0.7
-- [x] Added validation for `compactReductionFactor` to ensure it's a number between 0 and 1 (exclusive)
+- [x] Replaced hardcoded 70% reduction with configurable `compactReductionFactor`
+- [x] Updated token estimation calculation to use the new configuration
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] None (this is a completed feature)
 
 ## Blockers
-- None identified
+- None (this change is complete)
 
 ## Next Steps
-1. Update documentation to explain the purpose and usage of `compactReductionFactor`
-2. Add integration tests to verify compaction behavior with different factor values
+1. Verify the new configuration works as expected in integration tests
+2. Document the new configuration option in relevant documentation
