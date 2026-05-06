@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Added documentation for post-compaction token estimation logic
+Added specialized configuration for large-context models in long-running sessions
 
 ## Context
-The change documents how token estimates are recalculated after compaction operations, which is part of the ongoing work on context window sizing and compaction configuration.
+The changes address the need for more aggressive compaction strategies when working with models that support 152k+ context windows (like o1-preview and o1-mini), which require different token management thresholds than smaller-context models.
 
 ## Completed
-- [x] Added documentation for token estimation reduction formula
-- [x] Included example calculation for clarity
+- [x] Added specialized configuration for 152k context models with adjusted compaction thresholds
+- [x] Updated documentation to clarify compaction parameters for different model sizes
+- [x] Maintained backward compatibility with existing configurations
 
 ## In Progress
-- [x] Documentation for compaction behavior
+- [x] Testing compaction behavior with actual large-context models
 
 ## Blockers
-- None identified for this specific change
+- None identified at this stage
 
 ## Next Steps
-1. Review and finalize documentation for consistency
-2. Implement corresponding configuration options for the reduction factor
+1. Verify compaction behavior with actual large-context model sessions
+2. Document any additional edge cases discovered during testing

@@ -785,13 +785,24 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 }]
 ```
 
-### Long-Running Sessions
+### Long-Running Sessions (Large Context Models)
 
 ```json
 ["opencode-auto-force-resume", {
   "stallTimeoutMs": 600000,
   "maxSessionAgeMs": 14400000,
-  "proactiveCompactAtTokens": 150000
+  "proactiveCompactAtTokens": 100000
+}]
+```
+
+**For 152k context models (o1-preview, o1-mini, etc.):**
+```json
+["opencode-auto-force-resume", {
+  "stallTimeoutMs": 600000,
+  "maxSessionAgeMs": 14400000,
+  "proactiveCompactAtTokens": 75000,
+  "proactiveCompactAtPercent": 50,
+  "compactReductionFactor": 0.7
 }]
 ```
 
