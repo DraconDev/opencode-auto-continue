@@ -181,6 +181,7 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | Token estimation from three sources | Error messages give exact counts; step-finish gives per-completion; AssistantMessage gives per-message | Running sum overestimates context (old msgs dropped) — but better early than late |
 | `synthetic` filter in message events | Prevents plugin's own prompts from resetting timers | Need to explicitly mark plugin prompts as synthetic |
 | `needsContinue` queue mechanism | Prevents abort+prompt race condition with TUI | Extra flag to track |
+| Last-known todos cache | Eliminates double-fetch in nudge.ts | Only updated on todo.updated events |
 | `compactCooldownMs` 2min | Prevents excessive compaction API calls | May miss some bloat scenarios between checks |
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
 | safeHook fail-open wrapper | Prevents plugin errors from crashing the host | Errors are logged but never propagated |

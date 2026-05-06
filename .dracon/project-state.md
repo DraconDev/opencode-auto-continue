@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added documentation for error handling and hook mechanisms in the AutoForceResumePlugin
+Added documentation for the last-known todos cache mechanism in the agents system.
 
 ## Context
-The plugin needed clearer documentation about its fail-open error handling and hook implementations to prevent future integration issues with OpenCode.
+The change documents a performance optimization that eliminates redundant todo fetching in the nudge system by caching the last-known todos state.
 
 ## Completed
-- [x] Documented the `safeHook` fail-open wrapper that prevents plugin errors from crashing the host
-- [x] Explained the `experimental.compaction.autocontinue` hook behavior
-- [x] Added details about model config caching to avoid redundant file operations
+- [x] Documented the last-known todos cache mechanism
+- [x] Explained how it prevents double-fetching in nudge.ts
+- [x] Clarified that it only updates on todo.updated events
 
 ## In Progress
-- [x] Documentation of existing error handling mechanisms
+- [x] Documentation update for this specific optimization
 
 ## Blockers
-- No blockers identified
+- None identified
 
 ## Next Steps
-1. Review documentation for completeness
-2. Update related tests if needed
+1. Review and merge the documentation changes
+2. Consider if additional documentation is needed for related systems
