@@ -43,7 +43,6 @@ export interface SessionState {
   recoveryTimes: number[];
   lastStallPartType: string;
   stallPatterns: Record<string, number>;
-  wasBusy: boolean;
 }
 
 export interface PluginConfig {

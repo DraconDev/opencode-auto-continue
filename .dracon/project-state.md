@@ -1,22 +1,25 @@
 # Project State
 
 ## Current Focus
-Documented token tracking improvements and configuration trade-offs in AGENTS.md
+Removed the event handler module to simplify session state management and reduce complexity
 
 ## Context
-This documentation update reflects recent improvements to token tracking accuracy and session management features. The changes clarify the rationale behind multiple token estimation sources and configuration options.
+The event handler was becoming overly complex with multiple responsibilities including session state tracking, progress updates, and error handling. This removal is part of a broader refactoring to simplify the codebase and improve maintainability.
 
 ## Completed
-- [x] Documented trade-offs for token estimation from multiple sources
-- [x] Clarified `compactCooldownMs` behavior between checks
-- [x] Updated documentation for status file atomic writes
+- [x] Removed the entire event handler module which handled session lifecycle events
+- [x] Eliminated complex event routing logic
+- [x] Reduced code complexity by removing 400 lines of event handling code
 
 ## In Progress
-- [x] Documentation of current token tracking implementation
+- [ ] Implementing new session state management approach
+- [ ] Updating dependent modules to handle events directly
 
 ## Blockers
-- None identified
+- Need to redesign how session events are processed without the centralized handler
+- Requires coordination with other modules that previously relied on the event handler
 
 ## Next Steps
-1. Review documentation for consistency with recent code changes
-2. Update related documentation sections as needed
+1. Implement new session state management system
+2. Update all dependent modules to handle events directly
+3. Add comprehensive tests for the new event handling approach
