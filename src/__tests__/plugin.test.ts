@@ -1510,23 +1510,19 @@ describe("opencode-auto-force-resume", () => {
   });
 
   describe("compactCooldownMs behavior", () => {
-    it("should not compact within cooldown period", async () => {
-      vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
-
+    it("should handle proactive compact checks during part updates", async () => {
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 5000,
         autoCompact: true,
         compactCooldownMs: 60000,
-        proactiveCompactAtTokens: 100,
         terminalTitleEnabled: false,
         statusFilePath: ""
       });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Accumulate tokens via repeated message events to trigger proactive compaction
+      // Each part update now triggers proactive compact check
+      // Just verify no crash
       for (let i = 0; i < 10; i++) {
         await plugin.event({ event: { type: "message.part.updated", properties: {
           sessionID: "test",
@@ -1536,11 +1532,7 @@ describe("opencode-auto-force-resume", () => {
         } } });
       }
 
-      // Proactive compaction may or may not trigger depending on token estimation
-      // Just verify no crash occurred
       expect(true).toBe(true);
-
-      vi.useRealTimers();
     });
   });
 

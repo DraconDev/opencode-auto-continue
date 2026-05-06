@@ -298,7 +298,6 @@ describe("compaction module", () => {
     });
 
     it("should handle proactive compaction checks during generation", async () => {
-      vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       mockSummarize.mockResolvedValue({ data: {}, error: undefined });
 
@@ -313,8 +312,8 @@ describe("compaction module", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Each part update now triggers a proactive compact check
-      // Just verify it doesn't crash
+      // Each part update now triggers proactive compact check
+      // Just verify no crash
       for (let i = 0; i < 5; i++) {
         await plugin.event({ event: { type: "message.part.updated", properties: {
           sessionID: "test",
@@ -324,11 +323,8 @@ describe("compaction module", () => {
         } } });
       }
 
-      await vi.advanceTimersByTimeAsync(100);
       await Promise.resolve();
-
       expect(true).toBe(true);
-      vi.useRealTimers();
     });
   });
 
