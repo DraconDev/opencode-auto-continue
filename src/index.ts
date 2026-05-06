@@ -136,21 +136,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   terminal.registerStatusLineHook();
 
+  const progressTypes = [
+    "message.part.updated",
+  ];
+
+  const staleTypes = [
+    "session.error",
+    "session.ended",
+    "session.deleted"
+  ];
+
   return {
     event: async ({ event }: { event: any }) => {
       await safeHook("event", async () => {
         const e = event as any;
         const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
-
-      const progressTypes = [
-        "message.part.updated",
-      ];
-
-      const staleTypes = [
-        "session.error",
-        "session.ended",
-        "session.deleted"
-      ];
 
       if (event?.type === "session.error") {
         const err = e?.properties?.error;
