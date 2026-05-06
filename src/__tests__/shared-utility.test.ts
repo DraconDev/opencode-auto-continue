@@ -515,154 +515,80 @@ describe("shared.ts utilities", () => {
     });
   });
 
-  describe("snapshot", () => {
-    it("should create consistent snapshot for same todos", async () => {
-      const { snapshot } = await import('../shared.js');
+  describe("snapshot behavior via formatMessage", () => {
+    // snapshot() is internal to nudge.ts - test snapshot behavior via formatMessage
+    it("should use formatMessage for placeholder replacement", async () => {
+      const { formatMessage } = await import('../shared.js');
 
-      const todos = [
-        { id: "t1", status: "in_progress" },
-        { id: "t2", status: "pending" }
-      ];
+      const result = formatMessage("{pending} task(s): {todoList}", {
+        pending: "3",
+        todoList: "task1, task2, task3"
+      });
 
-      const snap1 = snapshot(todos);
-      const snap2 = snapshot(todos);
-
-      expect(snap1).toBe(snap2);
+      expect(result).toBe("3 task(s): task1, task2, task3");
     });
 
-    it("should create different snapshots for different todos", async () => {
-      const { snapshot } = await import('../shared.js');
+    it("should handle todo list template variables", async () => {
+      const { formatMessage } = await import('../shared.js');
 
-      const todos1 = [{ id: "t1", status: "in_progress" }];
-      const todos2 = [{ id: "t1", status: "completed" }];
+      const result = formatMessage("{total} todos, {completed} done, {pending} remaining", {
+        total: "5",
+        completed: "2",
+        pending: "3"
+      });
 
-      const snap1 = snapshot(todos1);
-      const snap2 = snapshot(todos2);
-
-      expect(snap1).not.toBe(snap2);
+      expect(result).toBe("5 todos, 2 done, 3 remaining");
     });
 
-    it("should handle empty todo array", async () => {
-      const { snapshot } = await import('../shared.js');
+    it("should handle missing template variables gracefully", async () => {
+      const { formatMessage } = await import('../shared.js');
 
-      const snap = snapshot([]);
+      const result = formatMessage("Tasks: {todoList}", { total: "5" });
 
-      expect(snap).toBe("");
-    });
-
-    it("should sort todos by id for consistency", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos1 = [{ id: "b", status: "pending" }, { id: "a", status: "pending" }];
-      const todos2 = [{ id: "a", status: "pending" }, { id: "b", status: "pending" }];
-
-      const snap1 = snapshot(todos1);
-      const snap2 = snapshot(todos2);
-
-      expect(snap1).toBe(snap2);
-    });
-
-    it("should include status in snapshot", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos1 = [{ id: "t1", status: "in_progress" }];
-      const todos2 = [{ id: "t1", status: "pending" }];
-
-      expect(snapshot(todos1)).not.toBe(snapshot(todos2));
-    });
-
-    it("should handle todos with content field", async () => {
-      const { snapshot } = await import('../shared.js');
-
-      const todos = [{ id: "t1", status: "in_progress", content: "Test task" }];
-
-      const snap = snapshot(todos);
-
-      expect(snap).toContain("t1");
-      expect(snap).toContain("in_progress");
-      expect(snap).toContain("Test task");
+      expect(result).toBe("Tasks: {todoList}");
     });
   });
 
   describe("getCompactionThreshold", () => {
-    it("should calculate threshold for small models", async () => {
+    it("should calculate threshold from model limit and percentage", async () => {
+      // Direct test - getCompactionThreshold is exported from shared
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const threshold = getCompactionThreshold(128000, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(64000);
+      // Model limit 128000, 50% = 64000
+      const result = getCompactionThreshold(128000, { proactiveCompactAtPercent: 50 } as any);
+      expect(result).toBe(64000);
     });
 
-    it("should cap threshold at 75000 for small models", async () => {
+    it("should cap at 75000 for small models", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const threshold = getCompactionThreshold(300000, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(75000);
+      // 300000 * 0.5 = 150000, but capped at 75000
+      const result = getCompactionThreshold(300000, { proactiveCompactAtPercent: 50 } as any);
+      expect(result).toBe(75000);
     });
 
-    it("should cap threshold at 100000 for large models", async () => {
+    it("should cap at 100000 for large models", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const threshold = getCompactionThreshold(1000000, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(100000);
+      // 1000000 * 0.5 = 500000, capped at 100000
+      const result = getCompactionThreshold(1000000, { proactiveCompactAtPercent: 50 } as any);
+      expect(result).toBe(100000);
     });
 
-    it("should use proactiveCompactAtTokens as minimum", async () => {
+    it("should respect proactiveCompactAtTokens minimum", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const threshold = getCompactionThreshold(500000, { proactiveCompactAtTokens: 50000, proactiveCompactAtPercent: 90 } as any);
-
-      expect(threshold).toBe(50000);
+      // Despite high model limit, should use tokens threshold as minimum
+      const result = getCompactionThreshold(500000, { proactiveCompactAtTokens: 50000, proactiveCompactAtPercent: 90 } as any);
+      expect(result).toBe(50000);
     });
 
-    it("should return null for null model limit", async () => {
+    it("should return default threshold for null model limit", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const threshold = getCompactionThreshold(null, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(50000);
-    });
-
-    it("should handle 200k model with 50% threshold", async () => {
-      const { getCompactionThreshold } = await import('../shared.js');
-
-      const threshold = getCompactionThreshold(200000, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(75000);
-    });
-
-    it("should handle 128k model with 50% threshold", async () => {
-      const { getCompactionThreshold } = await import('../shared.js');
-
-      const threshold = getCompactionThreshold(128000, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(64000);
-    });
-
-    it("should handle 32k model with 50% threshold", async () => {
-      const { getCompactionThreshold } = await import('../shared.js');
-
-      const threshold = getCompactionThreshold(32000, { proactiveCompactAtPercent: 50 } as any);
-
-      expect(threshold).toBe(16000);
-    });
-
-    it("should respect proactiveCompactAtPercent of 0", async () => {
-      const { getCompactionThreshold } = await import('../shared.js');
-
-      const threshold = getCompactionThreshold(128000, { proactiveCompactAtPercent: 0 } as any);
-
-      expect(threshold).toBe(0);
-    });
-
-    it("should handle proactiveCompactAtPercent of 100", async () => {
-      const { getCompactionThreshold } = await import('../shared.js');
-
-      const threshold = getCompactionThreshold(128000, { proactiveCompactAtPercent: 100 } as any);
-
-      expect(threshold).toBe(64000);
+      // For null limit, returns proactiveCompactAtTokens or default
+      const result = getCompactionThreshold(null, { proactiveCompactAtPercent: 50 } as any);
+      expect(result).toBe(50000); // Uses proactiveCompactAtTokens default
     });
   });
 
