@@ -1,26 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored plugin architecture to modularize functionality and improve maintainability
+Updated nudge configuration options in README.md to reflect new nudge scheduling behavior.
 
 ## Context
-The plugin was previously a monolithic event-driven state machine. This change splits it into focused modules to:
-- Improve testability
-- Reduce coupling between components
-- Enable independent feature development
-- Make the architecture more explicit
+The recent refactoring of nudge scheduling introduced new configuration parameters that needed documentation. The changes align with improved nudge reliability and session management.
 
 ## Completed
-- [x] Split plugin into 7 focused modules following factory pattern
-- [x] Documented module responsibilities and initialization
-- [x] Maintained existing functionality while improving structure
+- [x] Added `nudgeIdleDelayMs` to configure idle detection timing
+- [x] Added `nudgeMaxSubmits` to limit nudge submissions per session
+- [x] Updated documentation to match current nudge behavior
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] None (documentation-only change)
 
 ## Blockers
-- None identified
+- None (documentation update complete)
 
 ## Next Steps
-1. Update tests to verify module isolation
-2. Add integration tests for module interactions
+1. Verify nudge behavior matches documented configuration
+2. Update related tests if needed
