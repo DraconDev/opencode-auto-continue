@@ -145,13 +145,17 @@ Token accumulation:
 
 ## Proactive Compaction
 
-Triggers on: every progress event + session resume busy + idle (not just idle).
+Triggers on: every progress event + session resume busy + idle + message.updated with tokens.
 
 Config options:
 - `proactiveCompactAtTokens: 100000` — token threshold
 - `proactiveCompactAtPercent: 50` — % of model limit
 - `compactCooldownMs: 120000` — 2min between compaction attempts
 - `compactMaxRetries: 3` — retry attempts
+
+Threshold calculation:
+- Large models (≥200k): `min(100000, modelLimit * 0.5)`
+- Small models (<200k): `min(75000, modelLimit * 0.5)`
 
 ## Status File
 
