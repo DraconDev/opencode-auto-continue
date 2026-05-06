@@ -124,6 +124,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const notifications = createNotificationModule({ config, sessions, log, isDisposed, input });
   const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
+  const statusFileModule = createStatusFileModule({ config, sessions, log });
+  const { writeStatusFile } = statusFileModule;
+
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge });
 
   // ── Terminal Title (OSC sequences) ────────────────────────────────────
