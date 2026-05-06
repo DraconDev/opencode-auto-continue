@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Added explicit `autoCompact: false` configuration to test plugin initialization
+Added token tracking for assistant messages to improve session token estimation accuracy.
 
 ## Context
-This change ensures consistent test behavior by explicitly disabling auto-compaction during plugin initialization, which is important for testing scenarios where compaction behavior needs to be controlled.
+The code previously didn't track actual token usage from assistant messages, leading to potential inaccuracies in token counting. This change ensures we account for all message tokens in the session's estimated token count.
 
 ## Completed
-- [x] Added explicit `autoCompact: false` to test configuration
-- [x] Maintained existing `stallPatternDetection: true` setting
+- [x] Added token tracking for assistant messages
+- [x] Accumulates input, output, and reasoning tokens
+- [x] Logs token breakdown for debugging
 
 ## In Progress
-- [ ] Verifying test coverage for all compaction-related scenarios
+- [x] Token tracking implementation
 
 ## Blockers
-- Need to ensure all test cases properly handle the disabled auto-compaction state
+- None identified
 
 ## Next Steps
-1. Run full test suite to verify behavior with explicit auto-compact setting
-2. Update documentation to reflect the new test configuration option
+1. Verify token tracking works correctly in integration tests
+2. Consider adding token limit enforcement based on these counts
