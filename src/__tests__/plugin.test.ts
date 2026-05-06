@@ -335,6 +335,12 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
 
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test todo", status: "in_progress" }],
+        error: undefined
+      });
+
       // First session.idle should trigger nudge after idle delay
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(500);
@@ -407,6 +413,12 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
         { id: "t1", content: "test task", status: "in_progress" }
       ] } } });
+
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test task", status: "in_progress" }],
+        error: undefined
+      });
 
       // First session.idle — should trigger nudge after idle delay
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
