@@ -1,22 +1,25 @@
 # Project State
 
 ## Current Focus
-Added plan-aware continue message for recovery sessions
+Enhanced proactive compaction during active generation and improved plan-aware continue messages
 
 ## Context
-The change improves recovery behavior by providing a specialized message when continuing a session that was in planning mode, rather than using the generic continue message.
+The changes address two related issues:
+1. Context window bloat during active generation (not just at message boundaries)
+2. More informative continue messages for recovery sessions
 
 ## Completed
-- [x] Added new `continueWithPlanMessage` config option
-- [x] Implemented conditional message selection based on session planning state
-- [x] Added validation for the new message configuration
+- [x] Added proactive compaction check during active generation (when not planning)
+- [x] Improved continue message selection with plan-aware variant
+- [x] Enhanced token tracking during step processing
 
 ## In Progress
-- [x] Implementation of plan-aware continue message logic
+- [ ] No active work in progress beyond these changes
 
 ## Blockers
-- None identified
+- None identified for this commit
 
 ## Next Steps
-1. Verify the new message improves recovery experience
-2. Consider adding more context-aware message variants
+1. Verify proactive compaction triggers at appropriate token thresholds
+2. Test plan-aware continue messages in various session states
+3. Document the new compaction behavior in architecture docs

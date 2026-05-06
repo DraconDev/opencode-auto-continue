@@ -180,8 +180,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               if (compacted) {
                 log('emergency compaction succeeded for session:', sid);
                 // Queue a short continue after emergency compaction
+                // Use plan-aware message if session was planning
                 s.needsContinue = true;
-                s.continueMessageText = config.shortContinueMessage;
+                s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
                 await review.sendContinue(sid);
               } else {
                 log('emergency compaction failed for session:', sid);
@@ -365,10 +366,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 // This is the most accurate token count available
                 s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
                 log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
-              }
             }
           }
-          if (partType === "compaction") {
+
+          // Check for proactive compaction after token accumulation
+          // This catches context bloat during active generation, not just at message boundaries
+          if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
+            await compaction.maybeProactiveCompact(sid);
+          }
+        }
+        if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
             s.compacting = true;
           }
