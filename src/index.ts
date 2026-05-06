@@ -18,6 +18,7 @@ import { createTerminalModule } from "./terminal.js";
 import { createNotificationModule } from "./notifications.js";
 import { createNudgeModule } from "./nudge.js";
 import { createStatusFileModule } from "./status-file.js";
+import { createRecoveryModule } from "./recovery.js";
 import { createCompactionModule } from "./compaction.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
