@@ -4,17 +4,18 @@
 Removed redundant busy state tracking from nudge scheduling logic
 
 ## Context
-This change eliminates duplicate state tracking in the nudge scheduling system, which was previously tracking busy states in both the main flow and the nudge scheduling logic.
+The `wasBusy` state variable was being tracked but not used in the nudge scheduling logic, making it redundant. This cleanup simplifies the state management and reduces potential confusion in the recovery system.
 
 ## Completed
-- [x] Removed redundant `s.wasBusy` assignment in the nudge scheduling logic
+- [x] Removed the `wasBusy` state variable from the recovery state object
+- [x] Simplified the nudge scheduling logic by removing unused state tracking
 
 ## In Progress
-- [x] Refactoring of nudge scheduling system
+- [ ] None (this is a complete cleanup change)
 
 ## Blockers
-- None identified in this change
+- None (this is a straightforward refactoring)
 
 ## Next Steps
 1. Verify no regression in nudge scheduling behavior
-2. Continue refactoring related status handling components
+2. Consider further state cleanup opportunities in related modules
