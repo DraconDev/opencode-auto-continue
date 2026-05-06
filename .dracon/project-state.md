@@ -1,22 +1,24 @@
 # Project State
 
 ## Current Focus
-Added proactive session compaction when token usage exceeds thresholds
+Improved token tracking accuracy across multiple data sources for session management.
 
 ## Context
-This change implements proactive session compaction to prevent token limits from being hit during active sessions, improving user experience by maintaining session continuity.
+The plugin previously relied on `session.status()` for token tracking, but this was removed due to redundancy. The new approach consolidates token counts from three distinct sources to ensure accurate tracking and proactive session compaction.
 
 ## Completed
-- [x] Added token threshold check for proactive compaction
-- [x] Only trigger compaction when not already planning or compacting
-- [x] Only trigger when estimated tokens are positive
+- [x] Added token tracking from error messages (`session.error`)
+- [x] Added token tracking from step-finish parts (`message.part.updated`)
+- [x] Added token tracking from assistant messages (`message.updated`)
+- [x] Implemented fallback text-based token estimation for non-tokenized parts
+- [x] Documented the running sum of estimated tokens and its intentional overestimation
 
 ## In Progress
-- [x] Proactive compaction implementation
+- [ ] None (documentation complete)
 
 ## Blockers
-- None identified
+- None (documentation-only change)
 
 ## Next Steps
-1. Add unit tests for proactive compaction logic
-2. Verify compaction behavior with various token thresholds
+1. Verify token tracking accuracy in integration tests
+2. Ensure proactive compaction triggers correctly when thresholds are exceeded

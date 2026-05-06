@@ -123,12 +123,25 @@ stall timer fires → recover(sid)
 
 ## Token Estimation
 
-Counts ALL part types (not just text) with industry-standard ratios:
+Three actual data sources (in order of accuracy):
+
+1. **Error messages** (`session.error`) — exact counts from "You requested a total of 264230 tokens: 232230 input, 32000 output"
+2. **step-finish parts** (`message.part.updated`) — `{ input, output, reasoning, cache }` per completion
+3. **AssistantMessage** (`message.updated`) — `{ input, output, reasoning, cache }` per message
+
+Token accumulation:
+- `message.updated` (assistant): `s.estimatedTokens += input + output + reasoning`
+- `message.part.updated` (step-finish): `s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens)`
+- `session.error`: `s.estimatedTokens = Math.max(s.estimatedTokens, parsedTotal)`
+
+**Why session.status() doesn't help**: OpenCode SDK's `SessionStatus` type is only `{ type: "idle" | "busy" | "retry" }` — no token fields. The plugin relies on the three sources above instead.
+
+**Text-based fallback estimation** (for text/reasoning/tool parts without tokens):
 - English text: `chars × 0.75 / 4` tokens
 - Code: `chars × 1.0 / 4` tokens
 - Digits: `chars × 0.5 / 4` tokens
 
-If `session.status()` returns `tokensInput`/`tokensOutput`/`totalTokens`, those override estimates.
+**Important**: `estimatedTokens` is a running sum of all message tokens. This WILL exceed actual context window because old messages get dropped. Intentional — better to over-estimate and compact early.
 
 ## Proactive Compaction
 
