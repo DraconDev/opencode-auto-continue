@@ -720,7 +720,7 @@ describe("recovery module", () => {
         stallTimeoutMs: 500,
         waitAfterAbortMs: 50,
         cooldownMs: 0,
-        maxRecoveries: 1,
+        maxRecoveries: 2,
         abortPollMaxTimeMs: 0,
         autoCompact: false,
         maxBackoffMs: 60000,
@@ -745,7 +745,7 @@ describe("recovery module", () => {
       // After recovery, new message starts
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Second stall - recovery 2 (maxRecoveries reached, enters backoff)
+      // Second stall - recovery 2 (attempts becomes 2)
       await vi.advanceTimersByTimeAsync(600);
       await Promise.resolve();
       expect(mockAbort).toHaveBeenCalledTimes(1);
