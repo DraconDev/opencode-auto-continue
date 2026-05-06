@@ -1,10 +1,11 @@
 import { type PluginConfig, type SessionState, formatDuration } from "./shared.js";
+import type { TypedPluginInput } from "./types.js";
 
 export interface TerminalDeps {
   config: Pick<PluginConfig, "terminalTitleEnabled" | "terminalProgressEnabled" | "stallTimeoutMs">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
-  input: unknown;
+  input: TypedPluginInput;
 }
 
 export function createTerminalModule(deps: TerminalDeps) {

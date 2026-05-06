@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved type safety in the review module by removing unnecessary type assertions.
+Improved type safety in the terminal module by adding proper typing for the input parameter.
 
 ## Context
-The review module was recently refactored to use a dedicated module, and this change eliminates unsafe type assertions that were previously used to access client APIs.
+This change follows a pattern of improving type safety across the codebase, particularly in modules that handle plugin inputs. The terminal module was previously using an untyped `input` parameter, which could lead to runtime errors.
 
 ## Completed
-- [x] Removed `(input as any)` type assertions from all client API calls in the review module
-- [x] Maintained all existing functionality while improving type safety
+- [x] Added proper typing for the `input` parameter in `TerminalDeps` using `TypedPluginInput`
+- [x] Removed the generic `unknown` type in favor of a more specific type
 
 ## In Progress
 - [ ] No active work in progress
 
 ## Blockers
-- None
+- None identified
 
 ## Next Steps
-1. Verify no runtime errors occur after type assertion removal
-2. Consider adding proper type definitions for the input parameter if needed
+1. Verify that all terminal module consumers are properly typed
+2. Consider similar type improvements for other modules that use similar patterns
