@@ -296,6 +296,7 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
       "proactiveCompactAtPercent": 50,
       "compactRetryDelayMs": 3000,
       "compactMaxRetries": 3,
+      "compactReductionFactor": 0.7,
       "shortContinueMessage": "Continue.",
       "tokenLimitPatterns": ["context length", "maximum context length", "token count exceeds"],
       "timerToastEnabled": true,

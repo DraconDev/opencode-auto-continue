@@ -1,23 +1,20 @@
 # Project State
 
 ## Current Focus
-Added documentation for context window sizing and compaction configuration in the README.
+Added configuration for compaction reduction factor in context window management
 
 ## Context
-The change addresses the need to provide clear guidance for configuring proactive compaction thresholds across different model context sizes, particularly for models with varying context limits (e.g., o1 models with 152k context).
+This change was prompted by the need to optimize memory usage during compaction operations. The new `compactReductionFactor` parameter allows fine-tuning how aggressively the system reduces token counts during compaction.
 
 ## Completed
-- [x] Added `compactReductionFactor` documentation (0.7 default)
-- [x] Created context window sizing table with recommended configurations
-- [x] Included example configuration for 152k context models
-- [x] Explained threshold calculation logic
+- [x] Added `compactReductionFactor` configuration option with default value of 0.7
 
 ## In Progress
-- [x] Documentation update for compaction behavior
+- [x] Documentation update for compaction configuration
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Verify documentation clarity with team
-2. Consider adding visual examples of compaction behavior
+1. Verify the impact of the new factor on memory usage in integration tests
+2. Document the purpose and effect of the new configuration parameter
