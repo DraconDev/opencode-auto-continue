@@ -60,17 +60,6 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const statusData = statusResult.data as Record<string, { type: string }>;
       const sessionStatus = statusData[sessionId];
 
-      if (sessionStatus && typeof sessionStatus === 'object') {
-        const st = sessionStatus as any;
-        if (typeof st.tokensInput === 'number' || typeof st.totalTokens === 'number') {
-          const actualTokens = st.totalTokens || (st.tokensInput + (st.tokensOutput || 0));
-          if (actualTokens > 0) {
-            s.estimatedTokens = Math.max(s.estimatedTokens, actualTokens);
-            log('read actual tokens from session status:', actualTokens);
-          }
-        }
-      }
-
       if (!sessionStatus || sessionStatus.type !== "busy") {
         s.aborting = false;
         return;
