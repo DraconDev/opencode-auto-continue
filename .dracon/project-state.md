@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Added detailed documentation for context window sizing and compaction thresholds across different model sizes.
+Added a note about a bug in the build mode where a "continue" action is being pushed instead of the expected behavior.
 
 ## Context
-The change improves clarity around how proactive compaction thresholds are calculated for different model sizes, and adds documentation for post-compaction token reset behavior.
+This appears to be a bug report or observation about incorrect behavior in the build mode when handling long-running operations in plan mode.
 
 ## Completed
-- [x] Added specific threshold examples for 152k, 128k, and 262k context models
-- [x] Documented post-compaction token reduction logic with concrete example
-- [x] Updated documentation to reflect current implementation details
+- [x] Added a note documenting the bug where "continue" is incorrectly pushed in build mode during long-running plan operations
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Investigating the root cause of the bug
 
 ## Blockers
-- None identified
+- Need to verify the exact conditions under which this bug occurs
 
 ## Next Steps
-1. Review documentation for completeness and accuracy
-2. Consider adding visual examples if needed for complex scenarios
+1. Investigate and reproduce the bug
+2. Implement a fix for the incorrect "continue" action in build mode
