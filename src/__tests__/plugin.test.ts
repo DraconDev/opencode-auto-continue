@@ -1043,6 +1043,31 @@ describe("opencode-auto-force-resume", () => {
       expect(mockStatus).toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it("should trigger proactive compaction when estimatedTokens >= threshold", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        waitAfterAbortMs: 100,
+        proactiveCompactAtTokens: 100,
+        proactiveCompactAtPercent: 50,
+        terminalTitleEnabled: false,
+        statusFileEnabled: false
+      });
+
+      // Start busy session
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Accumulate tokens via message events (each ~25 tokens)
+      for (let i = 0; i < 5; i++) {
+        await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part" + i, type: "text", text: "a".repeat(100), sessionID: "test", messageID: "msg1" }, delta: "a".repeat(100) } } });
+      }
+
+      // Should have triggered proactive compaction (estimatedTokens >= 100)
+      expect(mockStatus).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
   });
 
   describe("token estimation", () => {

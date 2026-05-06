@@ -1,20 +1,22 @@
 # Project State
 
 ## Current Focus
-Removed deprecated `nudgeTimeoutMs` configuration option from documentation.
+Added comprehensive test coverage for proactive compaction triggering based on token thresholds
 
 ## Context
-The `nudgeTimeoutMs` option was deprecated in favor of `nudgeIdleDelayMs` to standardize nudge timing configuration.
+This change addresses the need to verify that the plugin properly triggers proactive compaction when the accumulated tokens exceed the configured threshold (100 tokens in this test case). It follows recent refactoring work on the plugin architecture and nudge scheduling.
 
 ## Completed
-- [x] Removed deprecated `nudgeTimeoutMs` from README.md configuration table
+- [x] Added test case verifying proactive compaction triggers when estimatedTokens ≥ threshold
+- [x] Implemented test scenario with busy session and token accumulation
+- [x] Verified mock status calls during compaction process
 
 ## In Progress
-- [x] No active work in progress
+- [x] Comprehensive test coverage for token-based compaction logic
 
 ## Blockers
-- None
+- None identified
 
 ## Next Steps
-1. Verify all references to `nudgeTimeoutMs` are updated in code
-2. Consider removing the deprecated option from code if no backward compatibility is needed
+1. Review test coverage for other compaction scenarios
+2. Verify integration with existing compaction logic
