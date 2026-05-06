@@ -131,7 +131,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       // Show warning toast
       if (config.showToasts) {
         try {
-          await (input as any).client.tui.showToast({
+          await input.client.tui.showToast({
             query: { directory: (input as any).directory || "" },
             body: {
               title: "Nudge Paused",
@@ -167,7 +167,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     // Send it!
     log("sending nudge prompt", { sessionId, messageText });
     try {
-      const promptResponse = await (input as any).client.session.prompt({
+      const promptResponse = await input.client.session.prompt({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" },
         body: {
@@ -197,7 +197,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       // Show info toast
       if (config.showToasts) {
         try {
-          await (input as any).client.tui.showToast({
+          await input.client.tui.showToast({
             query: { directory: (input as any).directory || "" },
             body: {
               title: "Nudge Sent",
