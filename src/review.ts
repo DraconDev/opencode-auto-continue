@@ -70,8 +70,7 @@ export function createReviewModule(deps: ReviewDeps) {
     if (!s || !s.needsContinue) return;
 
     const messageText = s.continueMessageText;
-    s.needsContinue = false;
-    s.continueMessageText = '';
+    // NOTE: We do NOT clear needsContinue here — only on success
 
     log('sending continue prompt from event handler');
 
@@ -89,6 +88,10 @@ export function createReviewModule(deps: ReviewDeps) {
         },
       });
 
+      // Only clear after successful send
+      s.needsContinue = false;
+      s.continueMessageText = '';
+
       log('continue sent successfully');
       s.recoverySuccessful++;
       s.lastRecoverySuccess = Date.now();
@@ -96,7 +99,6 @@ export function createReviewModule(deps: ReviewDeps) {
         const recoveryTime = Date.now() - s.recoveryStartTime;
         s.totalRecoveryTimeMs += recoveryTime;
         s.recoveryTimes.push(recoveryTime);
-        // Keep only last 100 recovery times to prevent memory bloat
         if (s.recoveryTimes.length > 100) {
           s.recoveryTimes.shift();
         }
@@ -115,7 +117,6 @@ export function createReviewModule(deps: ReviewDeps) {
         const compacted = await forceCompact(sessionId);
         if (compacted) {
           log('compaction succeeded, retrying continue with short message');
-          // Retry after compaction with very short message
           await new Promise(r => setTimeout(r, 2000));
           try {
             s.messageCount++;
@@ -130,6 +131,9 @@ export function createReviewModule(deps: ReviewDeps) {
                 }],
               },
             });
+            // Only clear after retry success
+            s.needsContinue = false;
+            s.continueMessageText = '';
             log('retry after compaction succeeded');
           } catch (e2) {
             log('retry after compaction failed:', e2);
