@@ -1,16 +1,14 @@
 # Project State
 
 ## Current Focus
-Refactored model context limit caching to improve testability and reduce module-level state pollution
+Added re-export of `isTokenLimitError` from `compaction.ts` to improve module consistency.
 
 ## Context
-The original implementation used module-level variables for caching, which made testing difficult and could lead to unintended state sharing. This change encapsulates the caching logic in a class to provide better isolation and control.
+This change ensures the `isTokenLimitError` utility function is properly exposed at the module level, making it available for external consumers without requiring direct imports from the internal implementation file.
 
 ## Completed
-- [x] Encapsulated model context caching in a `ModelContextCache` class
-- [x] Added proper type definitions for the cache structure
-- [x] Implemented cache invalidation method
-- [x] Maintained all existing functionality while improving architecture
+- [x] Added re-export of `isTokenLimitError` from `compaction.ts`
+- [x] Maintained existing type export for `CompactionModule`
 
 ## In Progress
 - [ ] No active work in progress
@@ -19,5 +17,5 @@ The original implementation used module-level variables for caching, which made 
 - None identified
 
 ## Next Steps
-1. Verify test coverage for the new caching implementation
-2. Consider adding performance benchmarks for the cache operations
+1. Verify no breaking changes in dependent modules
+2. Update documentation if needed to reflect the new export pattern
