@@ -618,6 +618,7 @@ describe("opencode-auto-force-resume", () => {
       // After compaction, session.idle with pending todos should still trigger nudge
       // This proves hasOpenTodos and other state survived the compacted event
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
       
       expect(mockPrompt).toHaveBeenCalled();
       vi.useRealTimers();
