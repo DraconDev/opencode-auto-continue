@@ -573,9 +573,30 @@ Triggers BEFORE context becomes critical. Runs on:
 threshold = min(proactiveCompactAtTokens, modelContextLimit * proactiveCompactAtPercent / 100)
 ```
 
-For example, with a 262k context model and 50%:
+**For 152k context models**:
 ```
-threshold = min(100000, 262144 * 0.50) = min(100000, 131072) = 100000 tokens
+threshold = min(75000, 152000 * 0.50) = min(75000, 76000) = 75000 tokens
+```
+
+**For 128k context models**:
+```
+threshold = min(75000, 128000 * 0.50) = min(75000, 64000) = 64000 tokens
+```
+
+**For 262k context models**:
+```
+threshold = min(75000, 262144 * 0.50) = min(75000, 131072) = 75000 tokens
+```
+
+**Post-compaction token reset**:
+After successful compaction, tokens are reduced using `compactReductionFactor` (default 0.7):
+```
+estimatedTokens = max(estimatedTokens - preTokens * 0.7, preTokens * 0.3)
+```
+
+For example, with 100k pre-compaction tokens and default factor:
+```
+estimatedTokens = max(100000 - 70000, 30000) = 30000
 ```
 
 ### 2. Recovery Compaction (Reactive)

@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added specialized configuration for large-context models in long-running sessions
+Added detailed documentation for context window sizing and compaction thresholds across different model sizes.
 
 ## Context
-The changes address the need for more aggressive compaction strategies when working with models that support 152k+ context windows (like o1-preview and o1-mini), which require different token management thresholds than smaller-context models.
+The change improves clarity around how proactive compaction thresholds are calculated for different model sizes, and adds documentation for post-compaction token reset behavior.
 
 ## Completed
-- [x] Added specialized configuration for 152k context models with adjusted compaction thresholds
-- [x] Updated documentation to clarify compaction parameters for different model sizes
-- [x] Maintained backward compatibility with existing configurations
+- [x] Added specific threshold examples for 152k, 128k, and 262k context models
+- [x] Documented post-compaction token reduction logic with concrete example
+- [x] Updated documentation to reflect current implementation details
 
 ## In Progress
-- [x] Testing compaction behavior with actual large-context models
+- [ ] No active work in progress
 
 ## Blockers
-- None identified at this stage
+- None identified
 
 ## Next Steps
-1. Verify compaction behavior with actual large-context model sessions
-2. Document any additional edge cases discovered during testing
+1. Review documentation for completeness and accuracy
+2. Consider adding visual examples if needed for complex scenarios
