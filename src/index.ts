@@ -203,7 +203,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       log('review sent successfully');
     } catch (e: any) {
       log('review failed:', e);
-      if (isTokenLimitError(e)) {
+      if (compaction.isTokenLimitError(e)) {
         log('token limit error in review, forcing compaction');
         await compaction.forceCompact(sessionId);
       }
@@ -255,7 +255,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       writeStatusFile(sessionId);
       
       // Handle token limit error
-      if (isTokenLimitError(e)) {
+      if (compaction.isTokenLimitError(e)) {
         s.tokenLimitHits++;
         log('token limit error detected (hit #' + s.tokenLimitHits + '), forcing compaction');
         const compacted = await compaction.forceCompact(sessionId);
