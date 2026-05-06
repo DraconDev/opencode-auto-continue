@@ -1,22 +1,27 @@
 # Project State
 
 ## Current Focus
-Improved proactive session compaction with more precise token threshold calculations.
+Improved session event handling with more granular token tracking and proactive compaction.
 
 ## Context
-The proactive compaction system now includes message updates with tokens and dynamic threshold calculations based on model size to optimize memory usage and prevent token limit errors.
+The changes enhance token tracking accuracy and session management by:
+1. Adding explicit handling for token limit errors
+2. Improving token tracking for different message types
+3. Refining session state transitions
 
 ## Completed
-- [x] Added message.updated events to compaction triggers
-- [x] Implemented dynamic token thresholds (100k for large models, 75k for small models)
-- [x] Updated documentation with new configuration details
+- [x] Added token limit error handling with emergency compaction
+- [x] Enhanced token tracking for assistant messages
+- [x] Improved step-finish token extraction
+- [x] Added message.updated event handling for user messages
+- [x] Refined session.status (idle) logic with nudge conditions
 
 ## In Progress
-- [ ] Testing edge cases with different model sizes
+- [x] Documentation updates for session event handling
 
 ## Blockers
-- Need to verify threshold calculations with various model configurations
+- None identified
 
 ## Next Steps
-1. Complete testing with different model sizes
-2. Monitor compaction behavior in production environments
+1. Verify test coverage for new token tracking logic
+2. Review session compaction thresholds and behavior

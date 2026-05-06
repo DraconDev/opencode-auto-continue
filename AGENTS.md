@@ -34,18 +34,21 @@ session.deleted / session.ended → cleanup
 
 | Event | Effect |
 |-------|--------|
-| `session.status (busy)` | Set `wasBusy = true`, start stall timer, update progress |
-| `session.status (idle)` | If `needsContinue` → send queued continue. If `wasBusy && hasOpenTodos` → send nudge. Reset `wasBusy`. |
+| `session.status (busy)` | Start stall timer, update progress |
+| `session.status (idle)` | If `needsContinue` → send queued continue. If `wasBusy && hasOpenTodos` → send nudge. |
 | `session.status (retry)` | Treat as busy (valid progress) |
+| `message.updated` (assistant tokens) | Update `estimatedTokens`, check proactive compaction |
+| `message.updated` (user) | Reset counters, cancel nudge |
 | `message.part.updated` (real progress) | Reset stall timer, reset attempts |
+| `message.part.updated` (step-finish tokens) | Update `estimatedTokens` with actual token counts |
 | `message.part.updated` (synthetic) | **Ignore** — prevents infinite loop |
 | `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
 | `message.part.updated` (text with plan) | Set `planning = true`, pause monitoring |
 | `todo.updated` (all done) | Trigger review after debounce |
 | `todo.updated` (has pending) | Set `hasOpenTodos = true`, start nudge timer |
 | `session.error` (MessageAbortedError) | Set `userCancelled = true`, clear timer |
+| `session.error` (token limit) | Parse tokens, increment `tokenLimitHits`, trigger emergency compaction |
 | `session.error` (other) | Clear timer, monitoring pauses |
-| `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
 | `session.compacted` | **Do NOT reset** — clear compacting flag, reset estimates, preserve state |
 | `session.idle` | **Do NOT reset** — preserve nudge state, trigger nudge |
 | `session.deleted` / `session.ended` | Call `resetSession()` — full cleanup |
