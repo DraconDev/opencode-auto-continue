@@ -499,11 +499,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
           // Start timer toast if not already running
           if (s.actionStartedAt === 0) {
-            startTimerToast(sid);
+            notifications.startTimerToast(sid);
           }
           // Update terminal title and progress
-          updateTerminalTitle(sid);
-          updateTerminalProgress(sid);
+          terminal.updateTerminalTitle(sid);
+          terminal.updateTerminalProgress(sid);
           // Check for proactive compaction when resuming busy
           // Catches pre-existing context bloat from prior interactions
           await maybeProactiveCompact(sid);
