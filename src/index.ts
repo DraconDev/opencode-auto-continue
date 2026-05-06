@@ -70,6 +70,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
       s.lastNudgeAt = 0;
       s.hasOpenTodos = false;
+      s.lastKnownTodos = [];
       s.needsContinue = false;
       s.continueMessageText = '';
       s.messageCount = 0;
