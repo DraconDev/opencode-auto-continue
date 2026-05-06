@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored status line hook registration to use terminal module
+Refactored nudge scheduling condition to remove redundant busy state check
 
 ## Context
-This change aligns with recent terminal and notification refactoring efforts, centralizing status line functionality within the terminal module for better organization and maintainability.
+The change simplifies the nudge scheduling logic by removing the `wasBusy` check, which was previously used to determine if a session should be nudged when transitioning from busy to idle with pending todos.
 
 ## Completed
-- [x] Moved `registerStatusLineHook()` to use `terminal.registerStatusLineHook()` for consistent terminal module usage
+- [x] Removed redundant `wasBusy` check from nudge scheduling condition
+- [x] Simplified the condition to only check for idle status, pending todos, and nudge enabled
 
 ## In Progress
-- [x] None - this is a completed refactoring
+- [ ] Verify no regression in nudge scheduling behavior
 
 ## Blockers
-- None
+- Need to confirm if the `wasBusy` state tracking is still needed elsewhere in the system
 
 ## Next Steps
-1. Verify no regression in status line functionality
-2. Update related documentation if needed
+1. Run regression tests to verify nudge behavior
+2. Review if `wasBusy` state tracking can be completely removed or consolidated

@@ -518,7 +518,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           await maybeProactiveCompact(sid);
         }
         // Auto-continue when transitioning busy→idle with pending todos
-        if (status?.type === "idle" && s.wasBusy && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
+        if (status?.type === "idle" && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
           s.wasBusy = false;
           nudge.scheduleNudge(sid);
         }
