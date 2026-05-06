@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved error handling in the AutoForceResumePlugin by removing redundant error logging and simplifying the event handler structure.
+Disable OpenCode's generic synthetic continue after compaction to use custom recovery flow
 
 ## Context
-The change addresses a fail-open wrapper implementation that was previously adding unnecessary error logging while maintaining the same error-handling behavior. This aligns with recent work on robust session recovery and error prevention.
+The change addresses an issue where the OpenCode framework automatically queues a synthetic continue after compaction, which conflicts with our custom recovery flow that handles todo context. This prevents proper session recovery during interruptions.
 
 ## Completed
-- [x] Removed redundant error logging in the event handler
-- [x] Simplified the event handler structure while maintaining fail-open behavior
+- [x] Added hook to disable OpenCode's autocontinue for compaction
+- [x] Implemented session-specific check for pending continues
+- [x] Added logging for custom continue handling
 
 ## In Progress
-- [x] N/A (change is complete)
+- [ ] None (change is complete)
 
 ## Blockers
-- N/A (change is complete)
+- None (change is complete)
 
 ## Next Steps
-1. Verify the change doesn't affect error recovery behavior in integration tests
-2. Consider adding more specific error handling for critical failure cases if needed
+1. Verify integration with recovery flow tests
+2. Monitor for any regression in session continuity
