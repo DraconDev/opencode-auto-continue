@@ -329,14 +329,16 @@ describe("opencode-auto-force-resume", () => {
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
 
-      // First session.idle should trigger nudge
+      // First session.idle should trigger nudge after idle delay
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
 
       mockPrompt.mockClear();
 
       // Second session.idle immediately after should NOT trigger (cooldown)
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockPrompt).not.toHaveBeenCalled();
 
       vi.useRealTimers();
