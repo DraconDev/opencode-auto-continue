@@ -55,16 +55,10 @@ export function createNudgeModule(deps: NudgeDeps) {
 
   // Main nudge injection — called after idle delay
   async function injectNudge(sessionId: string): Promise<void> {
-    if (isDisposed()) {
-      log("nudge skipped - plugin disposed");
-      return;
-    }
+    if (isDisposed()) return;
 
     const s = sessions.get(sessionId);
-    if (!s) {
-      log("nudge skipped - session not found:", sessionId);
-      return;
-    }
+    if (!s) return;
 
     if (!config.nudgeEnabled) {
       log("nudge disabled, skip");
