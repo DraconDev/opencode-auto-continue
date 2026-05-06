@@ -402,14 +402,16 @@ describe("opencode-auto-force-resume", () => {
         { id: "t1", content: "test task", status: "in_progress" }
       ] } } });
 
-      // First session.idle — should trigger nudge
+      // First session.idle — should trigger nudge after idle delay
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
 
       mockPrompt.mockClear();
 
       // Second session.idle — nudge should NOT fire because cooldown hasn't passed
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
       expect(mockPrompt).not.toHaveBeenCalled();
       vi.useRealTimers();
     });

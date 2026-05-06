@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for nudge notification scheduling by adding timer advancement
+Improved test coverage for nudge notification scheduling by adding timer advancement in tests
 
 ## Context
-The test was previously verifying that the nudge notification system schedules a nudge after idle delay, but wasn't properly waiting for the timer to complete. This change ensures the test properly simulates the asynchronous timer behavior.
+The test was verifying nudge notification behavior after idle events, but needed more precise timing control to properly test the cooldown period between nudges.
 
 ## Completed
-- [x] Added `vi.advanceTimersByTimeAsync(500)` to properly simulate timer completion in test
-- [x] Updated comment to accurately reflect the test's purpose
+- [x] Added `vi.advanceTimersByTimeAsync(500)` to simulate time passing between idle events
+- [x] Updated test comments to clarify the timing expectations
+- [x] Maintained the original test assertions about nudge behavior
 
 ## In Progress
-- [ ] None
+- [x] Test coverage improvements for nudge notification system
 
 ## Blockers
-- None
+- None identified
 
 ## Next Steps
-1. Verify test passes with the new timer advancement
-2. Consider adding more edge case tests for nudge scheduling
+1. Verify test passes with the new timing control
+2. Consider adding more edge cases for nudge scheduling
