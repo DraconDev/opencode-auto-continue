@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Prevent compaction during active planning to avoid disrupting ongoing session operations.
+Added documentation for proactive compaction behavior during active planning.
 
 ## Context
-The system was compacting sessions even when planning was in progress, which could interrupt active operations. This change ensures compaction only occurs when the session is idle.
+This change clarifies that proactive compaction is deferred during active planning to prevent disrupting ongoing plan generation. It documents the existing behavior where compaction is skipped when `s.planning` is true, while still allowing emergency compaction for token limit errors.
 
 ## Completed
-- [x] Added check to skip compaction when `s.planning` is true
+- [x] Documented proactive compaction behavior during active planning
+- [x] Clarified that emergency compaction still occurs for token limit errors
 
 ## In Progress
-- [x] None (this is a focused bug fix)
+- [ ] None
 
 ## Blockers
-- None (this is a straightforward addition)
+- None
 
 ## Next Steps
-1. Verify no regression in compaction timing
-2. Update documentation if needed
+1. Verify documentation aligns with actual implementation
+2. Consider adding test cases to explicitly verify this behavior

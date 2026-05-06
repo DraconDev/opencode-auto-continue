@@ -151,6 +151,8 @@ Token accumulation:
 
 Triggers on: every progress event + session resume busy + idle + message.updated with tokens.
 
+**Skips during planning**: `maybeProactiveCompact` checks `s.planning` and returns early — compaction is deferred while the model is generating plan content. This prevents summarising away in-progress plans. Emergency compaction (token limit errors) still fires regardless.
+
 Config options:
 - `proactiveCompactAtTokens: 100000` — token threshold
 - `proactiveCompactAtPercent: 50` — % of model limit
