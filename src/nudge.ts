@@ -132,7 +132,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       if (config.showToasts) {
         try {
           await input.client.tui.showToast({
-            query: { directory: (input as any).directory || "" },
+            query: { directory: input.directory || "" },
             body: {
               title: "Nudge Paused",
               message: `No progress after ${s.nudgeCount} nudges. Complete a task to resume.`,
@@ -169,7 +169,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     try {
       const promptResponse = await input.client.session.prompt({
         path: { id: sessionId },
-        query: { directory: (input as any).directory || "" },
+        query: { directory: input.directory || "" },
         body: {
           parts: [
             {
@@ -198,7 +198,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       if (config.showToasts) {
         try {
           await input.client.tui.showToast({
-            query: { directory: (input as any).directory || "" },
+            query: { directory: input.directory || "" },
             body: {
               title: "Nudge Sent",
               message: `${pending.length} task(s) remaining`,

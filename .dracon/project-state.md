@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved type safety in the recovery module by removing unnecessary type assertions
+Improved type safety in nudge module by removing unnecessary type assertions for directory handling
 
 ## Context
-This change follows a pattern of improving type safety across the codebase by removing unsafe type assertions while maintaining functionality.
+The nudge module was previously using type assertions (`as any`) to access the directory property, which could lead to runtime errors if the property was missing. This change removes the type assertions and ensures proper type safety.
 
 ## Completed
-- [x] Removed `(input as any).directory` type assertion in favor of direct property access
-- [x] Applied consistent type handling for session operations in recovery module
+- [x] Removed type assertions for directory property access in toast notifications
+- [x] Removed type assertions for directory property access in prompt requests
+- [x] Maintained same functionality while improving type safety
 
 ## In Progress
-- [x] Ongoing effort to eliminate type assertions across the codebase
+- [x] No active work in progress
 
 ## Blockers
-- No blockers identified for this specific change
+- None
 
 ## Next Steps
-1. Review other modules for similar type assertion patterns
-2. Continue type safety improvements in related modules
+1. Verify no runtime errors occur after this change
+2. Consider adding proper type definitions for the input parameter if needed
