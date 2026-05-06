@@ -94,6 +94,7 @@ export interface PluginConfig {
   compactRetryDelayMs: number;
   compactMaxRetries: number;
   shortContinueMessage: string;
+  continueWithPlanMessage: string;
   tokenLimitPatterns: string[];
   timerToastEnabled: boolean;
   timerToastIntervalMs: number;
@@ -141,6 +142,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactRetryDelayMs: 3000,
   compactMaxRetries: 3,
   shortContinueMessage: "Continue.",
+  continueWithPlanMessage: "Please continue with your plan. You were in the middle of creating a plan — pick up where you left off.",
   tokenLimitPatterns: [
     'context length',
     'maximum context length',
@@ -197,6 +199,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (config.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${config.nudgeIdleDelayMs}`);
   if (config.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${config.nudgeMaxSubmits}`);
   if (!config.shortContinueMessage || config.shortContinueMessage.trim().length === 0) errors.push(`shortContinueMessage must be non-empty`);
+  if (!config.continueWithPlanMessage || config.continueWithPlanMessage.trim().length === 0) errors.push(`continueWithPlanMessage must be non-empty`);
   if (!Array.isArray(config.tokenLimitPatterns) || config.tokenLimitPatterns.length === 0) errors.push(`tokenLimitPatterns must be a non-empty array`);
 
   if (errors.length > 0) {

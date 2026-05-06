@@ -149,7 +149,11 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         maxAttempts: String(config.maxRecoveries),
       };
 
-      if (config.includeTodoContext) {
+      // If session was planning, use plan-aware continue message
+      if (s.planning) {
+        messageText = config.continueWithPlanMessage;
+        log('using plan-aware continue message');
+      } else if (config.includeTodoContext) {
         try {
           const todoResult = await input.client.session.todo({ path: { id: sessionId } });
           const todos = Array.isArray(todoResult.data) ? todoResult.data : [];

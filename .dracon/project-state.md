@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Fixed a typo in a bug note about mode switching behavior.
+Added plan-aware continue message for recovery sessions
 
 ## Context
-The note previously contained a typo ("faily long tie") and incorrectly mentioned "p" instead of "plan" in the expected behavior description. This was a documentation-only correction to clarify the bug report.
+The change improves recovery behavior by providing a specialized message when continuing a session that was in planning mode, rather than using the generic continue message.
 
 ## Completed
-- [x] Corrected typo in bug note ("faily" → "failing")
-- [x] Fixed incorrect mode name ("p" → "plan")
+- [x] Added new `continueWithPlanMessage` config option
+- [x] Implemented conditional message selection based on session planning state
+- [x] Added validation for the new message configuration
 
 ## In Progress
-- [ ] None (documentation-only change)
+- [x] Implementation of plan-aware continue message logic
 
 ## Blockers
-- None (documentation update complete)
+- None identified
 
 ## Next Steps
-1. Review other documentation for similar issues
-2. Verify if the described bug needs additional testing
+1. Verify the new message improves recovery experience
+2. Consider adding more context-aware message variants
