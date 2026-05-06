@@ -297,7 +297,7 @@ describe("compaction module", () => {
       vi.useRealTimers();
     });
 
-    it("should respect compactCooldownMs", async () => {
+    it("should handle proactive compaction checks during generation", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       mockSummarize.mockResolvedValue({ data: {}, error: undefined });
@@ -305,15 +305,16 @@ describe("compaction module", () => {
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 5000,
         autoCompact: true,
-        compactCooldownMs: 60000, // 1 minute cooldown
-        proactiveCompactAtTokens: 10, // Low threshold to trigger
+        compactCooldownMs: 60000,
+        proactiveCompactAtTokens: 10,
         terminalTitleEnabled: false,
         statusFilePath: ""
       });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Accumulate tokens above threshold
+      // Each part update now triggers a proactive compact check
+      // Just verify it doesn't crash
       for (let i = 0; i < 5; i++) {
         await plugin.event({ event: { type: "message.part.updated", properties: {
           sessionID: "test",
@@ -323,13 +324,10 @@ describe("compaction module", () => {
         } } });
       }
 
-      // Give time for any async operations
       await vi.advanceTimersByTimeAsync(100);
       await Promise.resolve();
 
-      // Verify plugin still works
       expect(true).toBe(true);
-
       vi.useRealTimers();
     });
   });
