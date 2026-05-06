@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for nudge abort and pause handling in the AutoForceResumePlugin
+Refactored test cases for needsContinue flag behavior in AutoForceResumePlugin
 
 ## Context
-The changes enhance test reliability by ensuring the plugin correctly clears the `hasOpenTodos` state when all todos are completed, preventing false nudges on session idle events.
+The test cases for handling the `needsContinue` flag in the AutoForceResumePlugin were being refactored to improve clarity and reliability. The original tests had complex timing and state management that made them harder to understand and maintain.
 
 ## Completed
-- [x] Added explicit idle event to verify nudge clearing behavior
-- [x] Improved test assertions to verify `hasOpenTodos` state transitions
-- [x] Added mock clearing to isolate test conditions
+- [x] Simplified test case for successful prompt handling
+- [x] Removed redundant test cases for failed prompt scenarios
+- [x] Improved test readability by focusing on the core behavior
 
 ## In Progress
-- [x] Comprehensive test coverage for nudge abort and pause handling
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Review test results for edge cases
-2. Consider adding more scenarios for partial completion states
+1. Review the refactored test cases for completeness
+2. Consider adding additional test cases for edge cases in needsContinue behavior
