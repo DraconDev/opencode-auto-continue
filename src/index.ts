@@ -519,7 +519,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         // Auto-continue when transitioning busy→idle with pending todos
         if (status?.type === "idle" && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
-          s.wasBusy = false;
           nudge.scheduleNudge(sid);
         }
         // Stop timer toast and clear terminal title/progress when session becomes idle

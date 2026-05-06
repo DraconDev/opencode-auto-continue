@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored nudge scheduling condition to remove redundant busy state check
+Removed redundant busy state tracking from nudge scheduling logic
 
 ## Context
-The change simplifies the nudge scheduling logic by removing the `wasBusy` check, which was previously used to determine if a session should be nudged when transitioning from busy to idle with pending todos.
+This change was prompted by the recent refactoring of the nudge scheduling system to improve its architecture and module separation. The `wasBusy` state variable was found to be redundant in the nudge scheduling logic.
 
 ## Completed
-- [x] Removed redundant `wasBusy` check from nudge scheduling condition
-- [x] Simplified the condition to only check for idle status, pending todos, and nudge enabled
+- [x] Removed redundant `wasBusy` state tracking from nudge scheduling logic
+- [x] Simplified nudge scheduling condition by removing unnecessary state check
 
 ## In Progress
-- [ ] Verify no regression in nudge scheduling behavior
+- [x] Ongoing improvements to nudge system architecture
 
 ## Blockers
-- Need to confirm if the `wasBusy` state tracking is still needed elsewhere in the system
+- None identified for this specific change
 
 ## Next Steps
-1. Run regression tests to verify nudge behavior
-2. Review if `wasBusy` state tracking can be completely removed or consolidated
+1. Continue testing the nudge scheduling system with the new architecture
+2. Review other areas of the codebase for potential redundant state tracking
