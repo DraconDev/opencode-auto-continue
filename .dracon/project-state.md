@@ -1,25 +1,23 @@
 # Project State
 
 ## Current Focus
-Refactored terminal status notifications test suite for robustness and maintainability
+Added documentation for context window sizing and compaction configuration in the README.
 
 ## Context
-The test suite for terminal status notifications was updated to improve reliability and reduce test fragility. The changes focus on making the tests more resilient to environment variations while maintaining comprehensive coverage.
+The change addresses the need to provide clear guidance for configuring proactive compaction thresholds across different model context sizes, particularly for models with varying context limits (e.g., o1 models with 152k context).
 
 ## Completed
-- [x] Simplified mock setup by inlining mock functions
-- [x] Reduced test fragility by removing direct file system assertions
-- [x] Improved test coverage for edge cases like special characters in paths
-- [x] Added basic validation for status file operations
-- [x] Refactored test organization to focus on integration behavior
+- [x] Added `compactReductionFactor` documentation (0.7 default)
+- [x] Created context window sizing table with recommended configurations
+- [x] Included example configuration for 152k context models
+- [x] Explained threshold calculation logic
 
 ## In Progress
-- [x] Comprehensive test coverage for terminal status notifications
+- [x] Documentation update for compaction behavior
 
 ## Blockers
-- Need to verify actual file system behavior in integration tests
-- Requires validation of status file content structure
+- None identified
 
 ## Next Steps
-1. Add integration tests for actual file system operations
-2. Implement proper validation of status file content structure
+1. Verify documentation clarity with team
+2. Consider adding visual examples of compaction behavior

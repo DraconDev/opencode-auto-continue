@@ -364,6 +364,34 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
 | `compactionVerifyWaitMs` | `10000` | Max wait time for compaction to complete (progressive checks at 2s/3s/5s) |
 | `compactCooldownMs` | `120000` | Min time between compaction attempts (2 min) |
+| `compactReductionFactor` | `0.7` | Estimated reduction ratio after compaction (70% → estimated tokens multiplied by 0.3) |
+
+### Context Window Sizing
+
+For models with different context limits, adjust `proactiveCompactAtPercent`:
+
+| Model Context | 50% Threshold | Recommended Config |
+|---------------|--------------|-------------------|
+| 32k | 16k | `proactiveCompactAtPercent: 50` |
+| 128k | 64k | `proactiveCompactAtPercent: 50` |
+| 200k | 100k | `proactiveCompactAtPercent: 50` (capped) |
+| **152k** (o1 models) | **76k** | `proactiveCompactAtPercent: 50` |
+| 256k | 128k | `proactiveCompactAtPercent: 50` |
+
+**Example for 152k context (o1-preview, o1-mini, etc.):**
+```json
+["opencode-auto-force-resume", {
+  "proactiveCompactAtTokens": 75000,
+  "proactiveCompactAtPercent": 50
+}]
+```
+
+With 152k context and 50%:
+```
+threshold = min(75000, 152000 * 0.5) = min(75000, 76000) = 75000 tokens
+```
+
+This means proactive compaction triggers around 75k tokens, leaving buffer before hitting the actual limit.
 
 ### Timer & Display Options
 
