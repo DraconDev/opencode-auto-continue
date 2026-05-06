@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved token tracking accuracy by adding robust parsing of token counts from error messages
+Removed redundant token tracking logic from session status responses
 
 ## Context
-To enhance session token tracking, we need to accurately capture token usage when token limit errors occur. This change addresses gaps in the current token estimation system by directly parsing token counts from error messages.
+This change removes duplicate token tracking code that was previously handling token information from status responses. The token tracking improvements were already implemented in other commits, making this redundant code unnecessary.
 
 ## Completed
-- [x] Added `parseTokensFromError` utility function to extract token counts from error messages
-- [x] Implemented token count updates when token limit errors occur
-- [x] Added logging for parsed token values to aid debugging
+- [x] Removed duplicate token tracking logic from session status handling
+- [x] Cleaned up redundant code that was previously handling token information from status responses
 
 ## In Progress
-- [ ] Comprehensive test coverage for the new token parsing functionality
+- [x] No active work in progress
 
 ## Blockers
-- Need to verify the error message format consistency across different API versions
+- None
 
 ## Next Steps
-1. Add unit tests for the token parsing functionality
-2. Validate error message formats from different API versions
-3. Document the new token tracking behavior in the project documentation
+1. Verify no regression in token tracking functionality
+2. Consider if additional token tracking improvements are needed

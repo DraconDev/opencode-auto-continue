@@ -249,21 +249,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         log('session.status:', sid, status?.type);
         const s = getSession(sid);
         
-        // Try reading actual token count from status response if available
-        // Some OpenCode versions include token info in status responses
-        if (status && typeof status === 'object') {
-          const rawStatus = status as any;
-          if (typeof rawStatus.tokensInput === 'number') {
-            s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.tokensInput);
-          }
-          if (typeof rawStatus.tokensOutput === 'number') {
-            s.estimatedTokens = Math.max(s.estimatedTokens, (rawStatus.tokensInput || 0) + rawStatus.tokensOutput);
-          }
-          if (typeof rawStatus.totalTokens === 'number') {
-            s.estimatedTokens = Math.max(s.estimatedTokens, rawStatus.totalTokens);
-          }
-        }
-        
         if (status?.type === "busy" || status?.type === "retry") {
           updateProgress(s);
           s.userCancelled = false;
