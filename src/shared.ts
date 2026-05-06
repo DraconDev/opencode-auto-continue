@@ -281,6 +281,47 @@ export function formatDuration(ms: number): string {
   return `${seconds}s`;
 }
 
+/**
+ * Parse token counts from error messages.
+ * OpenCode includes exact token counts in token limit error messages.
+ * 
+ * Examples:
+ * - "You requested a total of 264230 tokens: 232230 tokens from the input messages and 32000 tokens for the completion."
+ * - "This model's maximum context length is 128000 tokens. You requested 150000 tokens."
+ * 
+ * Returns: { total: number, input: number, output: number } or null if not found
+ */
+export function parseTokensFromError(error: any): { total: number; input: number; output: number } | null {
+  if (!error) return null;
+  const message = error.message || String(error);
+  
+  // Pattern 1: "You requested a total of 264230 tokens: 232230 tokens from the input messages and 32000 tokens for the completion."
+  const detailedMatch = message.match(/total of (\d+) tokens[:\s]+(\d+) tokens.*?input.*?and (\d+) tokens.*?completion/i);
+  if (detailedMatch) {
+    return {
+      total: parseInt(detailedMatch[1], 10),
+      input: parseInt(detailedMatch[2], 10),
+      output: parseInt(detailedMatch[3], 10),
+    };
+  }
+  
+  // Pattern 2: "You requested 264230 tokens" (simpler form)
+  const simpleMatch = message.match(/requested (\d+) tokens/i);
+  if (simpleMatch) {
+    const total = parseInt(simpleMatch[1], 10);
+    return { total, input: total, output: 0 };
+  }
+  
+  // Pattern 3: "... 264230 tokens ..." (just extract the largest number near "tokens")
+  const looseMatch = message.match(/(\d{4,})\s+tokens?/i);
+  if (looseMatch) {
+    const total = parseInt(looseMatch[1], 10);
+    return { total, input: total, output: 0 };
+  }
+  
+  return null;
+}
+
 export function createSession(): SessionState {
   const now = Date.now();
   return {

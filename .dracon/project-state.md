@@ -1,15 +1,15 @@
 # Project State
 
 ## Current Focus
-Improved token tracking accuracy by adding step-finish token extraction
+Added robust token parsing from error messages to improve token tracking accuracy
 
 ## Context
-The previous token estimation was based on text length, which could be inaccurate. Step-finish events now provide precise token counts from the completion step, which should be more reliable for session token management.
+To handle token limit errors more effectively, we need to extract precise token counts from error messages. This is particularly important for OpenCode's token management system.
 
 ## Completed
-- [x] Added step-finish token extraction logic
-- [x] Implemented fallback to estimated tokens when step-finish tokens aren't available
-- [x] Added debug logging for token tracking
+- [x] Added `parseTokensFromError` function to extract token counts from error messages
+- [x] Implemented three parsing patterns to handle different error message formats
+- [x] Returns structured token data or null if parsing fails
 
 ## In Progress
 - [ ] No active work in progress
@@ -18,5 +18,5 @@ The previous token estimation was based on text length, which could be inaccurat
 - None identified
 
 ## Next Steps
-1. Verify token tracking accuracy in integration tests
-2. Consider adding token tracking for other message types if needed
+1. Write unit tests for the new token parsing functionality
+2. Integrate with existing token tracking system
