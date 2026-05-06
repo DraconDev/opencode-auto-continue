@@ -107,6 +107,7 @@ export interface PluginConfig {
   terminalProgressEnabled: boolean;
   compactionVerifyWaitMs: number;
   compactCooldownMs: number;
+  compactReductionFactor: number;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
