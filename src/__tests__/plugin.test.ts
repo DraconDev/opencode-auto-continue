@@ -53,7 +53,7 @@ describe("opencode-auto-force-resume", () => {
     it("should set stall timer on busy session.status", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(5000);
@@ -64,7 +64,7 @@ describe("opencode-auto-force-resume", () => {
 
     it("should NOT set timer for idle session.status", async () => {
       vi.useFakeTimers();
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
       await vi.advanceTimersByTimeAsync(10000);
@@ -76,7 +76,7 @@ describe("opencode-auto-force-resume", () => {
     it("should set timer on message.part.updated with delta", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(5000);
@@ -88,7 +88,7 @@ describe("opencode-auto-force-resume", () => {
     it("should reset timer on new progress event", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(4000);
@@ -157,7 +157,7 @@ describe("opencode-auto-force-resume", () => {
     it("should recover if lastProgressAt is old enough", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(5000);
@@ -590,7 +590,7 @@ describe("opencode-auto-force-resume", () => {
     });
 
     it("should clear session on session.deleted after session.idle", async () => {
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await plugin.event({ event: { type: "session.deleted", properties: { sessionID: "test", info: {} } } });
@@ -651,7 +651,7 @@ describe("opencode-auto-force-resume", () => {
     it("should track tool parts as progress", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "tool", callID: "call1", tool: "bash", state: { type: "running" }, sessionID: "test", messageID: "msg1" }, delta: "" } } });
       await vi.advanceTimersByTimeAsync(4000);
@@ -663,7 +663,7 @@ describe("opencode-auto-force-resume", () => {
     it("should track step-start parts as progress", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "step-start", sessionID: "test", messageID: "msg1" }, delta: "" } } });
       await vi.advanceTimersByTimeAsync(4000);
@@ -675,7 +675,7 @@ describe("opencode-auto-force-resume", () => {
     it("should track subtask parts as progress", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "subtask", prompt: "test", description: "test", agent: "test", sessionID: "test", messageID: "msg1" }, delta: "" } } });
       await vi.advanceTimersByTimeAsync(4000);
@@ -687,7 +687,7 @@ describe("opencode-auto-force-resume", () => {
     it("should track file parts as progress", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "file", mime: "text/plain", url: "test.txt", sessionID: "test", messageID: "msg1" }, delta: "" } } });
       await vi.advanceTimersByTimeAsync(4000);
