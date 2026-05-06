@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Refactored nudge module to simplify client API access patterns
+Improved type safety for the recovery module's input handling
 
 ## Context
-This change eliminates redundant type assertions when accessing the client API in the nudge module, making the code more type-safe and maintainable.
+This change was prompted by the need to enhance type safety in the recovery module, following recent improvements in the nudge module's type handling. The change aligns with ongoing efforts to modularize session review and recovery functionality.
 
 ## Completed
-- [x] Removed type assertions when accessing `input.client` in toast notifications and session prompts
-- [x] Simplified client API access patterns throughout the nudge module
+- [x] Added explicit type import for `TypedPluginInput` to ensure proper typing of the recovery module's input
+- [x] Updated the `RecoveryDeps` interface to use the strongly-typed input instead of `unknown`
 
 ## In Progress
-- [x] Ongoing work to improve type safety for plugin client access
+- [ ] None (this is a focused type safety improvement)
 
 ## Blockers
-- None identified
+- None (this is a straightforward type safety enhancement)
 
 ## Next Steps
-1. Verify no runtime errors occur with the simplified client access
-2. Continue improving type safety across other modules
+1. Verify that the new type is properly used throughout the recovery module
+2. Ensure all dependent modules are updated to use the new type definition

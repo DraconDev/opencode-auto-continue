@@ -1,11 +1,12 @@
 import type { PluginConfig, SessionState } from "./shared.js";
 import { formatMessage } from "./shared.js";
+import type { TypedPluginInput } from "./types.js";
 
 export interface RecoveryDeps {
   config: PluginConfig;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
-  input: unknown;
+  input: TypedPluginInput;
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
