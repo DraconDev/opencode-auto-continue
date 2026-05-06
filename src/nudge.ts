@@ -215,8 +215,33 @@ export function createNudgeModule(deps: NudgeDeps) {
           log("nudge toast error (ignored)", String(e));
         }
       }
-    } catch (e) {
-      log("error sending nudge", String(e));
+    } catch (e: unknown) {
+      const errorStr = String(e);
+      const errorName = (e as any)?.name || "";
+
+      // Check for MessageAbortedError via multiple paths
+      const isAborted =
+        errorName === "MessageAbortedError" ||
+        errorStr.includes("MessageAbortedError") ||
+        (e as any)?.data?.info?.error?.name === "MessageAbortedError";
+
+      if (isAborted) {
+        log("nudge prompt aborted", sessionId);
+        pauseNudge(sessionId);
+        return;
+      }
+
+      // Check response data for server-side errors
+      const responseError = (e as any)?.response?.data?.info?.error;
+      if (responseError) {
+        log("nudge response error", { sessionId, error: responseError });
+        if (responseError.name === "MessageAbortedError") {
+          pauseNudge(sessionId);
+          return;
+        }
+      }
+
+      log("error sending nudge", errorStr);
     }
   }
 
