@@ -486,7 +486,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         
         if (status?.type === "busy" || status?.type === "retry") {
-          s.wasBusy = true;
           updateProgress(s);
           s.userCancelled = false;
           if (s.planning) {
