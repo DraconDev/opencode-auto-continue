@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Removed fake timers from proactive compaction test to simplify test setup
+Removed fake timers from token estimation test to simplify test setup
 
 ## Context
-The test was using fake timers (`vi.useFakeTimers()`) which complicated the test setup without providing meaningful time-based behavior verification. The test now focuses on verifying the compaction trigger logic without time-related assertions.
+The test was previously using fake timers (`vi.useFakeTimers()`) which added unnecessary complexity. The change simplifies the test by removing this dependency while maintaining the same functionality.
 
 ## Completed
-- [x] Removed fake timers from proactive compaction test
-- [x] Simplified test by replacing timer-related code with direct promise resolution
-- [x] Maintained same verification logic for compaction trigger conditions
+- [x] Removed fake timers from token estimation test
+- [x] Added `Promise.resolve()` to maintain test timing behavior
+- [x] Kept all test assertions and mocking intact
 
 ## In Progress
-- [ ] No active work in progress
+- [x] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test still properly verifies compaction trigger conditions
-2. Consider additional test cases for edge cases in compaction logic
+1. Verify test still passes with the simplified implementation
+2. Consider if other tests could similarly benefit from timer simplification

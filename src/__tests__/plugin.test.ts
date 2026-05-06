@@ -1162,7 +1162,6 @@ describe("opencode-auto-force-resume", () => {
 
   describe("token estimation", () => {
     it("should count tokens from all part types, not just text", async () => {
-      vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, { 
         stallTimeoutMs: 5000, 
@@ -1178,8 +1177,8 @@ describe("opencode-auto-force-resume", () => {
       // File part should contribute tokens
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part3", type: "file", mime: "text/plain", url: "test.txt", sessionID: "test", messageID: "msg1" }, delta: "" } } });
 
+      await Promise.resolve();
       expect(true).toBe(true);
-      vi.useRealTimers();
     });
   });
 
