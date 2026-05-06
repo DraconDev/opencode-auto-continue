@@ -17,7 +17,7 @@ describe("debug recover flow", () => {
       },
     };
     
-    const { AutoForceResumePlugin } = await import('./index.js');
+    const { AutoForceResumePlugin } = await import('../index.js');
     const plugin = await AutoForceResumePlugin({ client: mockClient } as any, { 
       stallTimeoutMs: 5000, 
       waitAfterAbortMs: 100,
