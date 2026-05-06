@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved test coverage for nudge notification scheduling by adding timer advancement in tests
+Improved test coverage for nudge notification scheduling by adding mock todo API for idle event handling
 
 ## Context
-This change was prompted by the recent refactoring of the nudge notification system to delegate scheduling to the nudge module. The test needed to verify asynchronous behavior in the notification scheduling process.
+This change addresses test coverage gaps in the nudge notification system's idle event handling. The previous test didn't properly mock the todo API response needed for the nudge scheduling logic.
 
 ## Completed
-- [x] Added `vi.advanceTimersByTimeAsync(500)` to properly test asynchronous timer behavior in nudge notification scheduling
+- [x] Added mock todo API response for nudge notification scheduling tests
+- [x] Ensured test coverage for idle event handling with proper mock data
 
 ## In Progress
 - [ ] No active work in progress beyond this change
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Review test coverage for other nudge notification scenarios
-2. Consider additional test cases for edge cases in notification scheduling
+1. Verify all test cases pass with the new mock implementation
+2. Consider adding additional edge case tests for nudge scheduling

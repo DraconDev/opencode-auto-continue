@@ -280,6 +280,12 @@ describe("opencode-auto-force-resume", () => {
       // Set hasOpenTodos via todo.updated
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
 
+      // Mock todo API for nudge
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test todo", status: "in_progress" }],
+        error: undefined
+      });
+
       // Now fire session.idle - schedules nudge after idle delay
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       
