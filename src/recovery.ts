@@ -202,6 +202,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.backoffAttempts = 0;
       s.messageCount++;
 
+      s.nudgeCount = 0;
       cancelNudge(sessionId);
     } catch (e) {
       log('recovery failed:', e);
