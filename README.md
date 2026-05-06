@@ -20,19 +20,30 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 
 ### Architecture Overview
 
-The plugin runs as an event-driven state machine. It hooks into OpenCode's event system and maintains state per-session.
+The plugin is split into 7 focused modules following the factory pattern:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Plugin Lifecycle                        │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Plugin initialized with config options                    │
-│ 2. For each session: create SessionState tracking object     │
-│ 3. Listen to events: session.status, message.*, todo.updated  │
-│ 4. Set timers only when session is busy (stall recovery)     │
-│ 5. Clear all timers on idle/error/deleted                    │
-│ 6. On dispose: clear all timers and state                    │
-└─────────────────────────────────────────────────────────────┘
+index.ts              Main plugin — event routing, module wiring
+├── terminal.ts       Terminal title, progress bar, statusLine hook
+├── notifications.ts  Timer toast notifications
+├── nudge.ts          Idle nudges with loop protection
+├── status-file.ts    Atomic status file writes
+├── recovery.ts       Stall recovery (abort + continue)
+├── compaction.ts     Context compaction
+├── review.ts         Review + continue prompt delivery
+└── shared.ts         Types, config, utilities
+```
+
+Each module is initialized early and receives its dependencies:
+
+```typescript
+createTerminalModule({ config, sessions, log, input })
+createNotificationModule({ config, sessions, log, isDisposed, input })
+createNudgeModule({ config, sessions, log, isDisposed, input })
+createStatusFileModule({ config, sessions, log })
+createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })
+createCompactionModule({ config, sessions, log, input })
+createReviewModule({ config, sessions, log, input, isDisposed, writeStatusFile, isTokenLimitError, forceCompact })
 ```
 
 ### Core Principles
