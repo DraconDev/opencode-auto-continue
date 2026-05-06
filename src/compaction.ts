@@ -29,7 +29,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       const s = sessions.get(sessionId);
       const preTokens = s?.estimatedTokens || 0;
 
-      await (input as any).client.session.summarize({
+      await input.client.session.summarize({
         path: { id: sessionId },
         query: { directory: (input as any).directory || "" }
       });
@@ -44,7 +44,7 @@ export function createCompactionModule(deps: CompactionDeps) {
         await new Promise(r => setTimeout(r, waitMs));
 
         // Check if session is still busy
-        const status = await (input as any).client.session.status({});
+        const status = await input.client.session.status({});
         const data = status.data as Record<string, { type: string }>;
         const isBusy = data[sessionId]?.type === "busy";
 
