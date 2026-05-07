@@ -9,7 +9,6 @@ export interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
   lastProgressAt: number;
   actionStartedAt: number;
-  toastTimer: ReturnType<typeof setInterval> | null;
 
   // === Recovery (recovery.ts) ===
   attempts: number;
