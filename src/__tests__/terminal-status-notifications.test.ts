@@ -927,6 +927,7 @@ describe("notification module", () => {
         status: vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined }),
         todo: vi.fn().mockResolvedValue({ data: [], error: undefined }),
         summarize: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+        messages: vi.fn().mockResolvedValue({ data: [], error: undefined }),
       },
       tui: {
         showToast: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
