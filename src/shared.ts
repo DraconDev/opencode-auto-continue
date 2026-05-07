@@ -137,7 +137,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   nudgeCooldownMs: 60000,
   autoCompact: true,
   maxSessionAgeMs: 7200000,
-  proactiveCompactAtTokens: 50000,
+  proactiveCompactAtTokens: 100000,
   proactiveCompactAtPercent: 50,
   compactRetryDelayMs: 3000,
   compactMaxRetries: 3,
