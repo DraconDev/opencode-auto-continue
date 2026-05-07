@@ -138,7 +138,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       const sessionList = Array.isArray(result.data) ? result.data : [];
 
       for (const session of sessionList) {
-        const id = session.id || session.sessionID;
+        const id = session.id;
         if (!id) continue;
 
         if (!sessions.has(id)) {
