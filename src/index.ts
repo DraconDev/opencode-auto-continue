@@ -136,6 +136,24 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   if (config.dcpDetected) {
     log('DCP (Dynamic Context Pruning) detected — disabling proactive compaction, DCP will handle context optimization');
   }
+  
+  // Show warning toast if DCP is not installed
+  if (!config.dcpDetected && config.dcpWarning) {
+    log('DCP not detected — consider installing @tarquinen/opencode-dcp for better context management');
+    // Show toast asynchronously, don't block plugin init
+    setTimeout(() => {
+      try {
+        input.client.tui.showToast?.({
+          title: 'Context Management',
+          message: 'Install @tarquinen/opencode-dcp for better context pruning: opencode plugin @tarquinen/opencode-dcp@latest --global',
+          variant: 'info',
+          duration: 15000
+        });
+      } catch {
+        // Toast might not be available, ignore
+      }
+    }, 5000);
+  }
 
   const terminal = createTerminalModule({ config, sessions, log, input });
   const notifications = createNotificationModule({ config, sessions, log, isDisposed, input });

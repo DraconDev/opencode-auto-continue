@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Add optional Dynamic Context Pruning (DCP) integration with warning configuration
+Added warning toast for users when Dynamic Context Pruning (DCP) is not installed
 
 ## Context
-This change enables optional integration with DCP while providing a warning configuration to handle cases where DCP might be unavailable or misconfigured.
+The project now detects when DCP is not installed and provides a user-friendly warning to encourage installation of the `@tarquinen/opencode-dcp` plugin for better context management.
 
 ## Completed
-- [x] Added `@tarquinen/opencode-dcp` as an optional peer dependency
-- [x] Added `dcpWarning` configuration flag with default value `true`
+- [x] Added DCP detection check
+- [x] Implemented warning toast when DCP is not detected
+- [x] Added configuration option for DCP warning
+- [x] Made toast display asynchronous to avoid blocking plugin initialization
 
 ## In Progress
-- [x] Implementation of DCP integration logic (not yet shown in this diff)
+- [x] Implementation of DCP warning system
 
 ## Blockers
-- DCP integration implementation requires additional code changes to utilize the optional dependency
+- None identified
 
 ## Next Steps
-1. Implement DCP integration logic in relevant modules
-2. Add documentation for DCP configuration options
+1. Verify toast message content and timing
+2. Test with users to ensure the warning is helpful and not intrusive
