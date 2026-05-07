@@ -1,6 +1,8 @@
-import type { Plugin } from "@opencode-ai/plugin";
+import type { PluginInput } from "@opencode-ai/plugin";
 import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
+
+export type TypedPluginInput = PluginInput;
 
 export interface SessionState {
   // === Timer & Progress (terminal.ts, index.ts) ===

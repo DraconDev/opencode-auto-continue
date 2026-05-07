@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Added prompt guard to prevent duplicate review messages in the review module.
+Refactored shared types to improve type safety and consistency in plugin input handling.
 
 ## Context
-This change addresses a common issue where duplicate review prompts could be sent to users, potentially causing confusion or unnecessary interactions. The prompt guard ensures that only unique review messages are sent within a session.
+The change was prompted by a need to standardize type definitions across the codebase, particularly for plugin inputs. The previous import was too broad, and the new approach provides clearer type semantics.
 
 ## Completed
-- [x] Added duplicate prompt detection logic before sending review messages
-- [x] Implemented blocking mechanism for duplicate review prompts
+- [x] Replaced generic `Plugin` import with specific `PluginInput` type
+- [x] Added `TypedPluginInput` alias for better type readability
+- [x] Maintained existing `SessionState` interface without changes
 
 ## In Progress
-- [x] Implementation of the prompt guard for review messages
+- [ ] None (this is a focused refactoring)
 
 ## Blockers
-- None identified for this specific change
+- None (this is a type-level change with no runtime implications)
 
 ## Next Steps
-1. Verify the prompt guard works correctly in integration tests
-2. Monitor for any unintended side effects in production environments
+1. Update other modules to use the new `TypedPluginInput` type
+2. Verify no breaking changes in plugin integration points
