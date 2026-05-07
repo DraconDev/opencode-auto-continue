@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, renameSync, appendFileSync, mkdirSync } from "fs";
+import { existsSync, writeFileSync, renameSync, appendFileSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import type { PluginConfig, SessionState } from "./shared.js";
 import { formatDuration, getModelContextLimit, getCompactionThreshold } from "./shared.js";
@@ -17,6 +17,19 @@ function ensureLogDir(logDir: string) {
   } catch {
     // ignore
   }
+}
+
+let _pluginVersion: string | null = null;
+function getPluginVersion(): string {
+  if (_pluginVersion) return _pluginVersion;
+  try {
+    const pkgPath = join(process.env.HOME || "/tmp", ".config", "opencode", "plugins", "node_modules", "opencode-auto-force-resume", "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    _pluginVersion = pkg.version;
+  } catch {
+    _pluginVersion = "unknown";
+  }
+  return _pluginVersion;
 }
 
 export function createStatusFileModule(deps: StatusFileDeps) {
