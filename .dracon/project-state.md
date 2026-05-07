@@ -1,24 +1,20 @@
 # Project State
 
 ## Current Focus
-Added hallucination loop detection to prevent excessive continue operations
+Increased the wait time after abort operations from 1500ms to 5000ms
 
 ## Context
-This change implements a safety mechanism to detect and break potentially infinite hallucination loops during recovery operations. The previous refactor removed this logic, so it's being reintroduced with improved handling.
+This change was made to provide more time for system recovery operations to complete after an abort event, potentially improving reliability in scenarios where immediate recovery is needed.
 
 ## Completed
-- [x] Added hallucination loop detection that triggers after 3+ continues in 10 minutes
-- [x] Implemented forced abort+resume when loop is detected
-- [x] Added error handling for abort operations
-- [x] Integrated with existing session state tracking
+- [x] Increased `waitAfterAbortMs` from 1500ms to 5000ms in the default configuration
 
 ## In Progress
-- [x] Implementation of the hallucination loop detection system
+- [ ] None
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the 3-attempts/10-minute threshold is appropriate
-2. Test edge cases where abort operations might fail
-3. Document the new recovery behavior in system documentation
+1. Verify the impact on system recovery timing in test environments
+2. Monitor for any related issues in production environments

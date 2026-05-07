@@ -114,7 +114,7 @@ export interface PluginConfig {
 
 export const DEFAULT_CONFIG: PluginConfig = {
   stallTimeoutMs: 180000,
-  waitAfterAbortMs: 1500,
+  waitAfterAbortMs: 5000,
   maxRecoveries: 3,
   cooldownMs: 60000,
   abortPollIntervalMs: 200,
