@@ -98,8 +98,6 @@ export interface PluginConfig {
   shortContinueMessage: string;
   continueWithPlanMessage: string;
   tokenLimitPatterns: string[];
-  timerToastEnabled: boolean;
-  timerToastIntervalMs: number;
   terminalTitleEnabled: boolean;
   statusFileEnabled: boolean;
   statusFilePath: string;
