@@ -431,9 +431,46 @@ export function formatMessage(template: string, vars: Record<string, string>): s
 }
 
 /**
- * Fail-open hook wrapper — prevents plugin errors from breaking the host.
- * Logs errors but never throws.
+ * Prompt guard — prevents duplicate injections within a time window.
+ * Checks if a similar prompt was recently sent to the same session.
  */
+export async function shouldBlockPrompt(
+  sessionId: string,
+  promptText: string,
+  input: TypedPluginInput,
+  log?: (...args: unknown[]) => void
+): Promise<boolean> {
+  try {
+    const resp = await input.client.session.messages({
+      path: { id: sessionId },
+      query: { limit: 5 },
+    });
+    const messages = Array.isArray(resp.data) ? resp.data : [];
+    const now = Date.now();
+    
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i] as any;
+      const role = msg.role || msg.info?.role;
+      if (role !== "assistant") continue;
+      
+      const msgTime = msg.createdAt || msg.info?.createdAt || 0;
+      if (now - msgTime > 30000) continue; // Only check last 30s
+      
+      const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
+      // Check if the recent message contains similar content
+      if (text && promptText && (
+        text.includes(promptText.substring(0, 50)) ||
+        promptText.includes(text.substring(0, 50))
+      )) {
+        log?.("prompt guard blocked duplicate injection", { sessionId, text: text.substring(0, 100) });
+        return true;
+      }
+    }
+  } catch (e) {
+    // Fail-open: allow prompt if check fails
+  }
+  return false;
+}
 export async function safeHook(
   name: string,
   fn: () => Promise<void>,

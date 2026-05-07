@@ -1,20 +1,23 @@
 # Project State
 
 ## Current Focus
-Relaxed validation of stall timeout configuration to allow equality with waitAfterAbortMs
+Added prompt guard to prevent duplicate injections within a 30-second time window
 
 ## Context
-The change was prompted by a need to allow the stallTimeoutMs to be equal to waitAfterAbortMs in certain configurations, which was previously enforced as a strict inequality.
+Prevents the same prompt from being injected multiple times in quick succession to the same session, which could cause unintended behavior or excessive API calls.
 
 ## Completed
-- [x] Modified validation to allow stallTimeoutMs to be greater than or equal to waitAfterAbortMs
+- [x] Added `shouldBlockPrompt` function to check recent messages for duplicate content
+- [x] Implements 30-second time window for duplicate detection
+- [x] Uses fail-open pattern (allows prompts if check fails)
+- [x] Logs blocked attempts when enabled
 
 ## In Progress
-- [x] No active work in progress related to this change
+- [ ] None (this is a complete feature addition)
 
 ## Blockers
-- None identified
+- None (this is a standalone feature)
 
 ## Next Steps
-1. Verify no unintended side effects from this change
-2. Update relevant documentation if needed
+1. Test integration with existing prompt injection logic
+2. Consider adding configurable time window for different use cases
