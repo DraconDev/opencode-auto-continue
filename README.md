@@ -238,6 +238,31 @@ The nudge system prevents sessions from going idle with pending todos. It follow
         └──NO──► Clear any pending debounce
 ```
 
+## Recommended: Install Dynamic Context Pruning (DCP)
+
+For **significantly better context management**, install DCP alongside this plugin:
+
+```bash
+opencode plugin @tarquinen/opencode-dcp@latest --global
+```
+
+**Why?** DCP handles context optimization far better than our native `session.summarize()` approach:
+
+| Feature | Without DCP | With DCP |
+|---------|------------|----------|
+| Proactive pruning | `summarize()` at 100k tokens | `compress` tool called by model |
+| Message dedup | ❌ None | ✅ Removes repeated tool calls |
+| Error purge | ❌ None | ✅ Prunes errored tool inputs |
+| Soft thresholds | Hard 100k limit | 50k-100k range with nudges |
+| Context preservation | Manual hook injection | Protected tools, user messages, file patterns |
+
+**When DCP is detected**, our plugin automatically:
+- Disables proactive compaction (DCP handles it)
+- Keeps emergency compaction on token limit errors (belt-and-suspenders)
+- Injects session state (todos, planning status) into compaction hooks
+
+**If DCP is not installed**, you'll see a one-time toast recommending it. Set `dcpWarning: false` to disable this.
+
 ## Installation
 
 ### npm
@@ -300,7 +325,8 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
       "recoveryHistogramEnabled": true,
       "stallPatternDetection": true,
       "terminalProgressEnabled": true,
-      "debug": false
+      "debug": false,
+      "dcpWarning": true
     }]
   ]
 }
@@ -349,7 +375,7 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `autoCompact` | `true` | Enable proactive and recovery compaction |
+| `autoCompact` | `true` | Enable proactive and recovery compaction (auto-disabled when DCP detected) |
 | `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction |
 | `compactCooldownMs` | `60000` | Min time between compaction attempts (1 min) |
 | `compactAtMessageCount` | `50` | Trigger compaction after N messages (token estimation fallback) |
@@ -357,6 +383,7 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
 | `compactionVerifyWaitMs` | `10000` | Max wait for compaction verification |
 | `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
+| `dcpWarning` | `true` | Show toast recommending DCP when not installed |
 
 ### Context Window Sizing
 
@@ -411,6 +438,7 @@ The 100k default already leaves 50k+ buffer for a 152k model. If you want to be 
 |--------|---------|-------------|
 | `showToasts` | `false` | Show toast notifications |
 | `debug` | `false` | Enable debug logging to file |
+| `dcpWarning` | `true` | Show one-time toast recommending DCP installation |
 
 ## Template Variables
 
