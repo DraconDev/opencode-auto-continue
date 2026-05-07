@@ -219,6 +219,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (event?.type === "session.created") {
         log('session.created:', sid);
         getSession(sid);
+        sessionMonitor.touchSession(sid);
         writeStatusFile(sid);
         return;
       }
