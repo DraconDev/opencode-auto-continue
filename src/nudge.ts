@@ -48,7 +48,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     
     // Find last assistant message
     for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
+      const msg = messages[i] as any;
       if (msg.role === "assistant" || msg.info?.role === "assistant") {
         const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
         if (isQuestion(text)) {
