@@ -1,14 +1,17 @@
 # Project State
 
 ## Current Focus
-Simplified test assertions for SessionMonitor's start/stop logging
+Improved test reliability for session discovery in SessionMonitor by adjusting timing and using real timers.
 
 ## Context
-The test suite for SessionMonitor was recently expanded, and the logging assertions were previously checking for full strings including the "SessionMonitor]" prefix. This change simplifies the assertions by removing the redundant prefix check.
+The test for session discovery was failing intermittently due to timing issues. The changes ensure more reliable test execution by:
+1. Using real timers instead of mocked ones
+2. Adjusting the discovery interval and wait time to better match the test scenario
 
 ## Completed
-- [x] Refactored test assertions to check for just "started" and "stopped" instead of full log strings
-- [x] Maintained the same validation purpose while reducing string matching complexity
+- [x] Added `vi.useRealTimers()` to use real timers in the test
+- [x] Reduced session discovery interval from 100ms to 50ms
+- [x] Adjusted wait time from 150ms to 100ms to better match the test scenario
 
 ## In Progress
 - [ ] No active work in progress
@@ -17,5 +20,5 @@ The test suite for SessionMonitor was recently expanded, and the logging asserti
 - None identified
 
 ## Next Steps
-1. Verify test suite still passes with the simplified assertions
-2. Consider if any other test assertions could similarly be simplified
+1. Verify test stability with the new configuration
+2. Consider adding more edge case tests for session discovery

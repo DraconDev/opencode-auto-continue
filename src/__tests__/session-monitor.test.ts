@@ -229,6 +229,8 @@ describe("SessionMonitor", () => {
 
   describe("Session Discovery", () => {
     it("should discover missed sessions", async () => {
+      vi.useRealTimers(); // Use real timers for async test
+      
       const mockList = vi.fn().mockResolvedValue({
         data: [
           { id: "session-1" },
@@ -245,7 +247,7 @@ describe("SessionMonitor", () => {
       } as unknown as TypedPluginInput;
 
       const customMonitor = createSessionMonitor({
-        config: { ...mockConfig, sessionDiscoveryIntervalMs: 100 },
+        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50 },
         sessions,
         log: mockLog,
         input: customInput,
@@ -256,7 +258,7 @@ describe("SessionMonitor", () => {
       customMonitor.start();
       
       // Wait for discovery interval
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 100));
       
       expect(mockList).toHaveBeenCalled();
       expect(sessions.has("session-1")).toBe(true);
