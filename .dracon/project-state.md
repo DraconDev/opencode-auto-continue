@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Simplified proactive compaction threshold logic by removing model-specific calculations in favor of always using `proactiveCompactAtTokens`
+Fixed a typo in a bug note about mode switching behavior and clarified the condition for leftover todos.
 
 ## Context
-The previous implementation calculated compaction thresholds based on model size and percentage, but this was causing inconsistencies in large-context model handling. The change simplifies the logic to always use the configured `proactiveCompactAtTokens` value, which provides more predictable behavior.
+The original note mentioned a bug where long-running operations in plan mode incorrectly triggered a "continue" action in build mode. The change clarifies that this issue persists when there are leftover todos to process.
 
 ## Completed
-- [x] Modified `getCompactionThreshold` to always return `proactiveCompactAtTokens` regardless of model size
-- [x] Updated test cases to reflect the simplified behavior
-- [x] Fixed a typo in the bug note about mode switching behavior
+- [x] Fixed typo in bug note about mode switching
+- [x] Clarified condition for leftover todos causing the issue
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Documentation update for mode switching behavior
 
 ## Blockers
-- None identified
+- None identified in this change
 
 ## Next Steps
-1. Verify the simplified behavior works correctly in integration tests
-2. Update documentation to reflect the new compaction behavior
+1. Verify the updated note resolves the confusion about mode switching
+2. Consider adding more detailed documentation for the leftover todos scenario
