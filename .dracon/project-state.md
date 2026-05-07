@@ -1,22 +1,23 @@
 # Project State
 
 ## Current Focus
-Updated configuration options for auto-force-resume plugin and notification system
+Removed notification system and related timer toast functionality
 
 ## Context
-The changes improve user experience by adjusting recovery timing and enabling toast notifications by default. This follows recent work on session management and proactive compaction features.
+The notification system was primarily used for displaying session timer toasts, which showed action duration and last progress time. This was part of the proactive session management features but was deemed less critical than other context management improvements.
 
 ## Completed
-- [x] Increased `waitAfterAbortMs` from 1.5s to 5s for better recovery timing
-- [x] Enabled `showToasts` by default in notification system
-- [x] Updated version number in example configuration
+- [x] Removed the entire notification module and its dependencies
+- [x] Eliminated timer toast functionality from session state management
+- [x] Cleaned up related session state properties (toastTimer, actionStartedAt)
+- [x] Simplified session idle state handling by removing timer toast cleanup
 
 ## In Progress
-- [x] Documentation updates for new configuration options
+- [ ] None - this is a complete removal of the notification system
 
 ## Blockers
-- No blockers identified
+- None - this was a deliberate removal of non-critical functionality
 
 ## Next Steps
-1. Verify impact of timing changes in recovery flow
-2. Test notification system with different user scenarios
+1. Focus on core context management improvements
+2. Continue refining proactive compaction strategies

@@ -1,6 +1,6 @@
 {
   "name": "opencode-auto-force-resume",
-  "version": "6.61.2",
+  "version": "6.62.0",
   "description": "Intelligently detects and recovers stalled OpenCode sessions using abort+continue with status polling and progress tracking",
   "keywords": [
     "opencode",

@@ -18,7 +18,6 @@ import {
   detectDCP,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
-import { createNotificationModule } from "./notifications.js";
 import { createNudgeModule } from "./nudge.js";
 import { createStatusFileModule } from "./status-file.js";
 import { createRecoveryModule } from "./recovery.js";
@@ -99,10 +98,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.recoveryTimes = [];
       s.lastStallPartType = "";
       s.stallPatterns = {};
-      if (s.toastTimer) {
-        clearInterval(s.toastTimer);
-        s.toastTimer = null;
-      }
     }
     sessions.delete(id);
   }
@@ -134,29 +129,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   
   // Log DCP detection after log function is available
   if (config.dcpDetected) {
-    log('DCP (Dynamic Context Pruning) detected — disabling proactive compaction, DCP will handle context optimization');
-  }
-  
-  // Show warning toast if DCP is not installed
-  if (!config.dcpDetected && config.dcpWarning) {
-    log('DCP not detected — consider installing @tarquinen/opencode-dcp for better context management');
-    // Show toast asynchronously, don't block plugin init
-    setTimeout(() => {
-      try {
-        input.client.tui.showToast?.({
-          title: 'Context Management',
-          message: 'Install @tarquinen/opencode-dcp for better context pruning: opencode plugin @tarquinen/opencode-dcp@latest --global',
-          variant: 'info',
-          duration: 15000
-        });
-      } catch {
-        // Toast might not be available, ignore
-      }
-    }, 5000);
+    log('DCP (Dynamic Context Pruning) detected — proactive compaction disabled, DCP handles context optimization');
   }
 
   const terminal = createTerminalModule({ config, sessions, log, input });
-  const notifications = createNotificationModule({ config, sessions, log, isDisposed, input });
   const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
   const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
@@ -301,25 +277,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             log('session busy, clearing compacting flag (compaction likely finished)');
             s.compacting = false;
           }
-          // Start timer toast if not already running
-          if (s.actionStartedAt === 0) {
-            notifications.startTimerToast(sid);
-          }
           // Update terminal title and progress
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
-          // Check for proactive compaction when resuming busy
-          // Catches pre-existing context bloat from prior interactions
-          await compaction.maybeProactiveCompact(sid);
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
           log('session idle, sending queued continue for:', sid);
           await review.sendContinue(sid);
-        }
-        // Proactive compaction when idle and message count is high
-        if (status?.type === "idle" && !s.needsContinue) {
-          await compaction.maybeProactiveCompact(sid);
         }
         // Auto-continue when transitioning busy→idle with pending todos
         // Nudge is always scheduled on idle — injectNudge fetches todos from API
@@ -327,9 +292,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
           nudge.scheduleNudge(sid);
         }
-        // Stop timer toast and clear terminal title/progress when session becomes idle
+        // Clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {
-          notifications.stopTimerToast(sid);
           terminal.clearTerminalTitle();
           terminal.clearTerminalProgress();
         }
