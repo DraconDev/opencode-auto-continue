@@ -41,6 +41,13 @@ export function createReviewModule(deps: ReviewDeps) {
         }
       }
 
+      // Prompt guard: prevent duplicate review prompts
+      const isDuplicate = await shouldBlockPrompt(sessionId, config.reviewMessage, input, log);
+      if (isDuplicate) {
+        log('prompt guard blocked duplicate review, skipping');
+        return;
+      }
+
       // Send review prompt
       s.messageCount++;
       await input.client.session.prompt({

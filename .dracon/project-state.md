@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added prompt guard import to prevent duplicate message injections
+Added prompt guard to prevent duplicate review messages in the review module.
 
 ## Context
-This change implements a prompt guard system to prevent duplicate message injections within a 30-second window, as part of ongoing work to improve session reliability and prevent message spam.
+This change addresses a common issue where duplicate review prompts could be sent to users, potentially causing confusion or unnecessary interactions. The prompt guard ensures that only unique review messages are sent within a session.
 
 ## Completed
-- [x] Added import of `shouldBlockPrompt` from shared utilities
-- [x] Integrated prompt guard logic into review module
+- [x] Added duplicate prompt detection logic before sending review messages
+- [x] Implemented blocking mechanism for duplicate review prompts
 
 ## In Progress
-- [ ] Implementation of prompt guard logic in review module
+- [x] Implementation of the prompt guard for review messages
 
 ## Blockers
-- Need to implement the actual guard logic in the review module
+- None identified for this specific change
 
 ## Next Steps
-1. Implement prompt guard logic in review module
-2. Add unit tests for the prompt guard functionality
+1. Verify the prompt guard works correctly in integration tests
+2. Monitor for any unintended side effects in production environments
