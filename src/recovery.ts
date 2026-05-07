@@ -12,6 +12,66 @@ export interface RecoveryDeps {
   cancelNudge: (sessionId: string) => void;
 }
 
+// Tool-text detection patterns (XML tool calls embedded in text/reasoning)
+const TOOL_TEXT_PATTERNS = [
+  /<function\s*=/i,
+  /<function>/i,
+  /<\/function>/i,
+  /<parameter\s*=/i,
+  /<parameter>/i,
+  /<\/parameter>/i,
+  /<tool_call[\s>]/i,
+  /<\/tool_call>/i,
+  /<tool[\s_]name\s*=/i,
+  /<invoke\s+/i,
+  /<invoke>/i,
+  /<\/invoke>/i,
+  /<(?:edit|write|read|bash|grep|glob|search|replace|execute|run|cat|ls|npm|pip|docker)\s*(?:\s[^>]*)?\s*(?:\/>|>)/i,
+];
+
+const TRUNCATED_XML_PATTERNS = [
+  { open: /<function[^>]*>/i, close: /<\/function>/i },
+  { open: /<parameter[^>]*>/i, close: /<\/parameter>/i },
+  { open: /<tool_call[^>]*>/i, close: /<\/tool_call>/i },
+  { open: /<invoke[^>]*>/i, close: /<\/invoke>/i },
+];
+
+const TOOL_TEXT_RECOVERY_PROMPT =
+  "I noticed you have a tool call generated in your thinking/reasoning. Please execute it using the proper tool calling mechanism instead of keeping it in reasoning.";
+
+function containsToolCallAsText(text: string): boolean {
+  if (text.length <= 10) return false;
+  if (TOOL_TEXT_PATTERNS.some((pat) => pat.test(text))) return true;
+  for (const { open, close } of TRUNCATED_XML_PATTERNS) {
+    if (open.test(text) && !close.test(text)) return true;
+  }
+  return false;
+}
+
+async function checkToolTextInSession(sessionId: string, input: TypedPluginInput): Promise<boolean> {
+  try {
+    const resp = await input.client.session.messages({
+      path: { id: sessionId },
+      query: { limit: 3 },
+    });
+    const messages = Array.isArray(resp.data) ? resp.data : [];
+    for (const msg of messages) {
+      const role = msg.role || msg.info?.role;
+      if (role !== "assistant") continue;
+      const parts = msg.parts || [];
+      for (const part of parts) {
+        if (part.type === "text" || part.type === "reasoning") {
+          const text = part.text || "";
+          if (containsToolCallAsText(text)) return true;
+        }
+      }
+    }
+  } catch (e) {
+    // Silently ignore fetch errors
+  }
+  return false;
+}
+
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
 

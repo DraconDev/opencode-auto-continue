@@ -1,22 +1,24 @@
 # Project State
 
 ## Current Focus
-Improved nudge scheduling logic to avoid interrupting when the AI is asking questions
+Added tool-text detection patterns and recovery logic for embedded XML tool calls in reasoning text
 
 ## Context
-The nudge system was previously interrupting users even when the AI was actively asking for input, which could be disruptive. This change adds question detection to prevent nudges during interactive exchanges.
+The system needs to detect when users accidentally include tool calls as plain text in their reasoning rather than executing them properly. This prevents broken workflows where tool calls remain in the conversation without being executed.
 
 ## Completed
-- [x] Added question phrase detection for nudge suppression
-- [x] Implemented check for last assistant message being a question
-- [x] Added early return if question detected in nudge scheduling
+- [x] Added regex patterns to detect XML tool call fragments in text
+- [x] Implemented truncated XML detection for partial tool calls
+- [x] Created session scanning function to check recent messages for tool-text patterns
+- [x] Added recovery prompt template for guiding users to proper execution
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Integration with existing recovery module (not yet connected to the main flow)
 
 ## Blockers
-- None identified
+- Need to connect the detection logic to the recovery module's existing nudging system
 
 ## Next Steps
-1. Verify the question detection works in various conversation scenarios
-2. Consider adding more question patterns if needed
+1. Connect tool-text detection to the recovery module's nudging system
+2. Add unit tests for the new detection patterns
+3. Document the new recovery behavior in user documentation
