@@ -4,20 +4,19 @@
 Refactored nudge test to verify aggressive mode always fetches todos from API
 
 ## Context
-The change modifies the nudge test to verify that the aggressive mode always fetches todos from the API on every session.idle event, rather than using cached todos from the todo.updated event.
+The test was updated to ensure the nudge functionality in aggressive mode consistently fetches todos from the API, rather than relying on cached data from events.
 
 ## Completed
-- [x] Changed test description to "nudge aggressive mode (always fetch from API)"
-- [x] Updated test case to verify API fetch on every session.idle
-- [x] Modified assertions to expect API response content
-- [x] Removed expectations about cached event data
+- [x] Modified test to verify API call on idle event in aggressive mode
+- [x] Updated test assertions to check for API call instead of cached data
+- [x] Maintained verification of prompt call with todo context
 
 ## In Progress
-- [ ] No active work in progress
+- [x] Test refactoring for aggressive mode behavior
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for other nudge modes
-2. Consider adding tests for edge cases in aggressive mode
+1. Verify test coverage for other nudge scenarios
+2. Ensure consistent behavior across all test cases

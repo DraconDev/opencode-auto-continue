@@ -387,12 +387,12 @@ describe("opencode-auto-force-resume", () => {
         { id: "t2", content: "Second task", status: "pending" }
       ] } } });
 
-      // Fire session.idle - schedules nudge after idle delay
+      // Fire session.idle - nudge always fetches todos from API (aggressive mode)
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(500);
 
-      // Verify todo was NOT called because todos were provided from event
-      expect(mockTodo).not.toHaveBeenCalled();
+      // Nudge always fetches from API on idle
+      expect(mockTodo).toHaveBeenCalled();
       // Verify prompt was called with todo context
       expect(mockPrompt).toHaveBeenCalled();
 
