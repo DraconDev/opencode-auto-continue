@@ -293,8 +293,7 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
       "autoCompact": true,
       "maxSessionAgeMs": 7200000,
       "proactiveCompactAtTokens": 100000,
-      "proactiveCompactAtPercent": 50,
-      "compactRetryDelayMs": 3000,
+      "compactCooldownMs": 120000,
       "compactMaxRetries": 3,
       "compactReductionFactor": 0.7,
       "shortContinueMessage": "Continue.",
@@ -358,41 +357,40 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `autoCompact` | `true` | Try compaction before abort |
-| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction |
-| `proactiveCompactAtPercent` | `50` | Percentage of model context limit |
+| `autoCompact` | `true` | Enable proactive and recovery compaction |
+| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction (all models) |
+| `compactCooldownMs` | `120000` | Min time between compaction attempts (2 min) |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
-| `compactionVerifyWaitMs` | `10000` | Max wait time for compaction to complete (progressive checks at 2s/3s/5s) |
-| `compactCooldownMs` | `120000` | Min time between compaction attempts (2 min) |
-| `compactReductionFactor` | `0.7` | Estimated reduction ratio after compaction (70% → estimated tokens multiplied by 0.3) |
+| `compactionVerifyWaitMs` | `10000` | Max wait for compaction (2s/3s/5s progressive checks) |
+| `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) — remaining = 1 - factor |
 
 ### Context Window Sizing
 
-For models with different context limits, adjust `proactiveCompactAtPercent`:
+The `proactiveCompactAtTokens` threshold (default 100k) applies to ALL model sizes — no percentage math, no 200k distinction. Just compact when estimated tokens cross 100k (or whatever you configure).
 
-| Model Context | 50% Threshold | Recommended Config |
-|---------------|--------------|-------------------|
-| 32k | 16k | `proactiveCompactAtPercent: 50` |
-| 128k | 64k | `proactiveCompactAtPercent: 50` |
-| 200k | 100k | `proactiveCompactAtPercent: 50` (capped) |
-| **152k** (o1 models) | **76k** | `proactiveCompactAtPercent: 50` |
-| 256k | 128k | `proactiveCompactAtPercent: 50` |
+**How to tune for your model:**
 
-**Example for 152k context (o1-preview, o1-mini, etc.):**
+| Config | Effect |
+|--------|--------|
+| `proactiveCompactAtTokens: 100000` | Compact at 100k tokens (default, works for most) |
+| `proactiveCompactAtTokens: 50000` | Compact earlier (aggressive, more frequent) |
+| `proactiveCompactAtTokens: 75000` | Compact mid-range |
+| `proactiveCompactAtTokens: 150000` | Compact later (lazy, less frequent) |
+
+**For 152k context models (o1-preview, o1-mini, etc.):**
 ```json
 ["opencode-auto-force-resume", {
-  "proactiveCompactAtTokens": 75000,
-  "proactiveCompactAtPercent": 50
+  "proactiveCompactAtTokens": 100000
 }]
 ```
 
-With 152k context and 50%:
+The 100k default already leaves 50k+ buffer for a 152k model. If you want to be more aggressive:
+```json
+["opencode-auto-force-resume", {
+  "proactiveCompactAtTokens": 75000
+}]
 ```
-threshold = min(75000, 152000 * 0.5) = min(75000, 76000) = 75000 tokens
-```
-
-This means proactive compaction triggers around 75k tokens, leaving buffer before hitting the actual limit.
 
 ### Timer & Display Options
 
@@ -559,45 +557,18 @@ When `statusFileRotate > 0`, old status files are kept:
 
 ## How Compaction Works
 
-The plugin uses two compaction strategies to prevent context bloat:
+The plugin uses two compaction strategies:
 
 ### 1. Proactive Compaction (Preventive)
 
-Triggers BEFORE context becomes critical. Runs on:
-- **Every progress event** (message part updated) - catches bloat during active sessions
-- **When session resumes busy** - catches pre-existing bloat from prior interactions
-- **When session becomes idle** - catches bloat between user messages
+Triggers BEFORE context becomes critical. Runs on every:
+- **Progress event** (message part updated) — catches bloat during active generation
+- **Session resume busy** — catches pre-existing bloat from prior interactions
+- **Session becomes idle** — catches bloat between user messages
 
-**Threshold calculation**:
-```
-threshold = min(proactiveCompactAtTokens, modelContextLimit * proactiveCompactAtPercent / 100)
-```
+**Threshold**: Always `proactiveCompactAtTokens` (default 100k), regardless of model size.
 
-**For 152k context models**:
-```
-threshold = min(75000, 152000 * 0.50) = min(75000, 76000) = 75000 tokens
-```
-
-**For 128k context models**:
-```
-threshold = min(75000, 128000 * 0.50) = min(75000, 64000) = 64000 tokens
-```
-
-**For 262k context models**:
-```
-threshold = min(75000, 262144 * 0.50) = min(75000, 131072) = 75000 tokens
-```
-
-**Post-compaction token reset**:
-After successful compaction, tokens are reduced using `compactReductionFactor` (default 0.7):
-```
-estimatedTokens = max(estimatedTokens - preTokens * 0.7, preTokens * 0.3)
-```
-
-For example, with 100k pre-compaction tokens and default factor:
-```
-estimatedTokens = max(100000 - 70000, 30000) = 30000
-```
+**Proactive compact check is skipped during planning** — `maybeProactiveCompact` returns early if `s.planning === true`. This prevents compaction from disrupting in-progress plans. Emergency compaction (token limit errors) still fires regardless.
 
 ### 2. Recovery Compaction (Reactive)
 
@@ -607,16 +578,14 @@ Triggers when a stall is detected during recovery. Before aborting the session, 
 3. Wait 5 seconds → check again
 4. If still busy → proceed with abort+continue
 
-**Post-compaction token estimation**:
-After successful compaction, `estimatedTokens` is reduced using `compactReductionFactor` (default 0.7):
+**Post-compaction token reset**:
+After compaction completes, estimated tokens are recalculated using `compactReductionFactor`:
 ```
-estimatedTokens = max(estimatedTokens - preTokens * 0.7, preTokens * 0.3)
+estimatedTokens = estimatedTokens * (1 - compactReductionFactor)
 ```
+With default factor 0.7: `estimatedTokens = estimatedTokens * 0.3` (30% remain)
 
-For example, with 100k pre-compaction tokens:
-```
-estimatedTokens = max(100000 - 70000, 30000) = 30000
-```
+This matches the actual reduction — compaction removes ~70% of context, so the remaining tokens should be ~30% of pre-compaction count.
 
 ### Token Estimation
 
@@ -696,8 +665,7 @@ If compaction isn't triggering despite high token usage, check these:
 3. **Set a lower threshold**:
    ```json
    ["opencode-auto-force-resume", {
-     "proactiveCompactAtTokens": 50000,
-     "proactiveCompactAtPercent": 30
+     "proactiveCompactAtTokens": 50000
    }]
    ```
 
@@ -821,9 +789,7 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 ["opencode-auto-force-resume", {
   "stallTimeoutMs": 600000,
   "maxSessionAgeMs": 14400000,
-  "proactiveCompactAtTokens": 75000,
-  "proactiveCompactAtPercent": 50,
-  "compactReductionFactor": 0.7
+  "proactiveCompactAtTokens": 100000
 }]
 ```
 
