@@ -369,11 +369,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
           }
 
-          // Check for proactive compaction after token accumulation
-          // This catches context bloat during active generation, not just at message boundaries
-          if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
-            await compaction.maybeProactiveCompact(sid);
-          }
+
         }
         if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
@@ -617,10 +613,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTimeout(s.nudgeTimer);
           s.nudgeTimer = null;
         }
-        if (s.toastTimer) {
-          clearInterval(s.toastTimer);
-          s.toastTimer = null;
-        }
+
       });
       sessions.clear();
     }

@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Removed notification system and related timer toast functionality
+Removed proactive compaction check during token accumulation to simplify session management.
 
 ## Context
-The notification system was primarily used for displaying session timer toasts, which showed action duration and last progress time. This was part of the proactive session management features but was deemed less critical than other context management improvements.
+This change was prompted by the ongoing refactoring of the notification system and session management components. The proactive compaction check was interfering with the new session recovery flow and needed to be removed to prevent potential race conditions during session state transitions.
 
 ## Completed
-- [x] Removed the entire notification module and its dependencies
-- [x] Eliminated timer toast functionality from session state management
-- [x] Cleaned up related session state properties (toastTimer, actionStartedAt)
-- [x] Simplified session idle state handling by removing timer toast cleanup
+- [x] Removed proactive compaction check during token accumulation
+- [x] Cleaned up related session state management code
 
 ## In Progress
-- [ ] None - this is a complete removal of the notification system
+- [x] Ongoing work on session recovery flow improvements
 
 ## Blockers
-- None - this was a deliberate removal of non-critical functionality
+- Need to verify impact on context pruning behavior with the new DCP integration
 
 ## Next Steps
-1. Focus on core context management improvements
-2. Continue refining proactive compaction strategies
+1. Verify session recovery behavior with the removed compaction check
+2. Update documentation to reflect the simplified session management approach
