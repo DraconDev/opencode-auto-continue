@@ -19,9 +19,9 @@ function ensureLogDir(logDir: string) {
   }
 }
 
-let _pluginVersion: string | null = null;
+let _pluginVersion: string = "unknown";
 function getPluginVersion(): string {
-  if (_pluginVersion) return _pluginVersion;
+  if (_pluginVersion !== "unknown") return _pluginVersion;
   try {
     const pkgPath = join(process.env.HOME || "/tmp", ".config", "opencode", "plugins", "node_modules", "opencode-auto-force-resume", "package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
@@ -96,7 +96,7 @@ export function createStatusFileModule(deps: StatusFileDeps) {
       }
 
       const data = {
-        version: "3.134.0",
+        version: getPluginVersion(),
         timestamp: new Date().toISOString(),
         sessions: {
           [sessionId]: {
