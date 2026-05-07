@@ -216,6 +216,13 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
 
     const messageText = formatMessage(config.nudgeMessage, templateVars);
 
+    // Prompt guard: prevent duplicate injections
+    const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
+    if (isDuplicate) {
+      log("prompt guard blocked duplicate nudge", { sessionId });
+      return;
+    }
+
     // Send it!
     log("sending nudge prompt", { sessionId, messageText });
     try {

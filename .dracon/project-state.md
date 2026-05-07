@@ -1,20 +1,22 @@
 # Project State
 
 ## Current Focus
-Added prompt guard to prevent duplicate injections within a 30-second window
+Added prompt guard to prevent duplicate messages in nudge and recovery modules
 
 ## Context
-This change implements a new safety mechanism to prevent the same prompt from being injected multiple times in quick succession, which could lead to excessive API calls or unintended behavior.
+To prevent duplicate prompts from being injected within a 30-second window, we added a shared `shouldBlockPrompt` check that verifies if a similar message was recently sent to the same session.
 
 ## Completed
-- [x] Added `shouldBlockPrompt` import to `nudge.ts` to enable the prompt guard functionality
+- [x] Added duplicate prevention in nudge module for standard prompts
+- [x] Added duplicate prevention in recovery module for continue messages
+- [x] Shared `shouldBlockPrompt` utility now handles both cases consistently
 
 ## In Progress
-- [x] Implementation of the actual prompt guard logic (not yet visible in this diff)
+- [ ] Testing edge cases where messages might be similar but not identical
 
 ## Blockers
-- Need to implement the core prompt guard logic in the `shared.js` module
+- Need to verify the 30-second window is appropriate for all use cases
 
 ## Next Steps
-1. Implement the prompt guard logic in `shared.js`
-2. Add unit tests for the new prompt guard functionality
+1. Complete testing of the duplicate prevention logic
+2. Document the new prompt guard behavior in module documentation

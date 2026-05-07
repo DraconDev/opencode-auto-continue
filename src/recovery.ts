@@ -1,5 +1,5 @@
 import type { PluginConfig, SessionState } from "./shared.js";
-import { formatMessage } from "./shared.js";
+import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface RecoveryDeps {
@@ -284,6 +284,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       if (s.tokenLimitHits > 0) {
         log('using short continue message due to previous token limit hits:', s.tokenLimitHits);
         messageText = config.shortContinueMessage;
+      }
+
+      // Prompt guard: prevent duplicate continue messages
+      const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
+      if (isDuplicate) {
+        log('prompt guard blocked duplicate continue, skipping recovery');
+        s.aborting = false;
+        return;
       }
 
       s.needsContinue = true;
