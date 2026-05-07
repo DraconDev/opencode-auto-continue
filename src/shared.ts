@@ -226,6 +226,11 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (!config.continueWithPlanMessage || config.continueWithPlanMessage.trim().length === 0) errors.push(`continueWithPlanMessage must be non-empty`);
   if (!Array.isArray(config.tokenLimitPatterns) || config.tokenLimitPatterns.length === 0) errors.push(`tokenLimitPatterns must be a non-empty array`);
 
+  if (config.subagentWaitMs < 0) errors.push(`subagentWaitMs must be >= 0, got ${config.subagentWaitMs}`);
+  if (config.sessionDiscoveryIntervalMs < 0) errors.push(`sessionDiscoveryIntervalMs must be >= 0, got ${config.sessionDiscoveryIntervalMs}`);
+  if (config.idleSessionTimeoutMs < 0) errors.push(`idleSessionTimeoutMs must be >= 0, got ${config.idleSessionTimeoutMs}`);
+  if (config.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${config.maxSessions}`);
+
   if (errors.length > 0) {
     return { ...DEFAULT_CONFIG };
   }
