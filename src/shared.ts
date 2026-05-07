@@ -140,8 +140,6 @@ export const DEFAULT_CONFIG: PluginConfig = {
   nudgeMessage: "The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks.",
   nudgeCooldownMs: 60000,
   tokenLimitPatterns: ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],
-  timerToastEnabled: true,
-  timerToastIntervalMs: 60000,
   terminalTitleEnabled: true,
   statusFileEnabled: true,
   autoCompact: true,
@@ -160,10 +158,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
-  notifyChildSessions: false,
-  notificationDedupeMs: 1500,
   dcpDetected: false,
-  dcpWarning: true,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
@@ -182,7 +177,6 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (!config.continueMessage || typeof config.continueMessage !== 'string') errors.push(`continueMessage must be a non-empty string`);
   if (!config.reviewMessage || typeof config.reviewMessage !== 'string') errors.push(`reviewMessage must be a non-empty string`);
   if (config.reviewDebounceMs < 0) errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
-  if (config.timerToastIntervalMs < 10000) errors.push(`timerToastIntervalMs must be >= 10000, got ${config.timerToastIntervalMs}`);
   if (config.proactiveCompactAtTokens < 0) errors.push(`proactiveCompactAtTokens must be >= 0, got ${config.proactiveCompactAtTokens}`);
   if (config.proactiveCompactAtPercent < 0 || config.proactiveCompactAtPercent > 100) errors.push(`proactiveCompactAtPercent must be between 0 and 100, got ${config.proactiveCompactAtPercent}`);
   if (config.compactRetryDelayMs < 0) errors.push(`compactRetryDelayMs must be >= 0, got ${config.compactRetryDelayMs}`);
