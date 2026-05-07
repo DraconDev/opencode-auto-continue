@@ -25,11 +25,11 @@ function getPluginVersion(): string {
   try {
     const pkgPath = join(process.env.HOME || "/tmp", ".config", "opencode", "plugins", "node_modules", "opencode-auto-force-resume", "package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-    _pluginVersion = pkg.version;
+    _pluginVersion = pkg.version as string;
   } catch {
     _pluginVersion = "unknown";
   }
-  return _pluginVersion as string;
+  return _pluginVersion!;
 }
 
 export function createStatusFileModule(deps: StatusFileDeps) {
