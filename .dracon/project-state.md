@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added session busy check before compaction to prevent summarization during generation
+Updated proactive compaction configuration options in documentation
 
 ## Context
-Prevent race conditions where compaction would interfere with active session generation by checking session status before attempting summarization
+The proactive compaction feature was recently enhanced to support both token-based and message-count-based triggers. This documentation update reflects the new configuration options and their default values.
 
 ## Completed
-- [x] Added busy state check before compaction
-- [x] Enhanced error logging with more detailed error information
-- [x] Maintained proper session state cleanup in error cases
+- [x] Added `compactAtMessageCount` configuration option for message-count-based compaction
+- [x] Updated `compactCooldownMs` default from 120000ms to 60000ms (1 minute)
+- [x] Clarified descriptions for existing compaction configuration options
 
 ## In Progress
-- [x] Implementation of session busy check
+- [ ] No active work in progress related to this change
 
 ## Blockers
-- None identified
+- None
 
 ## Next Steps
-1. Verify compaction behavior with concurrent generation
-2. Consider adding retry logic for transient busy states
+1. Verify that the new configuration options are properly documented in other project materials
+2. Ensure the proactive compaction implementation matches these documented defaults

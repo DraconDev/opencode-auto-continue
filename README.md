@@ -362,12 +362,13 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | Option | Default | Description |
 |--------|---------|-------------|
 | `autoCompact` | `true` | Enable proactive and recovery compaction |
-| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction (all models) |
-| `compactCooldownMs` | `120000` | Min time between compaction attempts (2 min) |
+| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction |
+| `compactCooldownMs` | `60000` | Min time between compaction attempts (1 min) |
+| `compactAtMessageCount` | `50` | Trigger compaction after N messages (token estimation fallback) |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
-| `compactionVerifyWaitMs` | `10000` | Max wait for compaction (2s/3s/5s progressive checks) |
-| `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) — remaining = 1 - factor |
+| `compactionVerifyWaitMs` | `10000` | Max wait for compaction verification |
+| `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
 
 ### Context Window Sizing
 
