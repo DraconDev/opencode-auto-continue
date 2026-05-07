@@ -1,21 +1,20 @@
 # Project State
 
 ## Current Focus
-Added additional token limit error pattern detection to improve error handling
+Added an additional token limit error pattern to improve error detection.
 
 ## Context
-The change expands the token limit pattern matching to catch more error cases, ensuring better handling of API errors related to token limits.
+The change improves error handling for token limit scenarios by adding a new pattern to detect "token limit exceeded" errors, which were previously undetected.
 
 ## Completed
-- [x] Added "too many tokens" and "payload too large" patterns to tokenLimitPatterns array
-- [x] Removed the old pattern that was being replaced
+- [x] Added "token limit exceeded" to the tokenLimitPatterns array in DEFAULT_CONFIG
 
 ## In Progress
-- [x] Verification of new patterns against actual API error messages
+- [x] Testing the new pattern detection in various error scenarios
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify new patterns catch all relevant error cases in integration tests
-2. Document the new patterns in the configuration reference
+1. Verify the new pattern works in integration tests
+2. Document the new error pattern in the project's error handling documentation
