@@ -25,6 +25,7 @@ import { createRecoveryModule } from "./recovery.js";
 import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
+import { createSessionMonitor } from "./session-monitor.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
