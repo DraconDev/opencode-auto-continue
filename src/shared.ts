@@ -277,11 +277,6 @@ class ModelContextCache {
           }
         }
       }
-            }
-          }
-        }
-      }
-
       this.cache.path = opencodeConfigPath;
       this.cache.mtime = mtime;
       this.cache.limit = limits.length > 0 ? Math.min(...limits) : null;
