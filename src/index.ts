@@ -150,6 +150,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact });
 
+  const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
+  sessionMonitor.start();
+
   terminal.registerStatusLineHook();
 
   const progressTypes = [
