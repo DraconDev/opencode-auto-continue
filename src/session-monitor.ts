@@ -147,7 +147,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           discoveredCount++;
 
           // Create minimal session so recovery knows about it
-          sessions.set(id, {
+            sessions.set(id, {
             attempts: 0,
             backoffAttempts: 0,
             autoSubmitCount: 0,
@@ -155,6 +155,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
             lastUserMessageId: '',
             sentMessageAt: 0,
             timer: null,
+            nudgeTimer: null,
             needsContinue: false,
             continueMessageText: '',
             nudgeCount: 0,
