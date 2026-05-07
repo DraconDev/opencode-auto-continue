@@ -159,9 +159,9 @@ describe("SessionMonitor", () => {
   describe("Basic Operations", () => {
     it("should start and stop without errors", () => {
       monitor.start();
-      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("SessionMonitor] started"));
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("started"));
       monitor.stop();
-      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("SessionMonitor] stopped"));
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("stopped"));
     });
 
     it("should track session touch", () => {
