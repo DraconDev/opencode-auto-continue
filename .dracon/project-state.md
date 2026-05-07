@@ -1,23 +1,23 @@
 # Project State
 
 ## Current Focus
-Improved proactive compaction logic with detailed logging and better threshold checks
+Simplified proactive compaction threshold logic by removing model-specific distinctions
 
 ## Context
-The proactive compaction system now needs clearer logging and more robust threshold checks to prevent unnecessary compactions during active operations.
+The previous implementation had overly complex logic for determining compaction thresholds based on model size and configuration percentages. This change simplifies the logic to always use the proactiveCompactAtTokens value, removing special cases for large models and small models.
 
 ## Completed
-- [x] Added detailed logging for all proactive compaction skip conditions
-- [x] Improved token threshold calculation with model context limit detection
-- [x] Enhanced cooldown period enforcement with timestamp logging
-- [x] Added comprehensive logging for compaction decision points
+- [x] Removed model-specific compaction threshold logic
+- [x] Simplified getCompactionThreshold to always return config.proactiveCompactAtTokens
+- [x] Updated token estimation logic to use config.compactReductionFactor
 
 ## In Progress
-- [x] Refactored compaction trigger logic with clearer conditions
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this change
+- None identified
 
 ## Next Steps
-1. Verify logging output in various session states
-2. Validate compaction thresholds with different model configurations
+1. Verify test coverage for the simplified logic
+2. Consider adding documentation for the new behavior
+```

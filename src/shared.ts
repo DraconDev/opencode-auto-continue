@@ -275,18 +275,9 @@ export function invalidateModelLimitCache(): void {
 }
 
 export function getCompactionThreshold(modelContextLimit: number | null, config: PluginConfig): number {
-  if (!modelContextLimit || modelContextLimit <= 0) {
-    return config.proactiveCompactAtTokens;
-  }
-  
-  const thresholdPercent = modelContextLimit * (config.proactiveCompactAtPercent / 100);
-  
-  if (modelContextLimit >= 200000) {
-    return Math.min(config.proactiveCompactAtTokens, thresholdPercent);
-  } else {
-    const smallModelThreshold = Math.min(75000, config.proactiveCompactAtTokens);
-    return Math.min(smallModelThreshold, thresholdPercent);
-  }
+  // Always compact at proactiveCompactAtTokens (default 100k)
+  // The proactiveCompactAtPercent and 200k model distinction were over-engineered
+  return config.proactiveCompactAtTokens;
 }
 
 export const PLAN_PATTERNS = [

@@ -530,8 +530,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         log('session compacted, clearing compacting flag:', sid);
         s.compacting = false;
         s.lastCompactionAt = Date.now();
-        // Reset estimated tokens since context was just compacted
-        s.estimatedTokens = Math.floor(s.estimatedTokens * 0.3);
+        s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
         // Reset recovery counters since we just freed context space
         s.attempts = 0;
         s.backoffAttempts = 0;
