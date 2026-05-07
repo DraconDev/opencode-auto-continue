@@ -274,7 +274,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     // Idle cleanup every 30 seconds
     cleanupTimer = setInterval(cleanupIdleSessions, 30000);
 
-    log('[SessionMonitor] started, orphanCheck: 5s, discovery:', config.sessionDiscoveryIntervalMs + 'ms, cleanup: 30s');
+    log(`[SessionMonitor] started, orphanCheck: 5s, discovery: ${config.sessionDiscoveryIntervalMs}ms, cleanup: 30s`);
   }
 
   function stop(): void {
