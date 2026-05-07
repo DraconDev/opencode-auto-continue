@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Updated proactive compaction configuration options in documentation
+Updated auto-force-resume plugin configuration options in documentation
 
 ## Context
-The proactive compaction feature was recently enhanced to support both token-based and message-count-based triggers. This documentation update reflects the new configuration options and their default values.
+The changes simplify the configuration options for the auto-force-resume plugin by removing deprecated or redundant settings while adding new ones for better user control.
 
 ## Completed
-- [x] Added `compactAtMessageCount` configuration option for message-count-based compaction
-- [x] Updated `compactCooldownMs` default from 120000ms to 60000ms (1 minute)
-- [x] Clarified descriptions for existing compaction configuration options
+- [x] Removed deprecated configuration options (`abortPollIntervalMs`, `abortPollMaxTimeMs`, `abortPollMaxFailures`, `maxBackoffMs`, `maxAutoSubmits`, `continueMessage`, `continueWithTodosMessage`, `maxAttemptsMessage`, `includeTodoContext`, `reviewOnComplete`, `reviewMessage`, `reviewDebounceMs`)
+- [x] Updated `waitAfterAbortMs` from 1500 to 5000 milliseconds
+- [x] Enabled `showToasts` for better user notifications
 
 ## In Progress
-- [ ] No active work in progress related to this change
+- [x] Documentation updates for the simplified configuration
 
 ## Blockers
-- None
+- None identified
 
 ## Next Steps
-1. Verify that the new configuration options are properly documented in other project materials
-2. Ensure the proactive compaction implementation matches these documented defaults
+1. Verify the updated configuration works as expected in test environments
+2. Consider adding more user-friendly documentation examples for the new configuration options
