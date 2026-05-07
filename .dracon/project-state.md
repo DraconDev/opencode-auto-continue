@@ -1,23 +1,26 @@
 # Project State
 
 ## Current Focus
-Enhanced proactive compaction with DCP (Dynamic Context Pruning) integration and session context preservation
+Enhanced context management with Dynamic Context Pruning (DCP) integration
 
 ## Context
-The proactive compaction system now detects when the DCP plugin is installed and disables its own compaction to avoid conflicts. Additionally, session context is preserved during compaction to maintain important task and planning state.
+The proactive compaction system was previously using a naive `session.summarize()` approach which had limitations in context optimization. DCP provides a more sophisticated solution for managing context size and quality.
 
 ## Completed
-- [x] Added DCP detection to disable proactive compaction when DCP is present
-- [x] Implemented session context injection during compaction to preserve active tasks and planning state
-- [x] Added configuration flag for DCP detection state
-- [x] Enhanced compaction logging to indicate when DCP is active
+- [x] Added comprehensive DCP integration documentation
+- [x] Documented DCP feature comparison with current approach
+- [x] Implemented auto-detection of DCP installation
+- [x] Updated configuration behavior based on DCP presence
+- [x] Added DCP default configuration reference
+- [x] Documented fallback behavior when DCP is not installed
 
 ## In Progress
-- [ ] Testing edge cases where DCP might not properly disable proactive compaction
+- [x] Documentation of DCP integration and fallback mechanisms
 
 ## Blockers
-- None identified at this stage
+- None identified in this documentation update
 
 ## Next Steps
-1. Verify DCP integration works correctly with various session states
-2. Optimize context preservation for different session types
+1. Verify DCP integration works as documented
+2. Test fallback behavior when DCP is not installed
+3. Update related documentation for consistency

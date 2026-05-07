@@ -46,6 +46,60 @@
 - Tracks recent notifications per session
 - Cleans up old entries automatically
 
+## Dynamic Context Pruning (DCP) Integration
+
+**Recommended**: Install DCP (`@tarquinen/opencode-dcp`) alongside this plugin for best context management.
+
+### Why DCP?
+
+DCP handles context optimization far better than our naive `session.summarize()` approach:
+
+| Feature | Our Plugin | DCP |
+|---------|-----------|-----|
+| Proactive pruning | `summarize()` at threshold | `compress` tool called by model |
+| Message dedup | None | Yes — removes repeated tool calls |
+| Error purge | None | Yes — prunes errored tool inputs |
+| Soft thresholds | Hard 100k token limit | 50k-100k range with nudges |
+| Context preservation | Manual hook injection | Protected tools, user messages, file patterns |
+
+### Auto-Detection
+
+The plugin auto-detects DCP by checking:
+1. Global `opencode.json` for DCP in `plugin` array
+2. `~/.config/opencode/plugins/opencode-dynamic-context-pruning/`
+3. `~/.cache/opencode/node_modules/@tarquinen/opencode-dcp/`
+
+When detected:
+- `config.dcpDetected = true`
+- `config.autoCompact = false` — DCP handles proactive compaction
+- Our emergency compaction still fires on token limit errors (DCP may not catch everything)
+- Our `experimental.session.compacting` hook still injects session state (todos, planning status)
+
+### DCP Defaults (for reference)
+
+```json
+{
+  "compress": {
+    "maxContextLimit": 100000,
+    "minContextLimit": 50000,
+    "nudgeFrequency": 5,
+    "mode": "range",
+    "permission": "allow"
+  },
+  "strategies": {
+    "deduplication": { "enabled": true },
+    "purgeErrors": { "enabled": true, "turns": 4 }
+  }
+}
+```
+
+### Without DCP
+
+If DCP is not installed, our plugin falls back to native `session.summarize()` with:
+- `proactiveCompactAtTokens: 100000`
+- `compactCooldownMs: 60000` (1min)
+- `compactAtMessageCount: 50` (message count fallback)
+
 ## Session State Machine
 
 ```
@@ -202,7 +256,9 @@ Triggers on: every progress event + session resume busy + idle + message.updated
 
 **Skips during planning**: `maybeProactiveCompact` checks `s.planning` and returns early — compaction is deferred while the model is generating plan content. This prevents summarising away in-progress plans. Emergency compaction (token limit errors) still fires regardless.
 
-Config options:
+**DCP integration**: When DCP is detected, proactive compaction is disabled entirely. DCP's `compress` tool handles context optimization better than our naive `summarize()` approach.
+
+Config options (without DCP):
 - `proactiveCompactAtTokens: 100000` — token threshold
 - `compactCooldownMs: 60000` — 1min between compaction attempts
 - `compactMaxRetries: 3` — retry attempts
