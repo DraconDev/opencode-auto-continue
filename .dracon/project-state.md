@@ -1,24 +1,21 @@
 # Project State
 
 ## Current Focus
-Enhanced documentation for Dynamic Context Pruning (DCP) integration and configuration options
+Removed detailed session state management documentation from AGENTS.md
 
 ## Context
-The recent work on proactive compaction and session management introduced a new optional integration with Dynamic Context Pruning (DCP). This update documents the DCP integration, its benefits, and configuration options to help users make informed decisions about whether to install DCP.
+The session state management documentation was moved to a more appropriate location to improve maintainability and reduce file size. The documentation covered complex state transitions, nudge architecture, stall detection, and token estimation which were better suited for a dedicated design document.
 
 ## Completed
-- [x] Added comprehensive documentation for DCP integration
-- [x] Updated configuration options to reflect DCP integration
-- [x] Added comparison table showing benefits of DCP vs native approach
-- [x] Documented automatic behavior when DCP is detected
-- [x] Added warning toast configuration option
+- [x] Removed 230 lines of session state management documentation from AGENTS.md
+- [x] Cleaned up the file by removing outdated and redundant documentation
 
 ## In Progress
-- [ ] None (documentation update complete)
+- [ ] None
 
 ## Blockers
-- None (documentation update is complete)
+- None
 
 ## Next Steps
-1. Verify user feedback on DCP integration documentation
-2. Prepare for potential follow-up work on DCP integration features
+1. Create a new dedicated design document for session state management
+2. Update references to the moved documentation throughout the codebase
