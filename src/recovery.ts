@@ -215,8 +215,11 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         maxAttempts: String(config.maxRecoveries),
       };
 
-      // If session was planning, use plan-aware continue message
-      if (s.planning) {
+      // If tool-text was detected, use the tool-text recovery prompt
+      if (hasToolText) {
+        messageText = TOOL_TEXT_RECOVERY_PROMPT;
+        log('using tool-text recovery prompt');
+      } else if (s.planning) {
         messageText = config.continueWithPlanMessage;
         log('using plan-aware continue message');
       } else if (config.includeTodoContext) {

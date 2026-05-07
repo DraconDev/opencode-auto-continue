@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Added tool-text detection for recovery prompts in sessions containing embedded XML
+Improved recovery prompt selection by prioritizing tool-text detection over plan-aware messages
 
 ## Context
-This change improves recovery handling for sessions where tool outputs are embedded as raw text (XML in reasoning). The previous auto-compaction behavior was triggering unnecessarily in these cases.
+The tool-text detection feature was recently added to identify embedded XML/Markdown patterns in sessions. This change ensures these sessions use specialized recovery prompts instead of generic plan-aware messages, improving recovery accuracy for tool-text content.
 
 ## Completed
-- [x] Added tool-text detection pattern matching
-- [x] Modified auto-compaction to skip when tool-text is detected
-- [x] Added logging for tool-text detection cases
+- [x] Added tool-text detection check before plan-aware message logic
+- [x] Added specific recovery prompt for tool-text sessions
+- [x] Added debug logging for tool-text recovery prompt usage
 
 ## In Progress
-- [x] Implementation of tool-text recovery logic
+- [ ] None (this is a complete feature implementation)
 
 ## Blockers
-- None identified for this specific change
+- None (this is a complete implementation of the tool-text recovery feature)
 
 ## Next Steps
-1. Implement recovery prompt variants for tool-text cases
-2. Add integration tests for tool-text recovery scenarios
+1. Verify recovery prompt quality with test cases containing tool-text
+2. Monitor recovery success rates for tool-text sessions in production
