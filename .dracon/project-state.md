@@ -1,22 +1,28 @@
 # Project State
 
 ## Current Focus
-Updated auto-force-resume plugin configuration options in documentation
+Enhanced session management with new features to prevent hallucinations, improve recovery, and reduce user disruption.
 
 ## Context
-The changes simplify the configuration options for the auto-force-resume plugin by removing deprecated or redundant settings while adding new ones for better user control.
+The plugin now handles more edge cases in AI session management, particularly around tool execution, question detection, and recovery from stalls.
 
 ## Completed
-- [x] Removed deprecated configuration options (`abortPollIntervalMs`, `abortPollMaxTimeMs`, `abortPollMaxFailures`, `maxBackoffMs`, `maxAutoSubmits`, `continueMessage`, `continueWithTodosMessage`, `maxAttemptsMessage`, `includeTodoContext`, `reviewOnComplete`, `reviewMessage`, `reviewDebounceMs`)
-- [x] Updated `waitAfterAbortMs` from 1500 to 5000 milliseconds
-- [x] Enabled `showToasts` for better user notifications
+- [x] Added question detection to skip nudges when AI asks for user input
+- [x] Implemented tool-text recovery to handle XML tool calls in reasoning
+- [x] Added hallucination loop detection to break infinite cycles
+- [x] Created prompt guard to prevent duplicate injections
+- [x] Added child session filtering for notifications
+- [x] Implemented notification deduplication
+- [x] Updated stall detection and recovery flow
+- [x] Enhanced token estimation with multiple data sources
+- [x] Improved proactive compaction logic
 
 ## In Progress
-- [x] Documentation updates for the simplified configuration
+- [ ] Finalizing compaction flow documentation
 
 ## Blockers
-- None identified
+- None reported in this commit
 
 ## Next Steps
-1. Verify the updated configuration works as expected in test environments
-2. Consider adding more user-friendly documentation examples for the new configuration options
+1. Verify all new features work in integration tests
+2. Document any remaining edge cases in AGENTS.md
