@@ -190,6 +190,96 @@ When `enableAdvisory: true` and `advisoryModel` is set, the advisor:
 | Fallback chain | AI → heuristic → hardcoded | Graceful degradation |
 | Read-only advice | Advisor never aborts/continues directly | Session module retains control |
 
+## Session Monitor (`src/session-monitor.ts`)
+
+A passive monitoring layer that watches for session lifecycle issues the event system might miss. Added in v7.2.0 to close gaps identified by competitive analysis.
+
+### Features
+
+#### 1. Orphan Parent Detection
+When a subagent finishes but the parent session stays stuck as "busy" forever:
+- Monitors `busyCount` across all sessions via 5s timer
+- Detects when count drops from >1 to 1 (subagent completion signal)
+- Waits `orphanWaitMs` (15s default) for natural parent resume
+- If parent still busy → triggers recovery (abort + continue)
+- Prevents the "stuck parent after subagent" failure mode
+
+#### 2. Session Discovery
+Event hooks can miss sessions in edge cases (plugin loaded mid-session, SDK events dropped):
+- Periodic `session.list()` polling every `sessionDiscoveryIntervalMs` (60s)
+- Creates minimal `SessionState` for any untracked busy sessions
+- Integrates seamlessly with existing recovery/nudge timers
+- Does not interfere with sessions already being tracked
+
+#### 3. Idle Session Cleanup
+Prevents memory leaks in long-running OpenCode instances:
+- Removes sessions idle > `idleCleanupMs` (10min default)
+- Enforces `maxSessions` limit (50 default) — removes oldest idle first
+- Timer-based, not event-driven (runs every 30s)
+- Safe: only cleans sessions with no pending timers or operations
+
+### Architecture
+
+```
+Plugin init → sessionMonitor.start()
+                    │
+                    ├── 5s timer ──► checkOrphanParents()
+                    │                    │
+                    │                    └── busyCount drop?
+                    │                        ├── YES ──► wait 15s ──► recover parent
+                    │                        └── NO  ──► do nothing
+                    │
+                    ├── 60s timer ──► discoverSessions()
+                    │                    │
+                    │                    └── session.list()
+                    │                        ├── New session ──► create minimal state
+                    │                        └── Known session ──► skip
+                    │
+                    └── 30s timer ──► cleanupIdleSessions()
+                                         │
+                                         └── idle > 10min OR count > 50?
+                                             ├── YES ──► remove session
+                                             └── NO  ──► keep
+
+Events ──► sessionMonitor.touchSession(id)
+              │
+              └── updates lastActivityAt
+```
+
+### Integration Points
+
+- **index.ts**: `sessionMonitor.start()` on plugin init, `sessionMonitor.stop()` on dispose
+- **Events**: `touchSession()` called on `session.created`, `session.status(busy/retry)`, `message.part.updated(real progress)`
+- **Recovery**: Orphan detection calls `recover()` from recovery module when parent stuck
+- **State**: Shares the same `sessions` Map with all other modules
+
+### Config
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
+| `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
+| `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
+| `maxSessions` | number | `50` | Max sessions to keep in memory |
+
+### When It Fires
+
+| Scenario | Detection | Action |
+|----------|-----------|--------|
+| Subagent completes, parent stuck | busyCount >1 → 1 | Wait 15s, then recover parent |
+| Plugin loaded mid-session | session.list() shows unknown busy session | Create minimal SessionState |
+| Session idle for hours | cleanup timer | Remove from `sessions` Map |
+| Too many sessions tracked | >50 sessions | Remove oldest idle sessions |
+
+### Trade-offs
+
+| Decision | Rationale | Trade-off |
+|----------|-----------|-----------|
+| Timer-based monitoring | Orphan detection requires watching busyCount over time | Adds ~3 timers (5s, 30s, 60s) |
+| Minimal session creation | Discovered sessions don't need full init | May miss config-dependent behaviors |
+| Passive layer | Detects but delegates recovery | Keeps separation of concerns |
+| Shared sessions Map | All modules see same state | Must be careful with cleanup timing |
+
 ## Session State Machine
 
 ```
