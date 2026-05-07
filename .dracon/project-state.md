@@ -1,22 +1,22 @@
 # Project State
 
 ## Current Focus
-Refactored nudge test to verify aggressive mode always fetches todos from API
+Adjust proactive compaction thresholds and remove unused configuration options
 
 ## Context
-The test was updated to ensure the nudge functionality in aggressive mode consistently fetches todos from the API, rather than relying on cached data from events.
+This change simplifies the proactive compaction logic by reducing the token threshold and removing unused configuration options that were previously related to token limit handling and user notifications.
 
 ## Completed
-- [x] Modified test to verify API call on idle event in aggressive mode
-- [x] Updated test assertions to check for API call instead of cached data
-- [x] Maintained verification of prompt call with todo context
+- [x] Reduced proactive compaction token threshold from 100,000 to 50,000
+- [x] Decreased compaction cooldown from 120,000ms to 60,000ms
+- [x] Removed unused configuration options for token limit patterns and user notifications
 
 ## In Progress
-- [x] Test refactoring for aggressive mode behavior
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify test coverage for other nudge scenarios
-2. Ensure consistent behavior across all test cases
+1. Verify the new thresholds don't cause premature compaction in active sessions
+2. Ensure the removed configuration options aren't being used elsewhere in the codebase
