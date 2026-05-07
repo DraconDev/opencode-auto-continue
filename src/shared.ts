@@ -112,6 +112,8 @@ export interface PluginConfig {
   compactionVerifyWaitMs: number;
   compactCooldownMs: number;
   compactReductionFactor: number;
+  notifyChildSessions: boolean;
+  notificationDedupeMs: number;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {

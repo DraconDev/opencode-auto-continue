@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Improved type safety in the prompt guard integration for nudge messages
+Added session notification configuration options to prevent duplicate notifications.
 
 ## Context
-The prompt guard was recently added to prevent duplicate messages, but the type system was causing issues with the log parameter. This change ensures proper type handling while maintaining the duplicate prevention functionality.
+The changes introduce new configuration options for managing child session notifications, particularly to prevent duplicate messages within a specified time window.
 
 ## Completed
-- [x] Fixed type mismatch in `shouldBlockPrompt` call by casting the log parameter
-- [x] Maintained all existing duplicate prevention logic
+- [x] Added `notifyChildSessions` boolean flag to control child session notifications
+- [x] Added `notificationDedupeMs` to configure deduplication time window in milliseconds
 
 ## In Progress
-- [x] Type safety improvement for prompt guard integration
+- [ ] Testing notification behavior with different deduplication intervals
 
 ## Blockers
-- None identified
+- Need to verify default values for the new configuration options
 
 ## Next Steps
-1. Verify no regression in duplicate prevention behavior
-2. Consider broader type safety improvements in the prompt guard system
+1. Implement unit tests for notification deduplication logic
+2. Document the new configuration options in the project documentation
