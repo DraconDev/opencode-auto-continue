@@ -1,20 +1,20 @@
 # Project State
 
 ## Current Focus
-Added mock implementation for terminal status notifications in test suite
+Relaxed validation of stall timeout configuration to allow equality with waitAfterAbortMs
 
 ## Context
-The test suite for terminal status notifications needed to be updated to include mock implementations for message handling, which was previously missing.
+The change was prompted by a need to allow the stallTimeoutMs to be equal to waitAfterAbortMs in certain configurations, which was previously enforced as a strict inequality.
 
 ## Completed
-- [x] Added mock implementation for `messages` function in terminal status notifications test
+- [x] Modified validation to allow stallTimeoutMs to be greater than or equal to waitAfterAbortMs
 
 ## In Progress
-- [x] Test suite updates for terminal status notifications
+- [x] No active work in progress related to this change
 
 ## Blockers
-- None identified for this specific change
+- None identified
 
 ## Next Steps
-1. Verify test coverage for terminal status notifications
-2. Ensure all notification scenarios are properly mocked in tests
+1. Verify no unintended side effects from this change
+2. Update relevant documentation if needed
