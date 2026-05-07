@@ -137,13 +137,16 @@ export function createCompactionModule(deps: CompactionDeps) {
     const modelLimit = getModelContextLimit(opencodeConfigPath);
     const threshold = getCompactionThreshold(modelLimit, config);
 
-    log('proactive compact check:', sessionId, 'tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit, 'last compact:', s.lastCompactionAt);
+    log('proactive compact check:', sessionId, 'tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit, 'messages:', s.messageCount, 'msgThreshold:', config.compactAtMessageCount, 'last compact:', s.lastCompactionAt);
 
     if (s.estimatedTokens >= threshold) {
       log('proactive compaction triggered for session:', sessionId, 'estimated tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit);
       await attemptCompact(sessionId);
+    } else if (s.messageCount >= config.compactAtMessageCount) {
+      log('proactive compaction triggered by message count:', sessionId, 'messages:', s.messageCount, 'threshold:', config.compactAtMessageCount);
+      await attemptCompact(sessionId);
     } else {
-      log('proactive compact skipped: tokens below threshold', s.estimatedTokens, '<', threshold);
+      log('proactive compact skipped: tokens below threshold', s.estimatedTokens, '<', threshold, 'messages:', s.messageCount, '<', config.compactAtMessageCount);
     }
   }
 
