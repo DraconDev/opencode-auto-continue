@@ -275,6 +275,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         
         if (status?.type === "busy" || status?.type === "retry") {
           updateProgress(s);
+          sessionMonitor.touchSession(sid);
           s.userCancelled = false;
           if (s.actionStartedAt === 0) {
             s.actionStartedAt = Date.now();
