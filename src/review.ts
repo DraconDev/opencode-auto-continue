@@ -1,4 +1,5 @@
 import type { PluginConfig, SessionState } from "./shared.js";
+import { shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface ReviewDeps {

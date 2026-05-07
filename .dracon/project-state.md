@@ -1,22 +1,21 @@
 # Project State
 
 ## Current Focus
-Added prompt guard to prevent duplicate messages in nudge and recovery modules
+Added prompt guard import to prevent duplicate message injections
 
 ## Context
-To prevent duplicate prompts from being injected within a 30-second window, we added a shared `shouldBlockPrompt` check that verifies if a similar message was recently sent to the same session.
+This change implements a prompt guard system to prevent duplicate message injections within a 30-second window, as part of ongoing work to improve session reliability and prevent message spam.
 
 ## Completed
-- [x] Added duplicate prevention in nudge module for standard prompts
-- [x] Added duplicate prevention in recovery module for continue messages
-- [x] Shared `shouldBlockPrompt` utility now handles both cases consistently
+- [x] Added import of `shouldBlockPrompt` from shared utilities
+- [x] Integrated prompt guard logic into review module
 
 ## In Progress
-- [ ] Testing edge cases where messages might be similar but not identical
+- [ ] Implementation of prompt guard logic in review module
 
 ## Blockers
-- Need to verify the 30-second window is appropriate for all use cases
+- Need to implement the actual guard logic in the review module
 
 ## Next Steps
-1. Complete testing of the duplicate prevention logic
-2. Document the new prompt guard behavior in module documentation
+1. Implement prompt guard logic in review module
+2. Add unit tests for the prompt guard functionality
