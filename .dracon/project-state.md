@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Improved nudge scheduling logic in the AutoForceResumePlugin
+Refactored nudge test to verify aggressive mode always fetches todos from API
 
 ## Context
-The change refines how nudges are scheduled during session state transitions. The previous implementation passed `lastKnownTodos` to `scheduleNudge`, but this was unnecessary since the nudge module already fetches the current todo count from the API.
+The change modifies the nudge test to verify that the aggressive mode always fetches todos from the API on every session.idle event, rather than using cached todos from the todo.updated event.
 
 ## Completed
-- [x] Removed redundant `lastKnownTodos` parameter from nudge scheduling calls
-- [x] Updated comment to clarify that `scheduleNudge` now handles todo count fetching internally
+- [x] Changed test description to "nudge aggressive mode (always fetch from API)"
+- [x] Updated test case to verify API fetch on every session.idle
+- [x] Modified assertions to expect API response content
+- [x] Removed expectations about cached event data
 
 ## In Progress
-- [x] No active work in progress for this change
+- [ ] No active work in progress
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify no regression in nudge scheduling behavior
-2. Consider adding logging for nudge scheduling decisions
+1. Verify test coverage for other nudge modes
+2. Consider adding tests for edge cases in aggressive mode
