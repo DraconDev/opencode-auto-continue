@@ -30,8 +30,7 @@ export function createNotificationModule(deps: NotificationDeps) {
     
     try {
       log('showing timer toast for session:', sessionId, message);
-      const client = input as any;
-      await client.tui.showToast({
+      await input.client.tui.showToast({
         query: { directory: input.directory || "" },
         body: {
           title: "Session Timer",

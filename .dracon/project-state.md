@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Added an additional token limit error pattern to improve error detection.
+Enabled toast notifications for session timers and updated notification module dependencies
 
 ## Context
-The change improves error handling for token limit scenarios by adding a new pattern to detect "token limit exceeded" errors, which were previously undetected.
+The changes enable visual feedback for session timers and improve the notification system's dependency handling
 
 ## Completed
-- [x] Added "token limit exceeded" to the tokenLimitPatterns array in DEFAULT_CONFIG
+- [x] Enabled toast notifications by setting `showToasts: true` in configuration
+- [x] Refactored notification module to use proper client dependency structure
 
 ## In Progress
-- [x] Testing the new pattern detection in various error scenarios
+- [x] Notification system improvements
 
 ## Blockers
-- None identified
+- None identified in this commit
 
 ## Next Steps
-1. Verify the new pattern works in integration tests
-2. Document the new error pattern in the project's error handling documentation
+1. Verify toast notifications appear correctly in UI
+2. Test notification behavior with different session types

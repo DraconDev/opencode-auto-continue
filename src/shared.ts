@@ -131,7 +131,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   reviewOnComplete: true,
   reviewMessage: "All tasks in this session have been completed. Please perform a final review: summarize what was accomplished, note any technical decisions or trade-offs made, flag anything that should be documented, check for any oversights or edge cases that might have been missed, suggest tests that should be added or run to verify the changes, and list any follow-up tasks or improvements for next time. If you find anything that needs fixing, please create appropriate todos.",
   reviewDebounceMs: 500,
-  showToasts: false,
+  showToasts: true,
   nudgeEnabled: true,
   nudgeIdleDelayMs: 500,
   nudgeMaxSubmits: 3,
