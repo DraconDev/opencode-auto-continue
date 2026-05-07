@@ -200,7 +200,6 @@ describe("shared.ts utilities", () => {
       expect(session).toBeDefined();
       expect(session.timer).toBeNull();
       expect(session.nudgeTimer).toBeNull();
-      expect(session.toastTimer).toBeNull();
       expect(session.attempts).toBe(0);
       expect(session.userCancelled).toBe(false);
       expect(session.planning).toBe(false);
@@ -307,15 +306,6 @@ describe("shared.ts utilities", () => {
       const result = validateConfig(config);
 
       expect(result.reviewDebounceMs).toBe(DEFAULT_CONFIG.reviewDebounceMs);
-    });
-
-    it("should reject timerToastIntervalMs < 10000", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
-
-      const config = { ...DEFAULT_CONFIG, timerToastIntervalMs: 5000 };
-      const result = validateConfig(config);
-
-      expect(result.timerToastIntervalMs).toBe(DEFAULT_CONFIG.timerToastIntervalMs);
     });
 
     it("should reject negative proactiveCompactAtTokens", async () => {

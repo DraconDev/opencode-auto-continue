@@ -1,19 +1,28 @@
 import { type PluginConfig, type SessionState, formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
+import type { AIAdvisor, AIAdvice } from "./ai-advisor.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts">;
+    "showToasts" | "enableAdvisory">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   isDisposed: () => boolean;
   input: TypedPluginInput;
+  aiAdvisor?: AIAdvisor;
+}
+
+// Check if AI advice suggests we should skip the nudge
+function shouldSkipNudge(advice: AIAdvice): boolean {
+  if (advice.action === "wait" && advice.confidence >= 0.7) return true;
+  if (advice.action === "abort" && advice.confidence >= 0.6) return true;
+  return false;
 }
 
 export function createNudgeModule(deps: NudgeDeps) {
-  const { config, sessions, log, isDisposed, input } = deps;
+  const { config, sessions, log, isDisposed, input, aiAdvisor } = deps;
 
   // Snapshot string from todos (to detect changes)
   function snapshot(todos: Array<{ id: string; status: string }>): string {
@@ -198,23 +207,51 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       return;
     }
 
-    // Build the reminder message
-    const templateVars: Record<string, string> = {
-      total: String(todos.length),
-      completed: String(completed.length),
-      pending: String(pending.length),
-      remaining: String(pending.length),
-    };
-
-    if (config.includeTodoContext && pending.length > 0) {
-      const todoList = pending
-        .slice(0, 5)
-        .map((t) => t.content || t.title || t.id)
-        .join(", ");
-      templateVars.todoList = todoList + (pending.length > 5 ? "..." : "");
+      // AI Advisory: check if we should wait instead of nudging
+    if (aiAdvisor && config.enableAdvisory) {
+      try {
+        const s = sessions.get(sessionId);
+        if (s) {
+          const context = await aiAdvisor.extractContext(sessionId, s);
+          const advice = await aiAdvisor.getAdvice(context);
+          // Save to session state for status file
+          if (advice) {
+            s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
+          }
+          if (advice && shouldSkipNudge(advice)) {
+            return;
+          }
+        }
+      } catch (e: unknown) {
+        log("advisory check failed (ignored)", String(e));
+      }
     }
 
-    const messageText = formatMessage(config.nudgeMessage, templateVars);
+    // Build the reminder message
+    let messageText: string;
+    
+    // Use AI-generated custom prompt if available
+    if (s.lastAdvisoryAdvice?.customPrompt) {
+      messageText = s.lastAdvisoryAdvice.customPrompt;
+      log("using AI-generated custom nudge prompt:", messageText);
+    } else {
+      const templateVars: Record<string, string> = {
+        total: String(todos.length),
+        completed: String(completed.length),
+        pending: String(pending.length),
+        remaining: String(pending.length),
+      };
+
+      if (config.includeTodoContext && pending.length > 0) {
+        const todoList = pending
+          .slice(0, 5)
+          .map((t) => t.content || t.title || t.id)
+          .join(", ");
+        templateVars.todoList = todoList + (pending.length > 5 ? "..." : "");
+      }
+
+      messageText = formatMessage(config.nudgeMessage, templateVars);
+    }
 
     // Prompt guard: prevent duplicate injections
     const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log as any);

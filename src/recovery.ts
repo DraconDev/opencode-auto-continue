@@ -1,6 +1,7 @@
 import type { PluginConfig, SessionState } from "./shared.js";
 import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
+import type { AIAdvisor } from "./ai-advisor.js";
 
 export interface RecoveryDeps {
   config: PluginConfig;
@@ -10,6 +11,7 @@ export interface RecoveryDeps {
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
+  aiAdvisor?: AIAdvisor;
 }
 
 // Tool-text detection patterns (XML tool calls embedded in text/reasoning)
@@ -102,6 +104,41 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.planning) return;
     if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) {
+      // Before giving up, check if AI has advice
+        if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
+        try {
+          const context = await deps.aiAdvisor.extractContext(sessionId, s);
+          const advice = await deps.aiAdvisor.getAdvice(context);
+          
+          // Save to session state for status file
+          if (advice) {
+            s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
+          }
+          
+          if (advice && advice.confidence > 0.6) {
+            log('AI advice for stalled session:', advice.action, 'confidence:', advice.confidence, 'reasoning:', advice.reasoning);
+            
+            if (advice.action === 'wait' && advice.suggestedDelayMs) {
+              log('AI suggests waiting', advice.suggestedDelayMs, 'ms instead of aborting');
+              s.backoffAttempts = Math.max(0, s.backoffAttempts - 1); // Forgive one backoff
+              s.timer = setTimeout(() => recover(sessionId), advice.suggestedDelayMs);
+              return;
+            }
+            
+            if (advice.action === 'continue') {
+              log('AI suggests continuing without abort');
+              s.attempts = 0; // Reset attempts
+              s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
+              return;
+            }
+            
+            // For 'abort' or 'compact', fall through to normal backoff
+          }
+        } catch (e) {
+          log('AI advisory failed, falling back to hardcoded backoff:', e);
+        }
+      }
+      
       const backoffDelay = Math.min(
         config.stallTimeoutMs * Math.pow(2, s.backoffAttempts),
         config.maxBackoffMs
@@ -244,6 +281,10 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       if (hasToolText) {
         messageText = TOOL_TEXT_RECOVERY_PROMPT;
         log('using tool-text recovery prompt');
+      } else if (s.lastAdvisoryAdvice?.customPrompt) {
+        // Use AI-generated custom prompt if available
+        messageText = s.lastAdvisoryAdvice.customPrompt;
+        log('using AI-generated custom prompt:', messageText);
       } else if (s.planning) {
         messageText = config.continueWithPlanMessage;
         log('using plan-aware continue message');

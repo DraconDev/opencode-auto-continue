@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.62.0] - 2026-05-07
+
+### Added
+
+- **Custom Prompts (Per-Session API)**: Programmatically send dynamic, context-aware prompts to specific sessions
+  - New `sendCustomPrompt(sessionId, options)` function exported from main module
+  - Full template variable support: `{pending}`, `{todoList}`, `{contextSummary}`, `{attempts}`, `{maxAttempts}`, `{total}`, `{completed}`
+  - Optional todo context injection via `includeTodoContext`
+  - Optional session context summary via `includeContextSummary`
+  - Custom prompt text via `customPrompt` parameter
+  - Returns rendered message, todo list, and custom prompt for verification
+- **Template variable expansion**: `buildRecoveryMessage()` and `buildNudgeMessage()` now support custom prompts and context summaries
+- **Integration points**: Recovery and nudge modules both support custom prompt parameters
+
+### Changed
+
+- **Message building**: Recovery and nudge message builders now accept optional `customPrompt` and `includeContextSummary` parameters
+- **Context summary**: Session state summaries now available in custom prompts via `{contextSummary}` template variable
+
 ## [2.0.0] - 2025-05-03
 
 ### Changed

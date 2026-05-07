@@ -41,7 +41,7 @@ git push origin --tags
 
 ### 4. GitHub Release (manual)
 
-1. Go to https://github.com/DraconDev/opencode-auto-force-resume/releases
+1. Go to https://github.com/DraconDev/opencode-auto-continue/releases
 2. Click "Draft a new release"
 3. Select the tag you just pushed
 4. Title: `v1.0.0` (matching the tag)

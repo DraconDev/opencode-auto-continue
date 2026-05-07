@@ -1,12 +1,12 @@
 # Contributing
 
-Thank you for your interest in contributing to opencode-auto-force-resume.
+Thank you for your interest in contributing to opencode-auto-continue.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/DraconDev/opencode-auto-force-resume
-cd opencode-auto-force-resume
+git clone https://github.com/DraconDev/opencode-auto-continue
+cd opencode-auto-continue
 npm install
 ```
 
@@ -66,7 +66,7 @@ This will automatically:
 
 ## Reporting Issues
 
-Please report issues at https://github.com/DraconDev/opencode-auto-force-resume/issues with:
+Please report issues at https://github.com/DraconDev/opencode-auto-continue/issues with:
 - Steps to reproduce
 - Expected vs actual behavior
 - OpenCode version

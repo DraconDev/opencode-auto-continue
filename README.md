@@ -1,4 +1,4 @@
-# opencode-auto-force-resume
+# opencode-auto-continue
 
 The ultimate OpenCode plugin for session management. **One plugin replaces three**: auto-recovery, todo-reminders, and review-on-completion — all with zero conflicts.
 
@@ -10,15 +10,20 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Todo Context** | `opencode-todo-reminder` | Fetches open todos, includes them in recovery messages |
 | **Review on Completion** | `opencode-auto-review-completed-todos` | Sends review prompt when all todos are done |
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
-| **Auto-Compaction** | Nothing — unique feature | Tries context compaction before aborting |
+| **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
 | **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
 | **Prompt Guard** | Nothing — unique feature | Prevents duplicate injections across plugin instances |
+| **Custom Prompts** | Nothing — unique feature | Per-session custom prompts with template variables |
 | **Terminal Timer** | Nothing — unique feature | Shows elapsed time in terminal title bar |
 | **Session Status File** | Nothing — unique feature | Real-time JSON status for external monitoring |
 | **Stall Pattern Detection** | Nothing — unique feature | Tracks which part types cause the most stalls |
 | **Terminal Progress Bar** | Nothing — unique feature | OSC 9;4 progress in terminal tabs (iTerm2, WezTerm, etc.) |
+
+**Delegated to other plugins:**
+- 🔄 **Proactive context pruning** → [`@tarquinen/opencode-dcp`](https://github.com/tarquinen/opencode-dcp)
+- 🔄 **Toast notifications** → [`@mohak34/opencode-notifier`](https://github.com/mohak34/opencode-notifier) or similar |
 
 ## How We Work
 
@@ -29,12 +34,12 @@ The plugin is split into 7 focused modules following the factory pattern:
 ```
 index.ts              Main plugin — event routing, module wiring
 ├── terminal.ts       Terminal title, progress bar, statusLine hook
-├── notifications.ts  Timer toast notifications
 ├── nudge.ts          Idle nudges with loop protection
 ├── status-file.ts    Atomic status file writes
 ├── recovery.ts       Stall recovery (abort + continue)
-├── compaction.ts     Context compaction
+├── compaction.ts     Emergency compaction (token limit errors only)
 ├── review.ts         Review + continue prompt delivery
+├── ai-advisor.ts     AI-driven session analysis + heuristic patterns
 └── shared.ts         Types, config, utilities
 ```
 
@@ -42,12 +47,12 @@ Each module is initialized early and receives its dependencies:
 
 ```typescript
 createTerminalModule({ config, sessions, log, input })
-createNotificationModule({ config, sessions, log, isDisposed, input })
 createNudgeModule({ config, sessions, log, isDisposed, input })
 createStatusFileModule({ config, sessions, log })
 createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })
 createCompactionModule({ config, sessions, log, input })
 createReviewModule({ config, sessions, log, input, isDisposed, writeStatusFile, isTokenLimitError, forceCompact })
+createAIAdvisor({ config, sessions, log })
 ```
 
 ### Core Principles
@@ -74,8 +79,8 @@ Real progress events reset recovery attempts:
 
 Synthetic events (our own prompts) are ignored.
 
-**4. Plan/Compaction Awareness**
-When plan content or compaction is detected, stall monitoring pauses until user addresses it.
+**4. Plan Awareness**
+When plan content is detected, stall monitoring pauses until execution begins.
 
 **5. Status File Writes**
 Every meaningful event writes the status file atomically. This enables external monitoring without debug mode.
@@ -88,10 +93,187 @@ createStatusFileModule({ config, sessions, log })   // Atomic status file writes
 createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })  // Stall recovery
 createNudgeModule({ config, sessions, log, isDisposed, input })  // Idle nudges with loop protection
 createTerminalModule({ config, sessions, log, input })  // Terminal title/progress/hook
-createNotificationModule({ config, sessions, log, isDisposed, input })  // Timer toasts
 ```
 
 Each module is initialized early and its API is called from event handlers in `index.ts`.
+
+### Question Detection (Stops Nudges When AI Asks You Something)
+
+The plugin detects when the AI is asking _you_ a question and **skips nudging** during that time. This prevents the plugin from interrupting when the AI genuinely needs user input.
+
+```
+[Session idle with pending todos]
+        │
+        ▼
+Fetch last 5 assistant messages
+        │
+        ▼
+Check: does last message end with "?"
+        │   OR contain phrases like:
+        │   "would you like", "should i", "do you want",
+        │   "can you", "could you", "what do you think",
+        │   "how would you", "is there anything", "shall i"
+        │
+        ├──YES (it's a question) ──► Skip nudge — AI is waiting for you
+        │
+        └──NO ──► Proceed with normal nudge flow
+```
+
+**Why this matters**: Without question detection, the plugin would send "Please continue working on your tasks..." right after the AI asked you "Should I refactor this or leave it as-is?" — which is annoying and counterproductive.
+
+**Trade-off**: Adds ~50-200ms latency per nudge check (fetches last 5 messages).
+
+### Tool-Text Recovery (Catches XML Tool Calls in Reasoning)
+
+Some models output XML tool calls inside their reasoning/text fields instead of using the proper tool-calling mechanism. The plugin detects this during recovery and sends a specialized prompt to execute the tool call.
+
+```
+[Stall detected → recover(sid)]
+        │
+        ▼
+Scan ~20 recent messages for XML tool-like patterns
+        │
+        ├── Detects 18 patterns:
+        │   <function=...>, <invoke>, <tool_call>, <tool_call>,
+        │   <invoke name="...">, <function_calls>, <function name="...">,
+        │   [FunctionCalling], [TOOL_CALLS], [tool_calls],
+        │   ```json { "function":, ```json { "tool_calls":,
+        │   <|tool_call|>, <TOOL>, [FUNCTION], <use_tools>,
+        │   <function_chain>, <execute>, <run_tool>
+        │
+        ├── Also detects truncated/unclosed tags
+        │
+        └── Found XML tool calls?
+              │
+              ├──YES ──► Send specialized recovery prompt:
+              │   "I noticed you have a tool call generated in your
+              │    thinking/reasoning. Please execute it using the
+              │    proper tool calling mechanism instead of XML tags."
+              │
+              └──NO ──► Use standard continue message
+```
+
+**Why this matters**: Models that output XML instead of executing tool calls get stuck — they think they ran the tool but actually didn't. This recovery prompt breaks that cycle.
+
+**Trade-off**: 18 regex patterns may have rare false positives on legitimate XML in code (e.g., JSX, XML examples in documentation).
+
+### Hallucination Loop Detection (Breaks Infinite Repeat Cycles)
+
+When a model gets stuck repeating the same broken output (e.g., generating the same error over and over), the plugin detects the pattern and forces a fresh start.
+
+```
+[Continue sent]
+        │
+        ▼
+Record timestamp in sliding window
+        │
+        ▼
+Check: 3+ continues within 10 minutes?
+        │
+        ├──YES ──► Force abort+resume
+        │            Instead of another continue, do a full session reset
+        │            to break the hallucination cycle
+        │
+        └──NO ──► Normal continue flow
+```
+
+**Why this matters**: Without this, a hallucinating model can generate the same broken output → plugin sends continue → model generates same broken output → infinite loop. The abort+resume forces the model to start fresh with a clean context.
+
+**Trade-off**: 3-in-10min threshold may catch legitimate rapid continues (e.g., fast-paced debugging sessions), but false positives are rare and only result in one extra abort+resume.
+
+### Prompt Guard (Prevents Duplicate Injections Across Instances)
+
+When multiple plugin instances or race conditions try to inject the same prompt, the prompt guard blocks duplicates.
+
+```
+[About to send nudge/continue/review]
+        │
+        ▼
+Fetch recent messages (last ~50)
+        │
+        ▼
+Check: similar prompt content already sent within 30 seconds?
+        │
+        ├──YES ──► This is a duplicate — skip
+        │
+        └──NO ──► Send the prompt (normal flow)
+```
+
+**Why this matters**: If two plugin instances or rapid events both trigger a continue, the session gets flooded with duplicate messages. The prompt guard ensures only one goes through.
+
+**Key detail**: Uses text similarity (not exact match) — "Please continue working" and "Continue working on tasks" are treated as similar enough to dedupe.
+
+**Fail-open**: If the message fetch fails, the prompt is allowed through (better to have a rare duplicate than miss a needed continue).
+
+### Custom Prompts (Per-Session Dynamic Messages)
+
+Send dynamic, context-aware prompts to specific sessions with full template variable support. Perfect for integrations, external triggers, or programmatic session management.
+
+```typescript
+import { sendCustomPrompt } from "opencode-auto-continue";
+
+// Send a custom prompt to a session
+await sendCustomPrompt(sessionId, {
+  message: "Custom analysis request: {contextSummary}",
+  includeTodoContext: true,
+  includeContextSummary: true,
+  customPrompt: "Focus on performance bottlenecks"
+});
+```
+
+**When to use**: External integrations, webhooks, CLI tooling, or when you need to inject context-aware messages without manual intervention.
+
+**Template variables available**:
+
+| Variable | Description |
+|----------|-------------|
+| `{pending}` | Number of open tasks |
+| `{total}` | Total tasks |
+| `{completed}` | Completed tasks |
+| `{todoList}` | Comma-separated pending tasks (max 5) |
+| `{attempts}` | Current recovery attempt |
+| `{maxAttempts}` | Max recovery attempts |
+| `{contextSummary}` | Session context summary (when `includeContextSummary: true`) |
+
+**API**:
+
+```typescript
+function sendCustomPrompt(
+  sessionId: string,
+  options: {
+    message: string;              // Message template with {variables}
+    includeTodoContext?: boolean; // Include todo list in message
+    includeContextSummary?: boolean; // Include context summary
+    customPrompt?: string;        // Additional custom prompt text
+  }
+): Promise<{
+  success: boolean;
+  message: string;                // Final rendered message
+  todos?: Todo[];                 // Todo context (if fetched)
+  customPrompt?: string;          // Custom prompt text (if provided)
+  contextSummary?: string;        // Context summary (if requested)
+}>
+```
+
+**Example with all options**:
+
+```typescript
+const result = await sendCustomPrompt("abc123", {
+  message: "🔄 Recovery attempt {attempts}/{maxAttempts}. {contextSummary}",
+  includeTodoContext: true,
+  includeContextSummary: true,
+  customPrompt: "Please prioritize the API integration task"
+});
+
+// Result:
+// {
+//   success: true,
+//   message: "🔄 Recovery attempt 1/3. Working on 2 tasks: fix auth, update docs",
+//   todos: [{ id: "1", content: "fix auth", status: "in_progress" }, ...],
+//   customPrompt: "Please prioritize the API integration task",
+//   contextSummary: "Working on 2 tasks: fix auth, update docs"
+// }
+```
 
 ### Recovery State Machine
 
@@ -103,32 +285,19 @@ Start stall timer (stallTimeoutMs)
         │
         ├──[Progress event]──► Reset timer, reset attempts
         │
-        ├──[Timer fires]──► Check: still busy?
-        │                        │
-        │                   YES   │ NO (idle) ──► Clear timer, wait for session.idle
-        │                        │
-        │                   Check: attempts < maxRecoveries?
-        │                        │
-        │                   NO──► Exponential backoff
-        │                        │
-        │                   Check: session too old? (maxSessionAgeMs)
-        │                        │
-        │                   YES──► Give up
-        │                        │
-        │                   Check: try autoCompact?
-        │                        │
-        │                   YES──► session.summarize()
-        │                        │        │
-        │                        │   Wait 3s
-        │                        │        │
-        │                        │   Check: still busy?
-        │                        │        │
-        │                        │   YES──► Proceed with abort
-        │                        │   NO ──► Recovery complete
-        │                        │
-        │                   NO──► Proceed with abort
-        │                        │
-        │                   session.abort()
+         ├──[Timer fires]──► Check: still busy?
+         │                        │
+         │                   YES   │ NO (idle) ──► Clear timer, wait for session.idle
+         │                        │
+         │                   Check: attempts < maxRecoveries?
+         │                        │
+         │                   NO──► Exponential backoff
+         │                        │
+         │                   Check: session too old? (maxSessionAgeMs)
+         │                        │
+         │                   YES──► Give up
+         │                        │
+         │                   session.abort()
         │                        │
         │                   Poll until idle (abortPollIntervalMs)
         │                        │
@@ -238,7 +407,56 @@ The nudge system prevents sessions from going idle with pending todos. It follow
         └──NO──► Clear any pending debounce
 ```
 
-## Recommended: Install Dynamic Context Pruning (DCP)
+### AI Advisory System
+
+The plugin includes an optional advisory layer that analyzes session state before making decisions. **AI advises, hardcoded rules decide** — simple/obvious decisions stay fast, edge cases get analysis.
+
+```
+[Session event triggers recovery/nudge]
+        │
+        ▼
+Check: enableAdvisory && shouldUseAI()?
+        │
+        ├──YES──► AI advisor analyzes session context
+        │            │
+        │            ├── AI available? ──► Call real AI (OpenAI-compatible)
+        │            │                        │
+        │            │                        └── Analyze prompt response
+        │            │
+        │            └── AI unavailable? ──► Run heuristic pattern analysis
+        │                                      │
+        │                                      ├── New session (<30s) ──► wait
+        │                                      ├── Repeated same-type stall ──► abort
+        │                                      ├── Mixed patterns ──► wait
+        │                                      ├── Long planning (>60s) ──► abort
+        │                                      ├── High tokens + todos ──► continue
+        │                                      ├── High tokens, no todos ──► compact
+        │                                      └── Stalled with pending todos ──► continue
+        │
+        └──NO──► Use hardcoded rules (fast path)
+```
+
+**7 Heuristic Patterns** (no AI call needed):
+
+| Pattern | Condition | Advice |
+|---------|-----------|--------|
+| New session | Elapsed time < 30s | `wait` — give it time |
+| Repeated stall | Same part type as last stall | `abort` — stuck in loop |
+| Mixed patterns | Different part types before stall | `wait` — making progress |
+| Long planning | Planning > 60s | `abort` — stuck planning |
+| High tokens + todos | Tokens > 80% of limit + pending todos | `continue` — push forward |
+| High tokens, no todos | Tokens > 80% of limit, all done | `compact` — wrap up cleanup |
+| Stalled with todos | Session stalled + open todos | `continue` — keep working |
+
+**AI Call** (when configured):
+1. Extract context: last 3 messages, stall time, todos, token estimate, recovery attempts
+2. Send to configured AI model via OpenAI-compatible API
+3. Parse response for `@{action}:confidence` format
+4. Fall back to heuristics if AI fails or times out
+
+**Integration points:**
+- **Recovery**: Before final abort attempt, advisor analyzes stall pattern. May suggest wait instead of abort.
+- **Nudge**: After question detection check, advisor analyzes if nudging is appropriate. Skips nudge if advice is `wait` (≥0.7 confidence) or `abort` (≥0.6 confidence).
 
 For **significantly better context management**, install DCP alongside this plugin:
 
@@ -246,42 +464,43 @@ For **significantly better context management**, install DCP alongside this plug
 opencode plugin @tarquinen/opencode-dcp@latest --global
 ```
 
-**Why?** DCP handles context optimization far better than our native `session.summarize()` approach:
+**Why?** DCP handles context optimization far better than our emergency-only approach:
 
-| Feature | Without DCP | With DCP |
-|---------|------------|----------|
-| Proactive pruning | `summarize()` at 100k tokens | `compress` tool called by model |
+| Feature | Our Plugin Only | With DCP |
+|---------|----------------|----------|
+| Proactive pruning | ❌ None (emergency only) | ✅ `compress` tool called by model |
 | Message dedup | ❌ None | ✅ Removes repeated tool calls |
 | Error purge | ❌ None | ✅ Prunes errored tool inputs |
-| Soft thresholds | Hard 100k limit | 50k-100k range with nudges |
-| Context preservation | Manual hook injection | Protected tools, user messages, file patterns |
+| Soft thresholds | ❌ None | ✅ 50k-100k range with nudges |
+| Context preservation | ❌ None | ✅ Protected tools, user messages, file patterns |
+| Emergency compaction | ✅ Token limit errors | ✅ Plus DCP's proactive pruning |
 
 **When DCP is detected**, our plugin automatically:
 - Disables proactive compaction (DCP handles it)
 - Keeps emergency compaction on token limit errors (belt-and-suspenders)
 - Injects session state (todos, planning status) into compaction hooks
 
-**If DCP is not installed**, you'll see a one-time toast recommending it. Set `dcpWarning: false` to disable this.
+**Architecture**: We focus on session continuity (stall recovery, nudging, review). DCP focuses on context optimization. Together they cover both concerns without overlap.
 
 ## Installation
 
 ### npm
 
 ```bash
-npm install opencode-auto-force-resume
+npm install opencode-auto-continue
 ```
 
 ### GitHub
 
 ```bash
-npm install github:DraconDev/opencode-auto-force-resume
+npm install github:DraconDev/opencode-auto-continue
 ```
 
 ### Local Development
 
 ```bash
-git clone https://github.com/DraconDev/opencode-auto-force-resume
-cd opencode-auto-force-resume
+git clone https://github.com/DraconDev/opencode-auto-continue
+cd opencode-auto-continue
 npm install
 npm run build
 cp dist/index.js ~/.config/opencode/plugins/
@@ -295,13 +514,11 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 ```json
 {
   "plugin": [
-    ["opencode-auto-force-resume", {
-
+    ["opencode-auto-continue", {
       "stallTimeoutMs": 180000,
       "waitAfterAbortMs": 5000,
       "maxRecoveries": 3,
       "cooldownMs": 60000,
-      "showToasts": true,
       "nudgeEnabled": true,
       "nudgeIdleDelayMs": 500,
       "nudgeMaxSubmits": 3,
@@ -309,14 +526,10 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
       "nudgeCooldownMs": 60000,
       "autoCompact": true,
       "maxSessionAgeMs": 7200000,
-      "proactiveCompactAtTokens": 100000,
-      "compactCooldownMs": 120000,
       "compactMaxRetries": 3,
       "compactReductionFactor": 0.7,
       "shortContinueMessage": "Continue.",
       "tokenLimitPatterns": ["context length", "maximum context length", "token count exceeds"],
-      "timerToastEnabled": true,
-      "timerToastIntervalMs": 60000,
       "terminalTitleEnabled": true,
       "statusFileEnabled": true,
       "statusFilePath": "",
@@ -325,8 +538,12 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
       "recoveryHistogramEnabled": true,
       "stallPatternDetection": true,
       "terminalProgressEnabled": true,
-      "debug": false,
-      "dcpWarning": true
+      "enableAdvisory": false,
+      "advisoryModel": "",
+      "advisoryTimeoutMs": 5000,
+      "advisoryMaxTokens": 500,
+      "advisoryTemperature": 0.1,
+      "debug": false
     }]
   ]
 }
@@ -375,49 +592,22 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `autoCompact` | `true` | Enable proactive and recovery compaction (auto-disabled when DCP detected) |
-| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction |
-| `compactCooldownMs` | `60000` | Min time between compaction attempts (1 min) |
-| `compactAtMessageCount` | `50` | Trigger compaction after N messages (token estimation fallback) |
+| `autoCompact` | `true` | Enable emergency compaction on token limit errors |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
 | `compactionVerifyWaitMs` | `10000` | Max wait for compaction verification |
 | `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
-| `dcpWarning` | `true` | Show toast recommending DCP when not installed |
 
-### Context Window Sizing
+### Context Window
 
-The `proactiveCompactAtTokens` threshold (default 100k) applies to ALL model sizes — no percentage math, no 200k distinction. Just compact when estimated tokens cross 100k (or whatever you configure).
+For proactive context pruning, install DCP (see below). Our plugin only handles **emergency compaction** when token limits are hit.
 
-**How to tune for your model:**
+If you frequently hit token limits with large pastes (HTML, JSON, etc.), consider lowering your model's context window or using DCP for smart pruning.
 
-| Config | Effect |
-|--------|--------|
-| `proactiveCompactAtTokens: 100000` | Compact at 100k tokens (default, works for most) |
-| `proactiveCompactAtTokens: 50000` | Compact earlier (aggressive, more frequent) |
-| `proactiveCompactAtTokens: 75000` | Compact mid-range |
-| `proactiveCompactAtTokens: 150000` | Compact later (lazy, less frequent) |
-
-**For 152k context models (o1-preview, o1-mini, etc.):**
-```json
-["opencode-auto-force-resume", {
-  "proactiveCompactAtTokens": 100000
-}]
-```
-
-The 100k default already leaves 50k+ buffer for a 152k model. If you want to be more aggressive:
-```json
-["opencode-auto-force-resume", {
-  "proactiveCompactAtTokens": 75000
-}]
-```
-
-### Timer & Display Options
+### Terminal Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `timerToastEnabled` | `true` | Show periodic timer toasts |
-| `timerToastIntervalMs` | `60000` | Interval between timer toasts (1 min) |
 | `terminalTitleEnabled` | `true` | Update terminal title with elapsed time |
 | `terminalProgressEnabled` | `true` | OSC 9;4 terminal tab progress bar |
 
@@ -432,13 +622,25 @@ The 100k default already leaves 50k+ buffer for a 152k model. If you want to be 
 | `recoveryHistogramEnabled` | `true` | Track recovery time histogram (min/max/median) |
 | `stallPatternDetection` | `true` | Track which part types cause stalls |
 
+### AI Advisory Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enableAdvisory` | `false` | Enable AI/heuristic session analysis |
+| `advisoryModel` | `""` | AI model for advisory calls (e.g. `"gemma-4-31b-it"`) |
+| `advisoryTimeoutMs` | `5000` | Max wait for AI advisory response |
+| `advisoryMaxTokens` | `500` | Max tokens in AI advisory response |
+| `advisoryTemperature` | `0.1` | Temperature for AI advisory calls (low = deterministic) |
+
+**AI provider**: Reads `baseURL` and `apiKey` from your model config in `opencode.json`. Uses OpenAI-compatible chat completions endpoint.
+
+**When AI is not configured** (`enableAdvisory: false` or `advisoryModel: ""`), the advisor still runs heuristic pattern analysis. Setting `enableAdvisory: true` with a valid `advisoryModel` enables real AI calls as the primary advisor, with heuristics as fallback.
+
 ### Other Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `showToasts` | `true` | Show toast notifications |
 | `debug` | `false` | Enable debug logging to file |
-| `dcpWarning` | `true` | Show one-time toast recommending DCP installation |
 
 ## Template Variables
 
@@ -521,10 +723,6 @@ watch -n 1 'cat ~/.opencode/logs/auto-force-resume.status | jq .'
         "estimatedTokens": 85000,
         "threshold": 100000
       },
-      "timer": {
-        "actionDuration": "5m 32s",
-        "lastProgressAgo": "12s"
-      },
       "nudge": {
         "sent": 1,
         "lastNudgeAt": "2026-05-05T12:45:00.000Z"
@@ -565,8 +763,6 @@ watch -n 1 'cat ~/.opencode/logs/auto-force-resume.status | jq .'
 | `stall.detections` | Total stall detections |
 | `stall.lastPartType` | Part type that preceded last stall |
 | `stall.patterns` | Top 5 part types causing stalls |
-| `timer.actionDuration` | Time since action started |
-| `timer.lastProgressAgo` | Time since last progress event |
 | `history` | Rolling buffer of recent status snapshots |
 
 ### Rotated Status Files
@@ -578,26 +774,17 @@ When `statusFileRotate > 0`, old status files are kept:
 
 ## How Compaction Works
 
-The plugin uses two compaction strategies:
+The plugin only handles **emergency compaction** when token limits are hit. For proactive context pruning, install DCP (see below).
 
-### 1. Proactive Compaction (Preventive)
+### Emergency Compaction (Token Limit Errors)
 
-Triggers BEFORE context becomes critical. Runs on every:
-- **Progress event** (message part updated) — catches bloat during active generation
-- **Session resume busy** — catches pre-existing bloat from prior interactions
-- **Session becomes idle** — catches bloat between user messages
-
-**Threshold**: Always `proactiveCompactAtTokens` (default 100k), regardless of model size.
-
-**Proactive compact check is skipped during planning** — `maybeProactiveCompact` returns early if `s.planning === true`. This prevents compaction from disrupting in-progress plans. Emergency compaction (token limit errors) still fires regardless.
-
-### 2. Recovery Compaction (Reactive)
-
-Triggers when a stall is detected during recovery. Before aborting the session, the plugin tries `session.summarize()` with progressive verification:
-1. Wait 2 seconds → check if session idled
-2. Wait 3 seconds → check again
-3. Wait 5 seconds → check again
-4. If still busy → proceed with abort+continue
+When a token limit error is detected:
+1. Parse exact token counts from error message
+2. Call `session.summarize()` with progressive verification
+3. Wait 2s → check if session idled
+4. Wait 3s → check again
+5. Wait 5s → check again
+6. If still busy → proceed with abort+continue
 
 **Post-compaction token reset**:
 After compaction completes, estimated tokens are recalculated using `compactReductionFactor`:
@@ -607,6 +794,16 @@ estimatedTokens = estimatedTokens * (1 - compactReductionFactor)
 With default factor 0.7: `estimatedTokens = estimatedTokens * 0.3` (30% remain)
 
 This matches the actual reduction — compaction removes ~70% of context, so the remaining tokens should be ~30% of pre-compaction count.
+
+### Why Only Emergency?
+
+Proactive compaction is delegated to DCP, which does it better:
+- Soft thresholds (50k-100k range) instead of hard limits
+- Message deduplication
+- Error pruning
+- Smart context preservation
+
+Our emergency compaction is a safety net for when DCP misses something or isn't installed.
 
 ### Token Estimation
 
@@ -660,51 +857,13 @@ There are NO token count fields in `session.status()`. The plugin relies on the 
 
 This is intentional — we'd rather over-estimate and compact early than hit the limit.
 
-### Why Compaction Might Not Fire
-
-If compaction isn't triggering despite high token usage, check these:
-
-1. **Check the status file** - Look at `compaction.estimatedTokens` vs `compaction.threshold`:
-   ```bash
-   cat ~/.opencode/logs/auto-force-resume.status
-   ```
-   Look for:
-   ```json
-   "compaction": {
-     "proactiveTriggers": 0,
-     "estimatedTokens": 85000,
-     "threshold": 100000
-   }
-   ```
-   If `estimatedTokens < threshold`, the estimated count is too low.
-
-2. **Known limitations**:
-   - Token estimation only counts content seen during this session. Pre-existing context from resumed sessions might not be counted.
-   - The plugin can't read tool definitions, system prompts, or file contents added to context before the plugin started.
-   - Only text content is estimated - binary data, images, and other non-text parts aren't counted.
-
-3. **Set a lower threshold**:
-   ```json
-   ["opencode-auto-force-resume", {
-     "proactiveCompactAtTokens": 50000
-   }]
-   ```
-
-4. **Enable debug mode** to see what's happening:
-   ```json
-   ["opencode-auto-force-resume", {
-     "debug": true
-   }]
-   ```
-   Check `~/.opencode/logs/auto-force-resume.log` for lines containing "compaction".
-
 ### How to Verify Compaction Is Working
 
 1. Check the status file:
    ```bash
    watch -n 2 'cat ~/.opencode/logs/auto-force-resume.status'
    ```
-   Look for `"compaction"` section - if `"proactiveTriggers"` > 0 or `"lastCompactAt"` is set, it's running.
+   Look for `"compaction"` section - if `"lastCompactAt"` is set, emergency compaction fired.
 
 2. Watch debug logs:
    ```bash
@@ -712,6 +871,7 @@ If compaction isn't triggering despite high token usage, check these:
    ```
    You should see entries like:
    ```
+   "token limit error detected (hit #1) for session: abc123"
    "attempting compaction for session: abc123"
    "compaction successful for session: abc123 after 2000ms wait"
    "compaction reduced tokens from ~ 85000 to ~ 25500"
@@ -768,9 +928,10 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 | `message.created` / `message.part.added` | Reset timer, reset attempts |
 | `message.updated` (user) | Reset counters, cancel nudge |
 | `session.error` (MessageAbortedError) | Set userCancelled, clear timer |
+| `session.error` (token limit) | Trigger emergency compaction |
 | `session.error` (other) | Clear timer, monitoring pauses |
 | `todo.updated` | Check completion, trigger review/nudge |
-| `session.idle` | Trigger nudge for pending todos (not terminal) |
+| `session.idle` | Trigger nudge for pending todos |
 | `session.deleted` | Clear all session state |
 
 ## How to Customize
@@ -778,7 +939,7 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 ### Disable All Auto-Recovery
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "maxRecoveries": 0,
   "stallTimeoutMs": 999999999
 }]
@@ -787,7 +948,7 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 ### Aggressive Recovery (For Testing)
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "stallTimeoutMs": 10000,
   "cooldownMs": 5000,
   "maxRecoveries": 10,
@@ -798,26 +959,21 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 ### Long-Running Sessions (Large Context Models)
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "stallTimeoutMs": 600000,
-  "maxSessionAgeMs": 14400000,
-  "proactiveCompactAtTokens": 100000
+  "maxSessionAgeMs": 14400000
 }]
 ```
 
-**For 152k context models (o1-preview, o1-mini, etc.):**
-```json
-["opencode-auto-force-resume", {
-  "stallTimeoutMs": 600000,
-  "maxSessionAgeMs": 14400000,
-  "proactiveCompactAtTokens": 100000
-}]
+**For proactive context pruning with large models, install DCP:**
+```bash
+opencode plugin @tarquinen/opencode-dcp@latest --global
 ```
 
 ### Custom Messages
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "continueMessage": "Hey! You stopped. Keep going!",
   "continueWithTodosMessage": "Hey! You have {pending} tasks left: {todoList}. Keep going!",
   "nudgeMessage": "Don't forget about your {pending} open tasks!",
@@ -825,10 +981,28 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 }]
 ```
 
+### Custom Prompts (Programmatic)
+
+For programmatic control, use the `sendCustomPrompt` API:
+
+```typescript
+import { sendCustomPrompt } from "opencode-auto-continue";
+
+// Inject a custom prompt with full context
+await sendCustomPrompt(sessionId, {
+  message: "⚡ Priority task: {contextSummary}",
+  includeTodoContext: true,
+  includeContextSummary: true,
+  customPrompt: "Focus on the authentication bug first"
+});
+```
+
+Available in both recovery and nudge flows. See [Custom Prompts](#custom-prompts-per-session-dynamic-messages) section above for full API reference.
+
 ### Disable Specific Features
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "nudgeEnabled": false,
   "reviewOnComplete": false,
   "autoCompact": false,
@@ -838,10 +1012,12 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 }]
 ```
 
+**Note**: Toast notifications are handled by separate plugins like `@mohak34/opencode-notifier`. This plugin focuses purely on session continuity.
+
 ### Enable Debug Mode
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "debug": true
 }]
 ```
@@ -854,7 +1030,7 @@ tail -f ~/.opencode/logs/auto-force-resume.log
 ### Custom Status File Location
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "statusFilePath": "/tmp/my-opencode-status.json",
   "statusFileRotate": 3
 }]
@@ -863,7 +1039,7 @@ tail -f ~/.opencode/logs/auto-force-resume.log
 ### Token Limit Handling
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "tokenLimitPatterns": [
     "context length",
     "maximum context length",
@@ -879,7 +1055,7 @@ tail -f ~/.opencode/logs/auto-force-resume.log
 ### Recovery Histogram Tuning
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "recoveryHistogramEnabled": true
 }]
 ```
@@ -889,7 +1065,7 @@ Tracks recovery times to show you average/min/max/median recovery duration.
 ### Stall Pattern Detection
 
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "stallPatternDetection": true
 }]
 ```
@@ -910,7 +1086,7 @@ Our plugin provides:
 - ✅ Todo-aware messages
 - ✅ Loop protection
 - ✅ User abort handling
-- ❌ Toast notifications (use `showToasts: true`)
+- ❌ Toast notifications (install `@mohak34/opencode-notifier` separately)
 
 ### From `opencode-auto-review-completed-todos`
 
@@ -929,9 +1105,14 @@ Our plugin provides:
 
 Our plugin provides terminal title updates automatically:
 ```json
-["opencode-auto-force-resume", {
+["opencode-auto-continue", {
   "terminalTitleEnabled": true
 }]
+```
+
+**Note**: For toast notifications, install a separate notification plugin:
+```bash
+opencode plugin @mohak34/opencode-notifier@latest --global
 ```
 
 ## Troubleshooting
@@ -973,11 +1154,12 @@ Our plugin provides terminal title updates automatically:
 
 ## Performance
 
-- **Memory**: One SessionState per active session (~200 bytes each)
-- **Timers**: Max 2 timers per session (stall + nudge/review)
+- **Memory**: One SessionState per active session (~150 bytes each)
+- **Timers**: Max 1 timer per session (stall recovery)
 - **Polling**: Status polling only during recovery (not continuous)
 - **File I/O**: Status file uses atomic writes (`.tmp` + rename)
 - **CPU**: Event-driven, no background loops
+- **Dependencies**: Zero external dependencies at runtime
 
 ## License
 

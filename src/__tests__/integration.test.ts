@@ -19,7 +19,7 @@ async function loadPlugin(input: { client: MockClient }, options?: Record<string
   return AutoForceResumePlugin(input as Parameters<Plugin>[0], options as Parameters<Plugin>[1]);
 }
 
-describe("opencode-auto-force-resume integration", () => {
+describe("opencode-auto-continue integration", () => {
   let mockAbort: ReturnType<typeof vi.fn>;
   let mockPrompt: ReturnType<typeof vi.fn>;
   let mockPromptAsync: ReturnType<typeof vi.fn>;

@@ -61,6 +61,9 @@ export interface SessionState {
   lastUserMessageId: string;
   sentMessageAt: number;
 
+  // === Advisory (ai-advisor.ts, recovery.ts, nudge.ts) ===
+  lastAdvisoryAdvice: { action: string; confidence: number; reasoning: string; stallPattern?: string; customPrompt?: string; contextSummary?: string } | null;
+
   // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
 }
@@ -111,6 +114,14 @@ export interface PluginConfig {
   compactReductionFactor: number;
   compactAtMessageCount: number;
   dcpDetected: boolean;
+  dcpVersion: string | null;
+  
+  // === AI Advisory (ai-advisor.ts) ===
+  enableAdvisory: boolean;
+  advisoryModel: string;
+  advisoryTimeoutMs: number;
+  advisoryMaxTokens: number;
+  advisoryTemperature: number;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -159,6 +170,14 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
   dcpDetected: false,
+  dcpVersion: null,
+  
+  // AI Advisory defaults
+  enableAdvisory: false,
+  advisoryModel: "",
+  advisoryTimeoutMs: 5000,
+  advisoryMaxTokens: 500,
+  advisoryTemperature: 0.1,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
@@ -366,7 +385,6 @@ export function createSession(): SessionState {
     timer: null,
     lastProgressAt: now,
     actionStartedAt: 0,
-    toastTimer: null,
 
     // Recovery
     attempts: 0,
@@ -418,6 +436,9 @@ export function createSession(): SessionState {
     // Message Tracking
     lastUserMessageId: '',
     sentMessageAt: 0,
+
+    // Advisory
+    lastAdvisoryAdvice: null,
 
     // Status File
     statusHistory: [],
@@ -526,5 +547,31 @@ export function detectDCP(): boolean {
     return false;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Get the installed DCP version, or null if DCP is not installed.
+ * Reads the package.json from known DCP installation paths.
+ */
+export function getDCPVersion(): string | null {
+  try {
+    const home = process.env.HOME || "/tmp";
+    const dcpPkgPaths = [
+      join(home, ".config", "opencode", "plugins", "opencode-dynamic-context-pruning", "package.json"),
+      join(home, ".cache", "opencode", "node_modules", "@tarquinen", "opencode-dcp", "package.json"),
+      join(home, ".cache", "opencode", "node_modules", "opencode-dynamic-context-pruning", "package.json"),
+    ];
+    
+    for (const pkgPath of dcpPkgPaths) {
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+        return (pkg.version as string) || null;
+      }
+    }
+    
+    return null;
+  } catch {
+    return null;
   }
 }

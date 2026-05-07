@@ -23,7 +23,7 @@ let _pluginVersion: string | null = null;
 function getPluginVersion(): string {
   if (_pluginVersion !== null) return _pluginVersion;
   try {
-    const pkgPath = join(process.env.HOME || "/tmp", ".config", "opencode", "plugins", "node_modules", "opencode-auto-force-resume", "package.json");
+    const pkgPath = join(process.env.HOME || "/tmp", ".config", "opencode", "plugins", "node_modules", "opencode-auto-continue", "package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
     _pluginVersion = pkg.version as string;
   } catch {
@@ -98,6 +98,10 @@ export function createStatusFileModule(deps: StatusFileDeps) {
       const data = {
         version: getPluginVersion(),
         timestamp: new Date().toISOString(),
+        dcp: {
+          detected: config.dcpDetected,
+          version: config.dcpVersion || null,
+        },
         sessions: {
           [sessionId]: {
             elapsed: formatDuration(elapsed),
@@ -141,9 +145,18 @@ export function createStatusFileModule(deps: StatusFileDeps) {
               lastNudgeAt: s.lastNudgeAt > 0 ? new Date(s.lastNudgeAt).toISOString() : null,
             },
             todos: {
-              hasOpenTodos: s.hasOpenTodos,
-            },
-            autoSubmits: s.autoSubmitCount,
+               hasOpenTodos: s.hasOpenTodos,
+             },
+              advisory: s.lastAdvisoryAdvice ? {
+                action: s.lastAdvisoryAdvice.action,
+                confidence: s.lastAdvisoryAdvice.confidence,
+                reasoning: s.lastAdvisoryAdvice.reasoning,
+                stallPattern: s.lastAdvisoryAdvice.stallPattern || null,
+                customPrompt: s.lastAdvisoryAdvice.customPrompt || null,
+                contextSummary: s.lastAdvisoryAdvice.contextSummary || null,
+                checkedAt: new Date().toISOString(),
+              } : null,
+             autoSubmits: s.autoSubmitCount,
             userCancelled: s.userCancelled,
             planning: s.planning,
             compacting: s.compacting,

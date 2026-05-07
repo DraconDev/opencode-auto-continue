@@ -16,6 +16,7 @@ import {
   formatMessage,
   safeHook,
   detectDCP,
+  getDCPVersion,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
@@ -23,6 +24,7 @@ import { createStatusFileModule } from "./status-file.js";
 import { createRecoveryModule } from "./recovery.js";
 import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
+import { createAIAdvisor } from "./ai-advisor.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
@@ -32,10 +34,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   
   // Detect DCP and auto-adjust compaction settings
   const hasDCP = detectDCP();
-  if (hasDCP && config.autoCompact) {
-    config.autoCompact = false;
+  if (hasDCP) {
     config.dcpDetected = true;
-    // We'll log this after log function is defined
+    config.dcpVersion = getDCPVersion();
+    if (config.autoCompact) {
+      config.autoCompact = false;
+      // We'll log this after log function is defined
+    }
   }
   
   config = validateConfig(config);
@@ -133,11 +138,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   const terminal = createTerminalModule({ config, sessions, log, input });
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
+  const aiAdvisor = createAIAdvisor({ config, log, input });
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, aiAdvisor });
 
   const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
 
-  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge });
+  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, aiAdvisor });
 
   const compaction = createCompactionModule({ config, sessions, log, input });
 
@@ -251,10 +257,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.estimatedTokens += totalMsgTokens;
             log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
           }
-          // Check if this message pushed us over the proactive compaction threshold
-          if (!s.planning && !s.compacting && s.estimatedTokens > 0) {
-            await compaction.maybeProactiveCompact(sid);
-          }
+
         }
         writeStatusFile(sid);
         return;
@@ -268,6 +271,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "busy" || status?.type === "retry") {
           updateProgress(s);
           s.userCancelled = false;
+          if (s.actionStartedAt === 0) {
+            s.actionStartedAt = Date.now();
+          }
           // NOTE: s.planning is NOT cleared here — session.status(busy) fires
           // during plan generation too (the session IS busy). Clearing it would
           // cause plan-aware continue messages to use the generic message instead.

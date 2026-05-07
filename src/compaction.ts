@@ -1,6 +1,4 @@
-import { join } from "path";
 import type { PluginConfig, SessionState } from "./shared.js";
-import { getModelContextLimit, getCompactionThreshold } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface CompactionDeps {
@@ -116,52 +114,5 @@ export function createCompactionModule(deps: CompactionDeps) {
     return false;
   }
 
-  async function maybeProactiveCompact(sessionId: string) {
-    const s = sessions.get(sessionId);
-    if (!s) {
-      log('proactive compact skipped: session not found:', sessionId);
-      return;
-    }
-    if (config.dcpDetected) {
-      log('proactive compact skipped: DCP detected, deferring to DCP for context management');
-      return;
-    }
-    if (!config.autoCompact) {
-      log('proactive compact skipped: autoCompact is disabled');
-      return;
-    }
-    if (s.planning) {
-      log('proactive compact skipped: session is planning');
-      return;
-    }
-    if (s.compacting) {
-      log('proactive compact skipped: session is compacting');
-      return;
-    }
-
-    const now = Date.now();
-    if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
-      log('proactive compact skipped: cooldown active', now - s.lastCompactionAt, 'ms since last compaction (cooldown:', config.compactCooldownMs, ')');
-      return;
-    }
-
-    // Detect model context limit from opencode.json
-    const opencodeConfigPath = join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json");
-    const modelLimit = getModelContextLimit(opencodeConfigPath);
-    const threshold = getCompactionThreshold(modelLimit, config);
-
-    log('proactive compact check:', sessionId, 'tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit, 'messages:', s.messageCount, 'msgThreshold:', config.compactAtMessageCount, 'last compact:', s.lastCompactionAt);
-
-    if (s.estimatedTokens >= threshold) {
-      log('proactive compaction triggered for session:', sessionId, 'estimated tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit);
-      await attemptCompact(sessionId);
-    } else if (s.messageCount >= config.compactAtMessageCount) {
-      log('proactive compaction triggered by message count:', sessionId, 'messages:', s.messageCount, 'threshold:', config.compactAtMessageCount);
-      await attemptCompact(sessionId);
-    } else {
-      log('proactive compact skipped: tokens below threshold', s.estimatedTokens, '<', threshold, 'messages:', s.messageCount, '<', config.compactAtMessageCount);
-    }
-  }
-
-  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact };
+  return { isTokenLimitError, attemptCompact, forceCompact };
 }

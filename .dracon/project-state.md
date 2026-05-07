@@ -1,22 +1,29 @@
 # Project State
 
 ## Current Focus
-Removed timer toast and notification-related configuration options from shared interface
+Enhanced session management with AI-assisted recovery and nudge decisions
 
 ## Context
-This change is part of a broader refactoring effort to simplify the notification system and remove deprecated configuration options. The timer toast functionality was identified as redundant and has been removed to streamline the codebase.
+The plugin now includes an AI advisory system that analyzes session state before making recovery/nudge decisions, combining both AI analysis and heuristic patterns for more intelligent session handling.
 
 ## Completed
-- [x] Removed `timerToastEnabled` and `timerToastIntervalMs` configuration options
-- [x] Removed related validation for `timerToastIntervalMs`
-- [x] Cleaned up related configuration documentation
+- [x] Added AI advisory module with hybrid decision system (AI advises, hardcoded rules decide)
+- [x] Implemented 7 heuristic patterns for session analysis
+- [x] Added custom prompt API for dynamic session interaction
+- [x] Enhanced recovery flow with AI-assisted decision making
+- [x] Added session state analysis for nudge decisions
+- [x] Updated documentation with new features and architecture
+- [x] Added new test files for AI advisor and autonomous core
 
 ## In Progress
-- [ ] No active work in progress
+- [ ] Integration testing for AI advisory system
+- [ ] Performance benchmarking of AI vs heuristic decisions
 
 ## Blockers
-- None
+- Need to verify AI response parsing reliability
+- Requires testing with various session types to validate heuristic patterns
 
 ## Next Steps
-1. Update related documentation to reflect the removed configuration options
-2. Verify that all dependent systems are compatible with the new configuration structure
+1. Complete integration testing of AI advisory system
+2. Benchmark performance of AI vs heuristic decision making
+3. Document any edge cases found during testing
