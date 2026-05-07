@@ -249,7 +249,15 @@ class ModelContextCache {
               const m = model as any;
               if (m.limit?.context && typeof m.limit.context === 'number') {
                 limits.push(m.limit.context);
-              }
+  // === Session Monitor (session-monitor.ts) ===
+  subagentWaitMs: number;
+  sessionDiscoveryIntervalMs: number;
+  idleSessionTimeoutMs: number;
+  maxSessions: number;
+  orphanParentDetection: boolean;
+  sessionDiscovery: boolean;
+  idleCleanup: boolean;
+}
             }
           }
         }

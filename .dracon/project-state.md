@@ -1,28 +1,22 @@
 # Project State
 
 ## Current Focus
-Added comprehensive session monitoring system to detect and recover orphaned sessions
+Added comprehensive session monitoring configuration options to the shared interface.
 
 ## Context
-To prevent memory leaks and ensure proper session cleanup, we needed a system that:
-1. Detects orphan parent sessions (when subagents finish but parents remain busy)
-2. Discovers missed sessions through periodic polling
-3. Cleans up idle sessions to prevent memory leaks
+This change implements the session monitoring system introduced in the recent "feat(comprehensive session)" commit. It provides configuration options for detecting and managing active sessions.
 
 ## Completed
-- [x] Created session monitoring module with orphan detection
-- [x] Implemented periodic session discovery via API polling
-- [x] Added idle session cleanup with configurable timeout
-- [x] Tracked parent-child relationships for orphan detection
-- [x] Added statistics tracking for monitoring purposes
+- [x] Added session monitoring configuration properties to shared.ts
+- [x] Included timeout, interval, and session limit settings
+- [x] Added feature flags for session discovery and cleanup
 
 ## In Progress
-- [x] Session monitoring system is fully implemented and ready for integration
+- [x] Implementation of session monitoring logic (not yet in this diff)
 
 ## Blockers
-- None identified - system is complete and ready for testing
+- Session monitoring logic implementation pending
 
 ## Next Steps
-1. Integrate session monitor with main application lifecycle
-2. Add monitoring endpoints for operational visibility
-3. Implement configuration validation for session monitor settings
+1. Implement session monitoring logic using these configuration options
+2. Integrate with existing session management system
