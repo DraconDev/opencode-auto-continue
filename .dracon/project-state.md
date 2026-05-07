@@ -1,15 +1,15 @@
 # Project State
 
 ## Current Focus
-Simplified proactive compaction threshold logic by removing model-specific distinctions
+Simplified proactive compaction threshold logic by removing model-specific calculations in favor of always using `proactiveCompactAtTokens`
 
 ## Context
-The previous implementation had overly complex logic for determining compaction thresholds based on model size and configuration percentages. This change simplifies the logic to always use the proactiveCompactAtTokens value, removing special cases for large models and small models.
+The previous implementation calculated compaction thresholds based on model size and percentage, but this was causing inconsistencies in large-context model handling. The change simplifies the logic to always use the configured `proactiveCompactAtTokens` value, which provides more predictable behavior.
 
 ## Completed
-- [x] Removed model-specific compaction threshold logic
-- [x] Simplified getCompactionThreshold to always return config.proactiveCompactAtTokens
-- [x] Updated token estimation logic to use config.compactReductionFactor
+- [x] Modified `getCompactionThreshold` to always return `proactiveCompactAtTokens` regardless of model size
+- [x] Updated test cases to reflect the simplified behavior
+- [x] Fixed a typo in the bug note about mode switching behavior
 
 ## In Progress
 - [ ] No active work in progress
@@ -18,6 +18,5 @@ The previous implementation had overly complex logic for determining compaction 
 - None identified
 
 ## Next Steps
-1. Verify test coverage for the simplified logic
-2. Consider adding documentation for the new behavior
-```
+1. Verify the simplified behavior works correctly in integration tests
+2. Update documentation to reflect the new compaction behavior
