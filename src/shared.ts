@@ -381,6 +381,7 @@ export function createSession(): SessionState {
     recoveryTimes: [],
     lastStallPartType: "",
     stallPatterns: {},
+    continueTimestamps: [],
 
     // Session Control
     userCancelled: false,

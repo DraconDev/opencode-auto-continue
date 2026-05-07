@@ -72,6 +72,23 @@ async function checkToolTextInSession(sessionId: string, input: TypedPluginInput
   return false;
 }
 
+// Hallucination loop detection
+const LOOP_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const LOOP_MAX_CONTINUES = 3;
+
+function recordContinue(s: SessionState): void {
+  s.continueTimestamps.push(Date.now());
+  const cutoff = Date.now() - LOOP_WINDOW_MS;
+  while (s.continueTimestamps.length > 0 && s.continueTimestamps[0] < cutoff) {
+    s.continueTimestamps.shift();
+  }
+}
+
+function isHallucinationLoop(s: SessionState): boolean {
+  recordContinue(s);
+  return s.continueTimestamps.length >= LOOP_MAX_CONTINUES;
+}
+
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
 
