@@ -32,6 +32,15 @@ export function createCompactionModule(deps: CompactionDeps) {
         s.compacting = true;
       }
 
+      // Check if session is busy - summarize requires idle session
+      const preStatus = await input.client.session.status({});
+      const preData = preStatus.data as Record<string, { type: string }>;
+      if (preData[sessionId]?.type === "busy") {
+        log('compaction skipped: session is busy, cannot summarize while generating');
+        if (s) s.compacting = false;
+        return false;
+      }
+
       await input.client.session.summarize({
         path: { id: sessionId },
         query: { directory: input.directory || "" }
@@ -72,8 +81,8 @@ export function createCompactionModule(deps: CompactionDeps) {
         s.compacting = false;
       }
       return false;
-    } catch (e) {
-      log('compaction attempt failed:', e);
+    } catch (e: any) {
+      log('compaction attempt failed:', e?.message || e?.name || String(e), 'status:', e?.status);
       const s = sessions.get(sessionId);
       if (s) {
         s.compacting = false;
