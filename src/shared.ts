@@ -116,6 +116,7 @@ export interface PluginConfig {
   notifyChildSessions: boolean;
   notificationDedupeMs: number;
   dcpDetected: boolean;
+  dcpWarning: boolean;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -168,6 +169,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   notifyChildSessions: false,
   notificationDedupeMs: 1500,
   dcpDetected: false,
+  dcpWarning: true,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
