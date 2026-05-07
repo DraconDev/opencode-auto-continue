@@ -1,23 +1,23 @@
 # Project State
 
 ## Current Focus
-Enhanced notification system with child session filtering and deduplication
+Added configuration for compacting sessions based on message count and improved token estimation
 
 ## Context
-The notification system was updated to support more sophisticated notification behavior, particularly for parent/child session relationships and to prevent duplicate notifications within a configurable time window.
+The changes address two related improvements:
+1. Adding a new configuration option to control session compaction based on message count
+2. Making the token estimation more aggressive to account for system prompts and context
 
 ## Completed
-- [x] Added child session notification filtering via `notifyChildSessions` config
-- [x] Implemented notification deduplication with `notificationDedupeMs` config
-- [x] Added parent session detection logic
-- [x] Enhanced logging for skipped notifications
+- [x] Added `compactAtMessageCount` config option to control session compaction
+- [x] Improved token estimation by multiplying by 2 to account for system context
 
 ## In Progress
-- [x] Notification system improvements
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this change
+- None identified
 
 ## Next Steps
-1. Verify notification behavior with various session configurations
-2. Document new configuration options in project documentation
+1. Verify the new configuration option works as expected in session management
+2. Test the more aggressive token estimation with various message types

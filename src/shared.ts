@@ -112,6 +112,7 @@ export interface PluginConfig {
   compactionVerifyWaitMs: number;
   compactCooldownMs: number;
   compactReductionFactor: number;
+  compactAtMessageCount: number;
   notifyChildSessions: boolean;
   notificationDedupeMs: number;
 }
@@ -310,7 +311,9 @@ export function estimateTokens(text: string): number {
     else if (codeChars.has(ch)) code++;
     else english++;
   }
-  return Math.ceil((english * englishRatio + code * codeRatio + digits * digitRatio) / 4);
+  // More aggressive estimation: multiply by 2 to account for system prompt,
+  // previous messages, and other context we can't see
+  return Math.ceil((english * englishRatio + code * codeRatio + digits * digitRatio) / 4 * 2);
 }
 
 export function formatDuration(ms: number): string {
