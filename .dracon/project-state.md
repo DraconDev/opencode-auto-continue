@@ -1,24 +1,22 @@
 # Project State
 
 ## Current Focus
-Added tool-text detection patterns and recovery logic for embedded XML tool calls in reasoning text
+Added tool-text detection for recovery prompts in sessions containing embedded XML
 
 ## Context
-The system needs to detect when users accidentally include tool calls as plain text in their reasoning rather than executing them properly. This prevents broken workflows where tool calls remain in the conversation without being executed.
+This change improves recovery handling for sessions where tool outputs are embedded as raw text (XML in reasoning). The previous auto-compaction behavior was triggering unnecessarily in these cases.
 
 ## Completed
-- [x] Added regex patterns to detect XML tool call fragments in text
-- [x] Implemented truncated XML detection for partial tool calls
-- [x] Created session scanning function to check recent messages for tool-text patterns
-- [x] Added recovery prompt template for guiding users to proper execution
+- [x] Added tool-text detection pattern matching
+- [x] Modified auto-compaction to skip when tool-text is detected
+- [x] Added logging for tool-text detection cases
 
 ## In Progress
-- [ ] Integration with existing recovery module (not yet connected to the main flow)
+- [x] Implementation of tool-text recovery logic
 
 ## Blockers
-- Need to connect the detection logic to the recovery module's existing nudging system
+- None identified for this specific change
 
 ## Next Steps
-1. Connect tool-text detection to the recovery module's nudging system
-2. Add unit tests for the new detection patterns
-3. Document the new recovery behavior in user documentation
+1. Implement recovery prompt variants for tool-text cases
+2. Add integration tests for tool-text recovery scenarios

@@ -134,7 +134,13 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         return;
       }
 
-      if (config.autoCompact) {
+      // Check if the model output tool calls as raw text (XML in reasoning)
+      const hasToolText = await checkToolTextInSession(sessionId, input);
+      if (hasToolText) {
+        log('tool-text detected in session, using recovery prompt');
+      }
+
+      if (config.autoCompact && !hasToolText) {
         try {
           log('attempting auto-compaction for session:', sessionId);
           await input.client.session.summarize({
