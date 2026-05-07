@@ -1,23 +1,21 @@
 # Project State
 
 ## Current Focus
-Added new features to enhance session management robustness and prevent duplicate operations.
+Enhanced error logging for auto-compaction failures in the recovery module.
 
 ## Context
-The recent changes focused on improving session management by adding features to prevent duplicate operations, detect problematic patterns, and recover from potential issues. This commit continues that work by documenting additional unique features in the README.
+The previous error logging was too minimalistic, potentially losing important debugging information. This change improves visibility into auto-compaction failures by including more detailed error properties.
 
 ## Completed
-- [x] Added documentation for question detection to prevent nudging during AI questions
-- [x] Added documentation for tool-text recovery to handle XML tool call detection
-- [x] Added documentation for hallucination loop detection to break infinite loops
-- [x] Added documentation for prompt guard to prevent duplicate injections
+- [x] Expanded error logging to include error message, name, status, response, and data properties
+- [x] Maintained backward compatibility with non-object errors
 
 ## In Progress
-- [ ] No active work in progress for this commit
+- [x] No active work in progress beyond this change
 
 ## Blockers
-- None identified for this commit
+- None identified
 
 ## Next Steps
-1. Review and test the new features in the context of session management
-2. Consider additional edge cases for the new detection and recovery mechanisms
+1. Verify the enhanced logging provides sufficient information for debugging
+2. Consider adding similar improvements to other error logging throughout the codebase

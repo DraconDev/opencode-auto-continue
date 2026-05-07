@@ -176,8 +176,8 @@ export function createRecoveryModule(deps: RecoveryDeps) {
             s.aborting = false;
             return;
           }
-        } catch (e) {
-          log('auto-compaction failed:', e);
+        } catch (e: any) {
+          log('auto-compaction failed:', e?.message || e?.name || String(e), 'status:', e?.status, 'response:', JSON.stringify(e?.response || {}), 'data:', JSON.stringify(e?.data || {}));
         }
       }
 
