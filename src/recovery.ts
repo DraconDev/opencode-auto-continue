@@ -157,35 +157,13 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         log('tool-text detected in session, using recovery prompt');
       }
 
-      if (config.autoCompact && !hasToolText) {
-        try {
-          log('attempting auto-compaction for session:', sessionId);
-          await input.client.session.summarize({
-            path: { id: sessionId },
-            query: { directory: input.directory || "" }
-          });
-          log('auto-compaction successful, waiting for session to resume');
-          await new Promise(r => setTimeout(r, 3000));
-
-          const postCompactStatus = await input.client.session.status({});
-          const postData = postCompactStatus.data as Record<string, { type: string }>;
-          if (postData[sessionId]?.type === "busy") {
-            log('session still busy after compaction, proceeding with abort');
-          } else {
-            log('session recovered after compaction');
-            s.aborting = false;
-            return;
-          }
-        } catch (e: any) {
-          log('auto-compaction failed:', e?.message || e?.name || String(e), 'status:', e?.status, 'response:', JSON.stringify(e?.response || {}), 'data:', JSON.stringify(e?.data || {}));
-        }
-      }
-
+      // Abort the session first (required before compaction)
       try {
         await input.client.session.abort({
           path: { id: sessionId },
           query: { directory: input.directory || "" }
         });
+        log('session aborted for recovery:', sessionId);
       } catch (e) {
         log('abort failed:', e);
         s.aborting = false;
@@ -193,6 +171,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         return;
       }
 
+      // Wait for session to become idle
       const startTime = Date.now();
       let isIdle = false;
       let statusFailures = 0;
@@ -212,6 +191,21 @@ export function createRecoveryModule(deps: RecoveryDeps) {
             statusFailures++;
             log('status poll failed:', e);
           }
+        }
+      }
+
+      // Now that session is idle, try compaction
+      if (config.autoCompact && !hasToolText && isIdle) {
+        try {
+          log('attempting auto-compaction for session:', sessionId);
+          await input.client.session.summarize({
+            path: { id: sessionId },
+            query: { directory: input.directory || "" }
+          });
+          log('auto-compaction successful, waiting for session to resume');
+          await new Promise(r => setTimeout(r, 3000));
+        } catch (e: any) {
+          log('auto-compaction failed:', e?.message || e?.name || String(e), 'status:', e?.status, 'response:', JSON.stringify(e?.response || {}), 'data:', JSON.stringify(e?.data || {}));
         }
       }
 

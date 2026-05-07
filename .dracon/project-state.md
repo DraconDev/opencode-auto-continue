@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Enhanced error logging for auto-compaction failures in the recovery module.
+Refactored session recovery flow to ensure proper session state before compaction
 
 ## Context
-The previous error logging was too minimalistic, potentially losing important debugging information. This change improves visibility into auto-compaction failures by including more detailed error properties.
+The previous implementation attempted auto-compaction before verifying the session was in a stable state, which could lead to race conditions. This change ensures sessions are properly aborted and idle before attempting compaction.
 
 ## Completed
-- [x] Expanded error logging to include error message, name, status, response, and data properties
-- [x] Maintained backward compatibility with non-object errors
+- [x] Moved session abort to occur before compaction
+- [x] Added explicit idle state verification before compaction
+- [x] Maintained all existing auto-compaction functionality
+- [x] Preserved error logging for compaction failures
 
 ## In Progress
-- [x] No active work in progress beyond this change
+- [x] Refactored recovery flow with proper state management
 
 ## Blockers
 - None identified
 
 ## Next Steps
-1. Verify the enhanced logging provides sufficient information for debugging
-2. Consider adding similar improvements to other error logging throughout the codebase
+1. Verify the new recovery flow handles all edge cases
+2. Test with various session states to ensure robustness
