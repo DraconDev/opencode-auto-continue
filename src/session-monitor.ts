@@ -142,14 +142,55 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
         if (!id) continue;
 
         if (!sessions.has(id)) {
-          // New session discovered
+          // New session discovered - create minimal session entry
           log('[SessionMonitor] discovered missed session:', id);
           discoveredCount++;
 
-          // Initialize tracking for this session
-          // The session will be properly initialized when events arrive
-          // But we mark it so recovery knows about it
-          touchSession(id);
+          // Create minimal session so recovery knows about it
+          sessions.set(id, {
+            attempts: 0,
+            backoffAttempts: 0,
+            autoSubmitCount: 0,
+            lastProgressAt: Date.now(),
+            lastUserMessageId: '',
+            sentMessageAt: 0,
+            timer: null,
+            needsContinue: false,
+            continueMessageText: '',
+            nudgeCount: 0,
+            lastNudgeAt: 0,
+            hasOpenTodos: false,
+            lastKnownTodos: [],
+            estimatedTokens: 0,
+            messageCount: 0,
+            lastCompactionAt: 0,
+            tokenLimitHits: 0,
+            planning: false,
+            planBuffer: '',
+            compacting: false,
+            userCancelled: false,
+            aborting: false,
+            sessionCreatedAt: Date.now(),
+            actionStartedAt: 0,
+            lastRecoveryTime: 0,
+            recoveryStartTime: 0,
+            stallDetections: 0,
+            recoverySuccessful: 0,
+            recoveryFailed: 0,
+            lastRecoverySuccess: 0,
+            totalRecoveryTimeMs: 0,
+            recoveryTimes: [],
+            statusHistory: [],
+            nudgePaused: false,
+            lastTodoSnapshot: '',
+            todoChangeCount: 0,
+            lastStallPartType: '',
+            stallPatterns: {},
+            continueHistory: [],
+            reviewFired: false,
+            reviewDebounceTimer: null,
+            lastAdvisoryAdvice: null,
+          });
         }
       }
 
