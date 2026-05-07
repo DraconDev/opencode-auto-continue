@@ -337,7 +337,7 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
 | Option | Default | Description |
 |--------|---------|-------------|
 | `stallTimeoutMs` | `180000` | Time without activity before recovery (3 min) |
-| `waitAfterAbortMs` | `1500` | Pause between abort and continue (1.5s) |
+| `waitAfterAbortMs` | `5000` | Pause between abort and continue (5s) |
 | `maxRecoveries` | `3` | Max recovery attempts before exponential backoff |
 | `cooldownMs` | `60000` | Time between recovery attempts (1 min) |
 | `abortPollIntervalMs` | `200` | Poll interval after abort |
@@ -436,7 +436,7 @@ The 100k default already leaves 50k+ buffer for a 152k model. If you want to be 
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `showToasts` | `false` | Show toast notifications |
+| `showToasts` | `true` | Show toast notifications |
 | `debug` | `false` | Enable debug logging to file |
 | `dcpWarning` | `true` | Show one-time toast recommending DCP installation |
 
@@ -479,7 +479,7 @@ watch -n 1 'cat ~/.opencode/logs/auto-force-resume.status | jq .'
 
 ```json
 {
-  "version": "3.117.4",
+  "version": "6.61.0",
   "timestamp": "2026-05-05T13:00:00.000Z",
   "sessions": {
     "abc123": {

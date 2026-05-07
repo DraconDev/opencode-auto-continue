@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Removed detailed session state management documentation from AGENTS.md
+Updated configuration options for auto-force-resume plugin and notification system
 
 ## Context
-The session state management documentation was moved to a more appropriate location to improve maintainability and reduce file size. The documentation covered complex state transitions, nudge architecture, stall detection, and token estimation which were better suited for a dedicated design document.
+The changes improve user experience by adjusting recovery timing and enabling toast notifications by default. This follows recent work on session management and proactive compaction features.
 
 ## Completed
-- [x] Removed 230 lines of session state management documentation from AGENTS.md
-- [x] Cleaned up the file by removing outdated and redundant documentation
+- [x] Increased `waitAfterAbortMs` from 1.5s to 5s for better recovery timing
+- [x] Enabled `showToasts` by default in notification system
+- [x] Updated version number in example configuration
 
 ## In Progress
-- [ ] None
+- [x] Documentation updates for new configuration options
 
 ## Blockers
-- None
+- No blockers identified
 
 ## Next Steps
-1. Create a new dedicated design document for session state management
-2. Update references to the moved documentation throughout the codebase
+1. Verify impact of timing changes in recovery flow
+2. Test notification system with different user scenarios
