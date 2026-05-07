@@ -289,7 +289,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           await compaction.maybeProactiveCompact(sid);
         }
         // Auto-continue when transitioning busy→idle with pending todos
-        if (status?.type === "idle" && !s.needsContinue && s.hasOpenTodos && config.nudgeEnabled) {
+        // Nudge is always scheduled on idle — injectNudge fetches todos from API
+        // and decides whether to send based on actual pending count
+        if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
           nudge.scheduleNudge(sid);
         }
         // Stop timer toast and clear terminal title/progress when session becomes idle
@@ -518,7 +520,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
         const s = getSession(sid);
-        nudge.scheduleNudge(sid, s.lastKnownTodos);
+        nudge.scheduleNudge(sid);
         writeStatusFile(sid);
         return;
       }
