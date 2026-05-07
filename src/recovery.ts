@@ -116,6 +116,13 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     if (now - s.lastRecoveryTime < config.cooldownMs) return;
 
+    // Hallucination loop detection
+    if (isHallucinationLoop(s)) {
+      log('hallucination loop detected on session:', sessionId, 'continues in last 10min:', s.continueTimestamps.length);
+      // Force abort + fresh continue to break the loop
+      hasToolText = false; // Reset to force fresh continue
+    }
+
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
       s.aborting = false;
