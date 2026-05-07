@@ -24,6 +24,7 @@ export interface SessionState {
   recoveryTimes: number[];
   lastStallPartType: string;
   stallPatterns: Record<string, number>;
+  continueTimestamps: number[]; // Hallucination loop detection
 
   // === Session Control (index.ts) ===
   userCancelled: boolean;
