@@ -122,6 +122,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
   debug: false,
   maxBackoffMs: 1800000,
   maxAutoSubmits: 3,
+  shortContinueMessage: "Continue.",
+  continueWithPlanMessage: "Please continue with your plan. You were in the middle of creating a plan — pick up where you left off.",
   continueMessage: "Please continue from where you left off.",
   continueWithTodosMessage: "Please continue from where you left off. You have {pending} open task(s): {todoList}.",
   maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",

@@ -1,20 +1,21 @@
 # Project State
 
 ## Current Focus
-Adjust proactive compaction threshold from 50,000 tokens to 100,000 tokens
+Added new continue message variants for plan-aware and short continue scenarios
 
 ## Context
-This change increases the token threshold for proactive compaction to prevent excessive compaction during active planning sessions, which could disrupt ongoing workflows.
+The changes introduce specialized continue messages to better handle different user interaction scenarios during plan generation and continuation
 
 ## Completed
-- [x] Increased proactive compaction threshold from 50,000 to 100,000 tokens
+- [x] Added `shortContinueMessage` for concise continuation prompts
+- [x] Added `continueWithPlanMessage` to guide users when resuming interrupted plan creation
 
 ## In Progress
-- [x] Testing the impact of this change on session stability
+- [x] Implementation of new message variants in shared configuration
 
 ## Blockers
-- Need to verify if this threshold prevents compaction during active planning
+- None identified for this specific change
 
 ## Next Steps
-1. Run integration tests to confirm compaction behavior
-2. Document the rationale for this threshold adjustment
+1. Verify message variants work correctly in different session states
+2. Update documentation to reflect new message types
