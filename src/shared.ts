@@ -187,6 +187,15 @@ export const DEFAULT_CONFIG: PluginConfig = {
   advisoryTimeoutMs: 5000,
   advisoryMaxTokens: 500,
   advisoryTemperature: 0.1,
+
+  // Session Monitor defaults
+  subagentWaitMs: 15000,
+  sessionDiscoveryIntervalMs: 60000,
+  idleSessionTimeoutMs: 600000,
+  maxSessions: 50,
+  orphanParentDetection: true,
+  sessionDiscovery: true,
+  idleCleanup: true,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
