@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added new configuration options for timer toast interval and status file functionality
+Added additional token limit error pattern detection to improve error handling
 
 ## Context
-This change enables better control over the timer toast display and introduces status file tracking for plugin state management
+The change expands the token limit pattern matching to catch more error cases, ensuring better handling of API errors related to token limits.
 
 ## Completed
-- [x] Added `timerToastIntervalMs` configuration option (60000ms default)
-- [x] Added `statusFileEnabled` configuration flag (defaults to true)
+- [x] Added "too many tokens" and "payload too large" patterns to tokenLimitPatterns array
+- [x] Removed the old pattern that was being replaced
 
 ## In Progress
-- [x] Implementation of status file functionality
+- [x] Verification of new patterns against actual API error messages
 
 ## Blockers
-- Need to implement status file persistence and version tracking
+- None identified
 
 ## Next Steps
-1. Implement status file persistence mechanism
-2. Add comprehensive version tracking for plugin state
+1. Verify new patterns catch all relevant error cases in integration tests
+2. Document the new patterns in the configuration reference
