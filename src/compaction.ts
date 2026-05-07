@@ -109,29 +109,41 @@ export function createCompactionModule(deps: CompactionDeps) {
 
   async function maybeProactiveCompact(sessionId: string) {
     const s = sessions.get(sessionId);
-    if (!s) return;
-    if (!config.autoCompact) return;
-    if (s.planning) return;
-    if (s.compacting) return;
+    if (!s) {
+      log('proactive compact skipped: session not found:', sessionId);
+      return;
+    }
+    if (!config.autoCompact) {
+      log('proactive compact skipped: autoCompact is disabled');
+      return;
+    }
+    if (s.planning) {
+      log('proactive compact skipped: session is planning');
+      return;
+    }
+    if (s.compacting) {
+      log('proactive compact skipped: session is compacting');
+      return;
+    }
 
-    // Don't compact too frequently
-    if (Date.now() - s.lastCompactionAt < config.compactCooldownMs) return;
-
-    // NOTE: The OpenCode SDK does NOT expose token counts in session.status().
-    // We rely on token estimates accumulated from:
-    // 1. AssistantMessage.tokens from message.updated events
-    // 2. step-finish part.tokens from message.part.updated events
-    // 3. Error message parsing when token limit errors occur
-    // These sources are tracked in src/index.ts event handlers.
+    const now = Date.now();
+    if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
+      log('proactive compact skipped: cooldown active', now - s.lastCompactionAt, 'ms since last compaction (cooldown:', config.compactCooldownMs, ')');
+      return;
+    }
 
     // Detect model context limit from opencode.json
     const opencodeConfigPath = join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json");
     const modelLimit = getModelContextLimit(opencodeConfigPath);
     const threshold = getCompactionThreshold(modelLimit, config);
 
+    log('proactive compact check:', sessionId, 'tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit, 'last compact:', s.lastCompactionAt);
+
     if (s.estimatedTokens >= threshold) {
       log('proactive compaction triggered for session:', sessionId, 'estimated tokens:', s.estimatedTokens, 'threshold:', threshold, 'model limit:', modelLimit);
       await attemptCompact(sessionId);
+    } else {
+      log('proactive compact skipped: tokens below threshold', s.estimatedTokens, '<', threshold);
     }
   }
 

@@ -1,21 +1,23 @@
 # Project State
 
 ## Current Focus
-Added documentation for proactive compaction behavior during active planning.
+Improved proactive compaction logic with detailed logging and better threshold checks
 
 ## Context
-This change clarifies that proactive compaction is deferred during active planning to prevent disrupting ongoing plan generation. It documents the existing behavior where compaction is skipped when `s.planning` is true, while still allowing emergency compaction for token limit errors.
+The proactive compaction system now needs clearer logging and more robust threshold checks to prevent unnecessary compactions during active operations.
 
 ## Completed
-- [x] Documented proactive compaction behavior during active planning
-- [x] Clarified that emergency compaction still occurs for token limit errors
+- [x] Added detailed logging for all proactive compaction skip conditions
+- [x] Improved token threshold calculation with model context limit detection
+- [x] Enhanced cooldown period enforcement with timestamp logging
+- [x] Added comprehensive logging for compaction decision points
 
 ## In Progress
-- [ ] None
+- [x] Refactored compaction trigger logic with clearer conditions
 
 ## Blockers
-- None
+- None identified in this change
 
 ## Next Steps
-1. Verify documentation aligns with actual implementation
-2. Consider adding test cases to explicitly verify this behavior
+1. Verify logging output in various session states
+2. Validate compaction thresholds with different model configurations
