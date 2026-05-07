@@ -56,9 +56,9 @@ async function checkToolTextInSession(sessionId: string, input: TypedPluginInput
     });
     const messages = Array.isArray(resp.data) ? resp.data : [];
     for (const msg of messages) {
-      const role = msg.role || msg.info?.role;
+      const role = (msg as any).role || (msg as any).info?.role;
       if (role !== "assistant") continue;
-      const parts = msg.parts || [];
+      const parts = (msg as any).parts || [];
       for (const part of parts) {
         if (part.type === "text" || part.type === "reasoning") {
           const text = part.text || "";
