@@ -122,6 +122,15 @@ export interface PluginConfig {
   advisoryTimeoutMs: number;
   advisoryMaxTokens: number;
   advisoryTemperature: number;
+
+  // === Session Monitor (session-monitor.ts) ===
+  subagentWaitMs: number;
+  sessionDiscoveryIntervalMs: number;
+  idleSessionTimeoutMs: number;
+  maxSessions: number;
+  orphanParentDetection: boolean;
+  sessionDiscovery: boolean;
+  idleCleanup: boolean;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {

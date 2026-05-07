@@ -4,19 +4,18 @@
 Added comprehensive session monitoring configuration options to the shared interface.
 
 ## Context
-This change implements the session monitoring system introduced in the recent "feat(comprehensive session)" commit. It provides configuration options for detecting and managing active sessions.
+This change implements the session monitoring system introduced in recent commits, providing configuration options for detecting and managing active sessions.
 
 ## Completed
-- [x] Added session monitoring configuration properties to shared.ts
-- [x] Included timeout, interval, and session limit settings
-- [x] Added feature flags for session discovery and cleanup
+- [x] Added session monitoring configuration options to `PluginConfig` interface
+- [x] Included parameters for session discovery, timeout handling, and resource limits
 
 ## In Progress
-- [x] Implementation of session monitoring logic (not yet in this diff)
+- [x] Implementation of session monitoring system (in separate commit)
 
 ## Blockers
-- Session monitoring logic implementation pending
+- None identified for this configuration change
 
 ## Next Steps
 1. Implement session monitoring logic using these configuration options
-2. Integrate with existing session management system
+2. Integrate with session recovery and cleanup mechanisms
