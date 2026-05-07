@@ -15,6 +15,7 @@ import {
   updateProgress,
   formatMessage,
   safeHook,
+  detectDCP,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNotificationModule } from "./notifications.js";
@@ -29,6 +30,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     ...DEFAULT_CONFIG,
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
   };
+  
+  // Detect DCP and auto-adjust compaction settings
+  const hasDCP = detectDCP();
+  if (hasDCP && config.autoCompact) {
+    config.autoCompact = false;
+    config.dcpDetected = true;
+    // We'll log this after log function is defined
+  }
+  
   config = validateConfig(config);
 
   const sessions = new Map<string, SessionState>();
@@ -120,6 +130,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     } catch {
       // ignore file errors silently
     }
+  }
+  
+  // Log DCP detection after log function is available
+  if (config.dcpDetected) {
+    log('DCP (Dynamic Context Pruning) detected — disabling proactive compaction, DCP will handle context optimization');
   }
 
   const terminal = createTerminalModule({ config, sessions, log, input });
@@ -553,6 +568,44 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
       }, log);
+    },
+    "experimental.session.compacting": async (_input, output) => {
+      // Inject session state into compaction to preserve important context
+      const sid = (_input as any)?.sessionID || "default";
+      const s = sessions.get(sid);
+      
+      if (s) {
+        const contextLines: string[] = [];
+        
+        // Preserve active todos
+        if (s.lastKnownTodos && s.lastKnownTodos.length > 0) {
+          const pending = s.lastKnownTodos.filter(t => t.status === 'in_progress' || t.status === 'pending');
+          if (pending.length > 0) {
+            contextLines.push(`## Active Tasks`);
+            for (const t of pending.slice(0, 5)) {
+              contextLines.push(`- ${t.content || t.title || 'Task'} (${t.status})`);
+            }
+          }
+        }
+        
+        // Preserve planning state
+        if (s.planning) {
+          contextLines.push(`## Currently Creating Plan`);
+          contextLines.push(`The agent was in the middle of creating a plan when compaction occurred.`);
+        }
+        
+        // Add recovery context
+        if (s.attempts > 0) {
+          contextLines.push(`## Recovery Context`);
+          contextLines.push(`Recovery attempts: ${s.attempts}`);
+        }
+        
+        if (contextLines.length > 0) {
+          output.context = output.context || [];
+          output.context.push(contextLines.join("\n"));
+          log('injected session context into compaction:', sid, 'lines:', contextLines.length);
+        }
+      }
     },
     "experimental.compaction.autocontinue": async (_input, output) => {
       // Disable OpenCode's generic synthetic continue after compaction

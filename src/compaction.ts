@@ -122,6 +122,10 @@ export function createCompactionModule(deps: CompactionDeps) {
       log('proactive compact skipped: session not found:', sessionId);
       return;
     }
+    if (config.dcpDetected) {
+      log('proactive compact skipped: DCP detected, deferring to DCP for context management');
+      return;
+    }
     if (!config.autoCompact) {
       log('proactive compact skipped: autoCompact is disabled');
       return;

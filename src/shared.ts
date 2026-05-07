@@ -115,6 +115,7 @@ export interface PluginConfig {
   compactAtMessageCount: number;
   notifyChildSessions: boolean;
   notificationDedupeMs: number;
+  dcpDetected: boolean;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -166,6 +167,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactAtMessageCount: 50,
   notifyChildSessions: false,
   notificationDedupeMs: 1500,
+  dcpDetected: false,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
@@ -490,5 +492,49 @@ export async function safeHook(
     await fn();
   } catch (err) {
     log?.(`[${name}] hook failed:`, err);
+  }
+}
+
+/**
+ * Detect if Dynamic Context Pruning (DCP) plugin is installed.
+ * DCP handles context optimization better than our naive compaction,
+ * so we should disable our proactive compaction when it's present.
+ */
+export function detectDCP(): boolean {
+  try {
+    const home = process.env.HOME || "/tmp";
+    
+    // Check global config for DCP in plugins array
+    const globalConfigPath = join(home, ".config", "opencode", "opencode.json");
+    if (existsSync(globalConfigPath)) {
+      const content = readFileSync(globalConfigPath, "utf-8");
+      const cfg = JSON.parse(content);
+      if (cfg.plugin && Array.isArray(cfg.plugin)) {
+        for (const p of cfg.plugin) {
+          const pluginName = Array.isArray(p) ? p[0] : p;
+          if (typeof pluginName === "string" && 
+              (pluginName.includes("dcp") || pluginName.includes("dynamic-context-pruning"))) {
+            return true;
+          }
+        }
+      }
+    }
+    
+    // Check if DCP npm package is installed in opencode's plugin cache
+    const dcpPaths = [
+      join(home, ".config", "opencode", "plugins", "opencode-dynamic-context-pruning"),
+      join(home, ".cache", "opencode", "node_modules", "@tarquinen", "opencode-dcp"),
+      join(home, ".cache", "opencode", "node_modules", "opencode-dynamic-context-pruning"),
+    ];
+    
+    for (const p of dcpPaths) {
+      if (existsSync(p)) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch {
+    return false;
   }
 }
