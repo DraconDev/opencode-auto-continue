@@ -23,7 +23,46 @@ export function createNudgeModule(deps: NudgeDeps) {
       .join(",");
   }
 
-  // Cancel any pending nudge timer
+  // Question phrases that indicate the AI is asking the user something
+const QUESTION_PHRASES = [
+  "would you like", "should i", "do you want", "please review",
+  "let me know", "what do you think", "can you confirm",
+  "would you prefer", "shall i", "any thoughts", "could you",
+  "do you agree", "are you sure", "would you mind",
+];
+
+function isQuestion(text: string): boolean {
+  const lowerText = text.toLowerCase().trim();
+  if (/\?\s*$/.test(lowerText)) return true;
+  return QUESTION_PHRASES.some((phrase) => lowerText.includes(phrase));
+}
+
+// Check if the last assistant message is a question
+async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
+  try {
+    const resp = await input.client.session.messages({
+      path: { id: sessionId },
+      query: { limit: 5 },
+    });
+    const messages = Array.isArray(resp.data) ? resp.data : [];
+    
+    // Find last assistant message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role === "assistant" || msg.info?.role === "assistant") {
+        const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
+        if (isQuestion(text)) {
+          log("last assistant message is a question, skipping nudge", { sessionId, text: text.substring(0, 100) });
+          return true;
+        }
+        break; // Only check the most recent assistant message
+      }
+    }
+  } catch (e) {
+    log("error checking last message for questions (ignored)", String(e));
+  }
+  return false;
+}
   function cancelNudge(sessionId: string): void {
     const s = sessions.get(sessionId);
     if (s?.nudgeTimer) {
@@ -149,6 +188,13 @@ export function createNudgeModule(deps: NudgeDeps) {
           log("nudge toast error (ignored)", String(e));
         }
       }
+      return;
+    }
+
+    // Check if the last assistant message is a question
+    // This prevents nudging when the AI is explicitly asking the user for input
+    const lastMessageIsQuestion = await checkLastMessageIsQuestion(sessionId);
+    if (lastMessageIsQuestion) {
       return;
     }
 

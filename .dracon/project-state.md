@@ -1,21 +1,22 @@
 # Project State
 
 ## Current Focus
-Enabled toast notifications for session timers and updated notification module dependencies
+Improved nudge scheduling logic to avoid interrupting when the AI is asking questions
 
 ## Context
-The changes enable visual feedback for session timers and improve the notification system's dependency handling
+The nudge system was previously interrupting users even when the AI was actively asking for input, which could be disruptive. This change adds question detection to prevent nudges during interactive exchanges.
 
 ## Completed
-- [x] Enabled toast notifications by setting `showToasts: true` in configuration
-- [x] Refactored notification module to use proper client dependency structure
+- [x] Added question phrase detection for nudge suppression
+- [x] Implemented check for last assistant message being a question
+- [x] Added early return if question detected in nudge scheduling
 
 ## In Progress
-- [x] Notification system improvements
+- [ ] No active work in progress
 
 ## Blockers
-- None identified in this commit
+- None identified
 
 ## Next Steps
-1. Verify toast notifications appear correctly in UI
-2. Test notification behavior with different session types
+1. Verify the question detection works in various conversation scenarios
+2. Consider adding more question patterns if needed
