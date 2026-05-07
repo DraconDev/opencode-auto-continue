@@ -342,6 +342,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
           if (isRealProgress) {
             updateProgress(s);
+            sessionMonitor.touchSession(sid);
             s.attempts = 0;
             s.userCancelled = false;
             // Track part type for stall pattern detection
