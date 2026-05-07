@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Removed timer toast configuration options from shared interface
+Removed notification-related configuration options from shared interface
 
 ## Context
-This change simplifies the notification system by removing timer-related toast functionality that was previously part of the session state management.
+This change aligns with ongoing refactoring of the notification system, which has been progressively simplified across multiple commits.
 
 ## Completed
-- [x] Removed `timerToastEnabled` and `timerToastIntervalMs` from `PluginConfig` interface
-- [x] Aligned with recent refactoring of the notification system
+- [x] Removed `notifyChildSessions` and `notificationDedupeMs` from `PluginConfig` interface
+- [x] Removed related configuration options from `DEFAULT_CONFIG`
 
 ## In Progress
-- [x] No active work in progress related to this change
+- [x] Ongoing cleanup of notification-related functionality
 
 ## Blockers
 - None identified for this specific change
 
 ## Next Steps
-1. Verify no remaining references to these configuration options exist
-2. Update any related documentation to reflect the removed features
+1. Continue removing notification-related code throughout the codebase
+2. Finalize the simplified notification system implementation

@@ -110,10 +110,7 @@ export interface PluginConfig {
   compactCooldownMs: number;
   compactReductionFactor: number;
   compactAtMessageCount: number;
-  notifyChildSessions: boolean;
-  notificationDedupeMs: number;
   dcpDetected: boolean;
-  dcpWarning: boolean;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
