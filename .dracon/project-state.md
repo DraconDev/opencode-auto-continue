@@ -1,23 +1,20 @@
 # Project State
 
 ## Current Focus
-Added prompt guard to prevent duplicate injections within a 30-second time window
+Added prompt guard to prevent duplicate injections within a 30-second window
 
 ## Context
-Prevents the same prompt from being injected multiple times in quick succession to the same session, which could cause unintended behavior or excessive API calls.
+This change implements a new safety mechanism to prevent the same prompt from being injected multiple times in quick succession, which could lead to excessive API calls or unintended behavior.
 
 ## Completed
-- [x] Added `shouldBlockPrompt` function to check recent messages for duplicate content
-- [x] Implements 30-second time window for duplicate detection
-- [x] Uses fail-open pattern (allows prompts if check fails)
-- [x] Logs blocked attempts when enabled
+- [x] Added `shouldBlockPrompt` import to `nudge.ts` to enable the prompt guard functionality
 
 ## In Progress
-- [ ] None (this is a complete feature addition)
+- [x] Implementation of the actual prompt guard logic (not yet visible in this diff)
 
 ## Blockers
-- None (this is a standalone feature)
+- Need to implement the core prompt guard logic in the `shared.js` module
 
 ## Next Steps
-1. Test integration with existing prompt injection logic
-2. Consider adding configurable time window for different use cases
+1. Implement the prompt guard logic in `shared.js`
+2. Add unit tests for the new prompt guard functionality
