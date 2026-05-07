@@ -11,6 +11,10 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Review on Completion** | `opencode-auto-review-completed-todos` | Sends review prompt when all todos are done |
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
 | **Auto-Compaction** | Nothing — unique feature | Tries context compaction before aborting |
+| **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
+| **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
+| **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
+| **Prompt Guard** | Nothing — unique feature | Prevents duplicate injections across plugin instances |
 | **Terminal Timer** | Nothing — unique feature | Shows elapsed time in terminal title bar |
 | **Session Status File** | Nothing — unique feature | Real-time JSON status for external monitoring |
 | **Stall Pattern Detection** | Nothing — unique feature | Tracks which part types cause the most stalls |
