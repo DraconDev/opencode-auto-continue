@@ -1,22 +1,20 @@
 # Project State
 
 ## Current Focus
-Added proactive compaction based on both token count and message count thresholds
+Added configuration for proactive compaction verification wait time in tests
 
 ## Context
-This change implements a new compaction strategy that triggers session compaction when either the token count exceeds the configured threshold OR when the message count exceeds a new configurable threshold. This addresses scenarios where sessions might grow too large due to either high token usage or high message volume.
+This change supports proactive compaction testing by adding a configurable wait time for verification during session compaction operations.
 
 ## Completed
-- [x] Added message count threshold check alongside token count check
-- [x] Enhanced logging to include both token and message count information
-- [x] Maintained backward compatibility with existing token-based compaction
+- [x] Added `compactionVerifyWaitMs` configuration option to test plugin settings
 
 ## In Progress
-- [x] Implementation of the new compaction trigger based on message count
+- [x] Testing proactive compaction behavior with the new verification wait parameter
 
 ## Blockers
-- None identified
+- None identified for this specific change
 
 ## Next Steps
-1. Verify the new compaction logic works correctly in integration tests
-2. Update documentation to reflect the new compaction configuration options
+1. Verify test behavior with the new configuration parameter
+2. Expand test coverage for proactive compaction scenarios

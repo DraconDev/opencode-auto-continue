@@ -1142,6 +1142,7 @@ describe("opencode-auto-force-resume", () => {
         waitAfterAbortMs: 100,
         proactiveCompactAtTokens: 100,
         proactiveCompactAtPercent: 50,
+        compactionVerifyWaitMs: 100,
         terminalTitleEnabled: false,
         statusFileEnabled: false
       });
