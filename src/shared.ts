@@ -162,6 +162,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactionVerifyWaitMs: 10000,
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
+  notifyChildSessions: false,
+  notificationDedupeMs: 1500,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {

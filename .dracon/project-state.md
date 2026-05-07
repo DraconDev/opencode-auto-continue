@@ -1,21 +1,21 @@
 # Project State
 
 ## Current Focus
-Added session notification configuration options to prevent duplicate notifications.
+Added session notification configuration options to prevent duplicate notifications
 
 ## Context
-The changes introduce new configuration options for managing child session notifications, particularly to prevent duplicate messages within a specified time window.
+This change addresses the need to prevent duplicate session notifications by introducing configuration options for notification deduplication and child session notifications.
 
 ## Completed
-- [x] Added `notifyChildSessions` boolean flag to control child session notifications
-- [x] Added `notificationDedupeMs` to configure deduplication time window in milliseconds
+- [x] Added `notifyChildSessions` flag to control child session notifications
+- [x] Added `notificationDedupeMs` to configure deduplication window (1500ms default)
 
 ## In Progress
-- [ ] Testing notification behavior with different deduplication intervals
+- [ ] None
 
 ## Blockers
-- Need to verify default values for the new configuration options
+- None
 
 ## Next Steps
-1. Implement unit tests for notification deduplication logic
-2. Document the new configuration options in the project documentation
+1. Verify notification behavior with the new configuration
+2. Document the new configuration options in project documentation
