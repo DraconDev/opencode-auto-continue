@@ -62,7 +62,7 @@ export function createReviewModule(deps: ReviewDeps) {
       });
 
       log('review sent successfully');
-    } catch (e: any) {
+    } catch (e) {
       log('review failed:', e);
       if (isTokenLimitError(e)) {
         log('token limit error in review, forcing compaction');
