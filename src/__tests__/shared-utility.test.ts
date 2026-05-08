@@ -193,7 +193,7 @@ describe("shared.ts utilities", () => {
 
   describe("createSession", () => {
     it("should create session with default values", async () => {
-      const { createSession } = await import('../shared.js');
+      const { createSession } = await import('../session-state.js');
 
       const session = createSession();
 
