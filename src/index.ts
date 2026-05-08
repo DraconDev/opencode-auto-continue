@@ -502,17 +502,23 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.lastKnownTodos = todos;
         
         // Auto-mark plan items when corresponding todos complete
+        // Fire-and-forget: don't block the event handler
         if (config.planDrivenContinue && config.planAutoMarkComplete) {
           const completedTodos = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
           if (completedTodos.length > 0) {
             const planPath = getPlanPath(input.directory || "", config.planFilePath);
             if (existsSync(planPath)) {
-              for (const todo of completedTodos) {
-                const todoDesc = todo.content || todo.title || '';
-                if (todoDesc && markPlanItemComplete(planPath, todoDesc)) {
-                  log('auto-marked plan item as complete:', todoDesc);
+              // Run asynchronously without blocking
+              Promise.resolve().then(() => {
+                for (const todo of completedTodos) {
+                  const todoDesc = todo.content || todo.title || '';
+                  if (todoDesc && markPlanItemComplete(planPath, todoDesc)) {
+                    log('auto-marked plan item as complete:', todoDesc);
+                  }
                 }
-              }
+              }).catch((e) => {
+                log('auto-mark plan items failed:', e);
+              });
             }
           }
         }
