@@ -1,6 +1,6 @@
 import { bench, describe, vi } from "vitest";
 import { createStatusFileModule } from "../status-file.js";
-import { createSessionState, DEFAULT_CONFIG } from "../shared.js";
+import { createSession, DEFAULT_CONFIG } from "../shared.js";
 import type { SessionState } from "../shared.js";
 
 describe("Status File Operations", () => {
