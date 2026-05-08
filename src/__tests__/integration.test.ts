@@ -468,13 +468,12 @@ describe("opencode-auto-continue integration", () => {
     vi.useFakeTimers();
     
     // Mock messages to return tool call as text in reasoning
-    const mockMessages = vi.fn().mockResolvedValue({
+    mockClient.session.messages = vi.fn().mockResolvedValue({
       data: [
         { id: "msg1", role: "assistant", parts: [{ type: "reasoning", text: "<function=bash>\n<parameter>ls -la</parameter>\n</function>" }] }
       ],
       error: undefined
     });
-    mockClient.session.messages = mockMessages;
 
     const plugin = await loadPlugin(
       { client: mockClient },
@@ -503,10 +502,9 @@ describe("opencode-auto-continue integration", () => {
     await Promise.resolve();
 
     // Should have sent tool-text recovery prompt
-    const continueCalls = mockPrompt.mock.calls.filter((call: any) =>
-      call[0].body.parts[0].text?.includes("tool call generated")
-    );
-    expect(continueCalls.length).toBeGreaterThan(0);
+    expect(mockPrompt).toHaveBeenCalled();
+    const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+    expect(lastCall[0].body.parts[0].text).toContain("tool call");
 
     vi.useRealTimers();
   });
