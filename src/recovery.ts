@@ -174,9 +174,47 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     const now = Date.now();
 
     if (now - s.lastRecoveryTime < config.cooldownMs) {
-      log('recovery blocked: cooldown active', { sessionId, remaining: config.cooldownMs - (now - s.lastRecoveryTime) });
+      log(`[RECOVERY] cooldown active for session ${sessionId}, waiting ${config.cooldownMs - (now - s.lastRecoveryTime)}ms more`);
       return;
     }
+
+    s.aborting = true;
+    s.stallDetections++;
+    s.recoveryStartTime = Date.now();
+
+    if (config.stallPatternDetection && s.lastStallPartType) {
+      s.stallPatterns[s.lastStallPartType] = (s.stallPatterns[s.lastStallPartType] || 0) + 1;
+    }
+
+    writeStatusFile(sessionId);
+
+    try {
+      const statusResult = await input.client.session.status({});
+      const statusData = statusResult.data as Record<string, { type: string }>;
+      const sessionStatus = statusData[sessionId];
+
+      if (!sessionStatus || sessionStatus.type !== "busy") {
+        log(`[RECOVERY] session ${sessionId} not busy (status: ${sessionStatus?.type || 'unknown'}), skipping recovery`);
+        s.aborting = false;
+        return;
+      }
+
+      const currentTime = Date.now();
+
+      if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
+        s.aborting = false;
+        const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
+        log(`[RECOVERY] progress was recent for session ${sessionId}, resetting timer (${remaining}ms remaining)`);
+        s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
+        return;
+      }
+
+      // Check if the model output tool calls as raw text (XML in reasoning)
+      log(`[RECOVERY] checking tool-text for session ${sessionId}`);
+      const hasToolText = await checkToolTextInSession(sessionId, input);
+      if (hasToolText) {
+        log('[RECOVERY] tool-text detected in session, using recovery prompt');
+      }
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
