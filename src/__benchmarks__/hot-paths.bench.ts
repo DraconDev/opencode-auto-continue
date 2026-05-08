@@ -27,15 +27,15 @@ const samplePlan = `# Project Plan
 
 describe("Token Estimation", () => {
   bench("estimate text tokens (2500 chars)", () => {
-    estimateTokens(sampleText, "text");
+    estimateTokens(sampleText);
   });
 
   bench("estimate code tokens (500 chars)", () => {
-    estimateTokens(sampleCode, "code");
+    estimateTokens(sampleCode);
   });
 
   bench("estimate reasoning tokens (2500 chars)", () => {
-    estimateTokens(sampleText, "reasoning");
+    estimateTokens(sampleText);
   });
 });
 
