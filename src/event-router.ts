@@ -5,7 +5,8 @@
  * Extracted from index.ts to reduce file size and improve maintainability.
  */
 
-import type { SessionState, PluginConfig, Todo } from "./shared.js";
+import type { SessionState, Todo } from "./session-state.js";
+import type { PluginConfig } from "./config.js";
 import { safeHook, parseTokensFromError, estimateTokens, isPlanContent } from "./shared.js";
 import { existsSync } from "fs";
 import { getPlanPath, markPlanItemComplete } from "./plan.js";
