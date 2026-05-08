@@ -263,15 +263,17 @@ export function createRecoveryModule(deps: RecoveryDeps) {
           path: { id: sessionId },
           query: { directory: input.directory || "" }
         });
-        log('session aborted for recovery:', sessionId);
+        log("[RECOVERY] abort() succeeded", sessionId);
       } catch (e) {
-        log('abort failed:', e);
+        log("[RECOVERY] abort() failed:", e);
         s.aborting = false;
         s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
+        log("[RECOVERY] scheduled retry after abort failure", sessionId, "delay:", config.stallTimeoutMs * 2);
         return;
       }
 
       // Wait for session to become idle
+      log("[RECOVERY] polling for idle status", sessionId, "maxWait:", config.abortPollMaxTimeMs);
       const startTime = Date.now();
       let isIdle = false;
       let statusFailures = 0;
@@ -285,45 +287,49 @@ export function createRecoveryModule(deps: RecoveryDeps) {
             const pollStatus = pollData[sessionId];
             if (pollStatus?.type === "idle") {
               isIdle = true;
+              log("[RECOVERY] session became idle", sessionId, "pollTime:", Date.now() - startTime);
             }
             statusFailures = 0;
           } catch (e) {
             statusFailures++;
-            log('status poll failed:', e);
+            log("[RECOVERY] status poll failed:", e);
           }
         }
       }
+      log("[RECOVERY] idle polling complete", sessionId, "isIdle:", isIdle, "pollDuration:", Date.now() - startTime);
 
       // Now that session is idle, try compaction
       if (config.autoCompact && !hasToolText && isIdle) {
         try {
-          log('attempting auto-compaction for session:', sessionId);
+          log("[RECOVERY] attempting auto-compaction", sessionId);
           await input.client.session.summarize({
             path: { id: sessionId },
             query: { directory: input.directory || "" }
           });
-          log('auto-compaction successful, waiting for session to resume');
+          log("[RECOVERY] auto-compaction succeeded", sessionId);
           await new Promise(r => setTimeout(r, 3000));
-        } catch (e) {
-          const errMsg = e instanceof Error ? e.message : String(e);
-          log('auto-compaction failed:', errMsg);
+        } catch (e: unknown) {
+          log("[RECOVERY] auto-compaction failed:", e);
         }
+      } else {
+        log("[RECOVERY] skipping compaction", sessionId, "autoCompact:", config.autoCompact, "hasToolText:", hasToolText, "isIdle:", isIdle);
       }
 
       const remainingWait = config.waitAfterAbortMs - (Date.now() - startTime);
       if (remainingWait > 0) {
+        log("[RECOVERY] waiting after abort", sessionId, "remaining:", remainingWait);
         await new Promise(r => setTimeout(r, remainingWait));
       }
 
       if (s.autoSubmitCount >= config.maxAutoSubmits) {
-        log('loop protection: max auto-submits reached:', s.autoSubmitCount);
+        log("[RECOVERY] LOOP PROTECTION: max auto-submits reached", sessionId, "count:", s.autoSubmitCount, "max:", config.maxAutoSubmits);
         s.aborting = false;
         return;
       }
 
       // Hallucination loop detection: if 3+ continues in 10min, force abort+resume
       if (isHallucinationLoop(s)) {
-        log('hallucination loop detected! forcing abort+resume to break cycle');
+        log("[RECOVERY] HALLUCINATION LOOP DETECTED!", sessionId, "forcing abort+resume");
         try {
           await input.client.session.abort({
             path: { id: sessionId },
@@ -331,10 +337,11 @@ export function createRecoveryModule(deps: RecoveryDeps) {
           });
           await new Promise(r => setTimeout(r, 3000));
         } catch (e) {
-          log('abort in hallucination loop handler failed:', e);
+          log("[RECOVERY] abort in hallucination loop handler failed:", e);
         }
       }
 
+      log("[RECOVERY] building recovery message", sessionId, "hasToolText:", hasToolText, "planning:", s.planning);
       let messageText = config.continueMessage;
       const templateVars: Record<string, string> = {
         attempts: String(s.attempts + 1),
