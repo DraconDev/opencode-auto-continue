@@ -109,6 +109,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     event: async ({ event }: { event: any }) => {
       await eventRouter.handleEvent(event);
     },
+    "experimental.compaction.autocontinue": (_ctx: any, output: { enabled: boolean }) => {
+      // Disable OpenCode's generic synthetic "continue" message that fires after compaction.
+      // The plugin sends its own todo-aware continue message via review.sendContinue().
+      output.enabled = false;
+    },
     dispose() {
       isDisposed = true;
       log('disposing plugin');
