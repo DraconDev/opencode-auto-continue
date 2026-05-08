@@ -7,7 +7,8 @@
  * 3. Idle session cleanup - prevent memory leaks
  */
 
-import type { SessionState, PluginConfig } from "./shared.js";
+import type { SessionState } from "./session-state.js";
+import type { PluginConfig } from "./config.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface SessionMonitorDeps {
