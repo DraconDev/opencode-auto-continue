@@ -4,6 +4,14 @@ import { join } from "path";
 
 export type TypedPluginInput = PluginInput;
 
+/** Simple todo item from session.todo() API */
+export interface Todo {
+  id: string;
+  content?: string;
+  title?: string;
+  status: string;
+}
+
 export interface SessionState {
   // === Timer & Progress (terminal.ts, index.ts) ===
   timer: ReturnType<typeof setTimeout> | null;
