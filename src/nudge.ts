@@ -1,12 +1,14 @@
 import { type PluginConfig, type SessionState, formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { AIAdvisor, AIAdvice } from "./ai-advisor.js";
+import { parsePlan, getPlanPath, buildPlanContinueMessage } from "./plan.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts" | "enableAdvisory">;
+    "showToasts" | "enableAdvisory" | "planDrivenContinue" |
+    "planFilePath" | "planMaxItemsPerContinue">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -157,11 +159,59 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       completed: completed.length,
     });
 
-    // No pending todos = nothing to do
+    // No pending todos = nothing to nudge, but check plan for continuation (if enabled)
     if (pending.length === 0) {
       log("no pending todos, nudge done");
       s.nudgeCount = 0;
       s.lastTodoSnapshot = "";
+      
+      // Plan-driven continue (if enabled)
+      if (config.planDrivenContinue) {
+        const directory = input.directory || "";
+        const planPath = getPlanPath(directory, config.planFilePath);
+        log("plan check: directory=", directory, "planPath=", planPath, "exists=", require("fs").existsSync(planPath));
+        const planResult = parsePlan(planPath);
+        
+        if (planResult.nextItem) {
+          // Skip if we already continued for this exact plan item
+          if (s.lastPlanItemDescription === planResult.nextItem.description) {
+            log("already continued for this plan item, skipping", planResult.nextItem.description);
+            return;
+          }
+          
+          const continueMessage = buildPlanContinueMessage(planResult, config.planMaxItemsPerContinue);
+          if (continueMessage) {
+            log("plan has pending items, sending plan-driven continue", planResult.nextItem.description);
+            
+            // Check prompt guard to avoid duplicates
+            const isDuplicate = await shouldBlockPrompt(sessionId, continueMessage, input, log as (...args: unknown[]) => void);
+            if (!isDuplicate) {
+              try {
+                await input.client.session.prompt({
+                  path: { id: sessionId },
+                  query: { directory: input.directory || "" },
+                  body: {
+                    parts: [
+                      { type: "text", text: continueMessage }
+                    ]
+                  }
+                });
+                log("plan-driven continue sent successfully");
+                s.autoSubmitCount++;
+                s.messageCount++;
+                s.lastPlanItemDescription = planResult.nextItem.description;
+              } catch (e) {
+                log("plan-driven continue failed:", e);
+              }
+            } else {
+              log("plan-driven continue blocked by prompt guard");
+            }
+          }
+        } else {
+          log("no plan items pending");
+        }
+      }
+      
       return;
     }
 

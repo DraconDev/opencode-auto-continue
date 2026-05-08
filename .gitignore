@@ -35,15 +35,6 @@ target/
 !*.age
 !test_secret.txt
 !secrets/**
-!credentials
-!.bash_history
-!.zsh_history
-!.sh_history
-!.netrc
-!vault.yml
-!.terraform.lock.hcl
-!terraform.tfvars
-!known_hosts
 !*.events.jsonl
 !*.pub
 !.dracon/data/

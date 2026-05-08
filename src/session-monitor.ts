@@ -190,6 +190,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
             reviewFired: false,
             reviewDebounceTimer: null,
             lastAdvisoryAdvice: null,
+            lastPlanItemDescription: '',
           });
         }
       }

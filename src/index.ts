@@ -26,6 +26,7 @@ import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
+import { parsePlan, getPlanPath, buildPlanContinueMessage, markPlanItemComplete } from "./plan.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
@@ -502,6 +503,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Track open todos for nudging
         s.hasOpenTodos = hasPending;
         s.lastKnownTodos = todos;
+        
+        // Auto-mark plan items when corresponding todos complete
+        if (config.planDrivenContinue && config.planAutoMarkComplete) {
+          const completedTodos = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
+          if (completedTodos.length > 0) {
+            const planPath = getPlanPath(input.directory || "", config.planFilePath);
+            if (existsSync(planPath)) {
+              for (const todo of completedTodos) {
+                const todoDesc = todo.content || todo.title || '';
+                if (todoDesc && markPlanItemComplete(planPath, todoDesc)) {
+                  log('auto-marked plan item as complete:', todoDesc);
+                }
+              }
+            }
+          }
+        }
         
         // Handle review on completion
         if (allCompleted && !s.reviewFired && config.reviewOnComplete) {

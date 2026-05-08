@@ -48,7 +48,7 @@ export function createReviewModule(deps: ReviewDeps) {
         return;
       }
 
-      // Send review prompt
+      // Send review prompt (NOT synthetic - we want AI to respond with tests/fixes)
       s.messageCount++;
       await input.client.session.prompt({
         path: { id: sessionId },
@@ -57,7 +57,6 @@ export function createReviewModule(deps: ReviewDeps) {
           parts: [{
             type: "text",
             text: config.reviewMessage,
-            synthetic: true,
           }],
         },
       });

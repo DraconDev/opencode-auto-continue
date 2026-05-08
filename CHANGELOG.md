@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.0] - 2026-05-08
+
+### Added
+
+- **Plan-Driven Auto-Continue**: When the AI runs out of todos, it reads a plan document and continues working on the next item
+  - **Automatic plan discovery**: Searches for `PLAN.md`, `ROADMAP.md`, `.opencode/plan.md`, `README.md`, `TODO.md` in that order
+  - **Progress tracking**: Reports plan completion percentage and current phase
+  - **Auto-mark complete**: Optionally marks plan items as complete when corresponding todos finish (`planAutoMarkComplete`)
+  - **Duplicate prevention**: Tracks `lastPlanItemDescription` to avoid sending the same continue message twice
+- **Plan Module** (`src/plan.ts`): Parse and manage plan documents
+  - `parsePlan()`: Extracts phases and items from markdown with checkbox format (`- [ ] item`)
+  - `buildPlanContinueMessage()`: Generates continue prompt with progress and upcoming items
+  - `markPlanItemComplete()`: Fuzzy-matches todo content to plan items and marks them complete
+- **Plan Configuration Options**:
+  - `planDrivenContinue`: Enable/disable plan-driven auto-continue (default: false)
+  - `planFilePath`: Custom plan file path, relative or absolute (default: null, auto-discover)
+  - `planAutoMarkComplete`: Auto-mark plan items when todos complete (default: true)
+  - `planMaxItemsPerContinue`: Max items to show in continue message (default: 3)
+- **Review Loop**: Review message now prompts AI to run tests and create fix todos
+  - If tests fail, AI creates fix todos
+  - When fix todos complete, review fires again
+  - `reviewFired` resets when new todos created after review, enabling test-fix loop
+
+### Changed
+
+- **Nudge module**: When no pending todos and `planDrivenContinue` enabled, checks plan file and sends continue message
+- **Default review message**: Now focuses on running tests and creating fix todos instead of general review
+- **Session state**: Added `lastPlanItemDescription` field for deduplication
+
 ## [7.5.0] - 2026-05-07
 
 ### Added

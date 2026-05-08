@@ -64,6 +64,9 @@ export interface SessionState {
   // === Advisory (ai-advisor.ts, recovery.ts, nudge.ts) ===
   lastAdvisoryAdvice: { action: string; confidence: number; reasoning: string; stallPattern?: string; customPrompt?: string; contextSummary?: string } | null;
 
+  // === Plan-Driven Continue (plan.ts) ===
+  lastPlanItemDescription: string;
+
   // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
 }
@@ -116,6 +119,12 @@ export interface PluginConfig {
   dcpDetected: boolean;
   dcpVersion: string | null;
   
+  // === Plan-Driven Continue (plan.ts) ===
+  planDrivenContinue: boolean;
+  planFilePath: string | null;
+  planAutoMarkComplete: boolean;
+  planMaxItemsPerContinue: number;
+
   // === AI Advisory (ai-advisor.ts) ===
   enableAdvisory: boolean;
   advisoryModel: string;
@@ -151,7 +160,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
   includeTodoContext: true,
   reviewOnComplete: true,
-  reviewMessage: "All tasks in this session have been completed. Please perform a final review: summarize what was accomplished, note any technical decisions or trade-offs made, flag anything that should be documented, check for any oversights or edge cases that might have been missed, suggest tests that should be added or run to verify the changes, and list any follow-up tasks or improvements for next time. If you find anything that needs fixing, please create appropriate todos.",
+  reviewMessage: "All tasks have been completed. Please run the test suite (e.g., `npm test`, `cargo test`, `go test`) and verify everything passes. If you find any failing tests, bugs, or issues that need fixing, create appropriate todos for them. Also check if there are any lint errors or build issues. Report the results: how many tests passed/failed, and what fixes are needed.",
   reviewDebounceMs: 500,
   showToasts: true,
   nudgeEnabled: true,
@@ -181,6 +190,12 @@ export const DEFAULT_CONFIG: PluginConfig = {
   dcpDetected: false,
   dcpVersion: null,
   
+  // Plan-Driven Continue defaults
+  planDrivenContinue: false,
+  planFilePath: null,
+  planAutoMarkComplete: true,
+  planMaxItemsPerContinue: 3,
+
   // AI Advisory defaults
   enableAdvisory: false,
   advisoryModel: "",
@@ -230,6 +245,10 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (config.sessionDiscoveryIntervalMs < 0) errors.push(`sessionDiscoveryIntervalMs must be >= 0, got ${config.sessionDiscoveryIntervalMs}`);
   if (config.idleSessionTimeoutMs < 0) errors.push(`idleSessionTimeoutMs must be >= 0, got ${config.idleSessionTimeoutMs}`);
   if (config.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${config.maxSessions}`);
+
+  // Plan-driven continue validation
+  if (config.planMaxItemsPerContinue < 1) errors.push(`planMaxItemsPerContinue must be >= 1, got ${config.planMaxItemsPerContinue}`);
+  if (config.planFilePath !== null && (typeof config.planFilePath !== 'string' || config.planFilePath.trim().length === 0)) errors.push(`planFilePath must be null or a non-empty string`);
 
   if (errors.length > 0) {
     return { ...DEFAULT_CONFIG };
@@ -464,6 +483,9 @@ export function createSession(): SessionState {
 
     // Status File
     statusHistory: [],
+
+    // Plan-Driven Continue
+    lastPlanItemDescription: '',
   };
 }
 

@@ -11,6 +11,8 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Review on Completion** | `opencode-auto-review-completed-todos` | Sends review prompt when all todos are done |
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
 | **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
+| **Plan-Driven Auto-Continue** | Nothing — unique feature | Reads PLAN.md to continue when out of todos |
+| **Test-Fix Loop** | Nothing — unique feature | Review prompts tests, creates fix todos if failures found |
 | **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
@@ -275,6 +277,93 @@ const result = await sendCustomPrompt("abc123", {
 // }
 ```
 
+### Plan-Driven Auto-Continue
+
+When the AI runs out of todos, instead of hallucinating what to do next, it reads your plan file and continues accordingly.
+
+**Supported plan files** (checked in order):
+1. `PLAN.md` — Standard project plan (recommended)
+2. `ROADMAP.md` — Long-term planning
+3. `.opencode/plan.md` — OpenCode-specific plan
+4. `README.md` — May contain plan sections
+5. `TODO.md` — Simple task lists
+
+**Plan format**:
+```markdown
+# Plan
+
+## Phase 1: Foundation
+• (done) Setup project structure
+• Add configuration
+• Write tests
+
+## Phase 2: Features
+• Implement core logic
+• Add error handling
+```
+
+**Flow**:
+```
+[session.idle]
+        │
+        ▼
+Check todos
+        │
+        ├──[Has pending todos]──► Nudge with todo context
+        │
+        └──[No pending todos]──► Check PLAN.md
+                                      │
+                                      ├──[Has items]──► Send: "According to the plan (33% complete),
+                                      │                 the next item in 'Phase 1' is: Add configuration.
+                                      │                 Please create todos for this work."
+                                      │
+                                      └──[No items]──► Do nothing
+```
+
+**Why this matters**: Without a plan, the AI might:
+- Hallucinate features you didn't ask for
+- Skip important steps
+- Lose track of the overall goal
+
+With `PLAN.md`, you control the roadmap. The AI follows your plan.
+
+### Test-Fix Loop
+
+When all todos are completed, the review prompt now explicitly asks the AI to run tests:
+
+```
+[All todos completed]
+        │
+        ▼
+Review fires: "Please run the test suite (e.g., `npm test`)
+               and verify everything passes..."
+        │
+        ▼
+AI runs tests, creates fix todos if failures found
+        │
+        ▼
+Fix todos complete → reviewFired resets
+        │
+        ▼
+Review fires again (repeat until all tests pass)
+```
+
+This creates an automatic cycle:
+1. **Complete tasks** → Review triggers
+2. **Run tests** → Find failures
+3. **Create fix todos** → Work on fixes
+4. **Complete fixes** → Review triggers again
+5. **Run tests** → Verify all pass
+6. **No more todos** → Done
+
+**Config**:
+```json
+{
+  "reviewMessage": "All tasks have been completed. Please run the test suite...",
+  "reviewOnComplete": true
+}
+```
+
 ### Recovery State Machine
 
 ```
@@ -507,6 +596,79 @@ cp dist/index.js ~/.config/opencode/plugins/
 cp dist/index.d.ts ~/.config/opencode/plugins/
 ```
 
+## Plan-Driven Auto-Continue
+
+When the AI runs out of todos, it can automatically continue working based on a plan document. This prevents the AI from hallucinating what to do next and gives you control over the roadmap.
+
+### How It Works
+
+1. **Todos exist** → AI works on them (existing behavior)
+2. **Todos complete** → Review fires, AI runs tests (existing behavior)
+3. **No todos, review done** → Plugin reads plan file and tells AI the next item
+4. **AI creates todos** for the next plan item and continues working
+
+### Plan File Format
+
+Create a `PLAN.md` at your project root (or any of the supported filenames):
+
+```markdown
+# Project Plan
+
+## Phase 1: Foundation
+• (done) Setup project structure
+• Add configuration
+• Write tests
+
+## Phase 2: Features
+• Implement API
+• Add authentication
+```
+
+The plugin searches for plan files in this order:
+1. `PLAN.md` (recommended)
+2. `ROADMAP.md`
+3. `.opencode/plan.md`
+4. `README.md`
+5. `TODO.md`
+
+### Configuration
+
+```json
+{
+  "plugin": [
+    ["opencode-auto-continue", {
+      "planDrivenContinue": true,
+      "planFilePath": null,
+      "planAutoMarkComplete": true,
+      "planMaxItemsPerContinue": 3
+    }]
+  ]
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `planDrivenContinue` | boolean | `false` | Enable plan-driven auto-continue |
+| `planFilePath` | string | `null` | Custom plan file path (relative or absolute). If null, searches standard locations. |
+| `planAutoMarkComplete` | boolean | `true` | Auto-mark plan items as complete when corresponding todos finish |
+| `planMaxItemsPerContinue` | number | `3` | Max upcoming items to show in continue message |
+
+### Auto-Mark Complete
+
+When `planAutoMarkComplete` is enabled, completing a todo automatically marks the matching plan item as complete. The plugin matches by fuzzy string comparison between todo content and plan item description.
+
+### Example Flow
+
+```
+User: "Implement user authentication"
+AI creates todos: ["Setup auth module", "Add login form", "Write tests"]
+AI works through todos...
+All todos complete → Review fires → AI runs tests
+Tests pass, no fix todos → Plan check fires
+"According to the plan (33% complete), next item is: Add OAuth integration"
+AI creates todos for OAuth integration...
+```
+
 ## Configuration
 
 ### Full Configuration Reference
@@ -538,6 +700,10 @@ cp dist/index.d.ts ~/.config/opencode/plugins/
       "recoveryHistogramEnabled": true,
       "stallPatternDetection": true,
       "terminalProgressEnabled": true,
+      "planDrivenContinue": false,
+      "planFilePath": null,
+      "planAutoMarkComplete": true,
+      "planMaxItemsPerContinue": 3,
       "enableAdvisory": false,
       "advisoryModel": "",
       "advisoryTimeoutMs": 5000,
@@ -635,6 +801,15 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 **AI provider**: Reads `baseURL` and `apiKey` from your model config in `opencode.json`. Uses OpenAI-compatible chat completions endpoint.
 
 **When AI is not configured** (`enableAdvisory: false` or `advisoryModel: ""`), the advisor still runs heuristic pattern analysis. Setting `enableAdvisory: true` with a valid `advisoryModel` enables real AI calls as the primary advisor, with heuristics as fallback.
+
+### Plan Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `planDrivenContinue` | `false` | Enable plan-driven auto-continue |
+| `planFilePath` | `null` | Custom plan file path (relative or absolute). If null, searches standard locations |
+| `planAutoMarkComplete` | `true` | Auto-mark plan items as complete when corresponding todos finish |
+| `planMaxItemsPerContinue` | `3` | Max upcoming items to show in continue message |
 
 ### Other Options
 
