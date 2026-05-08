@@ -285,4 +285,227 @@ describe("opencode-auto-continue integration", () => {
     // We verified above that compacting=false allows normal monitoring to resume
     vi.useRealTimers();
   });
+
+  it("should trigger review when all todos are completed", async () => {
+    vi.useFakeTimers();
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        reviewEnabled: true,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFileEnabled: false,
+      }
+    );
+
+    // Create session with todos
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [
+      { id: "t1", content: "task 1", status: "in_progress" },
+      { id: "t2", content: "task 2", status: "pending" }
+    ] } } });
+
+    // Complete all todos
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [
+      { id: "t1", content: "task 1", status: "completed" },
+      { id: "t2", content: "task 2", status: "completed" }
+    ] } } });
+
+    // Wait for debounce
+    await vi.advanceTimersByTimeAsync(600);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Should have sent review prompt
+    expect(mockPrompt).toHaveBeenCalled();
+    const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+    expect(lastCall[0].body.parts[0].text).toContain("review");
+
+    vi.useRealTimers();
+  });
+
+  it("should send nudge when session goes idle with pending todos", async () => {
+    vi.useFakeTimers();
+    mockTodo.mockResolvedValue({ 
+      data: [{ id: "t1", content: "incomplete task", status: "in_progress" }], 
+      error: undefined 
+    });
+
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        nudgeIdleDelayMs: 100,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFileEnabled: false,
+      }
+    );
+
+    // Create busy session
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+    
+    // Add pending todos
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [
+      { id: "t1", content: "incomplete task", status: "in_progress" }
+    ] } } });
+
+    // Session goes idle
+    mockStatus.mockResolvedValue({ data: { "test-session": { type: "idle" } }, error: undefined });
+    await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
+
+    // Wait for nudge delay
+    await vi.advanceTimersByTimeAsync(200);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Should have sent nudge prompt
+    expect(mockPrompt).toHaveBeenCalled();
+    const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+    expect(lastCall[0].body.parts[0].text).toContain("incomplete");
+
+    vi.useRealTimers();
+  });
+
+  it("should detect hallucination loop and force abort+resume", async () => {
+    vi.useFakeTimers();
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        stallTimeoutMs: 1000,
+        waitAfterAbortMs: 100,
+        cooldownMs: 0,
+        maxRecoveries: 5,
+        abortPollMaxTimeMs: 0,
+        debug: true,
+      }
+    );
+
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+
+    // Trigger 3 recovery cycles in quick succession (within 10 minutes)
+    for (let i = 0; i < 3; i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      
+      // Trigger idle to send continue
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      
+      // Reset to busy for next cycle
+      if (i < 2) {
+        await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+      }
+    }
+
+    // Should have called abort at least 3 times (normal recoveries + hallucination loop extra abort)
+    expect(mockAbort.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+    vi.useRealTimers();
+  });
+
+  it("should skip nudge when last assistant message is a question", async () => {
+    vi.useFakeTimers();
+    mockTodo.mockResolvedValue({ 
+      data: [{ id: "t1", content: "incomplete task", status: "in_progress" }], 
+      error: undefined 
+    });
+
+    // Mock messages to return a question from assistant
+    const mockMessages = vi.fn().mockResolvedValue({
+      data: [
+        { id: "msg1", role: "assistant", parts: [{ type: "text", text: "Would you like me to proceed with this approach?" }] }
+      ],
+      error: undefined
+    });
+    mockClient.session.messages = mockMessages;
+
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        nudgeIdleDelayMs: 100,
+        terminalProgressEnabled: false,
+        terminalTitleEnabled: false,
+        statusFileEnabled: false,
+      }
+    );
+
+    // Create busy session with pending todos
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [
+      { id: "t1", content: "incomplete task", status: "in_progress" }
+    ] } } });
+
+    // Session goes idle
+    mockStatus.mockResolvedValue({ data: { "test-session": { type: "idle" } }, error: undefined });
+    await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
+
+    // Wait for nudge delay
+    await vi.advanceTimersByTimeAsync(200);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Should NOT have sent nudge because AI asked a question
+    const nudgeCalls = mockPrompt.mock.calls.filter((call: any) => 
+      call[0].body.parts[0].text?.includes("incomplete")
+    );
+    expect(nudgeCalls.length).toBe(0);
+
+    vi.useRealTimers();
+  });
+
+  it("should use tool-text recovery prompt when XML detected in reasoning", async () => {
+    vi.useFakeTimers();
+    
+    // Mock messages to return tool call as text in reasoning
+    const mockMessages = vi.fn().mockResolvedValue({
+      data: [
+        { id: "msg1", role: "assistant", parts: [{ type: "reasoning", text: "<function=bash>\n<parameter>ls -la</parameter>\n</function>" }] }
+      ],
+      error: undefined
+    });
+    mockClient.session.messages = mockMessages;
+
+    const plugin = await loadPlugin(
+      { client: mockClient },
+      {
+        stallTimeoutMs: 1000,
+        waitAfterAbortMs: 100,
+        cooldownMs: 0,
+        maxRecoveries: 3,
+        abortPollMaxTimeMs: 0,
+      }
+    );
+
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+    
+    // Wait for stall
+    await vi.advanceTimersByTimeAsync(1000);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Trigger continue
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
+    await vi.advanceTimersByTimeAsync(100);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Should have sent tool-text recovery prompt
+    const continueCalls = mockPrompt.mock.calls.filter((call: any) =>
+      call[0].body.parts[0].text?.includes("tool call generated")
+    );
+    expect(continueCalls.length).toBeGreaterThan(0);
+
+    vi.useRealTimers();
+  });
 });
