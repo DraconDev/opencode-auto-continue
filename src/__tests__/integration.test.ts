@@ -10,6 +10,7 @@ interface MockClient {
     promptAsync: ReturnType<typeof vi.fn>;
     status: ReturnType<typeof vi.fn>;
     todo: ReturnType<typeof vi.fn>;
+    messages: ReturnType<typeof vi.fn>;
   };
 }
 
