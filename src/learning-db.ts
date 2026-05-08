@@ -106,7 +106,7 @@ export function createLearningDB(
         // Persist
         saveData(fullConfig.dbPath, data);
       } catch (error) {
-        console.error("[LearningDB] Failed to record outcome:", error);
+        log("[LearningDB] Failed to record outcome:", error);
       }
     },
     
@@ -121,7 +121,7 @@ export function createLearningDB(
         );
         return perf?.currentEffectiveness ?? 0.5;
       } catch (error) {
-        console.error("[LearningDB] Failed to get effectiveness:", error);
+        log("[LearningDB] Failed to get effectiveness:", error);
         return 0.5;
       }
     },
