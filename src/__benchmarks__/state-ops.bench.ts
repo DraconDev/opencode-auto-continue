@@ -1,7 +1,8 @@
 import { bench, describe, vi } from "vitest";
 import { createStatusFileModule } from "../status-file.js";
-import { createSession, DEFAULT_CONFIG } from "../shared.js";
-import type { SessionState } from "../shared.js";
+import { createSession } from "../session-state.js";
+import { DEFAULT_CONFIG } from "../config.js";
+import type { SessionState } from "../session-state.js";
 
 describe("Status File Operations", () => {
   const mockLog = vi.fn();
