@@ -3,15 +3,19 @@ import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import {
   type SessionState,
-  type PluginConfig,
   type Todo,
+  createSession,
+  updateProgress,
+} from "./session-state.js";
+import {
+  type PluginConfig,
   DEFAULT_CONFIG,
   validateConfig,
+} from "./config.js";
+import {
   isPlanContent,
   estimateTokens,
   parseTokensFromError,
-  createSession,
-  updateProgress,
   safeHook,
   detectDCP,
   getDCPVersion,
