@@ -63,7 +63,8 @@ interface LearningData {
  * Create the file-based learning database.
  */
 export function createLearningDB(
-  config: Partial<LearningDBConfig> = {}
+  config: Partial<LearningDBConfig> = {},
+  log: (...args: unknown[]) => void = () => {}
 ): LearningDatabase {
   const fullConfig = { ...DEFAULT_LEARNING_DB_CONFIG, ...config };
   
