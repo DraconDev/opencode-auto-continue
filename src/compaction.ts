@@ -16,7 +16,9 @@ export function createCompactionModule(deps: CompactionDeps) {
     
     // Handle Error instances
     if (error instanceof Error) {
-      return TOKEN_LIMIT_PATTERNS.some(pattern => pattern.test(error.message));
+      return config.tokenLimitPatterns.some(pattern => 
+        error.message.toLowerCase().includes(pattern.toLowerCase())
+      );
     }
     
     // Handle plain error-like objects (from event properties)
@@ -24,8 +26,10 @@ export function createCompactionModule(deps: CompactionDeps) {
       const err = error as Record<string, unknown>;
       const message = typeof err.message === "string" ? err.message : "";
       const name = typeof err.name === "string" ? err.name : "";
-      return TOKEN_LIMIT_PATTERNS.some(pattern => pattern.test(message)) ||
-             TOKEN_LIMIT_PATTERNS.some(pattern => pattern.test(name));
+      const combinedText = (message + " " + name).toLowerCase();
+      return config.tokenLimitPatterns.some(pattern => 
+        combinedText.includes(pattern.toLowerCase())
+      );
     }
     
     return false;
