@@ -77,7 +77,7 @@ export function createLearningDB(
   }
   
   // Load existing data or create new
-  let data: LearningData = loadData(fullConfig.dbPath);
+  let data: LearningData = loadData(fullConfig.dbPath, log);
   
   // Ensure data structure is valid
   if (!data.version) {
