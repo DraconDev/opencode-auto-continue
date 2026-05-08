@@ -1,25 +1,34 @@
 # Project State
 
 ## Current Focus
-Added comprehensive session monitoring layer to detect and recover from session lifecycle issues
+Added comprehensive session monitoring to detect and recover orphaned parent sessions and prevent memory leaks
 
 ## Context
-To address gaps in session management identified through competitive analysis and real-world failure modes, particularly around orphaned parent sessions and missed session tracking.
+The changes implement a passive monitoring layer to address two critical issues:
+1. Parent sessions getting stuck after subagent completion
+2. Accumulation of idle sessions causing memory leaks
+This builds on previous session monitoring work and adds:
+- Automatic orphan detection and recovery
+- Periodic session discovery
+- Configurable cleanup policies
 
 ## Completed
-- [x] Added passive monitoring layer for session lifecycle issues
-- [x] Implemented orphan parent detection with configurable wait period
-- [x] Added session discovery via periodic polling
-- [x] Included idle session cleanup with configurable thresholds
-- [x] Documented architecture, integration points, and configuration options
-- [x] Added test coverage for new functionality
+- [x] Added Session Monitor Module with orphan parent detection
+- [x] Implemented session discovery polling
+- [x] Added idle session cleanup with configurable limits
+- [x] Integrated with existing event system
+- [x] Added configuration options for all monitoring behaviors
+- [x] Fixed memory leaks from idle sessions
+- [x] Fixed orphan parent session recovery
 
 ## In Progress
-- [ ] Integration testing with existing recovery mechanisms
+- [x] Comprehensive documentation in CHANGELOG.md
+- [x] Updated README roadmap section
 
 ## Blockers
-- None identified at this stage
+- None identified in this commit
 
 ## Next Steps
-1. Verify integration with existing session recovery mechanisms
-2. Performance testing with high session volume scenarios
+1. Verify memory leak fixes in long-running OpenCode instances
+2. Test orphan recovery scenarios in integration tests
+3. Document new configuration options in README

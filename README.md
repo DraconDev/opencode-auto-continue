@@ -1173,8 +1173,6 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 
 | Feature | Priority | Target |
 |---------|----------|--------|
-| **Model Preservation** | High | v7.3 |
-| Extract agent/model/provider from last message to preserve user selection on continue |
 | **Config Presets** | Medium | v7.3 |
 | Pre-defined profiles: `default`, `aggressive`, `gentle`, `subagent` |
 | **Subagent Stuck Detection** | Medium | v7.4 |

@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.0] - 2026-05-07
+
+### Added
+
+- **Session Monitor Module** (`src/session-monitor.ts`): Passive monitoring layer for session lifecycle gaps
+  - **Orphan Parent Detection**: Detects when subagent finishes but parent stays stuck as "busy"
+    - Monitors busyCount via 5s timer, detects drop from >1 to 1
+    - Waits `orphanWaitMs` (15s default) for natural parent resume
+    - Triggers recovery (abort + continue) if parent still stuck
+  - **Session Discovery**: Periodic `session.list()` polling every 60s for missed sessions
+    - Creates minimal SessionState for untracked busy sessions
+    - Integrates seamlessly with existing recovery/nudge timers
+  - **Idle Session Cleanup**: Prevents memory leaks in long-running OpenCode instances
+    - Removes sessions idle > `idleCleanupMs` (10min default)
+    - Enforces `maxSessions` limit (50 default) - removes oldest idle first
+- **Session Monitor Config Options**:
+  - `sessionMonitorEnabled`: Enable/disable session monitor (default: true)
+  - `orphanWaitMs`: Wait after subagent finish before treating parent as orphan (default: 15000)
+  - `sessionDiscoveryIntervalMs`: Polling interval for session discovery (default: 60000)
+  - `idleCleanupMs`: Remove idle sessions after this time (default: 600000)
+  - `maxSessions`: Max sessions to keep in memory (default: 50)
+- **Session Monitor Integration**: Full integration with existing event system
+  - `touchSession()` called on session.created, session.status, message.part.updated
+  - Shares sessions Map with all other modules
+  - Timer-based (5s, 30s, 60s), not event-driven
+
+### Changed
+
+- **Event handler wiring**: Added sessionMonitor.start() on plugin init, sessionMonitor.stop() on dispose
+- **State management**: SessionState now includes `parentSessionId` for tracking subagent relationships
+
+### Fixed
+
+- **Memory leak**: Sessions no longer accumulate forever - idle sessions cleaned up automatically
+- **Orphan parents**: Parent sessions stuck after subagent completion now recovered automatically
+
 ## [6.62.0] - 2026-05-07
 
 ### Added
