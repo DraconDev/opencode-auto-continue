@@ -25,6 +25,7 @@ import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
 import { getPlanPath, markPlanItemComplete } from "./plan.js";
+import { createSessionManager } from "./session-manager.js";
 
 import { createSessionManager } from "./session-manager.js";
 
