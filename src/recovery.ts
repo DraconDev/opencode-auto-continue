@@ -173,7 +173,10 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     const now = Date.now();
 
-    if (now - s.lastRecoveryTime < config.cooldownMs) return;
+    if (now - s.lastRecoveryTime < config.cooldownMs) {
+      log('recovery blocked: cooldown active', { sessionId, remaining: config.cooldownMs - (now - s.lastRecoveryTime) });
+      return;
+    }
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
