@@ -512,7 +512,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Auto-mark plan items when corresponding todos complete
         // Fire-and-forget: don't block the event handler
         if (config.planDrivenContinue && config.planAutoMarkComplete) {
-          const completedTodos = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
+          const completedTodos = todos.filter((t: Todo) => t.status === 'completed' || t.status === 'cancelled');
           if (completedTodos.length > 0) {
             const planPath = getPlanPath(input.directory || "", config.planFilePath);
             if (existsSync(planPath)) {
