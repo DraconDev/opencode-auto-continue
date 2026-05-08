@@ -111,33 +111,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
     sessions.delete(id);
   }
-      if (s.nudgeTimer) {
-        clearTimeout(s.nudgeTimer);
-        s.nudgeTimer = null;
-      }
-      s.lastNudgeAt = 0;
-      s.hasOpenTodos = false;
-      s.lastKnownTodos = [];
-      s.needsContinue = false;
-      s.continueMessageText = '';
-      s.messageCount = 0;
-      s.estimatedTokens = 0;
-      s.lastCompactionAt = 0;
-      s.tokenLimitHits = 0;
-      s.actionStartedAt = 0;
-      s.stallDetections = 0;
-      s.recoverySuccessful = 0;
-      s.recoveryFailed = 0;
-      s.lastRecoverySuccess = 0;
-      s.totalRecoveryTimeMs = 0;
-      s.recoveryStartTime = 0;
-      s.statusHistory = [];
-      s.recoveryTimes = [];
-      s.lastStallPartType = "";
-      s.stallPatterns = {};
-    }
-    sessions.delete(id);
-  }
 
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
   const logFile = join(logDir, "auto-force-resume.log");
