@@ -17,7 +17,7 @@ describe("Status File Operations", () => {
 
   // Pre-populate sessions
   for (let i = 0; i < 10; i++) {
-    sessions.set(`session-${i}`, createSessionState(config));
+    sessions.set(`session-${i}`, createSession());
   }
 
   bench("write status file (10 sessions)", () => {
@@ -36,21 +36,19 @@ describe("Status File Operations", () => {
 });
 
 describe("Session State Operations", () => {
-  const config = DEFAULT_CONFIG;
-  
   bench("create session state", () => {
-    createSessionState(config);
+    createSession();
   });
 
   bench("update progress timestamp", () => {
-    const s = createSessionState(config);
+    const s = createSession();
     s.lastProgressAt = Date.now();
     s.messageCount++;
     s.estimatedTokens += 100;
   });
 
   bench("increment recovery stats", () => {
-    const s = createSessionState(config);
+    const s = createSession();
     s.attempts++;
     s.stallDetections++;
     s.recoveryStartTime = Date.now();
