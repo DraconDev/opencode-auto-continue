@@ -83,6 +83,39 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.nudgeTimer = null;
       }
       s.lastNudgeAt = 0;
+      s.nudgeCount = 0;
+      s.nudgePaused = false;
+      s.hasOpenTodos = false;
+      s.lastKnownTodos = [];
+      s.lastTodoSnapshot = '';
+      s.needsContinue = false;
+      s.continueMessageText = '';
+      s.messageCount = 0;
+      s.estimatedTokens = 0;
+      s.lastCompactionAt = 0;
+      s.tokenLimitHits = 0;
+      s.actionStartedAt = 0;
+      s.stallDetections = 0;
+      s.recoverySuccessful = 0;
+      s.recoveryFailed = 0;
+      s.lastRecoverySuccess = 0;
+      s.totalRecoveryTimeMs = 0;
+      s.recoveryStartTime = 0;
+      s.recoveryTimes = [];
+      s.statusHistory = [];
+      s.lastStallPartType = '';
+      s.stallPatterns = {};
+      s.continueTimestamps = [];
+      s.lastAdvisoryAdvice = null;
+      s.lastPlanItemDescription = '';
+    }
+    sessions.delete(id);
+  }
+      if (s.nudgeTimer) {
+        clearTimeout(s.nudgeTimer);
+        s.nudgeTimer = null;
+      }
+      s.lastNudgeAt = 0;
       s.hasOpenTodos = false;
       s.lastKnownTodos = [];
       s.needsContinue = false;
