@@ -104,7 +104,7 @@ export function createLearningDB(
         }
         
         // Persist
-        saveData(fullConfig.dbPath, data);
+        saveData(fullConfig.dbPath, data, log);
       } catch (error) {
         log("[LearningDB] Failed to record outcome:", error);
       }
@@ -177,7 +177,7 @@ export function createLearningDB(
           });
         }
         
-        saveData(fullConfig.dbPath, data);
+        saveData(fullConfig.dbPath, data, log);
       } catch (error) {
         log("[LearningDB] Failed to update performance:", error);
       }
