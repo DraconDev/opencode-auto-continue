@@ -1,5 +1,7 @@
 import { existsSync } from "fs";
-import { type PluginConfig, type SessionState, type Todo, formatMessage, shouldBlockPrompt } from "./shared.js";
+import type { PluginConfig } from "./config.js";
+import type { SessionState, Todo } from "./session-state.js";
+import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { AIAdvisor, AIAdvice } from "./ai-advisor.js";
 import { parsePlan, getPlanPath, buildPlanContinueMessage } from "./plan.js";
