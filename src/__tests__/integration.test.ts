@@ -420,13 +420,12 @@ describe("opencode-auto-continue integration", () => {
     });
 
     // Mock messages to return a question from assistant
-    const mockMessages = vi.fn().mockResolvedValue({
+    mockClient.session.messages = vi.fn().mockResolvedValue({
       data: [
         { id: "msg1", role: "assistant", parts: [{ type: "text", text: "Would you like me to proceed with this approach?" }] }
       ],
       error: undefined
     });
-    mockClient.session.messages = mockMessages;
 
     const plugin = await loadPlugin(
       { client: mockClient },
