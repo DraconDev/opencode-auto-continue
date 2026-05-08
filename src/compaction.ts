@@ -13,10 +13,22 @@ export function createCompactionModule(deps: CompactionDeps) {
 
   function isTokenLimitError(error: unknown): boolean {
     if (!error) return false;
-    const message = error instanceof Error ? error.message : String(error);
-    return config.tokenLimitPatterns.some(pattern =>
-      message.toLowerCase().includes(pattern.toLowerCase())
-    );
+    
+    // Handle Error instances
+    if (error instanceof Error) {
+      return TOKEN_LIMIT_PATTERNS.some(pattern => pattern.test(error.message));
+    }
+    
+    // Handle plain error-like objects (from event properties)
+    if (typeof error === "object" && error !== null) {
+      const err = error as Record<string, unknown>;
+      const message = typeof err.message === "string" ? err.message : "";
+      const name = typeof err.name === "string" ? err.name : "";
+      return TOKEN_LIMIT_PATTERNS.some(pattern => pattern.test(message)) ||
+             TOKEN_LIMIT_PATTERNS.some(pattern => pattern.test(name));
+    }
+    
+    return false;
   }
 
   async function attemptCompact(sessionId: string): Promise<boolean> {
