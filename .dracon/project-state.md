@@ -1,26 +1,33 @@
 # Project State
 
 ## Current Focus
-Added comprehensive session monitoring and configuration options for the AutoForceResume plugin
+Added design documentation for spec-driven auto-continue functionality after normal AI completion
 
 ## Context
-The change implements a new session monitoring layer (v7.5) to detect and recover orphaned parent sessions, which were previously missed by the existing recovery mechanisms. This addresses reliability issues in long-running sessions where parent sessions might become orphaned without proper cleanup.
+The new feature aims to automatically continue AI workflows after normal completion by:
+1. Analyzing the current plan/spec
+2. Verifying code state (tests, build, lint)
+3. Determining next steps based on verification results
+4. Providing specific continuation instructions rather than generic "continue" prompts
+This addresses the gap in existing solutions that don't intelligently handle normal completion scenarios.
 
 ## Completed
-- [x] Added orphan parent session detection
-- [x] Implemented session discovery polling
-- [x] Added comprehensive configuration options for session monitoring
-- [x] Included terminal/status reporting enhancements
-- [x] Added AI advisory system (optional)
-- [x] Implemented proactive compaction controls
+- [x] Created comprehensive design document outlining:
+  - Problem statement and competitor analysis
+  - Feature design with example workflows
+  - Architecture diagram and component specifications
+  - Verification patterns and plan parsing logic
 
 ## In Progress
-- [x] Comprehensive session monitoring implementation
+- [ ] Implementation of the plan parser component
+- [ ] Implementation of the verification runner component
 
 ## Blockers
-- None reported in this commit
+- Need to finalize verification command patterns for different project types
+- Requires integration with existing session monitoring system
 
 ## Next Steps
-1. Verify session monitoring reliability in integration tests
-2. Optimize configuration defaults based on field usage
-3. Document edge cases for orphan session recovery
+1. Implement the plan parser component
+2. Implement the verification runner component
+3. Integrate with session monitoring system
+4. Add test cases for the new functionality
