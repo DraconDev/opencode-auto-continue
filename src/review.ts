@@ -1,4 +1,5 @@
-import type { PluginConfig, SessionState } from "./shared.js";
+import type { PluginConfig } from "./config.js";
+import type { SessionState } from "./session-state.js";
 import { shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
