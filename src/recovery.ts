@@ -241,8 +241,9 @@ export function createRecoveryModule(deps: RecoveryDeps) {
           });
           log('auto-compaction successful, waiting for session to resume');
           await new Promise(r => setTimeout(r, 3000));
-        } catch (e: any) {
-          log('auto-compaction failed:', e?.message || e?.name || String(e), 'status:', e?.status, 'response:', JSON.stringify(e?.response || {}), 'data:', JSON.stringify(e?.data || {}));
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : String(e);
+          log('auto-compaction failed:', errMsg);
         }
       }
 
