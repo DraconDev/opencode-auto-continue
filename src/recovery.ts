@@ -395,14 +395,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       // Prompt guard: prevent duplicate continue messages
       const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
       if (isDuplicate) {
-        log('prompt guard blocked duplicate continue, skipping recovery');
+        log('[Recovery] PROMPT GUARD BLOCKED — similar prompt recently sent, skipping recovery', sessionId);
         s.aborting = false;
         return;
       }
 
       s.needsContinue = true;
       s.continueMessageText = messageText;
-      log('queued continue message, waiting for stable state');
+      log('[Recovery] QUEUED CONTINUE — needsContinue=true, message length:', messageText.length, 'session:', sessionId);
 
       s.attempts++;
       s.autoSubmitCount++;
@@ -413,9 +413,10 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.nudgeCount = 0;
       cancelNudge(sessionId);
     } catch (e) {
-      log('recovery failed:', e);
+      log('[Recovery] CATCH BLOCK — recovery failed with error:', String(e), 'session:', sessionId);
       s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
     } finally {
+      log('[Recovery] FINALLY — setting aborting=false, session:', sessionId, 'aborting was:', s.aborting);
       s.aborting = false;
     }
   }
