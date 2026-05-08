@@ -62,7 +62,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i] as any;
       if (msg.role === "assistant" || msg.info?.role === "assistant") {
-        const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
+        const text = msg.text || msg.parts?.map((p: { text?: string }) => p.text).join(" ") || "";
         if (isQuestion(text)) {
           log("last assistant message is a question, skipping nudge", { sessionId, text: text.substring(0, 100) });
           return true;
