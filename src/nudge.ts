@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import { type PluginConfig, type SessionState, formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { AIAdvisor, AIAdvice } from "./ai-advisor.js";
@@ -169,7 +170,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       if (config.planDrivenContinue) {
         const directory = input.directory || "";
         const planPath = getPlanPath(directory, config.planFilePath);
-        log("plan check: directory=", directory, "planPath=", planPath, "exists=", require("fs").existsSync(planPath));
+        log("plan check: directory=", directory, "planPath=", planPath, "exists=", existsSync(planPath));
         const planResult = parsePlan(planPath);
         
         if (planResult.nextItem) {
