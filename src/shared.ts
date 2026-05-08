@@ -6,6 +6,7 @@ import { join } from "path";
 export type { Todo, SessionState } from "./session-state.js";
 export type { PluginConfig } from "./config.js";
 export { DEFAULT_CONFIG, validateConfig } from "./config.js";
+export { createSession, updateProgress } from "./session-state.js";
 
 export type TypedPluginInput = PluginInput;
 
