@@ -1,4 +1,4 @@
-import type { SessionState } from "./shared.js";
+import type { SessionState } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
