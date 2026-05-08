@@ -1,6 +1,7 @@
 import { existsSync, writeFileSync, renameSync, appendFileSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
-import type { PluginConfig, SessionState } from "./shared.js";
+import type { PluginConfig } from "./config.js";
+import type { SessionState } from "./session-state.js";
 import { formatDuration, getModelContextLimit, getCompactionThreshold } from "./shared.js";
 
 export interface StatusFileDeps {
