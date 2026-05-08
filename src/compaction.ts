@@ -11,9 +11,9 @@ export interface CompactionDeps {
 export function createCompactionModule(deps: CompactionDeps) {
   const { config, sessions, log, input } = deps;
 
-  function isTokenLimitError(error: any): boolean {
+  function isTokenLimitError(error: unknown): boolean {
     if (!error) return false;
-    const message = error.message || String(error);
+    const message = error instanceof Error ? error.message : String(error);
     return config.tokenLimitPatterns.some(pattern =>
       message.toLowerCase().includes(pattern.toLowerCase())
     );

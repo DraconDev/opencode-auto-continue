@@ -9,7 +9,7 @@ export interface ReviewDeps {
   input: TypedPluginInput;
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
-  isTokenLimitError: (error: any) => boolean;
+  isTokenLimitError: (error: unknown) => boolean;
   forceCompact: (sessionId: string) => Promise<boolean>;
 }
 
