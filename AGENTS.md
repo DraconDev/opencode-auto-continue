@@ -9,6 +9,79 @@
 4. Reviews completed todos
 5. Emergency compaction on token limit errors
 6. Provides real-time status via file/terminal
+7. **NEW (v7.5)**: Monitors for orphan parent sessions and discovers missed sessions
+
+## Configuration Reference
+
+All config options are set in `opencode.json` under the plugin entry:
+
+```json
+["opencode-auto-continue", {
+  "stallTimeoutMs": 45000,
+  "maxRecoveries": 3,
+  "debug": false
+}]
+```
+
+### Core Recovery
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `stallTimeoutMs` | number | `45000` | Time without progress before considering session stalled |
+| `maxRecoveries` | number | `3` | Max recovery attempts per session |
+| `cooldownMs` | number | `60000` | Min time between recovery attempts |
+| `waitAfterAbortMs` | number | `5000` | Wait after abort before sending continue |
+| `maxBackoffMs` | number | `1800000` | Max exponential backoff delay (30min) |
+| `maxSessionAgeMs` | number | `7200000` | Max session age before giving up (2hr) |
+
+### Session Monitor (v7.5)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `sessionMonitorEnabled` | boolean | `true` | Enable session monitoring layer |
+| `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
+| `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
+| `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
+| `maxSessions` | number | `50` | Max sessions to keep in memory |
+
+### Nudge
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `nudgeEnabled` | boolean | `true` | Enable idle nudging |
+| `nudgeCooldownMs` | number | `300000` | Min time between nudges (5min) |
+| `nudgeIdleDelayMs` | number | `5000` | Delay before nudging after idle |
+| `includeTodoContext` | boolean | `true` | Include pending todos in nudge message |
+| `continueWithTodosMessage` | string | `"..."` | Nudge message template with todo context |
+
+### Compaction
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `autoCompact` | boolean | `true` | Enable proactive compaction |
+| `proactiveCompactAtTokens` | number | `100000` | Token threshold for auto-compaction |
+| `compactCooldownMs` | number | `60000` | Min time between compactions |
+| `compactMaxRetries` | number | `3` | Max compaction retry attempts |
+| `compactReductionFactor` | number | `0.7` | Expected context reduction ratio |
+
+### AI Advisory
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableAdvisory` | boolean | `false` | Enable AI/heuristic session analysis |
+| `advisoryModel` | string | `""` | AI model for advisory calls |
+| `advisoryTimeoutMs` | number | `5000` | Max wait for AI advisory response |
+| `advisoryMaxTokens` | number | `500` | Max tokens in AI advisory response |
+| `advisoryTemperature` | number | `0.1` | Temperature for AI calls |
+
+### Terminal & Status
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `terminalTitleEnabled` | boolean | `true` | Enable terminal title updates |
+| `statusFileEnabled` | boolean | `true` | Enable status file writes |
+| `statusFilePath` | string | `"~/.opencode/logs/auto-force-resume.status"` | Status file location |
+| `debug` | boolean | `false` | Enable debug logging |
 
 ## New Features (v6.62+)
 
