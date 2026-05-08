@@ -189,7 +189,7 @@ export function createLearningDB(
           r => r.timestamp >= timeRange.start && r.timestamp <= timeRange.end
         );
       } catch (error) {
-        console.error("[LearningDB] Failed to get recent records:", error);
+        log("[LearningDB] Failed to get recent records:", error);
         return [];
       }
     },
@@ -198,7 +198,7 @@ export function createLearningDB(
       try {
         return data.strategyPerformance.filter(p => p.strategyId === strategyId);
       } catch (error) {
-        console.error("[LearningDB] Failed to get strategy performance:", error);
+        log("[LearningDB] Failed to get strategy performance:", error);
         return [];
       }
     },
