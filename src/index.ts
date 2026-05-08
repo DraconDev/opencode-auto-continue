@@ -99,119 +99,29 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   terminal.registerStatusLineHook();
 
-  const progressTypes = [
-    "message.part.updated",
-  ];
-
-  const staleTypes = [
-    "session.error",
-    "session.ended",
-    "session.deleted"
-  ];
+  const eventRouter = createEventRouter({
+    config, sessions, log, getSession, clearTimer, resetSession,
+    terminal, nudge, review, recover, compaction, sessionMonitor,
+    writeStatusFile, updateProgress, createSession
+  });
 
   return {
     event: async ({ event }: { event: any }) => {
-      await safeHook("event", async () => {
-        const e = event as any;
-        const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
-
-      if (event?.type === "session.error") {
-        const err = e?.properties?.error;
-        log('session.error:', err?.name, err?.message);
-        if (err?.name === "MessageAbortedError") {
-          const s = sessions.get(sid);
-          if (s) {
-            s.userCancelled = true;
-            nudge.pauseNudge(sid);
-          }
-          log('user cancelled session:', sid);
-        } else if (compaction.isTokenLimitError(err)) {
-          const s = sessions.get(sid);
-          if (s) {
-            s.tokenLimitHits++;
-            
-            // Parse exact token counts from error message
-            const parsedTokens = parseTokensFromError(err);
-            if (parsedTokens) {
-              s.estimatedTokens = Math.max(s.estimatedTokens, parsedTokens.total);
-              log('parsed tokens from error:', parsedTokens.total, 'input:', parsedTokens.input, 'output:', parsedTokens.output, 'session:', sid);
-            }
-            
-            log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
-            // Attempt emergency compaction asynchronously
-            compaction.forceCompact(sid).then(async (compacted) => {
-              if (compacted) {
-                log('emergency compaction succeeded for session:', sid);
-                // Queue a short continue after emergency compaction
-                // Use plan-aware message if session was planning
-                s.needsContinue = true;
-                s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
-                await review.sendContinue(sid);
-              } else {
-                log('emergency compaction failed for session:', sid);
-              }
-            }).catch((e) => {
-              log('emergency compaction error:', e);
-            });
-          }
-        }
+      await eventRouter.handleEvent(event);
+    },
+    dispose() {
+      isDisposed = true;
+      log('disposing plugin');
+      for (const [sid] of sessions) {
         clearTimer(sid);
-        writeStatusFile(sid);
-        return;
+        nudge.cancelNudge(sid);
       }
-
-      if (event?.type === "session.created") {
-        log('session.created:', sid);
-        getSession(sid);
-        sessionMonitor.touchSession(sid);
-        writeStatusFile(sid);
-        return;
-      }
-
-      if (event?.type === "session.updated") {
-        log('session.updated:', sid);
-        // Session was modified (e.g., model/provider change) — preserve state
-        writeStatusFile(sid);
-        return;
-      }
-
-      if (event?.type === "session.diff") {
-        // Session diff events are informational — no action needed
-        log('session.diff:', sid);
-        return;
-      }
-
-      if (event?.type === "message.updated") {
-        const info = e?.properties?.info;
-        if (info?.role === "user" && info?.id) {
-          const s = getSession(sid);
-          if (s.lastUserMessageId !== info.id) {
-            s.lastUserMessageId = info.id;
-            s.autoSubmitCount = 0;
-            s.attempts = 0;
-            s.backoffAttempts = 0;
-            nudge.resetNudge(sid);
-            log('user message detected, resetting counters:', sid);
-          }
-        }
-        // Track actual tokens from assistant messages
-        if (info?.role === "assistant" && info?.tokens) {
-          const s = getSession(sid);
-          const msgTokens = info.tokens;
-          const totalMsgTokens = (msgTokens.input || 0) + (msgTokens.output || 0) + (msgTokens.reasoning || 0);
-          if (totalMsgTokens > 0) {
-            // AssistantMessage.tokens represents tokens for this specific message
-            // We accumulate to get a rough total (this will be an overestimate since
-            // it counts all messages, not just the ones in context window)
-            s.estimatedTokens += totalMsgTokens;
-            log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
-          }
-
-        }
-        writeStatusFile(sid);
-        return;
-      }
-
+      terminal.clearTerminalTitle();
+      terminal.clearTerminalProgress();
+      sessionMonitor.stop();
+    },
+  };
+};
       if (event?.type === "session.status") {
         const status = e?.properties?.status;
         log('session.status:', sid, status?.type);
