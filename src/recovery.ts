@@ -1,4 +1,5 @@
-import type { PluginConfig, SessionState, Todo } from "./shared.js";
+import type { PluginConfig } from "./config.js";
+import type { SessionState, Todo } from "./session-state.js";
 import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { AIAdvisor } from "./ai-advisor.js";
