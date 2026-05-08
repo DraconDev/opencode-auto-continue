@@ -260,7 +260,6 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       // AI Advisory: check if we should wait instead of nudging
     if (aiAdvisor && config.enableAdvisory) {
       try {
-        const s = sessions.get(sessionId);
         if (s) {
           const context = await aiAdvisor.extractContext(sessionId, s);
           const advice = await aiAdvisor.getAdvice(context);
