@@ -4,6 +4,7 @@ import { join } from "path";
 import {
   type SessionState,
   type PluginConfig,
+  type Todo,
   DEFAULT_CONFIG,
   validateConfig,
   isPlanContent,
