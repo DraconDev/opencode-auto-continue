@@ -242,7 +242,7 @@ export function createLearningDB(
         
         return patterns;
       } catch (error) {
-        console.error("[LearningDB] Failed to discover patterns:", error);
+        log("[LearningDB] Failed to discover patterns:", error);
         return [];
       }
     },
