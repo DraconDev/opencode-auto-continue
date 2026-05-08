@@ -1,5 +1,5 @@
-import type { SessionState } from "./shared.js";
-import { createSession } from "./shared.js";
+import type { SessionState } from "./session-state.js";
+import { createSession } from "./session-state.js";
 
 export interface SessionManager {
   getSession(id: string): SessionState;
