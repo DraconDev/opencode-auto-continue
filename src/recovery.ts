@@ -292,15 +292,15 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         try {
           const todoResult = await input.client.session.todo({ path: { id: sessionId } });
           const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
-          const pending = todos.filter((t: any) => t.status === 'in_progress' || t.status === 'pending');
-          const completed = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
+          const pending = todos.filter((t: Todo) => t.status === 'in_progress' || t.status === 'pending');
+          const completed = todos.filter((t: Todo) => t.status === 'completed' || t.status === 'cancelled');
 
           templateVars.total = String(todos.length);
           templateVars.completed = String(completed.length);
           templateVars.pending = String(pending.length);
 
           if (pending.length > 0) {
-            const todoList = pending.slice(0, 5).map((t: any) => t.content || t.title || t.id).join(', ');
+            const todoList = pending.slice(0, 5).map((t: Todo) => t.content || t.title || t.id).join(', ');
             templateVars.todoList = todoList + (pending.length > 5 ? '...' : '');
             messageText = formatMessage(config.continueWithTodosMessage, templateVars);
             log('todo context added:', pending.length, 'pending tasks');
