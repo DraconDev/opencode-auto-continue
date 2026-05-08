@@ -79,8 +79,9 @@ export function createCompactionModule(deps: CompactionDeps) {
         s.compacting = false;
       }
       return false;
-    } catch (e: any) {
-      log('compaction attempt failed:', e?.message || e?.name || String(e), 'status:', e?.status);
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      log('compaction attempt failed:', err.message, 'status:', (e as Record<string, unknown>)?.status);
       const s = sessions.get(sessionId);
       if (s) {
         s.compacting = false;
