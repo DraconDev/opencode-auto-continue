@@ -44,6 +44,7 @@ describe("opencode-auto-continue integration", () => {
         promptAsync: mockPromptAsync,
         status: mockStatus,
         todo: mockTodo,
+        messages: vi.fn().mockResolvedValue({ data: [], error: undefined }),
       },
     };
   });
