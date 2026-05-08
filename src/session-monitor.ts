@@ -263,6 +263,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function start(): void {
     if (isDisposed()) return;
+    if (orphanCheckTimer) return; // Already started
 
     // Orphan parent check every 5 seconds
     orphanCheckTimer = setInterval(checkOrphanParents, 5000);
