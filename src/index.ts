@@ -6,14 +6,11 @@ import {
   type PluginConfig,
   DEFAULT_CONFIG,
   validateConfig,
-  PLAN_PATTERNS,
   isPlanContent,
   estimateTokens,
-  formatDuration,
   parseTokensFromError,
   createSession,
   updateProgress,
-  formatMessage,
   safeHook,
   detectDCP,
   getDCPVersion,
@@ -26,7 +23,7 @@ import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
-import { parsePlan, getPlanPath, buildPlanContinueMessage, markPlanItemComplete } from "./plan.js";
+import { getPlanPath, markPlanItemComplete } from "./plan.js";
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   let config: PluginConfig = {
