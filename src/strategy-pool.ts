@@ -414,66 +414,62 @@ export const BUILT_IN_STRATEGIES: RecoveryStrategy[] = [
  * Uses effectiveness scores, pattern matching, and exploration/exploitation
  * balance to choose the optimal strategy.
  */
-export function selectBestStrategy(
+export async function selectBestStrategy(
   context: RecoveryContext,
   strategies: RecoveryStrategy[],
   getEffectiveness: (strategyId: string, pattern: StallPatternType, domain: string) => Promise<number>,
   explorationRate: number = 0.1
 ): Promise<RecoveryStrategy> {
-  return new Promise(async (resolve) => {
-    // Filter applicable strategies
-    const applicable = strategies.filter(s => 
-      s.applicablePatterns.includes(context.stallPattern) &&
-      s.priority !== "disabled"
-    );
-    
-    if (applicable.length === 0) {
-      // Fallback to first available strategy
-      resolve(strategies[0] || gentleGuidanceStrategy);
-      return;
-    }
-    
-    if (applicable.length === 1) {
-      resolve(applicable[0]);
-      return;
-    }
-    
-    // Score each strategy
-    const scored = await Promise.all(
-      applicable.map(async (strategy) => {
-        const baseEffectiveness = await getEffectiveness(
-          strategy.id,
-          context.stallPattern,
-          context.intent?.domain || "unknown"
-        );
-        
-        let score = baseEffectiveness;
-        
-        // Penalize if proactive intervention already failed
-        if (context.proactiveInterventionSent && strategy.id === "gentle-guidance") {
-          score *= 0.7;
-        }
-        
-        // Penalize strategies that require abort when user prefers gentle
-        if (strategy.requiresAbort && context.recoveryAttempts === 0) {
-          score *= 0.9; // Slight preference for non-abort on first try
-        }
-        
-        return { strategy, score };
-      })
-    );
-    
-    // Sort by score descending
-    scored.sort((a, b) => b.score - a.score);
-    
-    // Exploration vs exploitation
-    if (Math.random() < explorationRate && scored.length > 1) {
-      // Try second-best strategy for exploration
-      resolve(scored[1].strategy);
-    } else {
-      resolve(scored[0].strategy);
-    }
-  });
+  // Filter applicable strategies
+  const applicable = strategies.filter(s => 
+    s.applicablePatterns.includes(context.stallPattern) &&
+    s.priority !== "disabled"
+  );
+  
+  if (applicable.length === 0) {
+    // Fallback to first available strategy
+    return strategies[0] || gentleGuidanceStrategy;
+  }
+  
+  if (applicable.length === 1) {
+    return applicable[0];
+  }
+  
+  // Score each strategy
+  const scored = await Promise.all(
+    applicable.map(async (strategy) => {
+      const baseEffectiveness = await getEffectiveness(
+        strategy.id,
+        context.stallPattern,
+        context.intent?.domain || "unknown"
+      );
+      
+      let score = baseEffectiveness;
+      
+      // Penalize if proactive intervention already failed
+      if (context.proactiveInterventionSent && strategy.id === "gentle-guidance") {
+        score *= 0.7;
+      }
+      
+      // Penalize strategies that require abort when user prefers gentle
+      if (strategy.requiresAbort && context.recoveryAttempts === 0) {
+        score *= 0.9; // Slight preference for non-abort on first try
+      }
+      
+      return { strategy, score };
+    })
+  );
+  
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+  
+  // Exploration vs exploitation
+  if (Math.random() < explorationRate && scored.length > 1) {
+    // Try second-best strategy for exploration
+    return scored[1].strategy;
+  } else {
+    return scored[0].strategy;
+  }
 }
 
 // ============================================================================
