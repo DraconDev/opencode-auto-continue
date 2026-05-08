@@ -6,7 +6,7 @@
  * nudge/review flow with plan-aware continuation.
  */
 
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
 
 export interface PlanItem {
@@ -237,7 +237,6 @@ export function markPlanItemComplete(
   }
 
   if (found) {
-    const { writeFileSync } = require("fs");
     writeFileSync(planPath, lines.join("\n"), "utf-8");
   }
 
