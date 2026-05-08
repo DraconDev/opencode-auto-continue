@@ -266,14 +266,14 @@ export function createLearningDB(
 // File I/O Helpers
 // ============================================================================
 
-function loadData(path: string): LearningData {
+function loadData(path: string, log: (...args: unknown[]) => void = () => {}): LearningData {
   try {
     if (existsSync(path)) {
       const content = readFileSync(path, "utf-8");
       return JSON.parse(content) as LearningData;
     }
   } catch (error) {
-    console.error("[LearningDB] Failed to load data, starting fresh:", error);
+    log("[LearningDB] Failed to load data, starting fresh:", error);
   }
   
   return {
@@ -285,11 +285,11 @@ function loadData(path: string): LearningData {
   };
 }
 
-function saveData(path: string, data: LearningData): void {
+function saveData(path: string, data: LearningData, log: (...args: unknown[]) => void = () => {}): void {
   try {
     writeFileSync(path, JSON.stringify(data, null, 2));
   } catch (error) {
-    console.error("[LearningDB] Failed to save data:", error);
+    log("[LearningDB] Failed to save data:", error);
   }
 }
 
