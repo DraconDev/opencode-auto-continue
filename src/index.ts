@@ -502,8 +502,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (!Array.isArray(todos)) return;
         
         const s = getSession(sid);
-        const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
-        const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
+        const allCompleted = todos.length > 0 && todos.every((t: Todo) => t.status === 'completed' || t.status === 'cancelled');
+        const hasPending = todos.some((t: Todo) => t.status === 'in_progress' || t.status === 'pending');
         
         // Track open todos for nudging
         s.hasOpenTodos = hasPending;
