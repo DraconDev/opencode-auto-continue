@@ -96,14 +96,35 @@ export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
 
   async function recover(sessionId: string) {
-    if (isDisposed()) return;
+    log('[RECOVERY] recover() called for session:', sessionId);
+    if (isDisposed()) {
+      log('[RECOVERY] Plugin disposed, skipping recovery');
+      return;
+    }
     const s = sessions.get(sessionId);
-    if (!s) return;
+    if (!s) {
+      log('[RECOVERY] Session not found:', sessionId);
+      return;
+    }
 
-    if (s.aborting) return;
-    if (s.userCancelled) return;
-    if (s.planning) return;
-    if (s.compacting) return;
+    log('[RECOVERY] Session state - aborting:', s.aborting, 'userCancelled:', s.userCancelled, 'planning:', s.planning, 'compacting:', s.compacting, 'attempts:', s.attempts, 'maxRecoveries:', config.maxRecoveries);
+
+    if (s.aborting) {
+      log('[RECOVERY] Already aborting, skipping');
+      return;
+    }
+    if (s.userCancelled) {
+      log('[RECOVERY] User cancelled, skipping');
+      return;
+    }
+    if (s.planning) {
+      log('[RECOVERY] Session planning, skipping');
+      return;
+    }
+    if (s.compacting) {
+      log('[RECOVERY] Session compacting, skipping');
+      return;
+    }
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
         if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
