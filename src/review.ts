@@ -112,7 +112,7 @@ export function createReviewModule(deps: ReviewDeps) {
         s.recoveryStartTime = 0;
       }
       writeStatusFile(sessionId);
-    } catch (e: any) {
+    } catch (e) {
       log('continue failed:', e);
       s.recoveryFailed++;
       writeStatusFile(sessionId);
