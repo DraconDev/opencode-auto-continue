@@ -251,7 +251,7 @@ export function createLearningDB(
       try {
         return data.userPreferences.find(p => p.userId === userId);
       } catch (error) {
-        console.error("[LearningDB] Failed to get user preferences:", error);
+        log("[LearningDB] Failed to get user preferences:", error);
         return undefined;
       }
     },
