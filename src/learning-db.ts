@@ -179,7 +179,7 @@ export function createLearningDB(
         
         saveData(fullConfig.dbPath, data);
       } catch (error) {
-        console.error("[LearningDB] Failed to update performance:", error);
+        log("[LearningDB] Failed to update performance:", error);
       }
     },
     
