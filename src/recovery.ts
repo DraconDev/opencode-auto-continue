@@ -419,8 +419,6 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       log('[Recovery] FINALLY — setting aborting=false, session:', sessionId, 'aborting was:', s.aborting);
       s.aborting = false;
     }
-      s.aborting = false;
-    }
   }
 
   return { recover };
