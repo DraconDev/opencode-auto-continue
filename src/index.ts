@@ -396,11 +396,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact });
 
-  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, aiAdvisor, sendContinue: review.sendContinue });
-
   function scheduleRecovery(sessionId: string, delayMs: number): void {
-    scheduleRecoveryWithGeneration(sessions, sessionId, delayMs, recover, log);
+    scheduleRecoveryWithGeneration(sessions, sessionId, delayMs, (id) => recover(id), log);
   }
+
+  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, aiAdvisor, sendContinue: review.sendContinue });
 
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
   sessionMonitor.start();
