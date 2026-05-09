@@ -116,6 +116,8 @@ export function createReviewModule(deps: ReviewDeps) {
       // Only clear after successful send
       s.needsContinue = false;
       s.continueMessageText = '';
+      s.continueRetryCount = 0;
+      s.lastContinueRetryAt = 0;
 
       log('continue sent successfully');
       s.recoverySuccessful++;
@@ -133,6 +135,9 @@ export function createReviewModule(deps: ReviewDeps) {
     } catch (e: any) {
       log('continue failed:', e);
       s.recoveryFailed++;
+      // FIX 1: Track retry count on failure
+      s.continueRetryCount++;
+      s.lastContinueRetryAt = Date.now();
       writeStatusFile(sessionId);
 
       // Handle token limit error
