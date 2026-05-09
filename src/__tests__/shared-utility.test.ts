@@ -415,6 +415,17 @@ describe("shared.ts utilities", () => {
       expect(result.sessionDiscovery).toBe(false);
       expect(result.idleCleanup).toBe(false);
     });
+
+    it("should keep shared and extracted config defaults in sync", async () => {
+      const shared = await import('../shared.js');
+      const extracted = await import('../config.js');
+
+      expect(shared.DEFAULT_CONFIG.sessionMonitorEnabled).toBe(extracted.DEFAULT_CONFIG.sessionMonitorEnabled);
+      expect(shared.DEFAULT_CONFIG.orphanWaitMs).toBe(extracted.DEFAULT_CONFIG.orphanWaitMs);
+      expect(shared.DEFAULT_CONFIG.subagentWaitMs).toBe(extracted.DEFAULT_CONFIG.subagentWaitMs);
+      expect(shared.DEFAULT_CONFIG.idleCleanupMs).toBe(extracted.DEFAULT_CONFIG.idleCleanupMs);
+      expect(shared.DEFAULT_CONFIG.idleSessionTimeoutMs).toBe(extracted.DEFAULT_CONFIG.idleSessionTimeoutMs);
+    });
   });
 
   describe("formatMessage", () => {
@@ -592,6 +603,26 @@ describe("shared.ts utilities", () => {
               data: [{
                 role: "user",
                 createdAt: Date.now() - 60000,
+                parts: [{ type: "text", text: "Please continue working on these tasks.", synthetic: true }],
+              }],
+            }),
+          },
+        },
+      } as any;
+
+      const result = await shouldBlockPrompt("test", "Please continue working on these tasks.", input);
+
+      expect(result).toBe(false);
+    });
+
+    it("should fail open for timestamp-less messages", async () => {
+      const { shouldBlockPrompt } = await import('../shared.js');
+      const input = {
+        client: {
+          session: {
+            messages: vi.fn().mockResolvedValue({
+              data: [{
+                role: "user",
                 parts: [{ type: "text", text: "Please continue working on these tasks.", synthetic: true }],
               }],
             }),
