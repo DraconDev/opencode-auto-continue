@@ -38,6 +38,7 @@ export interface EventRouterDeps {
   compaction: {
     isTokenLimitError: (err: unknown) => boolean;
     forceCompact: (sid: string) => Promise<boolean>;
+    maybeProactiveCompact: (sid: string) => Promise<boolean>;
   };
   sessionMonitor: {
     touchSession: (sid: string) => void;
@@ -313,7 +314,7 @@ export function createEventRouter(deps: EventRouterDeps) {
         // Check if proactive compaction is needed after token update
         if (s.estimatedTokens > config.proactiveCompactAtTokens && !s.compacting) {
           log('token threshold exceeded:', s.estimatedTokens, '/', config.proactiveCompactAtTokens, 'checking proactive compaction');
-          compaction.maybeProactiveCompact(sid).catch((e) => log('proactive compaction error:', e));
+          compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compaction error:', e));
         }
         
         updateProgress(s);
