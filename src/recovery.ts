@@ -1,5 +1,4 @@
-import type { PluginConfig } from "./config.js";
-import type { SessionState, Todo } from "./session-state.js";
+import type { PluginConfig, SessionState } from "./shared.js";
 import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { AIAdvisor } from "./ai-advisor.js";
@@ -96,35 +95,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
 
   async function recover(sessionId: string) {
-    log('[RECOVERY] recover() called for session:', sessionId);
-    if (isDisposed()) {
-      log('[RECOVERY] Plugin disposed, skipping recovery');
-      return;
-    }
+    if (isDisposed()) return;
     const s = sessions.get(sessionId);
-    if (!s) {
-      log('[RECOVERY] Session not found:', sessionId);
-      return;
-    }
+    if (!s) return;
 
-    log('[RECOVERY] Session state - aborting:', s.aborting, 'userCancelled:', s.userCancelled, 'planning:', s.planning, 'compacting:', s.compacting, 'attempts:', s.attempts, 'maxRecoveries:', config.maxRecoveries);
-
-    if (s.aborting) {
-      log('[RECOVERY] Already aborting, skipping');
-      return;
-    }
-    if (s.userCancelled) {
-      log('[RECOVERY] User cancelled, skipping');
-      return;
-    }
-    if (s.planning) {
-      log('[RECOVERY] Session planning, skipping');
-      return;
-    }
-    if (s.compacting) {
-      log('[RECOVERY] Session compacting, skipping');
-      return;
-    }
+    if (s.aborting) return;
+    if (s.userCancelled) return;
+    if (s.planning) return;
+    if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
         if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
@@ -173,48 +151,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     const now = Date.now();
 
-    if (now - s.lastRecoveryTime < config.cooldownMs) {
-      log(`[RECOVERY] cooldown active for session ${sessionId}, waiting ${config.cooldownMs - (now - s.lastRecoveryTime)}ms more`);
-      return;
-    }
-
-    s.aborting = true;
-    s.stallDetections++;
-    s.recoveryStartTime = Date.now();
-
-    if (config.stallPatternDetection && s.lastStallPartType) {
-      s.stallPatterns[s.lastStallPartType] = (s.stallPatterns[s.lastStallPartType] || 0) + 1;
-    }
-
-    writeStatusFile(sessionId);
-
-    try {
-      const statusResult = await input.client.session.status({});
-      const statusData = statusResult.data as Record<string, { type: string }>;
-      const sessionStatus = statusData[sessionId];
-
-      if (!sessionStatus || sessionStatus.type !== "busy") {
-        log(`[RECOVERY] session ${sessionId} not busy (status: ${sessionStatus?.type || 'unknown'}), skipping recovery`);
-        s.aborting = false;
-        return;
-      }
-
-      const currentTime = Date.now();
-
-      if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
-        s.aborting = false;
-        const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
-        log(`[RECOVERY] progress was recent for session ${sessionId}, resetting timer (${remaining}ms remaining)`);
-        s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
-        return;
-      }
-
-      // Check if the model output tool calls as raw text (XML in reasoning)
-      log(`[RECOVERY] checking tool-text for session ${sessionId}`);
-      const hasToolText = await checkToolTextInSession(sessionId, input);
-      if (hasToolText) {
-        log('[RECOVERY] tool-text detected in session, using recovery prompt');
-      }
+    if (now - s.lastRecoveryTime < config.cooldownMs) return;
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
@@ -263,17 +200,15 @@ export function createRecoveryModule(deps: RecoveryDeps) {
           path: { id: sessionId },
           query: { directory: input.directory || "" }
         });
-        log("[RECOVERY] abort() succeeded", sessionId);
+        log('session aborted for recovery:', sessionId);
       } catch (e) {
-        log("[RECOVERY] abort() failed:", e);
+        log('abort failed:', e);
         s.aborting = false;
         s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
-        log("[RECOVERY] scheduled retry after abort failure", sessionId, "delay:", config.stallTimeoutMs * 2);
         return;
       }
 
       // Wait for session to become idle
-      log("[RECOVERY] polling for idle status", sessionId, "maxWait:", config.abortPollMaxTimeMs);
       const startTime = Date.now();
       let isIdle = false;
       let statusFailures = 0;
@@ -287,49 +222,44 @@ export function createRecoveryModule(deps: RecoveryDeps) {
             const pollStatus = pollData[sessionId];
             if (pollStatus?.type === "idle") {
               isIdle = true;
-              log("[RECOVERY] session became idle", sessionId, "pollTime:", Date.now() - startTime);
             }
             statusFailures = 0;
           } catch (e) {
             statusFailures++;
-            log("[RECOVERY] status poll failed:", e);
+            log('status poll failed:', e);
           }
         }
       }
-      log("[RECOVERY] idle polling complete", sessionId, "isIdle:", isIdle, "pollDuration:", Date.now() - startTime);
 
       // Now that session is idle, try compaction
       if (config.autoCompact && !hasToolText && isIdle) {
         try {
-          log("[RECOVERY] attempting auto-compaction", sessionId);
+          log('attempting auto-compaction for session:', sessionId);
           await input.client.session.summarize({
             path: { id: sessionId },
             query: { directory: input.directory || "" }
           });
-          log("[RECOVERY] auto-compaction succeeded", sessionId);
+          log('auto-compaction successful, waiting for session to resume');
           await new Promise(r => setTimeout(r, 3000));
-        } catch (e: unknown) {
-          log("[RECOVERY] auto-compaction failed:", e);
+        } catch (e: any) {
+          log('auto-compaction failed:', e?.message || e?.name || String(e), 'status:', e?.status, 'response:', JSON.stringify(e?.response || {}), 'data:', JSON.stringify(e?.data || {}));
         }
-      } else {
-        log("[RECOVERY] skipping compaction", sessionId, "autoCompact:", config.autoCompact, "hasToolText:", hasToolText, "isIdle:", isIdle);
       }
 
       const remainingWait = config.waitAfterAbortMs - (Date.now() - startTime);
       if (remainingWait > 0) {
-        log("[RECOVERY] waiting after abort", sessionId, "remaining:", remainingWait);
         await new Promise(r => setTimeout(r, remainingWait));
       }
 
       if (s.autoSubmitCount >= config.maxAutoSubmits) {
-        log("[RECOVERY] LOOP PROTECTION: max auto-submits reached", sessionId, "count:", s.autoSubmitCount, "max:", config.maxAutoSubmits);
+        log('loop protection: max auto-submits reached:', s.autoSubmitCount);
         s.aborting = false;
         return;
       }
 
       // Hallucination loop detection: if 3+ continues in 10min, force abort+resume
       if (isHallucinationLoop(s)) {
-        log("[RECOVERY] HALLUCINATION LOOP DETECTED!", sessionId, "forcing abort+resume");
+        log('hallucination loop detected! forcing abort+resume to break cycle');
         try {
           await input.client.session.abort({
             path: { id: sessionId },
@@ -337,11 +267,10 @@ export function createRecoveryModule(deps: RecoveryDeps) {
           });
           await new Promise(r => setTimeout(r, 3000));
         } catch (e) {
-          log("[RECOVERY] abort in hallucination loop handler failed:", e);
+          log('abort in hallucination loop handler failed:', e);
         }
       }
 
-      log("[RECOVERY] building recovery message", sessionId, "hasToolText:", hasToolText, "planning:", s.planning);
       let messageText = config.continueMessage;
       const templateVars: Record<string, string> = {
         attempts: String(s.attempts + 1),
@@ -363,15 +292,15 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         try {
           const todoResult = await input.client.session.todo({ path: { id: sessionId } });
           const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
-          const pending = todos.filter((t: Todo) => t.status === 'in_progress' || t.status === 'pending');
-          const completed = todos.filter((t: Todo) => t.status === 'completed' || t.status === 'cancelled');
+          const pending = todos.filter((t: any) => t.status === 'in_progress' || t.status === 'pending');
+          const completed = todos.filter((t: any) => t.status === 'completed' || t.status === 'cancelled');
 
           templateVars.total = String(todos.length);
           templateVars.completed = String(completed.length);
           templateVars.pending = String(pending.length);
 
           if (pending.length > 0) {
-            const todoList = pending.slice(0, 5).map((t: Todo) => t.content || t.title || t.id).join(', ');
+            const todoList = pending.slice(0, 5).map((t: any) => t.content || t.title || t.id).join(', ');
             templateVars.todoList = todoList + (pending.length > 5 ? '...' : '');
             messageText = formatMessage(config.continueWithTodosMessage, templateVars);
             log('todo context added:', pending.length, 'pending tasks');
@@ -395,14 +324,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       // Prompt guard: prevent duplicate continue messages
       const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
       if (isDuplicate) {
-        log('[Recovery] PROMPT GUARD BLOCKED — similar prompt recently sent, skipping recovery', sessionId);
+        log('prompt guard blocked duplicate continue, skipping recovery');
         s.aborting = false;
         return;
       }
 
       s.needsContinue = true;
       s.continueMessageText = messageText;
-      log('[Recovery] QUEUED CONTINUE — needsContinue=true, message length:', messageText.length, 'session:', sessionId);
+      log('queued continue message, waiting for stable state');
 
       s.attempts++;
       s.autoSubmitCount++;
@@ -413,10 +342,9 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.nudgeCount = 0;
       cancelNudge(sessionId);
     } catch (e) {
-      log('[Recovery] CATCH BLOCK — recovery failed with error:', String(e), 'session:', sessionId);
+      log('recovery failed:', e);
       s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
     } finally {
-      log('[Recovery] FINALLY — setting aborting=false, session:', sessionId, 'aborting was:', s.aborting);
       s.aborting = false;
     }
   }

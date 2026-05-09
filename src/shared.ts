@@ -2,13 +2,241 @@ import type { PluginInput } from "@opencode-ai/plugin";
 import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 
-// Re-exports for backward compatibility
-export type { Todo, SessionState } from "./session-state.js";
-export type { PluginConfig } from "./config.js";
-export { DEFAULT_CONFIG, validateConfig } from "./config.js";
-export { createSession, updateProgress } from "./session-state.js";
-
 export type TypedPluginInput = PluginInput;
+
+export interface SessionState {
+  // === Timer & Progress (terminal.ts, index.ts) ===
+  timer: ReturnType<typeof setTimeout> | null;
+  lastProgressAt: number;
+  actionStartedAt: number;
+
+  // === Recovery (recovery.ts) ===
+  attempts: number;
+  lastRecoveryTime: number;
+  backoffAttempts: number;
+  autoSubmitCount: number;
+  aborting: boolean;
+  recoveryStartTime: number;
+  stallDetections: number;
+  recoverySuccessful: number;
+  recoveryFailed: number;
+  lastRecoverySuccess: number;
+  totalRecoveryTimeMs: number;
+  recoveryTimes: number[];
+  lastStallPartType: string;
+  stallPatterns: Record<string, number>;
+  continueTimestamps: number[]; // Hallucination loop detection
+
+  // === Session Control (index.ts) ===
+  userCancelled: boolean;
+  planning: boolean;
+  planBuffer: string;
+  compacting: boolean;
+  sessionCreatedAt: number;
+  messageCount: number;
+
+  // === Compaction (compaction.ts) ===
+  estimatedTokens: number;
+  lastCompactionAt: number;
+  tokenLimitHits: number;
+
+  // === Nudge (nudge.ts) ===
+  nudgeTimer: ReturnType<typeof setTimeout> | null;
+  lastNudgeAt: number;
+  nudgeCount: number;
+  lastTodoSnapshot: string;
+  nudgePaused: boolean;
+  hasOpenTodos: boolean;
+  lastKnownTodos: Array<{ id: string; status: string; content?: string; title?: string }>;
+
+  // === Continue Queue (recovery.ts, review.ts) ===
+  needsContinue: boolean;
+  continueMessageText: string;
+
+  // === Review (review.ts) ===
+  reviewFired: boolean;
+  reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
+
+  // === Message Tracking (index.ts) ===
+  lastUserMessageId: string;
+  sentMessageAt: number;
+
+  // === Advisory (ai-advisor.ts, recovery.ts, nudge.ts) ===
+  lastAdvisoryAdvice: { action: string; confidence: number; reasoning: string; stallPattern?: string; customPrompt?: string; contextSummary?: string } | null;
+
+  // === Status File (status-file.ts) ===
+  statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
+}
+
+export interface PluginConfig {
+  stallTimeoutMs: number;
+  waitAfterAbortMs: number;
+  maxRecoveries: number;
+  cooldownMs: number;
+  abortPollIntervalMs: number;
+  abortPollMaxTimeMs: number;
+  abortPollMaxFailures: number;
+  debug: boolean;
+  maxBackoffMs: number;
+  maxAutoSubmits: number;
+  continueMessage: string;
+  continueWithTodosMessage: string;
+  maxAttemptsMessage: string;
+  includeTodoContext: boolean;
+  reviewOnComplete: boolean;
+  reviewMessage: string;
+  reviewDebounceMs: number;
+  showToasts: boolean;
+  nudgeEnabled: boolean;
+  nudgeIdleDelayMs: number;
+  nudgeMaxSubmits: number;
+  nudgeMessage: string;
+  nudgeCooldownMs: number;
+  autoCompact: boolean;
+  maxSessionAgeMs: number;
+  proactiveCompactAtTokens: number;
+  proactiveCompactAtPercent: number;
+  compactRetryDelayMs: number;
+  compactMaxRetries: number;
+  shortContinueMessage: string;
+  continueWithPlanMessage: string;
+  tokenLimitPatterns: string[];
+  terminalTitleEnabled: boolean;
+  statusFileEnabled: boolean;
+  statusFilePath: string;
+  maxStatusHistory: number;
+  statusFileRotate: number;
+  recoveryHistogramEnabled: boolean;
+  stallPatternDetection: boolean;
+  terminalProgressEnabled: boolean;
+  compactionVerifyWaitMs: number;
+  compactCooldownMs: number;
+  compactReductionFactor: number;
+  compactAtMessageCount: number;
+  dcpDetected: boolean;
+  dcpVersion: string | null;
+  
+  // === AI Advisory (ai-advisor.ts) ===
+  enableAdvisory: boolean;
+  advisoryModel: string;
+  advisoryTimeoutMs: number;
+  advisoryMaxTokens: number;
+  advisoryTemperature: number;
+
+  // === Session Monitor (session-monitor.ts) ===
+  subagentWaitMs: number;
+  sessionDiscoveryIntervalMs: number;
+  idleSessionTimeoutMs: number;
+  maxSessions: number;
+  orphanParentDetection: boolean;
+  sessionDiscovery: boolean;
+  idleCleanup: boolean;
+}
+
+export const DEFAULT_CONFIG: PluginConfig = {
+  stallTimeoutMs: 180000,
+  waitAfterAbortMs: 5000,
+  maxRecoveries: 3,
+  cooldownMs: 60000,
+  abortPollIntervalMs: 200,
+  abortPollMaxTimeMs: 5000,
+  abortPollMaxFailures: 3,
+  debug: false,
+  maxBackoffMs: 1800000,
+  maxAutoSubmits: 3,
+  shortContinueMessage: "Continue.",
+  continueWithPlanMessage: "Please continue with your plan. You were in the middle of creating a plan — pick up where you left off.",
+  continueMessage: "Please continue from where you left off.",
+  continueWithTodosMessage: "Please continue from where you left off. You have {pending} open task(s): {todoList}.",
+  maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
+  includeTodoContext: true,
+  reviewOnComplete: true,
+  reviewMessage: "All tasks in this session have been completed. Please perform a final review: summarize what was accomplished, note any technical decisions or trade-offs made, flag anything that should be documented, check for any oversights or edge cases that might have been missed, suggest tests that should be added or run to verify the changes, and list any follow-up tasks or improvements for next time. If you find anything that needs fixing, please create appropriate todos.",
+  reviewDebounceMs: 500,
+  showToasts: true,
+  nudgeEnabled: true,
+  nudgeIdleDelayMs: 500,
+  nudgeMaxSubmits: 3,
+  nudgeMessage: "The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks.",
+  nudgeCooldownMs: 60000,
+  tokenLimitPatterns: ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],
+  terminalTitleEnabled: true,
+  statusFileEnabled: true,
+  autoCompact: true,
+  maxSessionAgeMs: 7200000,
+  proactiveCompactAtTokens: 100000,
+  proactiveCompactAtPercent: 50,
+  compactRetryDelayMs: 3000,
+  compactMaxRetries: 3,
+  statusFilePath: "",
+  maxStatusHistory: 10,
+  statusFileRotate: 5,
+  recoveryHistogramEnabled: true,
+  stallPatternDetection: true,
+  terminalProgressEnabled: true,
+  compactionVerifyWaitMs: 10000,
+  compactCooldownMs: 60000,
+  compactReductionFactor: 0.7,
+  compactAtMessageCount: 50,
+  dcpDetected: false,
+  dcpVersion: null,
+  
+  // AI Advisory defaults
+  enableAdvisory: false,
+  advisoryModel: "",
+  advisoryTimeoutMs: 5000,
+  advisoryMaxTokens: 500,
+  advisoryTemperature: 0.1,
+
+  // Session Monitor defaults
+  subagentWaitMs: 15000,
+  sessionDiscoveryIntervalMs: 60000,
+  idleSessionTimeoutMs: 600000,
+  maxSessions: 50,
+  orphanParentDetection: true,
+  sessionDiscovery: true,
+  idleCleanup: true,
+};
+
+export function validateConfig(config: PluginConfig): PluginConfig {
+  const errors: string[] = [];
+  
+  if (config.stallTimeoutMs <= 0) errors.push(`stallTimeoutMs must be > 0, got ${config.stallTimeoutMs}`);
+  if (config.waitAfterAbortMs <= 0) errors.push(`waitAfterAbortMs must be > 0, got ${config.waitAfterAbortMs}`);
+  if (config.stallTimeoutMs < config.waitAfterAbortMs) errors.push(`stallTimeoutMs (${config.stallTimeoutMs}) must be >= waitAfterAbortMs (${config.waitAfterAbortMs})`);
+  if (config.maxRecoveries < 0) errors.push(`maxRecoveries must be >= 0, got ${config.maxRecoveries}`);
+  if (config.cooldownMs < 0) errors.push(`cooldownMs must be >= 0, got ${config.cooldownMs}`);
+  if (config.abortPollIntervalMs <= 0) errors.push(`abortPollIntervalMs must be > 0, got ${config.abortPollIntervalMs}`);
+  if (config.abortPollMaxTimeMs < 0) errors.push(`abortPollMaxTimeMs must be >= 0, got ${config.abortPollMaxTimeMs}`);
+  if (config.abortPollMaxFailures <= 0) errors.push(`abortPollMaxFailures must be > 0, got ${config.abortPollMaxFailures}`);
+  if (config.maxBackoffMs < config.stallTimeoutMs) errors.push(`maxBackoffMs (${config.maxBackoffMs}) must be >= stallTimeoutMs (${config.stallTimeoutMs})`);
+  if (config.maxAutoSubmits < 0) errors.push(`maxAutoSubmits must be >= 0, got ${config.maxAutoSubmits}`);
+  if (!config.continueMessage || typeof config.continueMessage !== 'string') errors.push(`continueMessage must be a non-empty string`);
+  if (!config.reviewMessage || typeof config.reviewMessage !== 'string') errors.push(`reviewMessage must be a non-empty string`);
+  if (config.reviewDebounceMs < 0) errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
+  if (config.proactiveCompactAtTokens < 0) errors.push(`proactiveCompactAtTokens must be >= 0, got ${config.proactiveCompactAtTokens}`);
+  if (config.proactiveCompactAtPercent < 0 || config.proactiveCompactAtPercent > 100) errors.push(`proactiveCompactAtPercent must be between 0 and 100, got ${config.proactiveCompactAtPercent}`);
+  if (config.compactRetryDelayMs < 0) errors.push(`compactRetryDelayMs must be >= 0, got ${config.compactRetryDelayMs}`);
+  if (config.compactMaxRetries < 0) errors.push(`compactMaxRetries must be >= 0, got ${config.compactMaxRetries}`);
+  if (config.compactCooldownMs < 0) errors.push(`compactCooldownMs must be >= 0, got ${config.compactCooldownMs}`);
+  if (typeof config.compactReductionFactor !== 'number' || config.compactReductionFactor <= 0 || config.compactReductionFactor >= 1) errors.push(`compactReductionFactor must be between 0 and 1 (exclusive), got ${config.compactReductionFactor}`);
+  if (config.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${config.nudgeIdleDelayMs}`);
+  if (config.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${config.nudgeMaxSubmits}`);
+  if (!config.shortContinueMessage || config.shortContinueMessage.trim().length === 0) errors.push(`shortContinueMessage must be non-empty`);
+  if (!config.continueWithPlanMessage || config.continueWithPlanMessage.trim().length === 0) errors.push(`continueWithPlanMessage must be non-empty`);
+  if (!Array.isArray(config.tokenLimitPatterns) || config.tokenLimitPatterns.length === 0) errors.push(`tokenLimitPatterns must be a non-empty array`);
+
+  if (config.subagentWaitMs < 0) errors.push(`subagentWaitMs must be >= 0, got ${config.subagentWaitMs}`);
+  if (config.sessionDiscoveryIntervalMs < 0) errors.push(`sessionDiscoveryIntervalMs must be >= 0, got ${config.sessionDiscoveryIntervalMs}`);
+  if (config.idleSessionTimeoutMs < 0) errors.push(`idleSessionTimeoutMs must be >= 0, got ${config.idleSessionTimeoutMs}`);
+  if (config.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${config.maxSessions}`);
+
+  if (errors.length > 0) {
+    return { ...DEFAULT_CONFIG };
+  }
+  
+  return config;
+}
 
 // Cache for model context limit to avoid re-reading opencode.json
 // Encapsulated in a class to avoid module-level state pollution and improve testability
@@ -38,15 +266,12 @@ class ModelContextCache {
       const limits: number[] = [];
       if (config.provider) {
         for (const provider of Object.values(config.provider)) {
-          const p = provider as Record<string, unknown>;
+          const p = provider as any;
           if (p.models) {
             for (const model of Object.values(p.models)) {
-              const m = model as Record<string, unknown>;
-              if (m.limit && typeof m.limit === 'object' && m.limit !== null) {
-                const limit = m.limit as Record<string, unknown>;
-                if (typeof limit.context === 'number') {
-                  limits.push(limit.context);
-                }
+              const m = model as any;
+              if (m.limit?.context && typeof m.limit.context === 'number') {
+                limits.push(m.limit.context);
               }
             }
           }
@@ -77,7 +302,7 @@ export function invalidateModelLimitCache(): void {
   modelContextCache.invalidate();
 }
 
-export function getCompactionThreshold(modelContextLimit: number | null, config: { proactiveCompactAtTokens: number }): number {
+export function getCompactionThreshold(modelContextLimit: number | null, config: PluginConfig): number {
   // Always compact at proactiveCompactAtTokens (default 100k)
   // The proactiveCompactAtPercent and 200k model distinction were over-engineered
   return config.proactiveCompactAtTokens;
@@ -144,7 +369,7 @@ export function formatDuration(ms: number): string {
  * 
  * Returns: { total: number, input: number, output: number } or null if not found
  */
-export function parseTokensFromError(error: { message?: string } | null): { total: number; input: number; output: number } | null {
+export function parseTokensFromError(error: any): { total: number; input: number; output: number } | null {
   if (!error) return null;
   const message = error.message || String(error);
   
@@ -175,6 +400,77 @@ export function parseTokensFromError(error: { message?: string } | null): { tota
   return null;
 }
 
+export function createSession(): SessionState {
+  const now = Date.now();
+  return {
+    // Timer & Progress
+    timer: null,
+    lastProgressAt: now,
+    actionStartedAt: 0,
+
+    // Recovery
+    attempts: 0,
+    lastRecoveryTime: 0,
+    backoffAttempts: 0,
+    autoSubmitCount: 0,
+    aborting: false,
+    recoveryStartTime: 0,
+    stallDetections: 0,
+    recoverySuccessful: 0,
+    recoveryFailed: 0,
+    lastRecoverySuccess: 0,
+    totalRecoveryTimeMs: 0,
+    recoveryTimes: [],
+    lastStallPartType: "",
+    stallPatterns: {},
+    continueTimestamps: [],
+
+    // Session Control
+    userCancelled: false,
+    planning: false,
+    planBuffer: '',
+    compacting: false,
+    sessionCreatedAt: now,
+    messageCount: 0,
+
+    // Compaction
+    estimatedTokens: 0,
+    lastCompactionAt: 0,
+    tokenLimitHits: 0,
+
+    // Nudge
+    nudgeTimer: null,
+    lastNudgeAt: 0,
+    nudgeCount: 0,
+    lastTodoSnapshot: '',
+    nudgePaused: false,
+    hasOpenTodos: false,
+    lastKnownTodos: [],
+
+    // Continue Queue
+    needsContinue: false,
+    continueMessageText: '',
+
+    // Review
+    reviewFired: false,
+    reviewDebounceTimer: null,
+
+    // Message Tracking
+    lastUserMessageId: '',
+    sentMessageAt: 0,
+
+    // Advisory
+    lastAdvisoryAdvice: null,
+
+    // Status File
+    statusHistory: [],
+  };
+}
+
+export function updateProgress(s: SessionState) {
+  s.lastProgressAt = Date.now();
+}
+
 export function formatMessage(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
 }
@@ -198,15 +494,14 @@ export async function shouldBlockPrompt(
     const now = Date.now();
     
     for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i] as Record<string, unknown>;
-      const role = msg.role || (msg.info as Record<string, unknown>)?.role;
+      const msg = messages[i] as any;
+      const role = msg.role || msg.info?.role;
       if (role !== "assistant") continue;
       
-      const msgTime = (msg.createdAt as number) || ((msg.info as Record<string, unknown>)?.createdAt as number) || 0;
+      const msgTime = msg.createdAt || msg.info?.createdAt || 0;
       if (now - msgTime > 30000) continue; // Only check last 30s
       
-      const parts = msg.parts as Array<Record<string, unknown>> | undefined;
-      const text = (msg.text as string) || (parts?.map(p => p.text as string).join(" ")) || "";
+      const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
       // Check if the recent message contains similar content
       if (text && promptText && (
         text.includes(promptText.substring(0, 50)) ||
@@ -216,12 +511,11 @@ export async function shouldBlockPrompt(
         return true;
       }
     }
-  } catch {
+  } catch (e) {
     // Fail-open: allow prompt if check fails
   }
   return false;
 }
-
 export async function safeHook(
   name: string,
   fn: () => Promise<void>,

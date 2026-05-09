@@ -1,5 +1,4 @@
-import type { PluginConfig } from "./config.js";
-import type { SessionState } from "./session-state.js";
+import type { PluginConfig, SessionState } from "./shared.js";
 import { shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
@@ -10,7 +9,7 @@ export interface ReviewDeps {
   input: TypedPluginInput;
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
-  isTokenLimitError: (error: unknown) => boolean;
+  isTokenLimitError: (error: any) => boolean;
   forceCompact: (sessionId: string) => Promise<boolean>;
 }
 
@@ -49,7 +48,7 @@ export function createReviewModule(deps: ReviewDeps) {
         return;
       }
 
-      // Send review prompt (NOT synthetic - we want AI to respond with tests/fixes)
+      // Send review prompt
       s.messageCount++;
       await input.client.session.prompt({
         path: { id: sessionId },
@@ -58,12 +57,13 @@ export function createReviewModule(deps: ReviewDeps) {
           parts: [{
             type: "text",
             text: config.reviewMessage,
+            synthetic: true,
           }],
         },
       });
 
       log('review sent successfully');
-    } catch (e) {
+    } catch (e: any) {
       log('review failed:', e);
       if (isTokenLimitError(e)) {
         log('token limit error in review, forcing compaction');
@@ -113,7 +113,7 @@ export function createReviewModule(deps: ReviewDeps) {
         s.recoveryStartTime = 0;
       }
       writeStatusFile(sessionId);
-    } catch (e) {
+    } catch (e: any) {
       log('continue failed:', e);
       s.recoveryFailed++;
       writeStatusFile(sessionId);

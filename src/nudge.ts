@@ -1,17 +1,12 @@
-import { existsSync } from "fs";
-import type { PluginConfig } from "./config.js";
-import type { SessionState, Todo } from "./session-state.js";
-import { formatMessage, shouldBlockPrompt } from "./shared.js";
+import { type PluginConfig, type SessionState, formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { AIAdvisor, AIAdvice } from "./ai-advisor.js";
-import { parsePlan, getPlanPath, buildPlanContinueMessage } from "./plan.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts" | "enableAdvisory" | "planDrivenContinue" |
-    "planFilePath" | "planMaxItemsPerContinue">;
+    "showToasts" | "enableAdvisory">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -64,7 +59,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i] as any;
       if (msg.role === "assistant" || msg.info?.role === "assistant") {
-        const text = msg.text || msg.parts?.map((p: { text?: string }) => p.text).join(" ") || "";
+        const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
         if (isQuestion(text)) {
           log("last assistant message is a question, skipping nudge", { sessionId, text: text.substring(0, 100) });
           return true;
@@ -111,18 +106,10 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     sessionId: string,
     knownTodos?: Array<{ id: string; status: string; content?: string; title?: string }>
   ): Promise<void> {
-    log("[Nudge] START — checking session:", sessionId);
-    
-    if (isDisposed()) {
-      log("[Nudge] ABORT — plugin disposed");
-      return;
-    }
+    if (isDisposed()) return;
 
     const s = sessions.get(sessionId);
-    if (!s) {
-      log("[Nudge] ABORT — session not found:", sessionId);
-      return;
-    }
+    if (!s) return;
 
     if (!config.nudgeEnabled) {
       log("nudge disabled, skip");
@@ -170,59 +157,11 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       completed: completed.length,
     });
 
-    // No pending todos = nothing to nudge, but check plan for continuation (if enabled)
+    // No pending todos = nothing to do
     if (pending.length === 0) {
       log("no pending todos, nudge done");
       s.nudgeCount = 0;
       s.lastTodoSnapshot = "";
-      
-      // Plan-driven continue (if enabled)
-      if (config.planDrivenContinue) {
-        const directory = input.directory || "";
-        const planPath = getPlanPath(directory, config.planFilePath);
-        log("plan check: directory=", directory, "planPath=", planPath, "exists=", existsSync(planPath));
-        const planResult = parsePlan(planPath);
-        
-        if (planResult.nextItem) {
-          // Skip if we already continued for this exact plan item
-          if (s.lastPlanItemDescription === planResult.nextItem.description) {
-            log("already continued for this plan item, skipping", planResult.nextItem.description);
-            return;
-          }
-          
-          const continueMessage = buildPlanContinueMessage(planResult, config.planMaxItemsPerContinue);
-          if (continueMessage) {
-            log("plan has pending items, sending plan-driven continue", planResult.nextItem.description);
-            
-            // Check prompt guard to avoid duplicates
-            const isDuplicate = await shouldBlockPrompt(sessionId, continueMessage, input, log as (...args: unknown[]) => void);
-            if (!isDuplicate) {
-              try {
-                await input.client.session.prompt({
-                  path: { id: sessionId },
-                  query: { directory: input.directory || "" },
-                  body: {
-                    parts: [
-                      { type: "text", text: continueMessage }
-                    ]
-                  }
-                });
-                log("plan-driven continue sent successfully");
-                s.autoSubmitCount++;
-                s.messageCount++;
-                s.lastPlanItemDescription = planResult.nextItem.description;
-              } catch (e) {
-                log("plan-driven continue failed:", e);
-              }
-            } else {
-              log("plan-driven continue blocked by prompt guard");
-            }
-          }
-        } else {
-          log("no plan items pending");
-        }
-      }
-      
       return;
     }
 
@@ -265,13 +204,13 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     // This prevents nudging when the AI is explicitly asking the user for input
     const lastMessageIsQuestion = await checkLastMessageIsQuestion(sessionId);
     if (lastMessageIsQuestion) {
-      log("nudge skipped - last assistant message is a question", sessionId);
       return;
     }
 
       // AI Advisory: check if we should wait instead of nudging
     if (aiAdvisor && config.enableAdvisory) {
       try {
+        const s = sessions.get(sessionId);
         if (s) {
           const context = await aiAdvisor.extractContext(sessionId, s);
           const advice = await aiAdvisor.getAdvice(context);
@@ -280,7 +219,6 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
             s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
           }
           if (advice && shouldSkipNudge(advice)) {
-            log("[Nudge] SKIP — AI advisory recommends waiting:", advice.action, "confidence:", advice.confidence);
             return;
           }
         }

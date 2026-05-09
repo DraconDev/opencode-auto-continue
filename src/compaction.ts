@@ -1,5 +1,4 @@
-import type { PluginConfig } from "./config.js";
-import type { SessionState } from "./session-state.js";
+import type { PluginConfig, SessionState } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface CompactionDeps {
@@ -12,28 +11,12 @@ export interface CompactionDeps {
 export function createCompactionModule(deps: CompactionDeps) {
   const { config, sessions, log, input } = deps;
 
-  function isTokenLimitError(error: unknown): boolean {
+  function isTokenLimitError(error: any): boolean {
     if (!error) return false;
-    
-    // Handle Error instances
-    if (error instanceof Error) {
-      return config.tokenLimitPatterns.some(pattern => 
-        error.message.toLowerCase().includes(pattern.toLowerCase())
-      );
-    }
-    
-    // Handle plain error-like objects (from event properties)
-    if (typeof error === "object" && error !== null) {
-      const err = error as Record<string, unknown>;
-      const message = typeof err.message === "string" ? err.message : "";
-      const name = typeof err.name === "string" ? err.name : "";
-      const combinedText = (message + " " + name).toLowerCase();
-      return config.tokenLimitPatterns.some(pattern => 
-        combinedText.includes(pattern.toLowerCase())
-      );
-    }
-    
-    return false;
+    const message = error.message || String(error);
+    return config.tokenLimitPatterns.some(pattern =>
+      message.toLowerCase().includes(pattern.toLowerCase())
+    );
   }
 
   async function attemptCompact(sessionId: string): Promise<boolean> {
@@ -96,9 +79,8 @@ export function createCompactionModule(deps: CompactionDeps) {
         s.compacting = false;
       }
       return false;
-    } catch (e) {
-      const err = e instanceof Error ? e : new Error(String(e));
-      log('compaction attempt failed:', err.message, 'status:', (e as Record<string, unknown>)?.status);
+    } catch (e: any) {
+      log('compaction attempt failed:', e?.message || e?.name || String(e), 'status:', e?.status);
       const s = sessions.get(sessionId);
       if (s) {
         s.compacting = false;
