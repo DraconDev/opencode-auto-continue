@@ -376,7 +376,7 @@ export function isPlanContent(text: string): boolean {
   return PLAN_PATTERNS.some(pattern => pattern.test(text.trim()));
 }
 
-export function estimateTokens(text: string): number {
+export function estimateTokens(text: string, multiplier: number = 1.0): number {
   const englishRatio = 0.75;
   const codeRatio = 1.0;
   const digitRatio = 0.5;
@@ -389,9 +389,8 @@ export function estimateTokens(text: string): number {
     else if (codeChars.has(ch)) code++;
     else english++;
   }
-  // More aggressive estimation: multiply by 2 to account for system prompt,
-  // previous messages, and other context we can't see
-  return Math.ceil((english * englishRatio + code * codeRatio + digits * digitRatio) / 4 * 2);
+  // FIX 5: Use configurable multiplier instead of hardcoded ×2
+  return Math.ceil((english * englishRatio + code * codeRatio + digits * digitRatio) / 4 * multiplier);
 }
 
 export function formatDuration(ms: number): string {
