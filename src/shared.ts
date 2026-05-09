@@ -124,6 +124,7 @@ export interface PluginConfig {
   compactCooldownMs: number;
   compactReductionFactor: number;
   compactAtMessageCount: number;
+  tokenEstimateMultiplier: number; // FIX 5: Configurable multiplier for token estimation
   dcpDetected: boolean;
   dcpVersion: string | null;
 
@@ -198,6 +199,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
+  tokenEstimateMultiplier: 1.0, // FIX 5: Default to 1.0 (no arbitrary inflation)
   dcpDetected: false,
   dcpVersion: null,
 
