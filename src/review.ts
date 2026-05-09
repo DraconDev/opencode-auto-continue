@@ -77,29 +77,37 @@ export function createReviewModule(deps: ReviewDeps) {
     const s = sessions.get(sessionId);
     if (!s || !s.needsContinue) return;
 
-    const messageText = s.continueMessageText;
-    // FIX 1: Check retry limit to prevent infinite retry loops
-    const MAX_CONTINUE_RETRIES = 3;
-    const CONTINUE_RETRY_BACKOFF_MS = 5000;
-    if (s.continueRetryCount >= MAX_CONTINUE_RETRIES) {
-      log('continue retry limit reached, giving up:', sessionId, 'retries:', s.continueRetryCount);
-      s.needsContinue = false;
-      s.continueMessageText = '';
-      s.continueRetryCount = 0;
-      writeStatusFile(sessionId);
+    // FIX 2: Concurrency guard - prevent duplicate prompts from concurrent idle events
+    if (s.continueInProgress) {
+      log('sendContinue already in progress, skipping duplicate:', sessionId);
       return;
     }
-
-    // FIX 1: Enforce backoff between continue retries
-    const now = Date.now();
-    if (s.continueRetryCount > 0 && now - s.lastContinueRetryAt < CONTINUE_RETRY_BACKOFF_MS) {
-      log('continue retry backoff active, skipping:', sessionId);
-      return;
-    }
-
-    log('sending continue prompt from event handler (retry:', s.continueRetryCount, ')');
+    s.continueInProgress = true;
 
     try {
+      const messageText = s.continueMessageText;
+      // FIX 1: Check retry limit to prevent infinite retry loops
+      const MAX_CONTINUE_RETRIES = 3;
+      const CONTINUE_RETRY_BACKOFF_MS = 5000;
+      if (s.continueRetryCount >= MAX_CONTINUE_RETRIES) {
+        log('continue retry limit reached, giving up:', sessionId, 'retries:', s.continueRetryCount);
+        s.needsContinue = false;
+        s.continueMessageText = '';
+        s.continueRetryCount = 0;
+        s.continueInProgress = false;
+        writeStatusFile(sessionId);
+        return;
+      }
+
+      // FIX 1: Enforce backoff between continue retries
+      const now = Date.now();
+      if (s.continueRetryCount > 0 && now - s.lastContinueRetryAt < CONTINUE_RETRY_BACKOFF_MS) {
+        log('continue retry backoff active, skipping:', sessionId);
+        return;
+      }
+
+      log('sending continue prompt from event handler (retry:', s.continueRetryCount, ')');
+
       s.messageCount++;
       await input.client.session.prompt({
         path: { id: sessionId },
@@ -118,6 +126,7 @@ export function createReviewModule(deps: ReviewDeps) {
       s.continueMessageText = '';
       s.continueRetryCount = 0;
       s.lastContinueRetryAt = 0;
+      s.continueInProgress = false;
 
       log('continue sent successfully');
       s.recoverySuccessful++;
@@ -138,6 +147,7 @@ export function createReviewModule(deps: ReviewDeps) {
       // FIX 1: Track retry count on failure
       s.continueRetryCount++;
       s.lastContinueRetryAt = Date.now();
+      s.continueInProgress = false;
       writeStatusFile(sessionId);
 
       // Handle token limit error
