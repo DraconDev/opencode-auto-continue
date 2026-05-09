@@ -44,6 +44,8 @@ export interface SessionState {
   nudgeTimer: ReturnType<typeof setTimeout> | null;
   lastNudgeAt: number;
   nudgeCount: number;
+  nudgeFailureCount: number; // FIX 8: Track nudge failures
+  lastNudgeFailureAt: number; // FIX 8: Track last nudge failure time
   lastTodoSnapshot: string;
   nudgePaused: boolean;
   hasOpenTodos: boolean;
@@ -54,6 +56,7 @@ export interface SessionState {
   continueMessageText: string;
   continueRetryCount: number; // FIX 1: Track continue retry attempts
   lastContinueRetryAt: number; // FIX 1: Track last continue retry time
+  continueInProgress: boolean; // FIX 2: Concurrency guard for sendContinue
 
   // === Timer Generation (Fix 4: Prevent stale timer races) ===
   timerGeneration: number;
