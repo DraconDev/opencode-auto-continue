@@ -127,7 +127,15 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
-    if (s.planning) return;
+    // FIX 3: Allow recovery if planning has been going on too long (5 min max)
+    const PLANNING_TIMEOUT_MS = 5 * 60 * 1000;
+    if (s.planning && Date.now() - s.planningStartedAt < PLANNING_TIMEOUT_MS) {
+      log('session is planning, skipping recovery (planning timeout not reached):', sessionId);
+      return;
+    } else if (s.planning) {
+      log('planning timeout reached, forcing recovery:', sessionId);
+      s.planning = false; // Clear planning flag to allow recovery
+    }
     if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
