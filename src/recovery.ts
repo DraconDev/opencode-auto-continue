@@ -95,6 +95,19 @@ function isHallucinationLoop(s: SessionState): boolean {
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
 
+  function scheduleRecovery(sessionId: string, delayMs: number): void {
+    const s = sessions.get(sessionId);
+    if (!s) return;
+    const timer = setTimeout(() => {
+      const current = sessions.get(sessionId);
+      if (current?.timer === timer) {
+        current.timer = null;
+      }
+      recover(sessionId);
+    }, delayMs);
+    s.timer = timer;
+  }
+
   async function isSessionIdle(sessionId: string): Promise<boolean> {
     try {
       const statusResult = await input.client.session.status({});
@@ -115,7 +128,6 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.userCancelled) return;
     if (s.planning) return;
     if (s.compacting) return;
-    s.timer = null;
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
         if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
@@ -134,14 +146,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
             if (advice.action === 'wait' && advice.suggestedDelayMs) {
               log('AI suggests waiting', advice.suggestedDelayMs, 'ms instead of aborting');
               s.backoffAttempts = Math.max(0, s.backoffAttempts - 1); // Forgive one backoff
-              s.timer = setTimeout(() => recover(sessionId), advice.suggestedDelayMs);
+              scheduleRecovery(sessionId, advice.suggestedDelayMs);
               return;
             }
             
             if (advice.action === 'continue') {
               log('AI suggests continuing without abort');
               s.attempts = 0; // Reset attempts
-              s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs);
+              scheduleRecovery(sessionId, config.stallTimeoutMs);
               return;
             }
             
@@ -158,7 +170,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       );
       s.backoffAttempts++;
       log('max recoveries reached, using exponential backoff:', backoffDelay, 'ms (attempt', s.backoffAttempts, ')');
-      s.timer = setTimeout(() => recover(sessionId), backoffDelay);
+      scheduleRecovery(sessionId, backoffDelay);
       return;
     }
 
@@ -168,7 +180,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const remainingCooldown = config.cooldownMs - (now - s.lastRecoveryTime);
       const delay = Math.max(remainingCooldown, 100);
       log('recovery cooldown active, rescheduling:', delay, 'ms');
-      s.timer = setTimeout(() => recover(sessionId), delay);
+      scheduleRecovery(sessionId, delay);
       return;
     }
 
@@ -203,7 +215,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
         s.aborting = false;
         const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
-        s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
+        scheduleRecovery(sessionId, Math.max(remaining, 100));
         return;
       }
 
@@ -223,7 +235,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       } catch (e) {
         log('abort failed:', e);
         s.aborting = false;
-        s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
+        scheduleRecovery(sessionId, config.stallTimeoutMs * 2);
         return;
       }
 
@@ -370,7 +382,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } catch (e) {
       log('recovery failed:', e);
-      s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
+      scheduleRecovery(sessionId, config.stallTimeoutMs * 2);
     } finally {
       s.aborting = false;
     }

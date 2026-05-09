@@ -393,6 +393,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, aiAdvisor, sendContinue: review.sendContinue });
 
+  function scheduleRecovery(sessionId: string, delayMs: number): void {
+    const s = getSession(sessionId);
+    const timer = setTimeout(() => {
+      const current = sessions.get(sessionId);
+      if (current?.timer === timer) {
+        current.timer = null;
+      }
+      recover(sessionId);
+    }, delayMs);
+    s.timer = timer;
+  }
+
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
   sessionMonitor.start();
 
@@ -571,9 +583,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (status?.type === "busy" || status?.type === "retry") {
           clearTimer(sid);
           if (!s.planning && !s.compacting) {
-            s.timer = setTimeout(() => {
-              recover(sid);
-            }, config.stallTimeoutMs);
+            scheduleRecovery(sid, config.stallTimeoutMs);
           }
         }
 
@@ -676,9 +686,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          s.timer = setTimeout(() => {
-            recover(sid);
-          }, config.stallTimeoutMs);
+          scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
         return;
@@ -746,9 +754,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          s.timer = setTimeout(() => {
-            recover(sid);
-          }, config.stallTimeoutMs);
+          scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
         return;
@@ -819,7 +825,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Restart stall timer since we just freed context
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          s.timer = setTimeout(() => recover(sid), 0);
+          scheduleRecovery(sid, 0);
         }
         writeStatusFile(sid);
         return;
