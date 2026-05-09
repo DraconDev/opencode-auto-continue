@@ -115,6 +115,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.userCancelled) return;
     if (s.planning) return;
     if (s.compacting) return;
+    s.timer = null;
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
         if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
@@ -163,7 +164,13 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     const now = Date.now();
 
-    if (now - s.lastRecoveryTime < config.cooldownMs) return;
+    if (now - s.lastRecoveryTime < config.cooldownMs) {
+      const remainingCooldown = config.cooldownMs - (now - s.lastRecoveryTime);
+      const delay = Math.max(remainingCooldown, 100);
+      log('recovery cooldown active, rescheduling:', delay, 'ms');
+      s.timer = setTimeout(() => recover(sessionId), delay);
+      return;
+    }
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
