@@ -62,6 +62,36 @@ describe("opencode-auto-continue", () => {
       vi.useRealTimers();
     });
 
+    it("should send recovery continue immediately after abort when status is idle", async () => {
+      vi.useFakeTimers();
+      mockStatus
+        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+        .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 100,
+        waitAfterAbortMs: 10,
+        cooldownMs: 0,
+        autoCompact: false,
+        abortPollIntervalMs: 5,
+        abortPollMaxTimeMs: 50,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(150);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      expect((mockPrompt.mock.calls[0] as any)[0].body.parts[0].text).toBe("Please continue from where you left off.");
+      vi.useRealTimers();
+    });
+
     it("should NOT set timer for idle session.status", async () => {
       vi.useFakeTimers();
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
