@@ -1,6 +1,6 @@
 {
   "name": "opencode-auto-continue",
-  "version": "7.8.177",
+  "version": "7.8.178",
   "description": "Auto-continue stalled OpenCode sessions — stall recovery, todo nudging, review on completion, and AI-driven session analysis",
   "keywords": [
     "opencode",

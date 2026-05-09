@@ -354,22 +354,18 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
         
         log("AI advice:", parsed.action, "confidence:", parsed.confidence, "reasoning:", parsed.reasoning?.substring(0, 100));
         
-        return parsed;
+        return {
+          action: parsed.action,
+          confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
+          reasoning: parsed.reasoning || "AI advisory",
+          suggestedDelayMs: parsed.suggestedDelayMs,
+          stallPattern: parsed.stallPattern || "unknown",
+          customPrompt: parsed.customPrompt || undefined,
+          contextSummary: parsed.contextSummary || undefined,
+        };
       } finally {
         clearTimeout(timeoutId);
       }
-        return null;
-      }
-
-      return {
-        action: parsed.action,
-        confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
-        reasoning: parsed.reasoning || "AI advisory",
-        suggestedDelayMs: parsed.suggestedDelayMs,
-        stallPattern: parsed.stallPattern || "unknown",
-        customPrompt: parsed.customPrompt || undefined,
-        contextSummary: parsed.contextSummary || undefined,
-      };
     } catch (e) {
       log("AI call failed:", e);
       return null;
