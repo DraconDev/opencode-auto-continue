@@ -206,6 +206,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   tokenEstimateMultiplier: 1.0, // FIX 5: Default to 1.0 (no arbitrary inflation)
   dcpDetected: false,
   dcpVersion: null,
+  planningTimeoutMs: 300000, // FIX 11: Default 5 minutes
 
   // Plan-Driven Continue defaults
   planDrivenContinue: false,
