@@ -295,9 +295,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function clearTimer(id: string) {
     const s = sessions.get(id);
-    if (s?.timer) {
+    if (!s) return;
+    // FIX 6: Clear all timers, not just recovery timer
+    if (s.timer) {
       clearTimeout(s.timer);
       s.timer = null;
+    }
+    if (s.nudgeTimer) {
+      clearTimeout(s.nudgeTimer);
+      s.nudgeTimer = null;
+    }
+    if (s.reviewDebounceTimer) {
+      clearTimeout(s.reviewDebounceTimer);
+      s.reviewDebounceTimer = null;
     }
   }
 
