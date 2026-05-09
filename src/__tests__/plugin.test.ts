@@ -1500,6 +1500,51 @@ describe("opencode-auto-continue", () => {
       expect(mockPrompt).toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it("should not resume nudging from a synthetic user message", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockRejectedValueOnce({ name: "MessageAbortedError", message: "User cancelled" });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "task", status: "in_progress" }] } } });
+
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      mockPrompt.mockClear();
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      await plugin.event({
+        event: {
+          type: "message.created",
+          properties: {
+            sessionID: "test",
+            info: {
+              role: "user",
+              id: "synthetic-1",
+              parts: [{ type: "text", text: "Please continue.", synthetic: true }],
+            },
+          },
+        },
+      });
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
   });
 
   describe("reasoning token tracking", () => {
