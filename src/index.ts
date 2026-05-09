@@ -426,10 +426,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   terminal.registerStatusLineHook();
 
-  const progressTypes = [
-    "message.part.updated",
-  ];
-
   const staleTypes = [
     "session.error",
     "session.ended",
