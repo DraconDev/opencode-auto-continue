@@ -264,20 +264,18 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       return;
     }
 
-      // AI Advisory: check if we should wait instead of nudging
+    // AI Advisory: check if we should wait instead of nudging
     if (aiAdvisor && config.enableAdvisory) {
       try {
-        const s = sessions.get(sessionId);
-        if (s) {
-          const context = await aiAdvisor.extractContext(sessionId, s);
-          const advice = await aiAdvisor.getAdvice(context);
-          // Save to session state for status file
-          if (advice) {
-            s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
-          }
-          if (advice && shouldSkipNudge(advice)) {
-            return;
-          }
+        // Use outer `s` variable (already validated at line 138-139)
+        const context = await aiAdvisor.extractContext(sessionId, s);
+        const advice = await aiAdvisor.getAdvice(context);
+        // Save to session state for status file
+        if (advice) {
+          s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
+        }
+        if (advice && shouldSkipNudge(advice)) {
+          return;
         }
       } catch (e: unknown) {
         log("advisory check failed (ignored)", String(e));
