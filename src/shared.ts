@@ -602,7 +602,7 @@ export async function shouldBlockPrompt(
   try {
     const resp = await input.client.session.messages({
       path: { id: sessionId },
-      query: { limit: 50 },
+      query: { limit: 15 }, // FIX 12: Reduced from 50 to reduce SDK load
     });
     const messages = Array.isArray(resp.data) ? resp.data : [];
     const now = Date.now();
