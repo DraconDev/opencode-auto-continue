@@ -159,6 +159,13 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       return;
     }
 
+    // FIX 8: Check failure backoff before proceeding
+    const NUDGE_FAILURE_BACKOFF_MS = 5000;
+    if (s.nudgeFailureCount > 0 && Date.now() - s.lastNudgeFailureAt < NUDGE_FAILURE_BACKOFF_MS) {
+      log("nudge failure backoff active, skipping:", sessionId, "failures:", s.nudgeFailureCount);
+      return;
+    }
+
     // Check cooldown
     if (Date.now() - s.lastNudgeAt < config.nudgeCooldownMs) {
       log("nudge skipped - cooldown active", sessionId);
