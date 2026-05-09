@@ -33,6 +33,8 @@ All config options are set in `opencode.json` under the plugin entry:
 | `waitAfterAbortMs` | number | `5000` | Wait after abort before sending continue |
 | `maxBackoffMs` | number | `1800000` | Max exponential backoff delay (30min) |
 | `maxSessionAgeMs` | number | `7200000` | Max session age before giving up (2hr) |
+| `planningTimeoutMs` | number | `300000` | Max time in planning state before forced recovery (5min) |
+| `tokenEstimateMultiplier` | number | `1.0` | Multiplier for text-based token estimation (was hardcoded 2.0) |
 
 ### Session Monitor (v7.5)
 
