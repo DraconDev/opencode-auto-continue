@@ -68,9 +68,12 @@ export interface PluginConfig {
 
   // Session Monitor
   subagentWaitMs: number;
+  orphanWaitMs?: number;
   sessionDiscoveryIntervalMs: number;
   idleSessionTimeoutMs: number;
+  idleCleanupMs?: number;
   maxSessions: number;
+  sessionMonitorEnabled?: boolean;
   orphanParentDetection: boolean;
   sessionDiscovery: boolean;
   idleCleanup: boolean;
@@ -139,46 +142,62 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Session Monitor defaults
   subagentWaitMs: 15000,
+  orphanWaitMs: 15000,
   sessionDiscoveryIntervalMs: 60000,
   idleSessionTimeoutMs: 600000,
+  idleCleanupMs: 600000,
   maxSessions: 50,
+  sessionMonitorEnabled: true,
   orphanParentDetection: true,
   sessionDiscovery: true,
   idleCleanup: true,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
+  const normalized: PluginConfig = { ...config };
+  if (typeof normalized.orphanWaitMs === "number") {
+    normalized.subagentWaitMs = normalized.orphanWaitMs;
+  }
+  if (typeof normalized.idleCleanupMs === "number") {
+    normalized.idleSessionTimeoutMs = normalized.idleCleanupMs;
+  }
+  if (normalized.sessionMonitorEnabled === false) {
+    normalized.orphanParentDetection = false;
+    normalized.sessionDiscovery = false;
+    normalized.idleCleanup = false;
+  }
+
   const errors: string[] = [];
   
-  if (config.stallTimeoutMs <= 0) errors.push(`stallTimeoutMs must be > 0, got ${config.stallTimeoutMs}`);
-  if (config.waitAfterAbortMs <= 0) errors.push(`waitAfterAbortMs must be > 0, got ${config.waitAfterAbortMs}`);
-  if (config.stallTimeoutMs < config.waitAfterAbortMs) errors.push(`stallTimeoutMs (${config.stallTimeoutMs}) must be >= waitAfterAbortMs (${config.waitAfterAbortMs})`);
-  if (config.maxRecoveries < 0) errors.push(`maxRecoveries must be >= 0, got ${config.maxRecoveries}`);
-  if (config.cooldownMs < 0) errors.push(`cooldownMs must be >= 0, got ${config.cooldownMs}`);
-  if (config.abortPollIntervalMs <= 0) errors.push(`abortPollIntervalMs must be > 0, got ${config.abortPollIntervalMs}`);
-  if (config.abortPollMaxTimeMs < 0) errors.push(`abortPollMaxTimeMs must be >= 0, got ${config.abortPollMaxTimeMs}`);
-  if (config.abortPollMaxFailures <= 0) errors.push(`abortPollMaxFailures must be > 0, got ${config.abortPollMaxFailures}`);
-  if (config.maxBackoffMs < config.stallTimeoutMs) errors.push(`maxBackoffMs (${config.maxBackoffMs}) must be >= stallTimeoutMs (${config.stallTimeoutMs})`);
-  if (config.maxAutoSubmits < 0) errors.push(`maxAutoSubmits must be >= 0, got ${config.maxAutoSubmits}`);
-  if (!config.continueMessage || typeof config.continueMessage !== 'string') errors.push(`continueMessage must be a non-empty string`);
-  if (!config.reviewMessage || typeof config.reviewMessage !== 'string') errors.push(`reviewMessage must be a non-empty string`);
-  if (config.reviewDebounceMs < 0) errors.push(`reviewDebounceMs must be >= 0, got ${config.reviewDebounceMs}`);
-  if (config.proactiveCompactAtTokens < 0) errors.push(`proactiveCompactAtTokens must be >= 0, got ${config.proactiveCompactAtTokens}`);
-  if (config.proactiveCompactAtPercent < 0 || config.proactiveCompactAtPercent > 100) errors.push(`proactiveCompactAtPercent must be between 0 and 100, got ${config.proactiveCompactAtPercent}`);
-  if (config.compactRetryDelayMs < 0) errors.push(`compactRetryDelayMs must be >= 0, got ${config.compactRetryDelayMs}`);
-  if (config.compactMaxRetries < 0) errors.push(`compactMaxRetries must be >= 0, got ${config.compactMaxRetries}`);
-  if (config.compactCooldownMs < 0) errors.push(`compactCooldownMs must be >= 0, got ${config.compactCooldownMs}`);
-  if (typeof config.compactReductionFactor !== 'number' || config.compactReductionFactor <= 0 || config.compactReductionFactor >= 1) errors.push(`compactReductionFactor must be between 0 and 1 (exclusive), got ${config.compactReductionFactor}`);
-  if (config.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${config.nudgeIdleDelayMs}`);
-  if (config.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${config.nudgeMaxSubmits}`);
-  if (!config.shortContinueMessage || config.shortContinueMessage.trim().length === 0) errors.push(`shortContinueMessage must be non-empty`);
-  if (!config.continueWithPlanMessage || config.continueWithPlanMessage.trim().length === 0) errors.push(`continueWithPlanMessage must be non-empty`);
-  if (!Array.isArray(config.tokenLimitPatterns) || config.tokenLimitPatterns.length === 0) errors.push(`tokenLimitPatterns must be a non-empty array`);
+  if (normalized.stallTimeoutMs <= 0) errors.push(`stallTimeoutMs must be > 0, got ${normalized.stallTimeoutMs}`);
+  if (normalized.waitAfterAbortMs <= 0) errors.push(`waitAfterAbortMs must be > 0, got ${normalized.waitAfterAbortMs}`);
+  if (normalized.stallTimeoutMs < normalized.waitAfterAbortMs) errors.push(`stallTimeoutMs (${normalized.stallTimeoutMs}) must be >= waitAfterAbortMs (${normalized.waitAfterAbortMs})`);
+  if (normalized.maxRecoveries < 0) errors.push(`maxRecoveries must be >= 0, got ${normalized.maxRecoveries}`);
+  if (normalized.cooldownMs < 0) errors.push(`cooldownMs must be >= 0, got ${normalized.cooldownMs}`);
+  if (normalized.abortPollIntervalMs <= 0) errors.push(`abortPollIntervalMs must be > 0, got ${normalized.abortPollIntervalMs}`);
+  if (normalized.abortPollMaxTimeMs < 0) errors.push(`abortPollMaxTimeMs must be >= 0, got ${normalized.abortPollMaxTimeMs}`);
+  if (normalized.abortPollMaxFailures <= 0) errors.push(`abortPollMaxFailures must be > 0, got ${normalized.abortPollMaxFailures}`);
+  if (normalized.maxBackoffMs < normalized.stallTimeoutMs) errors.push(`maxBackoffMs (${normalized.maxBackoffMs}) must be >= stallTimeoutMs (${normalized.stallTimeoutMs})`);
+  if (normalized.maxAutoSubmits < 0) errors.push(`maxAutoSubmits must be >= 0, got ${normalized.maxAutoSubmits}`);
+  if (!normalized.continueMessage || typeof normalized.continueMessage !== 'string') errors.push(`continueMessage must be a non-empty string`);
+  if (!normalized.reviewMessage || typeof normalized.reviewMessage !== 'string') errors.push(`reviewMessage must be a non-empty string`);
+  if (normalized.reviewDebounceMs < 0) errors.push(`reviewDebounceMs must be >= 0, got ${normalized.reviewDebounceMs}`);
+  if (normalized.proactiveCompactAtTokens < 0) errors.push(`proactiveCompactAtTokens must be >= 0, got ${normalized.proactiveCompactAtTokens}`);
+  if (normalized.proactiveCompactAtPercent < 0 || normalized.proactiveCompactAtPercent > 100) errors.push(`proactiveCompactAtPercent must be between 0 and 100, got ${normalized.proactiveCompactAtPercent}`);
+  if (normalized.compactRetryDelayMs < 0) errors.push(`compactRetryDelayMs must be >= 0, got ${normalized.compactRetryDelayMs}`);
+  if (normalized.compactMaxRetries < 0) errors.push(`compactMaxRetries must be >= 0, got ${normalized.compactMaxRetries}`);
+  if (normalized.compactCooldownMs < 0) errors.push(`compactCooldownMs must be >= 0, got ${normalized.compactCooldownMs}`);
+  if (typeof normalized.compactReductionFactor !== 'number' || normalized.compactReductionFactor <= 0 || normalized.compactReductionFactor >= 1) errors.push(`compactReductionFactor must be between 0 and 1 (exclusive), got ${normalized.compactReductionFactor}`);
+  if (normalized.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${normalized.nudgeIdleDelayMs}`);
+  if (normalized.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${normalized.nudgeMaxSubmits}`);
+  if (!normalized.shortContinueMessage || normalized.shortContinueMessage.trim().length === 0) errors.push(`shortContinueMessage must be non-empty`);
+  if (!normalized.continueWithPlanMessage || normalized.continueWithPlanMessage.trim().length === 0) errors.push(`continueWithPlanMessage must be non-empty`);
+  if (!Array.isArray(normalized.tokenLimitPatterns) || normalized.tokenLimitPatterns.length === 0) errors.push(`tokenLimitPatterns must be a non-empty array`);
 
-  if (config.subagentWaitMs < 0) errors.push(`subagentWaitMs must be >= 0, got ${config.subagentWaitMs}`);
-  if (config.sessionDiscoveryIntervalMs < 0) errors.push(`sessionDiscoveryIntervalMs must be >= 0, got ${config.sessionDiscoveryIntervalMs}`);
-  if (config.idleSessionTimeoutMs < 0) errors.push(`idleSessionTimeoutMs must be >= 0, got ${config.idleSessionTimeoutMs}`);
-  if (config.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${config.maxSessions}`);
+  if (normalized.subagentWaitMs < 0) errors.push(`subagentWaitMs must be >= 0, got ${normalized.subagentWaitMs}`);
+  if (normalized.sessionDiscoveryIntervalMs < 0) errors.push(`sessionDiscoveryIntervalMs must be >= 0, got ${normalized.sessionDiscoveryIntervalMs}`);
+  if (normalized.idleSessionTimeoutMs < 0) errors.push(`idleSessionTimeoutMs must be >= 0, got ${normalized.idleSessionTimeoutMs}`);
+  if (normalized.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${normalized.maxSessions}`);
 
   // Plan-driven continue validation
   if (config.planMaxItemsPerContinue < 1) errors.push(`planMaxItemsPerContinue must be >= 1, got ${config.planMaxItemsPerContinue}`);
@@ -188,5 +207,5 @@ export function validateConfig(config: PluginConfig): PluginConfig {
     return { ...DEFAULT_CONFIG };
   }
   
-  return config;
+  return normalized;
 }
