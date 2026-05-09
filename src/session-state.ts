@@ -52,6 +52,8 @@ export interface SessionState {
   nudgeTimer: ReturnType<typeof setTimeout> | null;
   lastNudgeAt: number;
   nudgeCount: number;
+  nudgeFailureCount: number; // FIX 8: Track nudge failures
+  lastNudgeFailureAt: number; // FIX 8: Track last nudge failure time
   lastTodoSnapshot: string;
   nudgePaused: boolean;
   hasOpenTodos: boolean;
