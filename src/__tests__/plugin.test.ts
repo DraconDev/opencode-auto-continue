@@ -92,6 +92,26 @@ describe("opencode-auto-continue", () => {
       vi.useRealTimers();
     });
 
+    it("should clear stale stall timer when session becomes idle", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 1000,
+        autoCompact: false,
+        nudgeEnabled: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
     it("should NOT set timer for idle session.status", async () => {
       vi.useFakeTimers();
       const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, autoCompact: false });
