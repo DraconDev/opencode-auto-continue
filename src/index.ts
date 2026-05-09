@@ -404,7 +404,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const terminal = createTerminalModule({ config, sessions, log, input });
   const aiAdvisor = createAIAdvisor({ config, log, input });
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, aiAdvisor });
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
   const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
 
