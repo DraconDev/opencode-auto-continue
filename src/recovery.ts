@@ -385,7 +385,25 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } catch (e) {
       log('recovery failed:', e);
-      scheduleRecovery(sessionId, config.stallTimeoutMs * 2);
+      // FIX 3: Increment attempts and check max before rescheduling to prevent infinite loop
+      s.attempts++;
+      s.recoveryFailed++;
+      
+      if (s.attempts >= config.maxRecoveries) {
+        // Use exponential backoff after max recoveries
+        const backoffDelay = Math.min(
+          config.stallTimeoutMs * Math.pow(2, s.backoffAttempts),
+          config.maxBackoffMs
+        );
+        s.backoffAttempts++;
+        log('recovery failed and max reached, using backoff:', backoffDelay, 'ms (attempt', s.attempts, ')');
+        scheduleRecovery(sessionId, backoffDelay);
+      } else {
+        // Normal retry with increased delay
+        const retryDelay = config.stallTimeoutMs * 2;
+        log('recovery failed, scheduling retry in:', retryDelay, 'ms (attempt', s.attempts, ')');
+        scheduleRecovery(sessionId, retryDelay);
+      }
     } finally {
       s.aborting = false;
     }
