@@ -641,6 +641,42 @@ export async function safeHook(
 }
 
 /**
+ * Unified scheduleRecovery with generation counter.
+ * Prevents stale timers from firing after being overwritten.
+ * 
+ * Usage: Call this from any module that needs to schedule recovery.
+ * The generation counter ensures only the most recent timer fires.
+ */
+export function scheduleRecoveryWithGeneration(
+  sessions: Map<string, SessionState>,
+  sessionId: string,
+  delayMs: number,
+  recover: (sessionId: string) => void,
+  log?: (...args: unknown[]) => void
+): void {
+  const s = sessions.get(sessionId);
+  if (!s) return;
+  
+  // Increment generation to invalidate previous timers
+  s.timerGeneration++;
+  const currentGeneration = s.timerGeneration;
+  
+  const timer = setTimeout(() => {
+    const current = sessions.get(sessionId);
+    // Only proceed if this timer is still the current one (not overwritten)
+    if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
+      current.timer = null;
+      recover(sessionId);
+    } else {
+      log?.('stale recovery timer ignored, generation mismatch:', sessionId);
+    }
+  }, delayMs);
+  
+  (timer as any).unref?.();
+  s.timer = timer;
+}
+
+/**
  * Detect if Dynamic Context Pruning (DCP) plugin is installed.
  * DCP handles context optimization better than our naive compaction,
  * so we should disable our proactive compaction when it's present.
