@@ -383,6 +383,12 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       }
 
       log("error sending nudge", errorStr);
+      
+      // FIX 8: Track failures and use backoff to prevent tight nudge loops
+      s.nudgeFailureCount++;
+      s.lastNudgeFailureAt = Date.now();
+      const failureBackoff = Math.min(30000, 2000 * Math.pow(2, s.nudgeFailureCount - 1));
+      log("nudge failure tracked, count:", s.nudgeFailureCount, "next backoff:", failureBackoff, "ms");
     }
   }
 
