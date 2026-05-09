@@ -218,8 +218,11 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           const state = createSession();
           state.actionStartedAt = Date.now();
 
-          if (statusType === "busy" || statusType === "retry" || statusType === null) {
+          // FIX 10: Only arm recovery on busy/retry status, skip on null/unknown
+          if (statusType === "busy" || statusType === "retry") {
             scheduleDiscoveredRecovery(id, state);
+          } else if (statusType === null) {
+            log('[SessionMonitor] discovered session with unknown status, not arming recovery:', id);
           }
 
           sessions.set(id, state);
