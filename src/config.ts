@@ -200,8 +200,8 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${normalized.maxSessions}`);
 
   // Plan-driven continue validation
-  if (config.planMaxItemsPerContinue < 1) errors.push(`planMaxItemsPerContinue must be >= 1, got ${config.planMaxItemsPerContinue}`);
-  if (config.planFilePath !== null && (typeof config.planFilePath !== 'string' || config.planFilePath.trim().length === 0)) errors.push(`planFilePath must be null or a non-empty string`);
+  if (normalized.planMaxItemsPerContinue < 1) errors.push(`planMaxItemsPerContinue must be >= 1, got ${normalized.planMaxItemsPerContinue}`);
+  if (normalized.planFilePath !== null && (typeof normalized.planFilePath !== 'string' || normalized.planFilePath.trim().length === 0)) errors.push(`planFilePath must be null or a non-empty string`);
 
   if (errors.length > 0) {
     return { ...DEFAULT_CONFIG };
