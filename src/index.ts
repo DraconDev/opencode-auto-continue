@@ -454,12 +454,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
             // Attempt emergency compaction asynchronously
             compaction.forceCompact(sid).then(async (compacted) => {
+              // FIX 4: Check session still exists before accessing state
+              if (!sessions.has(sid)) {
+                log('session deleted during emergency compaction, skipping continue:', sid);
+                return;
+              }
+              const currentSession = sessions.get(sid)!;
               if (compacted) {
                 log('emergency compaction succeeded for session:', sid);
                 // Queue a short continue after emergency compaction
                 // Use plan-aware message if session was planning
-                s.needsContinue = true;
-                s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+                currentSession.needsContinue = true;
+                currentSession.continueMessageText = currentSession.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
                 await review.sendContinue(sid);
               } else {
                 log('emergency compaction failed for session:', sid);
