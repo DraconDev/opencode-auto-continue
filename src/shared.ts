@@ -64,6 +64,9 @@ export interface SessionState {
   // === Advisory (ai-advisor.ts, recovery.ts, nudge.ts) ===
   lastAdvisoryAdvice: { action: string; confidence: number; reasoning: string; stallPattern?: string; customPrompt?: string; contextSummary?: string } | null;
 
+  // === Plan-Driven Continue (plan.ts) ===
+  lastPlanItemDescription: string;
+
   // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
 }
