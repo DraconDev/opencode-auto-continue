@@ -62,6 +62,7 @@ export interface SessionState {
   continueMessageText: string;
   continueRetryCount: number; // FIX 1: Track continue retry attempts
   lastContinueRetryAt: number; // FIX 1: Track last continue retry time
+  continueInProgress: boolean; // FIX 2: Concurrency guard for sendContinue
 
   // === Timer Generation (Fix 4: Prevent stale timer races) ===
   timerGeneration: number;
@@ -133,6 +134,7 @@ export function createSession(): SessionState {
     continueMessageText: '',
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
+    continueInProgress: false, // FIX 2
 
     // Timer Generation (Fix 4)
     timerGeneration: 0,
