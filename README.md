@@ -775,7 +775,6 @@ Minimal configuration with sensible defaults:
       "planDrivenContinue": false,
       "planFilePath": null,
       "planAutoMarkComplete": true,
-      "planMaxItemsPerContinue": 3,
       "enableAdvisory": false,
       "advisoryModel": "",
       "advisoryTimeoutMs": 5000,
