@@ -482,6 +482,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "message.updated") {
         const info = e?.properties?.info;
+        const isSynthetic = isSyntheticMessageEvent(e);
+        if (info?.role === "user" && isSynthetic) {
+          log('ignoring synthetic user message update:', sid);
+          writeStatusFile(sid);
+          return;
+        }
         if (info?.role === "user" && info?.id) {
           const s = getSession(sid);
           if (s.lastUserMessageId !== info.id) {
@@ -674,7 +680,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (event?.type === "message.created" || event?.type === "message.part.added") {
         // Check if this is a real user message (not our synthetic prompt)
         const msgRole = e?.properties?.info?.role;
-        const isUserMessage = msgRole === "user";
+        const isSynthetic = isSyntheticMessageEvent(e);
+        const isUserMessage = msgRole === "user" && !isSynthetic;
+
+        if (msgRole === "user" && isSynthetic) {
+          log('ignoring synthetic user activity event:', event?.type, sid);
+          writeStatusFile(sid);
+          return;
+        }
         
         if (isUserMessage) {
           // User sent a message - cancel any queued continue and process normally
