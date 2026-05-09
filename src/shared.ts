@@ -130,6 +130,7 @@ export interface PluginConfig {
   tokenEstimateMultiplier: number; // FIX 5: Configurable multiplier for token estimation
   dcpDetected: boolean;
   dcpVersion: string | null;
+  planningTimeoutMs: number; // FIX 11: Configurable planning timeout
 
   // === Plan-Driven Continue (plan.ts) ===
   planDrivenContinue: boolean;
