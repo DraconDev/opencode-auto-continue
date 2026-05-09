@@ -1430,6 +1430,37 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 
 ## Troubleshooting
 
+### Plugin Not Loading / "Cannot find module"
+
+**Cause**: Missing `package.json` in plugin directory or incorrect path
+**Fix**:
+1. Ensure plugin files are in `~/.config/opencode/plugins/opencode-auto-continue/`
+2. Create `package.json` in that directory:
+   ```json
+   {
+     "name": "opencode-auto-continue",
+     "version": "7.8.131",
+     "main": "./index.js"
+   }
+   ```
+3. Ensure `opencode.json` uses correct name: `["opencode-auto-continue", { ... }]`
+4. Restart OpenCode after making changes
+
+### Plugin Not Registered in Config
+
+**Cause**: Plugin not added to `plugin` array in `opencode.json`
+**Fix**: Add to `~/.config/opencode/opencode.json`:
+```json
+{
+  "plugin": [
+    ["opencode-auto-continue", {
+      "stallTimeoutMs": 45000,
+      "maxRecoveries": 3
+    }]
+  ]
+}
+```
+
 ### UI Breaks / Freezes
 
 **Cause**: Another plugin sending prompts with `synthetic: false`
