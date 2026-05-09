@@ -11,6 +11,7 @@ export interface RecoveryDeps {
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
+  scheduleRecovery: (sessionId: string, delayMs: number) => void; // FIX 1: Unified scheduling
   aiAdvisor?: AIAdvisor;
   sendContinue?: (sessionId: string) => Promise<void>;
 }
