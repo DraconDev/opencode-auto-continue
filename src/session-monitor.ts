@@ -170,7 +170,14 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           state.actionStartedAt = Date.now();
 
           if (statusType === "busy" || statusType === "retry") {
-            state.timer = setTimeout(() => recover(id), config.stallTimeoutMs);
+            const timer = setTimeout(() => {
+              const current = sessions.get(id);
+              if (current?.timer === timer) {
+                current.timer = null;
+              }
+              recover(id);
+            }, config.stallTimeoutMs);
+            state.timer = timer;
           }
 
           sessions.set(id, state);
