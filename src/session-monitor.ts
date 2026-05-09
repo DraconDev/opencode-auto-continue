@@ -108,6 +108,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
    * Check for orphan parent sessions.
    * When busyCount drops from >1 to 1, a subagent may have finished
    * but the parent is still stuck as busy.
+   * 
+   * FIX 2: Also detect single busy sessions that have been stuck for too long.
    */
   function checkOrphanParents(): void {
     if (isDisposed()) return;
@@ -147,6 +149,25 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               }, config.subagentWaitMs - timeSinceProgress + 1000);
             }
           }
+          break;
+        }
+      }
+    }
+
+    // FIX 2: Also check for single busy sessions stuck for too long
+    // (catches orphans even without parent-child tracking, and single-session stalls)
+    if (currentBusyCount >= 1) {
+      for (const [id, s] of sessions) {
+        if (s.timer !== null || s.aborting || s.compacting) {
+          const timeSinceProgress = Date.now() - s.lastProgressAt;
+          // Use 2x subagentWaitMs to avoid false positives on legitimate long-running tasks
+          const stuckThreshold = config.subagentWaitMs * 2;
+          if (timeSinceProgress > stuckThreshold) {
+            log('[SessionMonitor] single busy session stuck for too long:', id, 'stuck for', timeSinceProgress, 'ms');
+            orphanRecoveryCount++;
+            recover(id);
+          }
+          // Only check the first busy session to avoid multiple recoveries at once
           break;
         }
       }
