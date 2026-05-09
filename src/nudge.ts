@@ -15,6 +15,14 @@ export interface NudgeDeps {
 export function createNudgeModule(deps: NudgeDeps) {
   const { config, sessions, log, isDisposed, input } = deps;
 
+  // Snapshot string from todos (to detect changes)
+  function snapshot(todos: Array<{ id: string; status: string }>): string {
+    return todos
+      .map((t) => `${t.id}:${t.status}`)
+      .sort()
+      .join(",");
+  }
+
   async function getSessionStatusType(sessionId: string): Promise<string | null> {
     try {
       const statusResult = await input.client.session.status({});
