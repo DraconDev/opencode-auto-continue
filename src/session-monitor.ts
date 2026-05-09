@@ -264,20 +264,36 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function start(): void {
     if (isDisposed()) return;
-    if (orphanCheckTimer) return; // Already started
+    if (orphanCheckTimer || discoveryTimer || cleanupTimer) return; // Already started
+
+    if (config.sessionMonitorEnabled === false) {
+      log('[SessionMonitor] disabled by config');
+      return;
+    }
 
     // Orphan parent check every 5 seconds
-    orphanCheckTimer = setInterval(checkOrphanParents, 5000);
+    if (config.orphanParentDetection !== false) {
+      orphanCheckTimer = setInterval(checkOrphanParents, 5000);
+    }
 
-    // Session discovery every 60 seconds
-    discoveryTimer = setInterval(() => {
-      discoverSessions().catch(e => log('[SessionMonitor] discovery error:', e));
-    }, config.sessionDiscoveryIntervalMs);
+    // Session discovery every configured interval
+    if (config.sessionDiscovery !== false && config.sessionDiscoveryIntervalMs > 0) {
+      discoveryTimer = setInterval(() => {
+        discoverSessions().catch(e => log('[SessionMonitor] discovery error:', e));
+      }, config.sessionDiscoveryIntervalMs);
+    }
 
     // Idle cleanup every 30 seconds
-    cleanupTimer = setInterval(cleanupIdleSessions, 30000);
+    if (config.idleCleanup !== false) {
+      cleanupTimer = setInterval(cleanupIdleSessions, 30000);
+    }
 
-    log(`[SessionMonitor] started, orphanCheck: 5s, discovery: ${config.sessionDiscoveryIntervalMs}ms, cleanup: 30s`);
+    if (!orphanCheckTimer && !discoveryTimer && !cleanupTimer) {
+      log('[SessionMonitor] all monitor features disabled by config');
+      return;
+    }
+
+    log(`[SessionMonitor] started, orphanCheck: ${orphanCheckTimer ? '5s' : 'off'}, discovery: ${discoveryTimer ? `${config.sessionDiscoveryIntervalMs}ms` : 'off'}, cleanup: ${cleanupTimer ? '30s' : 'off'}`);
   }
 
   function stop(): void {
