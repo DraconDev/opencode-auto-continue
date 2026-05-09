@@ -369,7 +369,8 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
   }
 
   // Read provider config from opencode.json
-  function readProviderConfig(): { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null {
+  // FIX 9: Match provider by model name if specified
+  function readProviderConfig(targetModel?: string): { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null {
     try {
       const configPath = join(
         process.env.HOME || "/tmp",
@@ -387,6 +388,28 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
       const config = JSON.parse(raw);
       const providers = config?.provider;
       if (!providers) return null;
+
+      // If a target model is specified, try to find the provider that has it
+      if (targetModel) {
+        const targetModelName = targetModel.includes("/") ? targetModel.split("/").pop() : targetModel;
+        for (const [name, provider] of Object.entries(providers) as [string, any][]) {
+          const opts = provider.options || {};
+          const models = opts.models || {};
+          // Check if this provider has the target model
+          for (const [modelName, modelConfig] of Object.entries(models) as [string, any][]) {
+            if (modelName === targetModelName || modelName === targetModel) {
+              const baseURL = opts.baseURL || opts.baseUrl;
+              const apiKey = opts.apiKey || opts.api_key;
+              const headers = opts.headers;
+              if (baseURL) {
+                log("using matched provider:", name, "for model:", targetModel, "baseURL:", baseURL);
+                return { baseURL, apiKey, headers };
+              }
+            }
+          }
+        }
+        log("no provider found for model:", targetModel, ", falling back to first available");
+      }
 
       // Find the first enabled provider with OpenAI-compatible models
       for (const [name, provider] of Object.entries(providers) as [string, any][]) {
