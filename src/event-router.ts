@@ -310,6 +310,12 @@ export function createEventRouter(deps: EventRouterDeps) {
           }
         }
         
+        // Check if proactive compaction is needed after token update
+        if (s.estimatedTokens > config.proactiveCompactAtTokens && !s.compacting) {
+          log('token threshold exceeded:', s.estimatedTokens, '/', config.proactiveCompactAtTokens, 'checking proactive compaction');
+          compaction.maybeProactiveCompact(sid).catch((e) => log('proactive compaction error:', e));
+        }
+        
         updateProgress(s);
         s.attempts = 0;
         s.userCancelled = false;
