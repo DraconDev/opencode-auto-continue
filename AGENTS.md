@@ -411,6 +411,11 @@ session.deleted / session.ended → cleanup
 8. **Tool-text recovery** — recovery uses specialized prompt when XML tool calls detected in reasoning
 9. **Hallucination loop break** — 3+ continues in 10min forces abort+resume
 10. **Prompt guard blocks duplicates** — checks recent messages before injecting
+11. **Timer generation counter** — `timerGeneration` prevents stale timers from firing after being overwritten
+12. **Planning timeout** — planning state blocked forever, recovery forced after `planningTimeoutMs`
+13. **Continue retry limit** — max 3 retries with 5s backoff prevents infinite idle-event loops
+14. **Nudge failure backoff** — exponential backoff prevents tight nudge loops on API errors
+15. **Review reset** — `reviewFired` resets when new pending todos appear, enabling test-fix loops
 
 ## Nudge Architecture
 
