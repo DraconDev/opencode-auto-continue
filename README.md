@@ -27,6 +27,8 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 - 🔄 **Proactive context pruning** → [`@tarquinen/opencode-dcp`](https://github.com/tarquinen/opencode-dcp)
 - 🔄 **Toast notifications** → [`@mohak34/opencode-notifier`](https://github.com/mohak34/opencode-notifier) or similar |
 
+> 📊 **Want to understand the internals?** See the [Flow Chart](docs/FLOW-CHART.md) for a detailed breakdown of every state transition, guard check, and decision point.
+
 ## How We Work
 
 ### Architecture Overview
