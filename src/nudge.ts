@@ -1,24 +1,15 @@
 import { type PluginConfig, type SessionState, formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
-import type { AIAdvisor, AIAdvice } from "./ai-advisor.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts" | "enableAdvisory">;
+    "showToasts">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   isDisposed: () => boolean;
   input: TypedPluginInput;
-  aiAdvisor?: AIAdvisor;
-}
-
-// Check if AI advice suggests we should skip the nudge
-function shouldSkipNudge(advice: AIAdvice): boolean {
-  if (advice.action === "wait" && advice.confidence >= 0.7) return true;
-  if (advice.action === "abort" && advice.confidence >= 0.6) return true;
-  return false;
 }
 
 export function createNudgeModule(deps: NudgeDeps) {
