@@ -1231,38 +1231,41 @@ describe("opencode-auto-continue", () => {
       vi.useFakeTimers();
       const originalHome = process.env.HOME;
       process.env.HOME = `/tmp/opencode-test-home-${Date.now()}`;
-      mockStatus
-        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
-        .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined })
-        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
-        .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
-      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      try {
+        mockStatus
+          .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+          .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined })
+          .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+          .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+        mockPrompt.mockResolvedValue({ data: {}, error: undefined });
 
-      const plugin = await createPlugin({ client: mockClient }, {
-        stallTimeoutMs: 100,
-        waitAfterAbortMs: 10,
-        cooldownMs: 0,
-        autoCompact: true,
-        abortPollIntervalMs: 5,
-        abortPollMaxTimeMs: 20,
-        terminalTitleEnabled: false,
-        terminalProgressEnabled: false,
-        statusFilePath: "",
-      });
+        const plugin = await createPlugin({ client: mockClient }, {
+          stallTimeoutMs: 100,
+          waitAfterAbortMs: 10,
+          cooldownMs: 0,
+          autoCompact: true,
+          abortPollIntervalMs: 5,
+          abortPollMaxTimeMs: 20,
+          terminalTitleEnabled: false,
+          terminalProgressEnabled: false,
+          statusFilePath: "",
+        });
 
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await vi.advanceTimersByTimeAsync(3200);
-      await Promise.resolve();
-      await Promise.resolve();
+        await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+        await vi.advanceTimersByTimeAsync(3200);
+        await Promise.resolve();
+        await Promise.resolve();
 
-      expect(mockSummarize).toHaveBeenCalled();
-      expect(mockPrompt).not.toHaveBeenCalled();
+        expect(mockSummarize).toHaveBeenCalled();
+        expect(mockPrompt).not.toHaveBeenCalled();
 
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+        await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
 
-      expect(mockPrompt).toHaveBeenCalledTimes(1);
-      process.env.HOME = originalHome;
-      vi.useRealTimers();
+        expect(mockPrompt).toHaveBeenCalledTimes(1);
+      } finally {
+        process.env.HOME = originalHome;
+        vi.useRealTimers();
+      }
     });
 
     it("should trigger proactive compaction when estimatedTokens >= threshold", async () => {
