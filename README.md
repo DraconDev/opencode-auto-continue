@@ -497,6 +497,75 @@ The nudge system prevents sessions from going idle with pending todos. It follow
         └──NO──► Clear any pending debounce
 ```
 
+### Session Monitor (v7.5)
+
+A passive monitoring layer that watches for session lifecycle issues the event system might miss.
+
+#### Features
+
+**1. Orphan Parent Detection**
+When a subagent finishes but the parent session stays stuck as "busy" forever:
+- Monitors `busyCount` across all sessions via 5s timer
+- Detects when count drops from >1 to 1 (subagent completion signal)
+- Waits `orphanWaitMs` (15s default) for natural parent resume
+- If parent still busy → triggers recovery (abort + continue)
+
+**2. Session Discovery**
+Event hooks can miss sessions in edge cases (plugin loaded mid-session, SDK events dropped):
+- Periodic `session.list()` polling every `sessionDiscoveryIntervalMs` (60s)
+- Creates minimal `SessionState` for any untracked busy sessions
+- Integrates seamlessly with existing recovery/nudge timers
+
+**3. Idle Session Cleanup**
+Prevents memory leaks in long-running OpenCode instances:
+- Removes sessions idle > `idleCleanupMs` (10min default)
+- Enforces `maxSessions` limit (50 default) — removes oldest idle first
+- Timer-based, not event-driven (runs every 30s)
+
+#### Architecture
+
+```
+Plugin init → sessionMonitor.start()
+                    │
+                    ├── 5s timer ──► checkOrphanParents()
+                    │                    │
+                    │                    └── busyCount drop?
+                    │                        ├── YES ──► wait 15s ──► recover parent
+                    │                        └── NO  ──► do nothing
+                    │
+                    ├── 60s timer ──► discoverSessions()
+                    │                    │
+                    │                    └── session.list()
+                    │                        ├── New session ──► create minimal state
+                    │                        └── Known session ──► skip
+                    │
+                    └── 30s timer ──► cleanupIdleSessions()
+                                         │
+                                         └── idle > 10min OR count > 50?
+                                             ├── YES ──► remove session
+                                             └── NO  ──► keep
+```
+
+#### Config
+
+```json
+["opencode-auto-continue", {
+  "sessionMonitorEnabled": true,
+  "orphanWaitMs": 15000,
+  "sessionDiscoveryIntervalMs": 60000,
+  "idleCleanupMs": 600000,
+  "maxSessions": 50
+}]
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `sessionMonitorEnabled` | boolean | `true` | Enable session monitoring layer |
+| `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
+| `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
+| `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
+| `maxSessions` | number | `50` | Max sessions to keep in memory |
+
 ### AI Advisory System
 
 The plugin includes an optional advisory layer that analyzes session state before making decisions. **AI advises, hardcoded rules decide** — simple/obvious decisions stay fast, edge cases get analysis.
