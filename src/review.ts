@@ -56,7 +56,7 @@ export function createReviewModule(deps: ReviewDeps) {
           parts: [{
             type: "text",
             text: config.reviewMessage,
-            synthetic: true,
+            synthetic: false,
           }],
         },
       });
@@ -128,7 +128,7 @@ export function createReviewModule(deps: ReviewDeps) {
           parts: [{
             type: "text",
             text: messageText,
-            synthetic: true,
+            synthetic: false,
           }],
         },
       });
@@ -179,7 +179,7 @@ export function createReviewModule(deps: ReviewDeps) {
                 parts: [{
                   type: "text",
                   text: config.shortContinueMessage,
-                  synthetic: true,
+                  synthetic: false,
                 }],
               },
             });
