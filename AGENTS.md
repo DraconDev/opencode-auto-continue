@@ -594,6 +594,35 @@ Enable debug mode in `opencode.json`:
 
 Logs go to `~/.opencode/logs/auto-force-resume.log`.
 
+## Bug Fixes History
+
+### v7.8 (Current) - 34 Total Fixes
+
+#### Initial Audit (9 Fixes)
+1. **Stranded Continue Retry** - Added retry limit/backoff for idle-event retries
+2. **Orphan Detection Dead Code** - Added heuristic for stuck busy sessions
+3. **Planning Shield Forever Stall** - Added planning timeout (5min default)
+4. **Dual Timer Race** - Added `timerGeneration` counter to prevent stale timers
+5. **Triple Token Counting** - Deduplicated token estimation, added configurable `tokenEstimateMultiplier` (default 1.0)
+6. **Nudge API Error** - Fallback to cached todos on fetch failure
+7. **Review One-Shot** - Reset `reviewFired` when new todos appear
+8. **0ms Recovery After Compaction** - Use `stallTimeoutMs` instead of 0
+9. **Advisory Wrong Provider** - Match by model name instead of first available
+
+#### Comprehensive Review (19 Fixes)
+- **CRITICAL (4)**: Unified scheduleRecovery, sendContinue concurrency guard, recover() catch infinite loop, emergency compaction callback race
+- **HIGH (5)**: Orphan threshold (30s→180s), complete clearTimer, prompt guard in sendContinue, nudge retry backoff, review retry
+- **MODERATE (5)**: Discovered sessions busy check, configurable planningTimeoutMs, reduced shouldBlockPrompt limit (50→15), debounced status writes (500ms), max auto-submits UX
+- **MINOR (5)**: Consistent state reset, removed redundant shouldUseAI, AbortController timeout leak, progressTypes array
+
+#### Reanalysis (6 Fixes)
+1. **Duplicate attempts increment** - Removed double `s.attempts++` in recovery.ts catch block
+2. **Variable shadowing** - Fixed nudge.ts AI advisory block shadowing
+3. **Duplicate state reset** - Removed duplicate assignments in resetSession()
+4. **Indentation issue** - Fixed message.part.updated handler structure
+5. **Silent failure** - Added error logging to shouldBlockPrompt
+6. **Memory leak** - Clear old timer in scheduleRecoveryWithGeneration
+
 ## Common Issues
 
 ### Nudge not firing
