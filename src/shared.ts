@@ -493,6 +493,66 @@ export function formatMessage(template: string, vars: Record<string, string>): s
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
 }
 
+function getMessageTimestamp(message: any): number | null {
+  const raw =
+    message?.createdAt ??
+    message?.time ??
+    message?.timestamp ??
+    message?.info?.createdAt ??
+    message?.info?.time ??
+    message?.info?.timestamp ??
+    null;
+
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") {
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (raw instanceof Date) return raw.getTime();
+  return null;
+}
+
+function getMessageText(message: any): string {
+  const direct = message?.content ?? message?.text ?? message?.info?.content ?? message?.info?.text;
+  if (typeof direct === "string" && direct.length > 0) return direct;
+
+  const parts = [
+    ...(Array.isArray(message?.parts) ? message.parts : []),
+    ...(Array.isArray(message?.info?.parts) ? message.info.parts : []),
+  ];
+
+  return parts
+    .map((part: any) => {
+      if (typeof part?.text === "string") return part.text;
+      if (typeof part?.content === "string") return part.content;
+      if (typeof part?.reasoning === "string") return part.reasoning;
+      return "";
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
+function normalizeForSimilarity(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function hasSimilarPrompt(a: string, b: string): boolean {
+  const left = normalizeForSimilarity(a);
+  const right = normalizeForSimilarity(b);
+  if (!left || !right) return false;
+
+  if (left === right) return true;
+
+  const leftNeedle = left.slice(0, Math.min(80, left.length));
+  const rightNeedle = right.slice(0, Math.min(80, right.length));
+
+  return (
+    leftNeedle.length >= 20 &&
+    rightNeedle.length >= 20 &&
+    (left.includes(rightNeedle) || right.includes(leftNeedle))
+  );
+}
+
 /**
  * Prompt guard — prevents duplicate injections within a time window.
  * Checks if a similar prompt was recently sent to the same session.
@@ -506,7 +566,7 @@ export async function shouldBlockPrompt(
   try {
     const resp = await input.client.session.messages({
       path: { id: sessionId },
-      query: { limit: 5 },
+      query: { limit: 50 },
     });
     const messages = Array.isArray(resp.data) ? resp.data : [];
     const now = Date.now();
@@ -514,17 +574,14 @@ export async function shouldBlockPrompt(
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i] as any;
       const role = msg.role || msg.info?.role;
-      if (role !== "assistant") continue;
+      if (role !== "assistant" && role !== "user") continue;
       
-      const msgTime = msg.createdAt || msg.info?.createdAt || 0;
-      if (now - msgTime > 30000) continue; // Only check last 30s
+      const msgTime = getMessageTimestamp(msg);
+      if (msgTime !== null && now - msgTime > 30000) continue; // Only check last 30s
       
-      const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
+      const text = getMessageText(msg);
       // Check if the recent message contains similar content
-      if (text && promptText && (
-        text.includes(promptText.substring(0, 50)) ||
-        promptText.includes(text.substring(0, 50))
-      )) {
+      if (hasSimilarPrompt(text, promptText)) {
         log?.("prompt guard blocked duplicate injection", { sessionId, text: text.substring(0, 100) });
         return true;
       }

@@ -12,6 +12,7 @@ export interface RecoveryDeps {
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
   aiAdvisor?: AIAdvisor;
+  sendContinue?: (sessionId: string) => Promise<void>;
 }
 
 // Tool-text detection patterns (XML tool calls embedded in text/reasoning)
@@ -93,6 +94,17 @@ function isHallucinationLoop(s: SessionState): boolean {
 
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
+
+  async function isSessionIdle(sessionId: string): Promise<boolean> {
+    try {
+      const statusResult = await input.client.session.status({});
+      const statusData = statusResult.data as Record<string, { type: string }>;
+      return statusData[sessionId]?.type === "idle";
+    } catch (e) {
+      log('status check before immediate continue failed:', e);
+      return false;
+    }
+  }
 
   async function recover(sessionId: string) {
     if (isDisposed()) return;
@@ -341,6 +353,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       s.nudgeCount = 0;
       cancelNudge(sessionId);
+
+      // If abort polling already confirmed idle, send the queued prompt now.
+      // Otherwise do one final status check; relying only on a future idle event
+      // can strand the custom continue message after a successful abort.
+      if (deps.sendContinue && (isIdle || await isSessionIdle(sessionId))) {
+        log('session is idle after recovery, sending queued continue immediately');
+        await deps.sendContinue(sessionId);
+      }
     } catch (e) {
       log('recovery failed:', e);
       s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
