@@ -181,8 +181,15 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
         const resp = await input.client.session.todo({ path: { id: sessionId } });
         todos = Array.isArray(resp.data) ? resp.data : [];
       } catch (e) {
-        log("error fetching todos for nudge", String(e));
-        return;
+        log("error fetching todos for nudge, falling back to cached", String(e));
+        // FIX 6: Fallback to cached todos instead of abandoning
+        if (s.hasOpenTodos && s.lastKnownTodos.length > 0) {
+          todos = s.lastKnownTodos;
+          log("using cached todos for nudge fallback", { count: todos.length });
+        } else {
+          log("no cached todos available, abandoning nudge");
+          return;
+        }
       }
     }
 
