@@ -81,11 +81,22 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     const idle: string[] = [];
     const now = Date.now();
     for (const [id, s] of sessions) {
-      if (s.timer === null && !s.aborting && !s.compacting) {
+      if (s.timer == null && !s.aborting && !s.compacting) {
         idle.push(id);
       }
     }
     return idle;
+  }
+
+  function hasPendingWork(s: SessionState): boolean {
+    return (
+      s.timer != null ||
+      s.nudgeTimer != null ||
+      s.reviewDebounceTimer != null ||
+      s.needsContinue ||
+      s.aborting ||
+      s.compacting
+    );
   }
 
   /**
@@ -206,14 +217,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
     for (const [id, s] of sessions) {
       // Clean up if idle for too long
-      if (
-        s.timer === null &&
-        s.nudgeTimer === null &&
-        s.reviewDebounceTimer === null &&
-        !s.needsContinue &&
-        !s.aborting &&
-        !s.compacting
-      ) {
+      if (!hasPendingWork(s)) {
         const idleTime = now - s.lastProgressAt;
         if (idleTime > config.idleSessionTimeoutMs) {
           toDelete.push(id);
@@ -226,14 +230,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       // Sort by last activity, oldest first
       const sorted = Array.from(sessions.entries())
         .filter(([id]) => !toDelete.includes(id))
-        .filter(([, s]) =>
-          s.timer === null &&
-          s.nudgeTimer === null &&
-          s.reviewDebounceTimer === null &&
-          !s.needsContinue &&
-          !s.aborting &&
-          !s.compacting
-        )
+        .filter(([, s]) => !hasPendingWork(s))
         .sort((a, b) => a[1].lastProgressAt - b[1].lastProgressAt);
 
       const toRemove = sessions.size - config.maxSessions;

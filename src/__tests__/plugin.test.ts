@@ -1229,6 +1229,8 @@ describe("opencode-auto-continue", () => {
 
     it("should wait for post-compaction idle before sending queued continue", async () => {
       vi.useFakeTimers();
+      const originalHome = process.env.HOME;
+      process.env.HOME = `/tmp/opencode-test-home-${Date.now()}`;
       mockStatus
         .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
         .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined })
@@ -1259,6 +1261,7 @@ describe("opencode-auto-continue", () => {
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
 
       expect(mockPrompt).toHaveBeenCalledTimes(1);
+      process.env.HOME = originalHome;
       vi.useRealTimers();
     });
 
