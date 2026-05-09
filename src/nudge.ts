@@ -40,6 +40,21 @@ const QUESTION_PHRASES = [
   "do you agree", "are you sure", "would you mind",
 ];
 
+function textFromMessage(message: any): string {
+  const direct = message?.text ?? message?.content ?? message?.info?.text ?? message?.info?.content;
+  if (typeof direct === "string" && direct.trim()) return direct;
+
+  const parts = [
+    ...(Array.isArray(message?.parts) ? message.parts : []),
+    ...(Array.isArray(message?.info?.parts) ? message.info.parts : []),
+  ];
+
+  return parts
+    .map((part: any) => part?.text || part?.content || part?.reasoning || "")
+    .filter(Boolean)
+    .join(" ");
+}
+
 function isQuestion(text: string): boolean {
   const lowerText = text.toLowerCase().trim();
   if (/\?\s*$/.test(lowerText)) return true;
@@ -59,7 +74,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i] as any;
       if (msg.role === "assistant" || msg.info?.role === "assistant") {
-        const text = msg.text || msg.parts?.map((p: any) => p.text).join(" ") || "";
+        const text = textFromMessage(msg);
         if (isQuestion(text)) {
           log("last assistant message is a question, skipping nudge", { sessionId, text: text.substring(0, 100) });
           return true;
@@ -72,6 +87,18 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
   }
   return false;
 }
+
+  async function getSessionStatusType(sessionId: string): Promise<string | null> {
+    try {
+      const statusResult = await input.client.session.status({});
+      const statusData = statusResult.data as Record<string, { type: string }>;
+      return statusData[sessionId]?.type || null;
+    } catch (e) {
+      log("error checking session status before nudge (ignored)", String(e));
+      return null;
+    }
+  }
+
   function cancelNudge(sessionId: string): void {
     const s = sessions.get(sessionId);
     if (s?.nudgeTimer) {
@@ -122,9 +149,25 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       return;
     }
 
+    if (s.needsContinue || s.aborting) {
+      log("nudge skipped - continue/recovery already pending", sessionId);
+      return;
+    }
+
+    if (s.planning || s.compacting) {
+      log("nudge skipped - planning or compacting", sessionId);
+      return;
+    }
+
     // Check cooldown
     if (Date.now() - s.lastNudgeAt < config.nudgeCooldownMs) {
       log("nudge skipped - cooldown active", sessionId);
+      return;
+    }
+
+    const statusType = await getSessionStatusType(sessionId);
+    if (statusType === "busy" || statusType === "retry") {
+      log("nudge skipped - session is not idle", { sessionId, statusType });
       return;
     }
 
@@ -347,6 +390,10 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
 
     log("scheduling nudge", { sessionId, delayMs: config.nudgeIdleDelayMs });
     s.nudgeTimer = setTimeout(() => {
+      const session = sessions.get(sessionId);
+      if (session) {
+        session.nudgeTimer = null;
+      }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
     }, config.nudgeIdleDelayMs);
   }
