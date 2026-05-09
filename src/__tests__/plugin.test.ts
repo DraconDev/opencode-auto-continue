@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Plugin } from "@opencode-ai/plugin";
+import { readFileSync, unlinkSync } from "fs";
 
 interface MockClient {
   session: {
@@ -89,6 +90,47 @@ describe("opencode-auto-continue", () => {
       expect(mockAbort).toHaveBeenCalledTimes(1);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
       expect((mockPrompt.mock.calls[0] as any)[0].body.parts[0].text).toBe("Please continue from where you left off.");
+      vi.useRealTimers();
+    });
+
+    it("should not treat plugin-initiated abort as user cancellation", async () => {
+      vi.useFakeTimers();
+      const statusFilePath = `/tmp/opencode-plugin-abort-${Date.now()}.json`;
+      mockStatus
+        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+        .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 100,
+        waitAfterAbortMs: 10,
+        cooldownMs: 0,
+        autoCompact: false,
+        abortPollMaxTimeMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath,
+      });
+
+      mockAbort.mockImplementation(async () => {
+        await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "MessageAbortedError", message: "aborted by plugin" } } } });
+        return { data: true, error: undefined };
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(150);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const status = JSON.parse(readFileSync(statusFilePath, "utf-8"));
+      expect(status.sessions.test.userCancelled).toBe(false);
+      expect(mockPrompt).toHaveBeenCalled();
+
+      try {
+        unlinkSync(statusFilePath);
+      } catch {
+        // ignore cleanup errors
+      }
       vi.useRealTimers();
     });
 
@@ -1182,6 +1224,41 @@ describe("opencode-auto-continue", () => {
 
       // Should attempt to summarize (compact) before aborting
       expect(mockStatus).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should wait for post-compaction idle before sending queued continue", async () => {
+      vi.useFakeTimers();
+      mockStatus
+        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+        .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined })
+        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+        .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 100,
+        waitAfterAbortMs: 10,
+        cooldownMs: 0,
+        autoCompact: true,
+        abortPollIntervalMs: 5,
+        abortPollMaxTimeMs: 20,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(3200);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockSummarize).toHaveBeenCalled();
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
     });
 
