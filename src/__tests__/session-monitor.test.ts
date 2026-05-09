@@ -266,6 +266,47 @@ describe("SessionMonitor", () => {
       
       customMonitor.stop();
     });
+
+    it("should arm recovery timer for discovered busy sessions", async () => {
+      const mockList = vi.fn().mockResolvedValue({
+        data: [{ id: "busy-session" }],
+      });
+      const mockStatus = vi.fn().mockResolvedValue({
+        data: { "busy-session": { type: "busy" } },
+      });
+
+      const customInput = {
+        client: {
+          session: {
+            list: mockList,
+            status: mockStatus,
+          },
+        },
+      } as unknown as TypedPluginInput;
+
+      const customMonitor = createSessionMonitor({
+        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50, stallTimeoutMs: 100 },
+        sessions,
+        log: mockLog,
+        input: customInput,
+        isDisposed: () => isDisposed,
+        recover: (id: string) => {
+          recoverCalls.push(id);
+        },
+      });
+
+      customMonitor.start();
+      await vi.advanceTimersByTimeAsync(60);
+      await Promise.resolve();
+
+      expect(sessions.has("busy-session")).toBe(true);
+      expect(sessions.get("busy-session")?.timer).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(recoverCalls).toContain("busy-session");
+      customMonitor.stop();
+    });
   });
 
   describe("Idle Session Cleanup", () => {

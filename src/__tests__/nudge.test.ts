@@ -354,6 +354,35 @@ describe("nudge integration with plugin events", () => {
       vi.useRealTimers();
     });
 
+    it("should skip scheduled nudge if session becomes busy again", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 500,
+        nudgeCooldownMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
     it("should cancel previous nudge timer on new session.idle", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
