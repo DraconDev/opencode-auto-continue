@@ -299,7 +299,7 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
   ): Promise<AIAdvice | null> {
     try {
       // Read provider config from opencode.json
-      const providerConfig = readProviderConfig();
+      const providerConfig = readProviderConfig(config.advisoryModel);
       if (!providerConfig) {
         log("no provider config found for AI advisory");
         return null;

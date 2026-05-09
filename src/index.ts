@@ -849,7 +849,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Restart stall timer since we just freed context
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          scheduleRecovery(sid, 0);
+          // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
+          scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
         return;
