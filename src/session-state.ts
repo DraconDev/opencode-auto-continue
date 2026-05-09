@@ -127,6 +127,8 @@ export function createSession(): SessionState {
     nudgeTimer: null,
     lastNudgeAt: 0,
     nudgeCount: 0,
+    nudgeFailureCount: 0, // FIX 8
+    lastNudgeFailureAt: 0, // FIX 8
     lastTodoSnapshot: '',
     nudgePaused: false,
     hasOpenTodos: false,

@@ -336,6 +336,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
       }
 
       s.nudgeCount++;
+      s.nudgeFailureCount = 0; // FIX 8: Reset failure count on success
       s.lastNudgeAt = Date.now();
       s.messageCount++;
       log("nudge sent successfully", { newCount: s.nudgeCount });
