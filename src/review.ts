@@ -78,9 +78,26 @@ export function createReviewModule(deps: ReviewDeps) {
     if (!s || !s.needsContinue) return;
 
     const messageText = s.continueMessageText;
-    // NOTE: We do NOT clear needsContinue here — only on success
+    // FIX 1: Check retry limit to prevent infinite retry loops
+    const MAX_CONTINUE_RETRIES = 3;
+    const CONTINUE_RETRY_BACKOFF_MS = 5000;
+    if (s.continueRetryCount >= MAX_CONTINUE_RETRIES) {
+      log('continue retry limit reached, giving up:', sessionId, 'retries:', s.continueRetryCount);
+      s.needsContinue = false;
+      s.continueMessageText = '';
+      s.continueRetryCount = 0;
+      writeStatusFile(sessionId);
+      return;
+    }
 
-    log('sending continue prompt from event handler');
+    // FIX 1: Enforce backoff between continue retries
+    const now = Date.now();
+    if (s.continueRetryCount > 0 && now - s.lastContinueRetryAt < CONTINUE_RETRY_BACKOFF_MS) {
+      log('continue retry backoff active, skipping:', sessionId);
+      return;
+    }
+
+    log('sending continue prompt from event handler (retry:', s.continueRetryCount, ')');
 
     try {
       s.messageCount++;
