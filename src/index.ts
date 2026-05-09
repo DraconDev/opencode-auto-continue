@@ -683,8 +683,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const isSynthetic = isSyntheticMessageEvent(e);
         const isUserMessage = msgRole === "user" && !isSynthetic;
 
-        if (msgRole === "user" && isSynthetic) {
-          log('ignoring synthetic user activity event:', event?.type, sid);
+        if (isSynthetic) {
+          log('ignoring synthetic message activity event:', event?.type, sid);
           writeStatusFile(sid);
           return;
         }
