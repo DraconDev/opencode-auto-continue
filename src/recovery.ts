@@ -399,8 +399,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } catch (e) {
       log('recovery failed:', e);
-      // FIX 3: Increment attempts and check max before rescheduling to prevent infinite loop
-      s.attempts++;
+      // FIX 3: Only increment recoveryFailed here - attempts was already incremented in try block (line 379)
       s.recoveryFailed++;
       
       if (s.attempts >= config.maxRecoveries) {
