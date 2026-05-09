@@ -192,39 +192,8 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    // Check if the last assistant message is a question
-    // This prevents nudging when the AI is explicitly asking the user for input
-    const lastMessageIsQuestion = await checkLastMessageIsQuestion(sessionId);
-    if (lastMessageIsQuestion) {
-      return;
-    }
-
-    // AI Advisory: check if we should wait instead of nudging
-    if (aiAdvisor && config.enableAdvisory) {
-      try {
-        // Use outer `s` variable (already validated at line 138-139)
-        const context = await aiAdvisor.extractContext(sessionId, s);
-        const advice = await aiAdvisor.getAdvice(context);
-        // Save to session state for status file
-        if (advice) {
-          s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
-        }
-        if (advice && shouldSkipNudge(advice)) {
-          return;
-        }
-      } catch (e: unknown) {
-        log("advisory check failed (ignored)", String(e));
-      }
-    }
-
     // Build the reminder message
     let messageText: string;
-    
-    // Use AI-generated custom prompt if available
-    if (s.lastAdvisoryAdvice?.customPrompt) {
-      messageText = s.lastAdvisoryAdvice.customPrompt;
-      log("using AI-generated custom nudge prompt:", messageText);
-    } else {
       const templateVars: Record<string, string> = {
         total: String(todos.length),
         completed: String(completed.length),
