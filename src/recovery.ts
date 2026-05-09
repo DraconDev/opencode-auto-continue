@@ -230,188 +230,188 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.stallPatterns[s.lastStallPartType] = (s.stallPatterns[s.lastStallPartType] || 0) + 1;
     }
 
-    writeStatusFile(sessionId);
-
-    try {
-      const statusResult = await input.client.session.status({});
-      const statusData = statusResult.data as Record<string, { type: string }>;
-      const sessionStatus = statusData[sessionId];
-
-      if (!sessionStatus || sessionStatus.type !== "busy") {
-        s.aborting = false;
-        return;
-      }
-
-      const currentTime = Date.now();
-
-      if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
-        s.aborting = false;
-        const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
-        s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
-        return;
-      }
-
-      // Check if the model output tool calls as raw text (XML in reasoning)
-      const hasToolText = await checkToolTextInSession(sessionId, input);
-      if (hasToolText) {
-        log('tool-text detected in session, using recovery prompt');
-      }
-
-      // Abort the session first (required before compaction)
+      writeStatusFile(sessionId);
+  
       try {
-        await input.client.session.abort({
-          path: { id: sessionId },
-          query: { directory: input.directory || "" }
-        });
-        log("[RECOVERY] abort() succeeded", sessionId);
-      } catch (e) {
-        log("[RECOVERY] abort() failed:", e);
-        s.aborting = false;
-        s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
-        log("[RECOVERY] scheduled retry after abort failure", sessionId, "delay:", config.stallTimeoutMs * 2);
-        return;
-      }
-
-      // Wait for session to become idle
-      log("[RECOVERY] polling for idle status", sessionId, "maxWait:", config.abortPollMaxTimeMs);
-      const startTime = Date.now();
-      let isIdle = false;
-      let statusFailures = 0;
-
-      if (config.abortPollMaxTimeMs > 0) {
-        while (!isIdle && Date.now() - startTime < config.abortPollMaxTimeMs && statusFailures < config.abortPollMaxFailures) {
-          await new Promise(r => setTimeout(r, config.abortPollIntervalMs));
-          try {
-            const pollResult = await input.client.session.status({});
-            const pollData = pollResult.data as Record<string, { type: string }>;
-            const pollStatus = pollData[sessionId];
-            if (pollStatus?.type === "idle") {
-              isIdle = true;
-              log("[RECOVERY] session became idle", sessionId, "pollTime:", Date.now() - startTime);
-            }
-            statusFailures = 0;
-          } catch (e) {
-            statusFailures++;
-            log("[RECOVERY] status poll failed:", e);
-          }
+        const statusResult = await input.client.session.status({});
+        const statusData = statusResult.data as Record<string, { type: string }>;
+        const sessionStatus = statusData[sessionId];
+  
+        if (!sessionStatus || sessionStatus.type !== "busy") {
+          s.aborting = false;
+          return;
         }
-      }
-      log("[RECOVERY] idle polling complete", sessionId, "isIdle:", isIdle, "pollDuration:", Date.now() - startTime);
-
-      // Now that session is idle, try compaction
-      if (config.autoCompact && !hasToolText && isIdle) {
-        try {
-          log("[RECOVERY] attempting auto-compaction", sessionId);
-          await input.client.session.summarize({
-            path: { id: sessionId },
-            query: { directory: input.directory || "" }
-          });
-          log("[RECOVERY] auto-compaction succeeded", sessionId);
-          await new Promise(r => setTimeout(r, 3000));
-        } catch (e: unknown) {
-          log("[RECOVERY] auto-compaction failed:", e);
+  
+        const currentTime = Date.now();
+  
+        if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
+          s.aborting = false;
+          const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
+          s.timer = setTimeout(() => recover(sessionId), Math.max(remaining, 100));
+          return;
         }
-      } else {
-        log("[RECOVERY] skipping compaction", sessionId, "autoCompact:", config.autoCompact, "hasToolText:", hasToolText, "isIdle:", isIdle);
-      }
-
-      const remainingWait = config.waitAfterAbortMs - (Date.now() - startTime);
-      if (remainingWait > 0) {
-        log("[RECOVERY] waiting after abort", sessionId, "remaining:", remainingWait);
-        await new Promise(r => setTimeout(r, remainingWait));
-      }
-
-      if (s.autoSubmitCount >= config.maxAutoSubmits) {
-        log("[RECOVERY] LOOP PROTECTION: max auto-submits reached", sessionId, "count:", s.autoSubmitCount, "max:", config.maxAutoSubmits);
-        s.aborting = false;
-        return;
-      }
-
-      // Hallucination loop detection: if 3+ continues in 10min, force abort+resume
-      if (isHallucinationLoop(s)) {
-        log("[RECOVERY] HALLUCINATION LOOP DETECTED!", sessionId, "forcing abort+resume");
+  
+        // Check if the model output tool calls as raw text (XML in reasoning)
+        const hasToolText = await checkToolTextInSession(sessionId, input);
+        if (hasToolText) {
+          log('tool-text detected in session, using recovery prompt');
+        }
+  
+        // Abort the session first (required before compaction)
         try {
           await input.client.session.abort({
             path: { id: sessionId },
             query: { directory: input.directory || "" }
           });
-          await new Promise(r => setTimeout(r, 3000));
+          log("[RECOVERY] abort() succeeded", sessionId);
         } catch (e) {
-          log("[RECOVERY] abort in hallucination loop handler failed:", e);
+          log("[RECOVERY] abort() failed:", e);
+          s.aborting = false;
+          s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
+          log("[RECOVERY] scheduled retry after abort failure", sessionId, "delay:", config.stallTimeoutMs * 2);
+          return;
         }
-      }
-
-      log("[RECOVERY] building recovery message", sessionId, "hasToolText:", hasToolText, "planning:", s.planning);
-      let messageText = config.continueMessage;
-      const templateVars: Record<string, string> = {
-        attempts: String(s.attempts + 1),
-        maxAttempts: String(config.maxRecoveries),
-      };
-
-      // If tool-text was detected, use the tool-text recovery prompt
-      if (hasToolText) {
-        messageText = TOOL_TEXT_RECOVERY_PROMPT;
-        log('using tool-text recovery prompt');
-      } else if (s.lastAdvisoryAdvice?.customPrompt) {
-        // Use AI-generated custom prompt if available
-        messageText = s.lastAdvisoryAdvice.customPrompt;
-        log('using AI-generated custom prompt:', messageText);
-      } else if (s.planning) {
-        messageText = config.continueWithPlanMessage;
-        log('using plan-aware continue message');
-      } else if (config.includeTodoContext) {
-        try {
-          const todoResult = await input.client.session.todo({ path: { id: sessionId } });
-          const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
-          const pending = todos.filter((t: Todo) => t.status === 'in_progress' || t.status === 'pending');
-          const completed = todos.filter((t: Todo) => t.status === 'completed' || t.status === 'cancelled');
-
-          templateVars.total = String(todos.length);
-          templateVars.completed = String(completed.length);
-          templateVars.pending = String(pending.length);
-
-          if (pending.length > 0) {
-            const todoList = pending.slice(0, 5).map((t: Todo) => t.content || t.title || t.id).join(', ');
-            templateVars.todoList = todoList + (pending.length > 5 ? '...' : '');
-            messageText = formatMessage(config.continueWithTodosMessage, templateVars);
-            log('todo context added:', pending.length, 'pending tasks');
-          } else {
-            log('no pending todos');
+  
+        // Wait for session to become idle
+        log("[RECOVERY] polling for idle status", sessionId, "maxWait:", config.abortPollMaxTimeMs);
+        const startTime = Date.now();
+        let isIdle = false;
+        let statusFailures = 0;
+  
+        if (config.abortPollMaxTimeMs > 0) {
+          while (!isIdle && Date.now() - startTime < config.abortPollMaxTimeMs && statusFailures < config.abortPollMaxFailures) {
+            await new Promise(r => setTimeout(r, config.abortPollIntervalMs));
+            try {
+              const pollResult = await input.client.session.status({});
+              const pollData = pollResult.data as Record<string, { type: string }>;
+              const pollStatus = pollData[sessionId];
+              if (pollStatus?.type === "idle") {
+                isIdle = true;
+                log("[RECOVERY] session became idle", sessionId, "pollTime:", Date.now() - startTime);
+              }
+              statusFailures = 0;
+            } catch (e) {
+              statusFailures++;
+              log("[RECOVERY] status poll failed:", e);
+            }
           }
-        } catch (e) {
-          log('todo fetch failed:', e);
         }
-      }
-
-      if (messageText === config.continueMessage) {
-        messageText = formatMessage(config.continueMessage, templateVars);
-      }
-
-      if (s.tokenLimitHits > 0) {
-        log('using short continue message due to previous token limit hits:', s.tokenLimitHits);
-        messageText = config.shortContinueMessage;
-      }
-
-      // Prompt guard: prevent duplicate continue messages
-      const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
-      if (isDuplicate) {
-        log('[Recovery] PROMPT GUARD BLOCKED — similar prompt recently sent, skipping recovery', sessionId);
-        s.aborting = false;
-        return;
-      }
-
-      s.needsContinue = true;
-      s.continueMessageText = messageText;
-      log('[Recovery] QUEUED CONTINUE — needsContinue=true, message length:', messageText.length, 'session:', sessionId);
-
-      s.attempts++;
-      s.autoSubmitCount++;
-      s.lastRecoveryTime = Date.now();
-      s.backoffAttempts = 0;
-      s.messageCount++;
-
-      s.nudgeCount = 0;
-      cancelNudge(sessionId);
+        log("[RECOVERY] idle polling complete", sessionId, "isIdle:", isIdle, "pollDuration:", Date.now() - startTime);
+  
+        // Now that session is idle, try compaction
+        if (config.autoCompact && !hasToolText && isIdle) {
+          try {
+            log("[RECOVERY] attempting auto-compaction", sessionId);
+            await input.client.session.summarize({
+              path: { id: sessionId },
+              query: { directory: input.directory || "" }
+            });
+            log("[RECOVERY] auto-compaction succeeded", sessionId);
+            await new Promise(r => setTimeout(r, 3000));
+          } catch (e: unknown) {
+            log("[RECOVERY] auto-compaction failed:", e);
+          }
+        } else {
+          log("[RECOVERY] skipping compaction", sessionId, "autoCompact:", config.autoCompact, "hasToolText:", hasToolText, "isIdle:", isIdle);
+        }
+  
+        const remainingWait = config.waitAfterAbortMs - (Date.now() - startTime);
+        if (remainingWait > 0) {
+          log("[RECOVERY] waiting after abort", sessionId, "remaining:", remainingWait);
+          await new Promise(r => setTimeout(r, remainingWait));
+        }
+  
+        if (s.autoSubmitCount >= config.maxAutoSubmits) {
+          log("[RECOVERY] LOOP PROTECTION: max auto-submits reached", sessionId, "count:", s.autoSubmitCount, "max:", config.maxAutoSubmits);
+          s.aborting = false;
+          return;
+        }
+  
+        // Hallucination loop detection: if 3+ continues in 10min, force abort+resume
+        if (isHallucinationLoop(s)) {
+          log("[RECOVERY] HALLUCINATION LOOP DETECTED!", sessionId, "forcing abort+resume");
+          try {
+            await input.client.session.abort({
+              path: { id: sessionId },
+              query: { directory: input.directory || "" }
+            });
+            await new Promise(r => setTimeout(r, 3000));
+          } catch (e) {
+            log("[RECOVERY] abort in hallucination loop handler failed:", e);
+          }
+        }
+  
+        log("[RECOVERY] building recovery message", sessionId, "hasToolText:", hasToolText, "planning:", s.planning);
+        let messageText = config.continueMessage;
+        const templateVars: Record<string, string> = {
+          attempts: String(s.attempts + 1),
+          maxAttempts: String(config.maxRecoveries),
+        };
+  
+        // If tool-text was detected, use the tool-text recovery prompt
+        if (hasToolText) {
+          messageText = TOOL_TEXT_RECOVERY_PROMPT;
+          log('using tool-text recovery prompt');
+        } else if (s.lastAdvisoryAdvice?.customPrompt) {
+          // Use AI-generated custom prompt if available
+          messageText = s.lastAdvisoryAdvice.customPrompt;
+          log('using AI-generated custom prompt:', messageText);
+        } else if (s.planning) {
+          messageText = config.continueWithPlanMessage;
+          log('using plan-aware continue message');
+        } else if (config.includeTodoContext) {
+          try {
+            const todoResult = await input.client.session.todo({ path: { id: sessionId } });
+            const todos = Array.isArray(todoResult.data) ? todoResult.data : [];
+            const pending = todos.filter((t: Todo) => t.status === 'in_progress' || t.status === 'pending');
+            const completed = todos.filter((t: Todo) => t.status === 'completed' || t.status === 'cancelled');
+  
+            templateVars.total = String(todos.length);
+            templateVars.completed = String(completed.length);
+            templateVars.pending = String(pending.length);
+  
+            if (pending.length > 0) {
+              const todoList = pending.slice(0, 5).map((t: Todo) => t.content || t.title || t.id).join(', ');
+              templateVars.todoList = todoList + (pending.length > 5 ? '...' : '');
+              messageText = formatMessage(config.continueWithTodosMessage, templateVars);
+              log('todo context added:', pending.length, 'pending tasks');
+            } else {
+              log('no pending todos');
+            }
+          } catch (e) {
+            log('todo fetch failed:', e);
+          }
+        }
+  
+        if (messageText === config.continueMessage) {
+          messageText = formatMessage(config.continueMessage, templateVars);
+        }
+  
+        if (s.tokenLimitHits > 0) {
+          log('using short continue message due to previous token limit hits:', s.tokenLimitHits);
+          messageText = config.shortContinueMessage;
+        }
+  
+        // Prompt guard: prevent duplicate continue messages
+        const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
+        if (isDuplicate) {
+          log('[Recovery] PROMPT GUARD BLOCKED — similar prompt recently sent, skipping recovery', sessionId);
+          s.aborting = false;
+          return;
+        }
+  
+        s.needsContinue = true;
+        s.continueMessageText = messageText;
+        log('[Recovery] QUEUED CONTINUE — needsContinue=true, message length:', messageText.length, 'session:', sessionId);
+  
+        s.attempts++;
+        s.autoSubmitCount++;
+        s.lastRecoveryTime = Date.now();
+        s.backoffAttempts = 0;
+        s.messageCount++;
+  
+        s.nudgeCount = 0;
+        cancelNudge(sessionId);
     } catch (e) {
       log('[Recovery] CATCH BLOCK — recovery failed with error:', String(e), 'session:', sessionId);
       s.timer = setTimeout(() => recover(sessionId), config.stallTimeoutMs * 2);
