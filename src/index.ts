@@ -402,6 +402,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
       recover(sessionId);
     }, delayMs);
+    (timer as any).unref?.();
     s.timer = timer;
   }
 

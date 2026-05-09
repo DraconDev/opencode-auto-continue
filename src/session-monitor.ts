@@ -63,6 +63,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       }
       recover(sessionId);
     }, config.stallTimeoutMs);
+    (timer as any).unref?.();
     state.timer = timer;
   }
 
