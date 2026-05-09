@@ -94,21 +94,9 @@ function isHallucinationLoop(s: SessionState): boolean {
 }
 
 export function createRecoveryModule(deps: RecoveryDeps) {
-  const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge } = deps;
+  const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge, scheduleRecovery } = deps;
 
-  function scheduleRecovery(sessionId: string, delayMs: number): void {
-    const s = sessions.get(sessionId);
-    if (!s) return;
-    const timer = setTimeout(() => {
-      const current = sessions.get(sessionId);
-      if (current?.timer === timer) {
-        current.timer = null;
-      }
-      recover(sessionId);
-    }, delayMs);
-    (timer as any).unref?.();
-    s.timer = timer;
-  }
+  // FIX 1: scheduleRecovery is now passed in from index.ts (unified implementation with generation counter)
 
   async function isSessionIdle(sessionId: string): Promise<boolean> {
     try {
