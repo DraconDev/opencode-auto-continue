@@ -367,6 +367,8 @@ describe("SessionMonitor", () => {
     });
 
     it("should not clean up sessions with pending auto-continue work", () => {
+      const nudgeTimer = setTimeout(() => {}, 1000);
+      (nudgeTimer as any).unref?.();
       const pendingContinue = createMockSession({
         timer: null,
         needsContinue: true,
@@ -374,7 +376,7 @@ describe("SessionMonitor", () => {
       });
       const pendingNudge = createMockSession({
         timer: null,
-        nudgeTimer: setTimeout(() => {}, 1000),
+        nudgeTimer,
         lastProgressAt: Date.now() - 700000,
       });
       sessions.set("pending-continue", pendingContinue);
