@@ -114,5 +114,33 @@ export function createCompactionModule(deps: CompactionDeps) {
     return false;
   }
 
-  return { isTokenLimitError, attemptCompact, forceCompact };
+  async function maybeProactiveCompact(sessionId: string): Promise<boolean> {
+    if (!config.autoCompact) return false;
+    
+    const s = sessions.get(sessionId);
+    if (!s) return false;
+    if (s.compacting) return false;
+    if (s.planning) return false;
+    
+    const now = Date.now();
+    if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
+      return false;
+    }
+    
+    const threshold = config.proactiveCompactAtTokens;
+    if (s.estimatedTokens >= threshold) {
+      log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${s.estimatedTokens} tokens (threshold: ${threshold}), attempting compaction`);
+      const success = await forceCompact(sessionId);
+      if (success) {
+        log(`[Compaction] PROACTIVE SUCCESS — session ${sessionId} compacted successfully`);
+      } else {
+        log(`[Compaction] PROACTIVE FAILED — session ${sessionId} compaction failed`);
+      }
+      return success;
+    }
+    
+    return false;
+  }
+
+  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact };
 }
