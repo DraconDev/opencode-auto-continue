@@ -60,6 +60,14 @@ export interface SessionState {
   // === Continue Queue (recovery.ts, review.ts) ===
   needsContinue: boolean;
   continueMessageText: string;
+  continueRetryCount: number; // FIX 1: Track continue retry attempts
+  lastContinueRetryAt: number; // FIX 1: Track last continue retry time
+
+  // === Timer Generation (Fix 4: Prevent stale timer races) ===
+  timerGeneration: number;
+
+  // === Planning Timeout (Fix 3: Track when planning started) ===
+  planningStartedAt: number;
 
   // === Review (review.ts) ===
   reviewFired: boolean;
@@ -123,6 +131,14 @@ export function createSession(): SessionState {
 
     needsContinue: false,
     continueMessageText: '',
+    continueRetryCount: 0,
+    lastContinueRetryAt: 0,
+
+    // Timer Generation (Fix 4)
+    timerGeneration: 0,
+
+    // Planning Timeout (Fix 3)
+    planningStartedAt: 0,
 
     reviewFired: false,
     reviewDebounceTimer: null,
