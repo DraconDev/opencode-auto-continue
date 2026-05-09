@@ -281,6 +281,21 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       if (s.autoSubmitCount >= config.maxAutoSubmits) {
         log('loop protection: max auto-submits reached:', s.autoSubmitCount);
+        // FIX 14: Show toast when loop protection activates
+        try {
+          await input.client.tui.showToast({
+            query: { directory: input.directory || "" },
+            body: {
+              title: "Auto-Continue Paused",
+              message: `Max auto-submits (${config.maxAutoSubmits}) reached. Send a message to resume.`,
+              variant: "warning",
+            },
+          });
+        } catch (e) {
+          log('max auto-submits toast error (ignored):', e);
+        }
+        s.needsContinue = false;
+        s.continueMessageText = '';
         s.aborting = false;
         return;
       }
