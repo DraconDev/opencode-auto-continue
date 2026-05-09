@@ -351,6 +351,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastRecoverySuccess = 0;
       s.totalRecoveryTimeMs = 0;
       s.recoveryStartTime = 0;
+      s.recoveryTimes = [];
+      s.lastStallPartType = '';
+      // FIX 16: Reset missing fields
+      s.continueTimestamps = [];
+      s.lastAdvisoryAdvice = null;
+      s.stallPatterns = {};
+      s.nudgeFailureCount = 0;
+      s.lastNudgeFailureAt = 0;
+      s.continueInProgress = false;
       s.statusHistory = [];
       s.recoveryTimes = [];
       s.lastStallPartType = "";
