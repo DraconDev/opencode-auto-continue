@@ -326,7 +326,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
             {
               type: "text",
               text: messageText,
-              synthetic: true,
+              synthetic: false,
             },
           ],
         },
