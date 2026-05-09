@@ -361,9 +361,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastNudgeFailureAt = 0;
       s.continueInProgress = false;
       s.statusHistory = [];
-      s.recoveryTimes = [];
-      s.lastStallPartType = "";
-      s.stallPatterns = {};
     }
     sessions.delete(id);
   }
