@@ -465,9 +465,6 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
     // - Planning mode with long elapsed time
     if (state.planning && (Date.now() - state.actionStartedAt) > 120000) return true;
     
-    // - High stall count with repeated patterns
-    if (state.stallDetections >= 5) return true;
-    
     return false;
   }
 
