@@ -542,6 +542,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
         }
+        if (status?.type === "idle") {
+          clearTimer(sid);
+        }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
           if (s.aborting) {
@@ -733,11 +736,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         updateProgress(s);
         s.attempts = 0;
         s.userCancelled = false;
-        if (s.planning) {
+        if (s.planning && isUserMessage) {
           log('user sent message, clearing plan flag');
           s.planning = false;
         }
-        if (s.compacting) {
+        if (s.compacting && isUserMessage) {
           log('user sent message, clearing compacting flag');
           s.compacting = false;
         }
@@ -786,6 +789,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
         const s = getSession(sid);
+        clearTimer(sid);
         if (s.needsContinue) {
           if (s.aborting) {
             log('session.idle while recovery is finalizing, recovery will send queued continue for:', sid);
