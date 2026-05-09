@@ -11,8 +11,8 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Review on Completion** | `opencode-auto-review-completed-todos` | Sends review prompt when all todos are done |
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
 | **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
-| **Plan-Driven Auto-Continue** | Nothing — unique feature | Reads PLAN.md to continue when out of todos |
-| **Test-Fix Loop** | Nothing — unique feature | Review prompts tests, creates fix todos if failures found |
+| **Plan-Aware Continue** | Nothing — unique feature | Uses `continueWithPlanMessage` when planning phase detected |
+| **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
 | **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
