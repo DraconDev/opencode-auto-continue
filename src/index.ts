@@ -665,34 +665,37 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 // This is the most accurate token count available
                 s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
                 log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
+              }
             }
           }
 
-
-        }
-        if (partType === "compaction") {
+          // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
+          if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
             s.compacting = true;
           }
-            if (partType === "text") {
-              const partText = e?.properties?.part?.text as string | undefined;
-              if (partText) {
-                if (isPlanContent(partText)) {
-                  log('plan detected in updated text part, pausing stall monitoring');
-                  s.planning = true;
-                  s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
-                }
+
+          // Handle text parts for plan detection
+          if (partType === "text") {
+            const partText = e?.properties?.part?.text as string | undefined;
+            if (partText) {
+              if (isPlanContent(partText)) {
+                log('plan detected in updated text part, pausing stall monitoring');
+                s.planning = true;
+                s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
               }
             }
-            // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
-            // These indicate the model has moved from planning to execution, so:
-            // 1. Stall monitoring resumes (planning pauses it)
-            // 2. Continue messages use generic text instead of plan-aware message
-            if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
-              log('non-plan progress detected, clearing plan flag');
-              s.planning = false;
-            }
           }
+
+          // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
+          // These indicate the model has moved from planning to execution, so:
+          // 1. Stall monitoring resumes (planning pauses it)
+          // 2. Continue messages use generic text instead of plan-aware message
+          if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
+            log('non-plan progress detected, clearing plan flag');
+            s.planning = false;
+          }
+        }
 
         // Check if this is a delta update containing plan content
         const deltaText = e?.properties?.delta as string | undefined;
