@@ -21,7 +21,6 @@ export function createReviewModule(deps: ReviewDeps) {
     const s = sessions.get(sessionId);
     if (!s || s.reviewFired) return;
 
-    s.reviewFired = true;
     log('triggering review for session:', sessionId);
 
     try {
@@ -62,9 +61,14 @@ export function createReviewModule(deps: ReviewDeps) {
         },
       });
 
+      // FIX 9: Only mark as fired after successful send
+      s.reviewFired = true;
       log('review sent successfully');
     } catch (e: any) {
       log('review failed:', e);
+      // FIX 9: Reset reviewFired on failure so it can retry
+      s.reviewFired = false;
+      log('reviewFired reset to false for retry:', sessionId);
       if (isTokenLimitError(e)) {
         log('token limit error in review, forcing compaction');
         await forceCompact(sessionId);
