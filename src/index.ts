@@ -325,6 +325,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastKnownTodos = [];
       s.needsContinue = false;
       s.continueMessageText = '';
+      s.continueRetryCount = 0;
+      s.lastContinueRetryAt = 0;
+      s.timerGeneration = 0;
+      s.planningStartedAt = 0;
       s.messageCount = 0;
       s.estimatedTokens = 0;
       s.lastCompactionAt = 0;
