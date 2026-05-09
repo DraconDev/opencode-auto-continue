@@ -307,6 +307,45 @@ describe("SessionMonitor", () => {
       expect(recoverCalls).toContain("busy-session");
       customMonitor.stop();
     });
+
+    it("should arm recovery timer for discovered sessions with unknown status", async () => {
+      const mockList = vi.fn().mockResolvedValue({
+        data: [{ id: "unknown-session" }],
+      });
+      const mockStatus = vi.fn().mockResolvedValue({ data: {} });
+
+      const customInput = {
+        client: {
+          session: {
+            list: mockList,
+            status: mockStatus,
+          },
+        },
+      } as unknown as TypedPluginInput;
+
+      const customMonitor = createSessionMonitor({
+        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50, stallTimeoutMs: 100 },
+        sessions,
+        log: mockLog,
+        input: customInput,
+        isDisposed: () => isDisposed,
+        recover: (id: string) => {
+          recoverCalls.push(id);
+        },
+      });
+
+      customMonitor.start();
+      await vi.advanceTimersByTimeAsync(60);
+      await Promise.resolve();
+
+      expect(sessions.has("unknown-session")).toBe(true);
+      expect(sessions.get("unknown-session")?.timer).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(recoverCalls).toContain("unknown-session");
+      customMonitor.stop();
+    });
   });
 
   describe("Idle Session Cleanup", () => {
@@ -324,6 +363,29 @@ describe("SessionMonitor", () => {
       
       // Check if session was cleaned up
       // Note: cleanup runs on interval, may not be immediate
+      monitor.stop();
+    });
+
+    it("should not clean up sessions with pending auto-continue work", () => {
+      const pendingContinue = createMockSession({
+        timer: null,
+        needsContinue: true,
+        lastProgressAt: Date.now() - 700000,
+      });
+      const pendingNudge = createMockSession({
+        timer: null,
+        nudgeTimer: setTimeout(() => {}, 1000),
+        lastProgressAt: Date.now() - 700000,
+      });
+      sessions.set("pending-continue", pendingContinue);
+      sessions.set("pending-nudge", pendingNudge);
+
+      monitor.start();
+      vi.advanceTimersByTime(35000);
+
+      expect(sessions.has("pending-continue")).toBe(true);
+      expect(sessions.has("pending-nudge")).toBe(true);
+
       monitor.stop();
     });
 
