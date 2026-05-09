@@ -156,12 +156,12 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
     // FIX 2: Also check for single busy sessions stuck for too long
     // (catches orphans even without parent-child tracking, and single-session stalls)
+    // FIX 5: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
     if (currentBusyCount >= 1) {
       for (const [id, s] of sessions) {
         if (s.timer !== null || s.aborting || s.compacting) {
           const timeSinceProgress = Date.now() - s.lastProgressAt;
-          // Use 2x subagentWaitMs to avoid false positives on legitimate long-running tasks
-          const stuckThreshold = config.subagentWaitMs * 2;
+          const stuckThreshold = config.stallTimeoutMs;
           if (timeSinceProgress > stuckThreshold) {
             log('[SessionMonitor] single busy session stuck for too long:', id, 'stuck for', timeSinceProgress, 'ms');
             orphanRecoveryCount++;
