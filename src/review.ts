@@ -106,6 +106,14 @@ export function createReviewModule(deps: ReviewDeps) {
         return;
       }
 
+      // FIX 7: Prompt guard - prevent duplicate continue messages in recovery loops
+      const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
+      if (isDuplicate) {
+        log('prompt guard blocked duplicate continue, skipping:', sessionId);
+        s.continueInProgress = false;
+        return;
+      }
+
       log('sending continue prompt from event handler (retry:', s.continueRetryCount, ')');
 
       s.messageCount++;
