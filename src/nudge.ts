@@ -280,6 +280,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
             s.lastAdvisoryAdvice = { action: advice.action, confidence: advice.confidence, reasoning: advice.reasoning, customPrompt: advice.customPrompt, contextSummary: advice.contextSummary };
           }
           if (advice && shouldSkipNudge(advice)) {
+            log("[Nudge] SKIP — AI advisory recommends waiting:", advice.action, "confidence:", advice.confidence);
             return;
           }
         }
