@@ -116,13 +116,12 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
-    // FIX 3: Allow recovery if planning has been going on too long (5 min max)
-    const PLANNING_TIMEOUT_MS = 5 * 60 * 1000;
-    if (s.planning && Date.now() - s.planningStartedAt < PLANNING_TIMEOUT_MS) {
+    // FIX 3/11: Allow recovery if planning has been going on too long
+    if (s.planning && Date.now() - s.planningStartedAt < config.planningTimeoutMs) {
       log('session is planning, skipping recovery (planning timeout not reached):', sessionId);
       return;
     } else if (s.planning) {
-      log('planning timeout reached, forcing recovery:', sessionId);
+      log('planning timeout reached (', config.planningTimeoutMs, 'ms), forcing recovery:', sessionId);
       s.planning = false; // Clear planning flag to allow recovery
     }
     if (s.compacting) return;
