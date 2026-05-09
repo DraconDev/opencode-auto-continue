@@ -278,55 +278,21 @@ const result = await sendCustomPrompt("abc123", {
 // }
 ```
 
-### Plan-Driven Auto-Continue
+### Plan-Aware Continue
 
-When the AI runs out of todos, instead of hallucinating what to do next, it reads your plan file and continues accordingly.
+When the AI is in a planning phase (detected by plan-related text in messages), recovery uses a plan-aware continue message instead of the generic one.
 
-**Supported plan files** (checked in order):
-1. `PLAN.md` — Standard project plan (recommended)
-2. `ROADMAP.md` — Long-term planning
-3. `.opencode/plan.md` — OpenCode-specific plan
-4. `README.md` — May contain plan sections
-5. `TODO.md` — Simple task lists
+**What works now**:
+- **Planning detection**: The plugin detects when the AI outputs planning text (e.g., "Here's my plan:") and sets a `planning` flag
+- **Plan-aware continue**: When recovering during planning, it uses `continueWithPlanMessage` instead of `shortContinueMessage`
+- **Auto-mark complete**: When `planDrivenContinue: true`, completing todos automatically marks matching plan items as complete (via fuzzy string matching)
 
-**Plan format**:
-```markdown
-# Plan
+**What the code has but doesn't wire up yet**:
+- Plan file parsing (`PLAN.md`, `ROADMAP.md`, `.opencode/plan.md`)
+- `buildPlanContinueMessage()` — builds contextual "next item is X" messages
+- These are tested but not yet integrated into the recovery flow
 
-## Phase 1: Foundation
-• (done) Setup project structure
-• Add configuration
-• Write tests
-
-## Phase 2: Features
-• Implement core logic
-• Add error handling
-```
-
-**Flow**:
-```
-[session.idle]
-        │
-        ▼
-Check todos
-        │
-        ├──[Has pending todos]──► Nudge with todo context
-        │
-        └──[No pending todos]──► Check PLAN.md
-                                      │
-                                      ├──[Has items]──► Send: "According to the plan (33% complete),
-                                      │                 the next item in 'Phase 1' is: Add configuration.
-                                      │                 Please create todos for this work."
-                                      │
-                                      └──[No items]──► Do nothing
-```
-
-**Why this matters**: Without a plan, the AI might:
-- Hallucinate features you didn't ask for
-- Skip important steps
-- Lose track of the overall goal
-
-With `PLAN.md`, you control the roadmap. The AI follows your plan.
+See [Roadmap](#roadmap) for planned improvements.
 
 ### Review on Completion
 
