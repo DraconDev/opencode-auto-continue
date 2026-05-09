@@ -632,14 +632,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             // Track part type for stall pattern detection
             s.lastStallPartType = partType || "unknown";
             
-            // Estimate tokens from ALL part types, not just text
-            // This gives a more accurate picture of total context usage
+            // FIX 5: Estimate tokens only for parts without actual token counts.
+            // Text/reasoning parts are counted via message.updated (actual tokens).
+            // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
             let partText = "";
-            if (partType === "text") {
-              partText = e?.properties?.part?.text as string || "";
-            } else if (partType === "reasoning") {
-              partText = e?.properties?.part?.reasoning as string || "";
-            } else if (partType === "tool") {
+            if (partType === "tool") {
               partText = JSON.stringify(e?.properties?.part) || "";
             } else if (partType === "file") {
               partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
@@ -650,7 +647,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             
             if (partText) {
-              const estimatedTokens = estimateTokens(partText);
+              // FIX 5: Use configurable multiplier instead of hardcoded ×2
+              const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
               s.estimatedTokens += estimatedTokens;
             }
             // Extract actual tokens from step-finish parts (most accurate source)
@@ -746,16 +744,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Track message count and estimate tokens for proactive compaction
         if (isUserMessage) {
           s.messageCount++;
-          // Estimate tokens from message text
+          // Estimate tokens from message text (only when actual tokens not available)
           const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
-          const estimatedTokens = estimateTokens(msgText);
+          const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
           s.estimatedTokens += estimatedTokens;
           log('message count incremented:', s.messageCount, 'estimated tokens added:', estimatedTokens, 'total:', s.estimatedTokens);
         } else {
-          // Also estimate tokens from assistant/tool responses
+          // Also estimate tokens from assistant/tool responses (only when actual tokens not available)
           const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
           if (msgText) {
-            const estimatedTokens = estimateTokens(msgText);
+            const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
             s.estimatedTokens += estimatedTokens;
           }
         }
