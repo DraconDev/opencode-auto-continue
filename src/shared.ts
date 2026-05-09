@@ -118,6 +118,12 @@ export interface PluginConfig {
   compactAtMessageCount: number;
   dcpDetected: boolean;
   dcpVersion: string | null;
+
+  // === Plan-Driven Continue (plan.ts) ===
+  planDrivenContinue: boolean;
+  planFilePath: string | null;
+  planAutoMarkComplete: boolean;
+  planMaxItemsPerContinue: number;
   
   // === AI Advisory (ai-advisor.ts) ===
   enableAdvisory: boolean;
