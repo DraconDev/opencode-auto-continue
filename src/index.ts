@@ -677,6 +677,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 if (isPlanContent(partText)) {
                   log('plan detected in updated text part, pausing stall monitoring');
                   s.planning = true;
+                  s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
                 }
               }
             }
@@ -697,6 +698,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (isPlanContent(s.planBuffer)) {
             log('plan detected in delta, pausing stall monitoring — user must address');
             s.planning = true;
+            s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
             s.planBuffer = '';
           }
         }
