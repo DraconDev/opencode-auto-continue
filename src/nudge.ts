@@ -13,71 +13,7 @@ export interface NudgeDeps {
 }
 
 export function createNudgeModule(deps: NudgeDeps) {
-  const { config, sessions, log, isDisposed, input, aiAdvisor } = deps;
-
-  // Snapshot string from todos (to detect changes)
-  function snapshot(todos: Array<{ id: string; status: string }>): string {
-    return todos
-      .map((t) => `${t.id}:${t.status}`)
-      .sort()
-      .join(",");
-  }
-
-  // Question phrases that indicate the AI is asking the user something
-const QUESTION_PHRASES = [
-  "would you like", "should i", "do you want", "please review",
-  "let me know", "what do you think", "can you confirm",
-  "would you prefer", "shall i", "any thoughts", "could you",
-  "do you agree", "are you sure", "would you mind",
-];
-
-function textFromMessage(message: any): string {
-  const direct = message?.text ?? message?.content ?? message?.info?.text ?? message?.info?.content;
-  if (typeof direct === "string" && direct.trim()) return direct;
-
-  const parts = [
-    ...(Array.isArray(message?.parts) ? message.parts : []),
-    ...(Array.isArray(message?.info?.parts) ? message.info.parts : []),
-  ];
-
-  return parts
-    .map((part: any) => part?.text || part?.content || part?.reasoning || "")
-    .filter(Boolean)
-    .join(" ");
-}
-
-function isQuestion(text: string): boolean {
-  const lowerText = text.toLowerCase().trim();
-  if (/\?\s*$/.test(lowerText)) return true;
-  return QUESTION_PHRASES.some((phrase) => lowerText.includes(phrase));
-}
-
-// Check if the last assistant message is a question
-async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
-  try {
-    const resp = await input.client.session.messages({
-      path: { id: sessionId },
-      query: { limit: 5 },
-    });
-    const messages = Array.isArray(resp.data) ? resp.data : [];
-    
-    // Find last assistant message
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i] as any;
-      if (msg.role === "assistant" || msg.info?.role === "assistant") {
-        const text = textFromMessage(msg);
-        if (isQuestion(text)) {
-          log("last assistant message is a question, skipping nudge", { sessionId, text: text.substring(0, 100) });
-          return true;
-        }
-        break; // Only check the most recent assistant message
-      }
-    }
-  } catch (e) {
-    log("error checking last message for questions (ignored)", String(e));
-  }
-  return false;
-}
+  const { config, sessions, log, isDisposed, input } = deps;
 
   async function getSessionStatusType(sessionId: string): Promise<string | null> {
     try {
