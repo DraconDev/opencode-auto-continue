@@ -632,7 +632,8 @@ export async function shouldBlockPrompt(
       }
     }
   } catch (e) {
-    // Fail-open: allow prompt if check fails
+    // Fail-open: allow prompt if check fails, but log the error
+    log?.("prompt guard check failed, allowing prompt:", String(e));
   }
   return false;
 }
