@@ -666,6 +666,11 @@ export function scheduleRecoveryWithGeneration(
   const s = sessions.get(sessionId);
   if (!s) return;
   
+  // Clear old timer to prevent memory leak
+  if (s.timer) {
+    clearTimeout(s.timer);
+  }
+  
   // Increment generation to invalidate previous timers
   s.timerGeneration++;
   const currentGeneration = s.timerGeneration;
