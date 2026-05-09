@@ -587,14 +587,32 @@ npm install github:DraconDev/opencode-auto-continue
 
 ### Local Development
 
+For developing or testing the plugin locally:
+
 ```bash
 git clone https://github.com/DraconDev/opencode-auto-continue
 cd opencode-auto-continue
 npm install
 npm run build
-cp dist/index.js ~/.config/opencode/plugins/
-cp dist/index.d.ts ~/.config/opencode/plugins/
+
+# Create plugin directory if it doesn't exist
+mkdir -p ~/.config/opencode/plugins/opencode-auto-continue
+
+# Copy all compiled files (not just index.js!)
+cp -r dist/* ~/.config/opencode/plugins/opencode-auto-continue/
+
+# Create package.json so OpenCode can resolve the plugin
+cat > ~/.config/opencode/plugins/opencode-auto-continue/package.json << 'EOF'
+{
+  "name": "opencode-auto-continue",
+  "version": "7.8.131",
+  "main": "./index.js",
+  "types": "./index.d.ts"
+}
+EOF
 ```
+
+**Then register it in your OpenCode config** (see [Plugin Registration](#plugin-registration) below).
 
 ## Plan-Driven Auto-Continue
 
@@ -669,7 +687,57 @@ Tests pass, no fix todos → Plan check fires
 AI creates todos for OAuth integration...
 ```
 
+## Plugin Registration
+
+Add the plugin to your `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "plugin": [
+    "@mohak34/opencode-notifier@latest",
+    "@tarquinen/opencode-dcp@latest",
+    ["opencode-auto-continue", {
+      "stallTimeoutMs": 45000,
+      "maxRecoveries": 3,
+      "sessionMonitorEnabled": true,
+      "nudgeEnabled": true,
+      "autoCompact": true,
+      "debug": false
+    }]
+  ]
+}
+```
+
+**Important**: The plugin name `opencode-auto-continue` must match the directory name in `~/.config/opencode/plugins/`.
+
+### Local vs npm Installation
+
+**Local (development)**:
+- Plugin files in `~/.config/opencode/plugins/opencode-auto-continue/`
+- Reference in config: `["opencode-auto-continue", { ... }]` (no version, no scope)
+- Requires `package.json` in plugin directory
+
+**npm (production)**:
+```bash
+npm install -g opencode-auto-continue
+# or
+opencode plugin opencode-auto-continue@latest --global
+```
+- Reference in config: `["opencode-auto-continue", { ... }]` or `"opencode-auto-continue"`
+
 ## Configuration
+
+### Quick Start
+
+Minimal configuration with sensible defaults:
+
+```json
+["opencode-auto-continue", {
+  "stallTimeoutMs": 45000,
+  "maxRecoveries": 3,
+  "debug": false
+}]
+```
 
 ### Full Configuration Reference
 
