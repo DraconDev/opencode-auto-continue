@@ -399,12 +399,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function scheduleRecovery(sessionId: string, delayMs: number): void {
     const s = getSession(sessionId);
+    // FIX 4: Increment generation to invalidate stale timers
+    s.timerGeneration++;
+    const currentGeneration = s.timerGeneration;
     const timer = setTimeout(() => {
       const current = sessions.get(sessionId);
-      if (current?.timer === timer) {
+      // FIX 4: Only proceed if generation matches (timer hasn't been overwritten)
+      if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
         current.timer = null;
+        recover(sessionId);
+      } else {
+        log('stale recovery timer ignored, generation mismatch:', sessionId);
       }
-      recover(sessionId);
     }, delayMs);
     (timer as any).unref?.();
     s.timer = timer;

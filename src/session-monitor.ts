@@ -56,12 +56,17 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   const childParentMap = new Map<string, string>();
 
   function scheduleDiscoveredRecovery(sessionId: string, state: SessionState): void {
+    // FIX 4: Increment generation to invalidate stale timers
+    state.timerGeneration++;
+    const currentGeneration = state.timerGeneration;
     const timer = setTimeout(() => {
       const current = sessions.get(sessionId);
-      if (current?.timer === timer) {
+      if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
         current.timer = null;
+        recover(sessionId);
+      } else {
+        log('[SessionMonitor] stale discovered recovery timer ignored:', sessionId);
       }
-      recover(sessionId);
     }, config.stallTimeoutMs);
     (timer as any).unref?.();
     state.timer = timer;
