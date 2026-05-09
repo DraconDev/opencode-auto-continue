@@ -748,8 +748,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           log('user sent message, clearing plan flag');
           s.planning = false;
         }
-        if (s.compacting && isUserMessage) {
-          log('user sent message, clearing compacting flag');
+        if (s.compacting) {
+          log('activity after compaction, clearing compacting flag');
           s.compacting = false;
         }
         clearTimer(sid);
