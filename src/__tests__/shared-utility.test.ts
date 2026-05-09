@@ -426,6 +426,23 @@ describe("shared.ts utilities", () => {
       expect(shared.DEFAULT_CONFIG.idleCleanupMs).toBe(extracted.DEFAULT_CONFIG.idleCleanupMs);
       expect(shared.DEFAULT_CONFIG.idleSessionTimeoutMs).toBe(extracted.DEFAULT_CONFIG.idleSessionTimeoutMs);
     });
+
+    it("should normalize documented aliases in extracted config module", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
+
+      const result = validateConfig({
+        ...DEFAULT_CONFIG,
+        orphanWaitMs: 2222,
+        idleCleanupMs: 3333,
+        sessionMonitorEnabled: false,
+      });
+
+      expect(result.subagentWaitMs).toBe(2222);
+      expect(result.idleSessionTimeoutMs).toBe(3333);
+      expect(result.orphanParentDetection).toBe(false);
+      expect(result.sessionDiscovery).toBe(false);
+      expect(result.idleCleanup).toBe(false);
+    });
   });
 
   describe("formatMessage", () => {
