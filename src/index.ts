@@ -544,8 +544,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
-          log('session idle, sending queued continue for:', sid);
-          await review.sendContinue(sid);
+          if (s.aborting) {
+            log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
+          } else {
+            log('session idle, sending queued continue for:', sid);
+            await review.sendContinue(sid);
+          }
         }
         // Auto-continue when transitioning busy→idle with pending todos
         // Nudge is always scheduled on idle — injectNudge fetches todos from API
@@ -782,6 +786,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
         const s = getSession(sid);
+        if (s.needsContinue) {
+          if (s.aborting) {
+            log('session.idle while recovery is finalizing, recovery will send queued continue for:', sid);
+          } else {
+            log('session.idle, sending queued continue for:', sid);
+            await review.sendContinue(sid);
+          }
+          writeStatusFile(sid);
+          return;
+        }
         nudge.scheduleNudge(sid);
         writeStatusFile(sid);
         return;
