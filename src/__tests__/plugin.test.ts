@@ -1312,6 +1312,52 @@ describe("opencode-auto-continue", () => {
     });
   });
 
+  describe("custom prompt API", () => {
+    it("should render todo and context variables and send a synthetic prompt", async () => {
+      const { AutoForceResumePlugin, sendCustomPrompt } = await import('../index.js');
+      (mockClient.session as any).messages = vi.fn().mockResolvedValue({
+        data: [{
+          role: "assistant",
+          createdAt: Date.now(),
+          parts: [{ type: "text", text: "Recently edited the auth module." }],
+        }],
+      });
+      mockTodo.mockResolvedValue({
+        data: [
+          { id: "t1", content: "fix auth", status: "in_progress" },
+          { id: "t2", content: "write tests", status: "completed" },
+        ],
+        error: undefined,
+      });
+
+      const plugin = await AutoForceResumePlugin({ client: mockClient } as any, {
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      } as any);
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      const result = await sendCustomPrompt("test", {
+        message: "Next: {contextSummary} pending={pending} total={total}",
+        includeTodoContext: true,
+        includeContextSummary: true,
+        customPrompt: "Focus on the auth failure first.",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Working on 1 open task(s): fix auth.");
+      expect(result.message).toContain("pending=1 total=2");
+      expect(result.message).toContain("Additional instruction: Focus on the auth failure first.");
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      expect((mockPrompt.mock.calls[0] as any)[0].body.parts[0]).toMatchObject({
+        type: "text",
+        synthetic: true,
+      });
+
+      plugin.dispose?.();
+    });
+  });
+
   describe("compactReductionFactor config", () => {
     it("should validate compactReductionFactor is between 0 and 1", async () => {
       vi.useFakeTimers();
