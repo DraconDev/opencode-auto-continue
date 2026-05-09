@@ -189,6 +189,12 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactAtMessageCount: 50,
   dcpDetected: false,
   dcpVersion: null,
+
+  // Plan-Driven Continue defaults
+  planDrivenContinue: false,
+  planFilePath: null,
+  planAutoMarkComplete: true,
+  planMaxItemsPerContinue: 3,
   
   // AI Advisory defaults
   enableAdvisory: false,
