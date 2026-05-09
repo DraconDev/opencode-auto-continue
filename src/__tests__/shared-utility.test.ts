@@ -539,6 +539,54 @@ describe("shared.ts utilities", () => {
     });
   });
 
+  describe("shouldBlockPrompt", () => {
+    it("should block duplicate synthetic user prompts", async () => {
+      const { shouldBlockPrompt } = await import('../shared.js');
+      const input = {
+        client: {
+          session: {
+            messages: vi.fn().mockResolvedValue({
+              data: [{
+                role: "user",
+                createdAt: new Date().toISOString(),
+                parts: [{ type: "text", text: "Please continue working on these tasks.", synthetic: true }],
+              }],
+            }),
+          },
+        },
+      } as any;
+
+      const result = await shouldBlockPrompt("test", "Please continue working on these tasks.", input);
+
+      expect(result).toBe(true);
+      expect(input.client.session.messages).toHaveBeenCalledWith({
+        path: { id: "test" },
+        query: { limit: 50 },
+      });
+    });
+
+    it("should ignore duplicate text outside the guard window", async () => {
+      const { shouldBlockPrompt } = await import('../shared.js');
+      const input = {
+        client: {
+          session: {
+            messages: vi.fn().mockResolvedValue({
+              data: [{
+                role: "user",
+                createdAt: Date.now() - 60000,
+                parts: [{ type: "text", text: "Please continue working on these tasks.", synthetic: true }],
+              }],
+            }),
+          },
+        },
+      } as any;
+
+      const result = await shouldBlockPrompt("test", "Please continue working on these tasks.", input);
+
+      expect(result).toBe(false);
+    });
+  });
+
   describe("getCompactionThreshold", () => {
     it("should always return proactiveCompactAtTokens", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
