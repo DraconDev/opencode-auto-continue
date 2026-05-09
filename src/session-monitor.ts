@@ -43,9 +43,9 @@ export interface SessionMonitorStats {
 export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   const { config, sessions, log, input, isDisposed, recover } = deps;
 
-  let discoveryTimer: ReturnType<typeof setTimeout> | null = null;
-  let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
-  let orphanCheckTimer: ReturnType<typeof setTimeout> | null = null;
+  let discoveryTimer: ReturnType<typeof setInterval> | null = null;
+  let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+  let orphanCheckTimer: ReturnType<typeof setInterval> | null = null;
   let previousBusyCount = 0;
   let orphanRecoveryCount = 0;
   let discoveredCount = 0;
@@ -54,6 +54,17 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   // Track parent-child relationships
   const parentChildMap = new Map<string, Set<string>>();
   const childParentMap = new Map<string, string>();
+
+  function scheduleDiscoveredRecovery(sessionId: string, state: SessionState): void {
+    const timer = setTimeout(() => {
+      const current = sessions.get(sessionId);
+      if (current?.timer === timer) {
+        current.timer = null;
+      }
+      recover(sessionId);
+    }, config.stallTimeoutMs);
+    state.timer = timer;
+  }
 
   function getBusyCount(): number {
     let count = 0;
@@ -169,15 +180,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           const state = createSession();
           state.actionStartedAt = Date.now();
 
-          if (statusType === "busy" || statusType === "retry") {
-            const timer = setTimeout(() => {
-              const current = sessions.get(id);
-              if (current?.timer === timer) {
-                current.timer = null;
-              }
-              recover(id);
-            }, config.stallTimeoutMs);
-            state.timer = timer;
+          if (statusType === "busy" || statusType === "retry" || statusType === null) {
+            scheduleDiscoveredRecovery(id, state);
           }
 
           sessions.set(id, state);
@@ -201,7 +205,14 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
     for (const [id, s] of sessions) {
       // Clean up if idle for too long
-      if (s.timer === null && !s.aborting && !s.compacting) {
+      if (
+        s.timer === null &&
+        s.nudgeTimer === null &&
+        s.reviewDebounceTimer === null &&
+        !s.needsContinue &&
+        !s.aborting &&
+        !s.compacting
+      ) {
         const idleTime = now - s.lastProgressAt;
         if (idleTime > config.idleSessionTimeoutMs) {
           toDelete.push(id);
@@ -214,6 +225,14 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       // Sort by last activity, oldest first
       const sorted = Array.from(sessions.entries())
         .filter(([id]) => !toDelete.includes(id))
+        .filter(([, s]) =>
+          s.timer === null &&
+          s.nudgeTimer === null &&
+          s.reviewDebounceTimer === null &&
+          !s.needsContinue &&
+          !s.aborting &&
+          !s.compacting
+        )
         .sort((a, b) => a[1].lastProgressAt - b[1].lastProgressAt);
 
       const toRemove = sessions.size - config.maxSessions;
