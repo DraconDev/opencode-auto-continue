@@ -477,6 +477,9 @@ export function createSession(): SessionState {
     // Advisory
     lastAdvisoryAdvice: null,
 
+    // Plan-Driven Continue
+    lastPlanItemDescription: "",
+
     // Status File
     statusHistory: [],
   };
