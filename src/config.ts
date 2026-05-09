@@ -107,7 +107,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   nudgeEnabled: true,
   nudgeIdleDelayMs: 500,
   nudgeMaxSubmits: 3,
-  nudgeMessage: "The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks.",
+  nudgeMessage: "Continue working on the pending tasks and mark them as completed when done. Do not ask for permission; just proceed with the work. Pending tasks: {todoList}.",
   nudgeCooldownMs: 60000,
   tokenLimitPatterns: ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],
   terminalTitleEnabled: true,
