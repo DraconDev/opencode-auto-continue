@@ -111,10 +111,18 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     sessionId: string,
     knownTodos?: Array<{ id: string; status: string; content?: string; title?: string }>
   ): Promise<void> {
-    if (isDisposed()) return;
+    log("[Nudge] START — checking session:", sessionId);
+    
+    if (isDisposed()) {
+      log("[Nudge] ABORT — plugin disposed");
+      return;
+    }
 
     const s = sessions.get(sessionId);
-    if (!s) return;
+    if (!s) {
+      log("[Nudge] ABORT — session not found:", sessionId);
+      return;
+    }
 
     if (!config.nudgeEnabled) {
       log("nudge disabled, skip");
@@ -257,6 +265,7 @@ async function checkLastMessageIsQuestion(sessionId: string): Promise<boolean> {
     // This prevents nudging when the AI is explicitly asking the user for input
     const lastMessageIsQuestion = await checkLastMessageIsQuestion(sessionId);
     if (lastMessageIsQuestion) {
+      log("nudge skipped - last assistant message is a question", sessionId);
       return;
     }
 
