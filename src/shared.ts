@@ -597,7 +597,7 @@ export async function shouldBlockPrompt(
       
       const msgTime = getMessageTimestamp(msg);
       if (msgTime === null) continue;
-      if (msgTime !== null && now - msgTime > 30000) continue; // Only check last 30s
+      if (now - msgTime > 30000) continue; // Only check last 30s
       
       const text = getMessageText(msg);
       // Check if the recent message contains similar content
