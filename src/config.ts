@@ -50,9 +50,12 @@ export interface PluginConfig {
   compactCooldownMs: number;
   compactReductionFactor: number;
   compactAtMessageCount: number;
-  tokenEstimateMultiplier: number; // FIX 5: Configurable multiplier for token estimation
+  tokenEstimateMultiplier: number;
   dcpDetected: boolean;
   dcpVersion: string | null;
+  
+  // Planning timeout
+  planningTimeoutMs: number;
   
   // Plan-Driven Continue
   planDrivenContinue: boolean;
@@ -125,9 +128,12 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
-  tokenEstimateMultiplier: 1.0, // FIX 5: Default to 1.0 (no arbitrary inflation)
+  tokenEstimateMultiplier: 1.0,
   dcpDetected: false,
   dcpVersion: null,
+  
+  // Planning timeout (default 5 minutes)
+  planningTimeoutMs: 300000,
   
   // Plan-Driven Continue defaults
   planDrivenContinue: false,
