@@ -490,6 +490,8 @@ export function createSession(): SessionState {
     nudgeTimer: null,
     lastNudgeAt: 0,
     nudgeCount: 0,
+    nudgeFailureCount: 0, // FIX 8
+    lastNudgeFailureAt: 0, // FIX 8
     lastTodoSnapshot: '',
     nudgePaused: false,
     hasOpenTodos: false,
@@ -500,6 +502,7 @@ export function createSession(): SessionState {
     continueMessageText: '',
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
+    continueInProgress: false, // FIX 2
 
     // Timer Generation (Fix 4)
     timerGeneration: 0,
