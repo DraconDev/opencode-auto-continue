@@ -19,6 +19,7 @@ import {
   detectDCP,
   getDCPVersion,
   shouldBlockPrompt,
+  scheduleRecoveryWithGeneration,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
