@@ -397,6 +397,24 @@ describe("shared.ts utilities", () => {
 
       expect(result.compactReductionFactor).toBe(0.01);
     });
+
+    it("should normalize documented session monitor aliases", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = {
+        ...DEFAULT_CONFIG,
+        orphanWaitMs: 1234,
+        idleCleanupMs: 5678,
+        sessionMonitorEnabled: false,
+      };
+      const result = validateConfig(config);
+
+      expect(result.subagentWaitMs).toBe(1234);
+      expect(result.idleSessionTimeoutMs).toBe(5678);
+      expect(result.orphanParentDetection).toBe(false);
+      expect(result.sessionDiscovery).toBe(false);
+      expect(result.idleCleanup).toBe(false);
+    });
   });
 
   describe("formatMessage", () => {
