@@ -215,6 +215,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       if (hasToolText) {
         log('[RECOVERY] tool-text detected in session, using recovery prompt');
       }
+    }
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
