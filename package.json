@@ -57,7 +57,7 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "sync": "npm run build && cp src/index.ts ~/.config/opencode/plugins/opencode-auto-continue/index.ts && cp dist/index.js ~/.config/opencode/plugins/opencode-auto-continue/index.js && cp dist/index.d.ts ~/.config/opencode/plugins/opencode-auto-continue/index.d.ts",
+    "sync": "npm run build && mkdir -p ~/.config/opencode/plugins/opencode-auto-continue && cp -r dist/* ~/.config/opencode/plugins/opencode-auto-continue/ && echo '{\"name\":\"opencode-auto-continue\",\"version\":\"7.8.131\",\"main\":\"./index.js\",\"types\":\"./index.d.ts\"}' > ~/.config/opencode/plugins/opencode-auto-continue/package.json",
     "prepublishOnly": "npm run build"
   }
 }
