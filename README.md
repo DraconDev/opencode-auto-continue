@@ -328,34 +328,23 @@ Check todos
 
 With `PLAN.md`, you control the roadmap. The AI follows your plan.
 
-### Test-Fix Loop
+### Review on Completion
 
-When all todos are completed, the review prompt now explicitly asks the AI to run tests:
+When all todos are completed, the review prompt fires once per session:
 
 ```
 [All todos completed]
         │
         ▼
-Review fires: "Please run the test suite (e.g., `npm test`)
-               and verify everything passes..."
+Review fires (debounced 500ms)
         │
         ▼
-AI runs tests, creates fix todos if failures found
-        │
-        ▼
-Fix todos complete → reviewFired resets
-        │
-        ▼
-Review fires again (repeat until all tests pass)
+AI receives review prompt
 ```
 
-This creates an automatic cycle:
-1. **Complete tasks** → Review triggers
-2. **Run tests** → Find failures
-3. **Create fix todos** → Work on fixes
-4. **Complete fixes** → Review triggers again
-5. **Run tests** → Verify all pass
-6. **No more todos** → Done
+The default review message asks the AI to run tests and verify everything passes. The AI may create new fix todos if it finds failures.
+
+**Note**: Review is **one-shot per session** (`reviewFired` resets only on `session.deleted` / `session.ended`). If the AI creates fix todos after review, you'll need to manually trigger review again or wait for the session to end.
 
 **Config**:
 ```json
