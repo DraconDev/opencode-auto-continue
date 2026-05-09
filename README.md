@@ -639,40 +639,33 @@ EOF
 
 **Then register it in your OpenCode config** (see [Plugin Registration](#plugin-registration) below).
 
-## Plan-Driven Auto-Continue
+## Plan-Aware Features
 
-When the AI runs out of todos, it can automatically continue working based on a plan document. This prevents the AI from hallucinating what to do next and gives you control over the roadmap.
+The plugin has partial plan support. What's implemented vs planned:
 
-### How It Works
+### ✅ Implemented: Auto-Mark Complete
 
-1. **Todos exist** → AI works on them (existing behavior)
-2. **Todos complete** → Review fires, AI runs tests (existing behavior)
-3. **No todos, review done** → Plugin reads plan file and tells AI the next item
-4. **AI creates todos** for the next plan item and continues working
+When `planDrivenContinue: true` and `planAutoMarkComplete: true`, completing a todo automatically marks the matching plan item as complete in your plan file.
 
-### Plan File Format
+**How it works**:
+- Watches `todo.updated` events
+- When a todo is marked completed, searches the plan file for a matching description (fuzzy string match)
+- Updates `- [ ]` to `- [x]` in the plan file
 
-Create a `PLAN.md` at your project root (or any of the supported filenames):
+**Supported plan files** (checked in order):
+1. `PLAN.md`
+2. `ROADMAP.md`
+3. `.opencode/plan.md`
 
+**Plan format**:
 ```markdown
 # Project Plan
 
 ## Phase 1: Foundation
-• (done) Setup project structure
-• Add configuration
-• Write tests
-
-## Phase 2: Features
-• Implement API
-• Add authentication
+- [ ] Setup project structure
+- [x] Add configuration
+- [ ] Write tests
 ```
-
-The plugin searches for plan files in this order:
-1. `PLAN.md` (recommended)
-2. `ROADMAP.md`
-3. `.opencode/plan.md`
-4. `README.md`
-5. `TODO.md`
 
 ### Configuration
 
@@ -682,8 +675,7 @@ The plugin searches for plan files in this order:
     ["opencode-auto-continue", {
       "planDrivenContinue": true,
       "planFilePath": null,
-      "planAutoMarkComplete": true,
-      "planMaxItemsPerContinue": 3
+      "planAutoMarkComplete": true
     }]
   ]
 }
@@ -691,26 +683,13 @@ The plugin searches for plan files in this order:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `planDrivenContinue` | boolean | `false` | Enable plan-driven auto-continue |
-| `planFilePath` | string | `null` | Custom plan file path (relative or absolute). If null, searches standard locations. |
-| `planAutoMarkComplete` | boolean | `true` | Auto-mark plan items as complete when corresponding todos finish |
-| `planMaxItemsPerContinue` | number | `3` | Max upcoming items to show in continue message |
+| `planDrivenContinue` | boolean | `false` | Enable plan features (currently auto-mark only) |
+| `planFilePath` | string | `null` | Custom plan file path. If null, searches standard locations. |
+| `planAutoMarkComplete` | boolean | `true` | Auto-mark plan items when corresponding todos finish |
 
-### Auto-Mark Complete
+### 🚧 Planned: Plan-Driven Continue Messages
 
-When `planAutoMarkComplete` is enabled, completing a todo automatically marks the matching plan item as complete. The plugin matches by fuzzy string comparison between todo content and plan item description.
-
-### Example Flow
-
-```
-User: "Implement user authentication"
-AI creates todos: ["Setup auth module", "Add login form", "Write tests"]
-AI works through todos...
-All todos complete → Review fires → AI runs tests
-Tests pass, no fix todos → Plan check fires
-"According to the plan (33% complete), next item is: Add OAuth integration"
-AI creates todos for OAuth integration...
-```
+The codebase includes plan parsing and message building utilities, but they're not yet wired into the recovery flow. See [Roadmap](#roadmap).
 
 ## Plugin Registration
 
