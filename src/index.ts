@@ -803,6 +803,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.reviewDebounceTimer = null;
         }
 
+        // FIX 7: Reset reviewFired when new pending todos appear after review was fired
+        // This enables the test-fix loop: review creates fix todos → review fires again
+        if (hasPending && s.reviewFired) {
+          log('new pending todos detected after review, resetting review flag:', sid);
+          s.reviewFired = false;
+        }
+
         // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
         writeStatusFile(sid);
         return;
