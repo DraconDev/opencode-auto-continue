@@ -493,14 +493,14 @@ Token accumulation:
 - `message.part.updated` (step-finish): `s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens)`
 - `session.error`: `s.estimatedTokens = Math.max(s.estimatedTokens, parsedTotal)`
 
-**Text-based fallback estimation** (for text/reasoning/tool parts without tokens):
-- English text: `chars × 0.75 / 4` tokens → **×2 multiplier** for hidden context
-- Code: `chars × 1.0 / 4` tokens → **×2 multiplier** for hidden context
-- Digits: `chars × 0.5 / 4` tokens → **×2 multiplier** for hidden context
+**Text-based fallback estimation** (for tool/file/subtask parts without tokens):
+- Tool calls: `chars × 1.0 / 4` tokens → multiplied by `tokenEstimateMultiplier` (default 1.0)
+- File references: `chars × 0.75 / 4` tokens → multiplied by `tokenEstimateMultiplier`
+- Subtask prompts: `chars × 0.75 / 4` tokens → multiplied by `tokenEstimateMultiplier`
 
-**Important**: `estimatedTokens` is a running sum of all message tokens. This WILL exceed actual context window because old messages get dropped. Intentional — better to over-estimate and compact early.
+**Note**: Text and reasoning parts are NOT estimated — they use actual token counts from `message.updated` (assistant tokens metadata). This prevents double-counting.
 
-**Why session.status() doesn't help**: OpenCode SDK's `SessionStatus` type is only `{ type: "idle" | "busy" | "retry" }` — no token fields. The plugin relies on the three sources above instead.
+**Configurable multiplier**: Set `tokenEstimateMultiplier` in config (default 1.0). Previously hardcoded at 2.0, which caused massive overestimation.
 
 ## Context Compaction (Emergency Only)
 
