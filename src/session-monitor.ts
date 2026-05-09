@@ -7,7 +7,7 @@
  * 3. Idle session cleanup - prevent memory leaks
  */
 
-import type { SessionState } from "./session-state.js";
+import { createSession, type SessionState } from "./session-state.js";
 import type { PluginConfig } from "./config.js";
 import type { TypedPluginInput } from "./types.js";
 
@@ -137,62 +137,43 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     try {
       const result = await input.client.session.list();
       const sessionList = Array.isArray(result.data) ? result.data : [];
+      let statusData: Record<string, { type: string }> = {};
+
+      try {
+        const statusResult = await (input.client.session as any).status?.({});
+        statusData = (statusResult?.data || {}) as Record<string, { type: string }>;
+      } catch (e) {
+        log('[SessionMonitor] status check during discovery failed:', e);
+      }
 
       for (const session of sessionList) {
         const id = session.id;
         if (!id) continue;
 
         if (!sessions.has(id)) {
+          const statusType =
+            statusData[id]?.type ||
+            (session as any).status?.type ||
+            (session as any).type ||
+            null;
+
+          if (statusType && statusType !== "busy" && statusType !== "retry") {
+            continue;
+          }
+
           // New session discovered - create minimal session entry
           log('[SessionMonitor] discovered missed session:', id);
           discoveredCount++;
 
           // Create minimal session so recovery knows about it
-            sessions.set(id, {
-            attempts: 0,
-            backoffAttempts: 0,
-            autoSubmitCount: 0,
-            lastProgressAt: Date.now(),
-            lastUserMessageId: '',
-            sentMessageAt: 0,
-            timer: null,
-            nudgeTimer: null,
-            needsContinue: false,
-            continueMessageText: '',
-            nudgeCount: 0,
-            lastNudgeAt: 0,
-            hasOpenTodos: false,
-            lastKnownTodos: [],
-            estimatedTokens: 0,
-            messageCount: 0,
-            lastCompactionAt: 0,
-            tokenLimitHits: 0,
-            planning: false,
-            planBuffer: '',
-            compacting: false,
-            userCancelled: false,
-            aborting: false,
-            sessionCreatedAt: Date.now(),
-            actionStartedAt: 0,
-            lastRecoveryTime: 0,
-            recoveryStartTime: 0,
-            stallDetections: 0,
-            recoverySuccessful: 0,
-            recoveryFailed: 0,
-            lastRecoverySuccess: 0,
-            totalRecoveryTimeMs: 0,
-            recoveryTimes: [],
-            statusHistory: [],
-            nudgePaused: false,
-            lastTodoSnapshot: '',
-            lastStallPartType: '',
-            stallPatterns: {},
-            continueTimestamps: [],
-            reviewFired: false,
-            reviewDebounceTimer: null,
-            lastAdvisoryAdvice: null,
-            lastPlanItemDescription: '',
-          });
+          const state = createSession();
+          state.actionStartedAt = Date.now();
+
+          if (statusType === "busy" || statusType === "retry") {
+            state.timer = setTimeout(() => recover(id), config.stallTimeoutMs);
+          }
+
+          sessions.set(id, state);
         }
       }
 
