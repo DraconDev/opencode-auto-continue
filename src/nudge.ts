@@ -210,7 +210,6 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
 
       messageText = formatMessage(config.nudgeMessage, templateVars);
-    }
 
     // Prompt guard: prevent duplicate injections
     const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log as any);
