@@ -596,6 +596,7 @@ export async function shouldBlockPrompt(
       if (role !== "assistant" && role !== "user") continue;
       
       const msgTime = getMessageTimestamp(msg);
+      if (msgTime === null) continue;
       if (msgTime !== null && now - msgTime > 30000) continue; // Only check last 30s
       
       const text = getMessageText(msg);

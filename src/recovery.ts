@@ -376,9 +376,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       // If abort polling already confirmed idle, send the queued prompt now.
       // Otherwise do one final status check; relying only on a future idle event
       // can strand the custom continue message after a successful abort.
-      if (deps.sendContinue && (isIdle || await isSessionIdle(sessionId))) {
-        log('session is idle after recovery, sending queued continue immediately');
-        await deps.sendContinue(sessionId);
+      if (deps.sendContinue) {
+        const readyForContinue = await isSessionIdle(sessionId);
+        if (readyForContinue) {
+          log('session is idle after recovery, sending queued continue immediately');
+          await deps.sendContinue(sessionId);
+        } else {
+          log('queued continue remains pending until session becomes idle:', sessionId);
+        }
       }
     } catch (e) {
       log('recovery failed:', e);
