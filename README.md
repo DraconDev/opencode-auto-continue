@@ -13,7 +13,6 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
 | **Plan-Aware Continue** | Nothing — unique feature | Uses `continueWithPlanMessage` when planning phase detected |
 | **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
-| **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
 | **Prompt Guard** | Nothing — unique feature | Prevents duplicate injections across plugin instances |
