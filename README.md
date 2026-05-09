@@ -880,7 +880,6 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 | `planDrivenContinue` | `false` | Enable plan-driven auto-continue |
 | `planFilePath` | `null` | Custom plan file path (relative or absolute). If null, searches standard locations |
 | `planAutoMarkComplete` | `true` | Auto-mark plan items as complete when corresponding todos finish |
-| `planMaxItemsPerContinue` | `3` | Max upcoming items to show in continue message |
 
 ### Other Options
 
