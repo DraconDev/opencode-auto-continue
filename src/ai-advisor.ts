@@ -313,43 +313,51 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), aiConfig.advisoryTimeoutMs);
 
-      const response = await fetch(chatUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-          ...headersWithoutAuth(headers),
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: aiConfig.advisoryMaxTokens,
-          temperature: aiConfig.advisoryTemperature,
-          response_format: { type: "json_object" },
-        }),
-        signal: controller.signal,
-      });
+      try {
+        const response = await fetch(chatUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            ...headersWithoutAuth(headers),
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: aiConfig.advisoryMaxTokens,
+            temperature: aiConfig.advisoryTemperature,
+            response_format: { type: "json_object" },
+          }),
+          signal: controller.signal,
+        });
 
-      clearTimeout(timeoutId);
+        if (!response.ok) {
+          log("AI provider returned:", response.status, response.statusText);
+          return null;
+        }
 
-      if (!response.ok) {
-        log("AI provider returned:", response.status, response.statusText);
-        return null;
+        const data = await response.json() as any;
+        const content = data?.choices?.[0]?.message?.content;
+        if (!content) {
+          log("empty AI response");
+          return null;
+        }
+
+        // Parse JSON from the response
+        const parsed = JSON.parse(content) as AIAdvice;
+        
+        // Validate the response
+        if (!parsed.action || !["abort", "wait", "continue", "compact"].includes(parsed.action)) {
+          log("invalid AI advice action:", parsed.action);
+          return null;
+        }
+        
+        log("AI advice:", parsed.action, "confidence:", parsed.confidence, "reasoning:", parsed.reasoning?.substring(0, 100));
+        
+        return parsed;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const data = await response.json() as any;
-      const content = data?.choices?.[0]?.message?.content;
-      if (!content) {
-        log("empty AI response");
-        return null;
-      }
-
-      // Parse JSON from the response
-      const parsed = JSON.parse(content) as AIAdvice;
-      
-      // Validate the response
-      if (!parsed.action || !["abort", "wait", "continue", "compact"].includes(parsed.action)) {
-        log("invalid AI advice action:", parsed.action);
         return null;
       }
 
