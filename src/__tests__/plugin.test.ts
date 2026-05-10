@@ -10,6 +10,9 @@ interface MockClient {
     todo: ReturnType<typeof vi.fn>;
     summarize: ReturnType<typeof vi.fn>;
   };
+  tui: {
+    showToast: ReturnType<typeof vi.fn>;
+  };
 }
 
 async function createPlugin(input: { client: MockClient }, options?: Record<string, unknown>) {
@@ -23,6 +26,7 @@ describe("opencode-auto-continue", () => {
   let mockStatus: ReturnType<typeof vi.fn>;
   let mockTodo: ReturnType<typeof vi.fn>;
   let mockSummarize: ReturnType<typeof vi.fn>;
+  let mockShowToast: ReturnType<typeof vi.fn>;
   let mockClient: MockClient;
 
   beforeEach(() => {
