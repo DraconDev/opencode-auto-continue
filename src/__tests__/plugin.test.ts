@@ -2109,4 +2109,130 @@ describe("opencode-auto-continue", () => {
       expect(true).toBe(true);
     });
   });
+
+  describe("toast notifications", () => {
+    it("should show Session Resumed toast when session goes busy after nudge", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      mockTodo.mockResolvedValue({ data: [{ id: "1", status: "pending", content: "task" }], error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        nudgeEnabled: true,
+        showToasts: true,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Session goes idle with pending todos
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      
+      // Nudge should be scheduled - advance to trigger it
+      await vi.advanceTimersByTimeAsync(5000);
+      await Promise.resolve();
+
+      // Verify nudge was sent
+      expect(mockPrompt).toHaveBeenCalled();
+
+      // Now session goes busy (AI responding to nudge)
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await Promise.resolve();
+
+      // Toast should be shown
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        body: expect.objectContaining({
+          title: "Session Resumed"
+        })
+      }));
+    });
+
+    it("should NOT show Session Resumed toast when busy without recent nudge", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        showToasts: true,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Session goes busy without any nudge
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await Promise.resolve();
+
+      // Toast should NOT be shown
+      expect(mockShowToast).not.toHaveBeenCalled();
+    });
+
+    it("should NOT show Session Resumed toast when user sends message after nudge", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      mockTodo.mockResolvedValue({ data: [{ id: "1", status: "pending", content: "task" }], error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        nudgeEnabled: true,
+        showToasts: true,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Session goes idle with pending todos
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await Promise.resolve();
+
+      // Nudge was sent
+      expect(mockPrompt).toHaveBeenCalled();
+
+      // User sends a message (resets lastNudgeAt)
+      await plugin.event({ event: { type: "message.updated", properties: { sessionID: "test", info: { role: "user", id: "user-msg-1" } } } });
+      await Promise.resolve();
+
+      // Session goes busy (user's message, not nudge response)
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await Promise.resolve();
+
+      // Toast should NOT be shown because user message reset lastNudgeAt
+      expect(mockShowToast).not.toHaveBeenCalled();
+    });
+
+    it("should show Recovery Successful toast when session goes busy after continue", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        showToasts: true,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Trigger recovery by letting stall timer fire
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await Promise.resolve();
+
+      // Recovery should abort and send continue
+      expect(mockAbort).toHaveBeenCalled();
+
+      // Wait for continue to be sent
+      await vi.advanceTimersByTimeAsync(100);
+      await Promise.resolve();
+
+      // Now session goes busy (AI responding to continue)
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await Promise.resolve();
+
+      // Recovery Successful toast should be shown
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        body: expect.objectContaining({
+          title: "Recovery Successful"
+        })
+      }));
+    });
+  });
 });
