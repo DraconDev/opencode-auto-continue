@@ -1,5 +1,28 @@
 # Agent Instructions for opencode-auto-continue
 
+## Current State (v7.8.212)
+
+**Status:** Released & Dogfooding  
+**Tests:** 377/377 passing  
+**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.212
+
+### v7.8.212 Changes
+- **Directive Messages**: All recovery/nudge/review messages use imperative tone with anti-loop guards ("Do not ask for permission — just proceed")
+- **Planned Work Tracking**: Messages now prompt AI to create todos for planned work that isn't tracked yet
+- **34 Bug Fixes**: Timer races, state corruption, recovery loops, token counting, nudge reliability
+
+### Dogfood Config
+```json
+["opencode-auto-continue", {
+  "stallTimeoutMs": 45000,
+  "maxRecoveries": 3,
+  "sessionMonitorEnabled": true,
+  "nudgeEnabled": true,
+  "autoCompact": true,
+  "debug": false
+}]
+```
+
 ## Overview
 
 `opencode-auto-continue` is an OpenCode plugin that:
