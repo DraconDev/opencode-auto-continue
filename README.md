@@ -602,7 +602,7 @@ opencode plugin @tarquinen/opencode-dcp@latest --global
 ### npm
 
 ```bash
-npm install opencode-auto-continue
+npm install @dracondev/opencode-auto-continue
 ```
 
 ### GitHub
