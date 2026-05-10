@@ -464,6 +464,23 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             
             log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
+            
+            // Show token limit toast
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Token Limit Reached",
+                    message: `Compacting context to free up tokens (hit #${s.tokenLimitHits})...`,
+                    variant: "warning",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            
             // Attempt emergency compaction asynchronously
             compaction.forceCompact(sid).then(async (compacted) => {
               // FIX 4: Check session still exists before accessing state
