@@ -284,6 +284,22 @@ export function createNudgeModule(deps: NudgeDeps) {
       s.lastNudgeFailureAt = Date.now();
       const failureBackoff = Math.min(30000, 2000 * Math.pow(2, s.nudgeFailureCount - 1));
       log("nudge failure tracked, count:", s.nudgeFailureCount, "next backoff:", failureBackoff, "ms");
+
+      // Show failure toast
+      if (config.showToasts) {
+        try {
+          await input.client.tui.showToast({
+            query: { directory: input.directory || "" },
+            body: {
+              title: "Nudge Failed",
+              message: `Failed to send nudge. Will retry in ${Math.round(failureBackoff / 1000)}s.`,
+              variant: "warning",
+            },
+          });
+        } catch (e) {
+          log("nudge failure toast error (ignored)", String(e));
+        }
+      }
     }
   }
 
