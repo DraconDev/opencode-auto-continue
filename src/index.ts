@@ -529,6 +529,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.attempts = 0;
             s.backoffAttempts = 0;
             s.lastNudgeAt = 0; // Prevent false "Session Resumed" toast
+            s.lastContinueAt = 0; // Prevent false "Recovery Successful" toast
             nudge.resetNudge(sid);
             log('user message detected, resetting counters:', sid);
           }
