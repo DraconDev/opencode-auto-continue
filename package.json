@@ -48,6 +48,7 @@
     "@tarquinen/opencode-dcp": ">=3.0.0"
   },
   "devDependencies": {
+    "@dracondev/opencode-auto-continue": "^7.8.235",
     "@opencode-ai/plugin": "^1.4.10",
     "@types/node": "^20.11.0",
     "typescript": "^5.4.0",
