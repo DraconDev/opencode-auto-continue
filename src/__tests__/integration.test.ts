@@ -207,6 +207,9 @@ describe("opencode-auto-continue integration", () => {
 
     // Step 3: Send todo with pending todos — nudge state tracked
     await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [{ id: "t1", content: "test task", status: "in_progress" }] } } });
+    // Flush debounced status file write
+    await vi.advanceTimersByTimeAsync(500);
+    await Promise.resolve();
 
     statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
@@ -216,6 +219,9 @@ describe("opencode-auto-continue integration", () => {
     mockStatus.mockResolvedValue({ data: { "test-session": { type: "idle" } }, error: undefined });
     mockPrompt.mockResolvedValue({ data: {}, error: undefined });
     await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
+    // Flush debounced status file write (also flushes nudge timer at 500ms)
+    await vi.advanceTimersByTimeAsync(500);
+    await Promise.resolve();
 
     statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
