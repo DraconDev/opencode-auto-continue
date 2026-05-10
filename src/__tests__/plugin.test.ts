@@ -2216,7 +2216,7 @@ describe("opencode-auto-continue", () => {
       vi.useRealTimers();
     });
 
-    it("should show Recovery Successful toast when session goes busy after continue", async () => {
+    it("should NOT show Recovery Successful toast when busy without recent continue", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
 
@@ -2227,22 +2227,12 @@ describe("opencode-auto-continue", () => {
         statusFilePath: ""
       });
 
-      // Create session and manually set lastContinueAt to simulate recent continue
+      // Session goes busy without any continue sent
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await Promise.resolve();
 
-      // Manually simulate that a continue was just sent (we can't easily test full recovery flow)
-      // The toast logic is: if lastContinueAt > 0 and < 30s ago, show toast
-      // We test this by checking the session state behavior
-      const { sessions } = await import('../index.js').then(m => {
-        // Access internal state through a test helper or check behavior
-        // For now, just verify the toast pattern works when conditions are met
-        return { sessions: null };
-      });
-
-      // Since we can't easily trigger the full recovery flow in tests,
-      // we verify the toast configuration is correct by checking showToasts is enabled
-      expect(mockShowToast).not.toHaveBeenCalled(); // No toast because lastContinueAt is 0
+      // Recovery Successful toast should NOT be shown (no continue was sent)
+      expect(mockShowToast).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
