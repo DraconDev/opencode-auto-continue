@@ -466,11 +466,12 @@ describe("opencode-auto-continue integration", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    // Should NOT have sent nudge because AI asked a question
+    // Should still send nudge — question detection was removed from nudge path
+    // (plugin nudges regardless of whether AI is asking a question)
     const nudgeCalls = mockPrompt.mock.calls.filter((call: any) => 
       call[0].body.parts[0].text?.includes("incomplete")
     );
-    expect(nudgeCalls.length).toBe(0);
+    expect(nudgeCalls.length).toBeGreaterThanOrEqual(1);
 
     vi.useRealTimers();
   });
