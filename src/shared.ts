@@ -4,9 +4,16 @@ import { join } from "path";
 
 export type TypedPluginInput = PluginInput;
 
-// Used internally by functions below; also re-exported for downstream consumers.
+// Import canonical types/values for local use, then re-export for downstream.
+// Canonical definitions live in config.ts and session-state.ts.
 import type { PluginConfig } from "./config.js";
+import { DEFAULT_CONFIG } from "./config.js";
 import type { SessionState } from "./session-state.js";
+import { createSession } from "./session-state.js";
+
+// Re-exports for downstream consumers (maintains backward compatibility)
+export type { PluginConfig, SessionState };
+export { DEFAULT_CONFIG, createSession };
 
 // Re-export canonical types from their dedicated modules.
 // These types are DEFINED in config.ts and session-state.ts;
