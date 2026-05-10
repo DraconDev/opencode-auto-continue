@@ -562,6 +562,24 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (s.actionStartedAt === 0) {
             s.actionStartedAt = Date.now();
           }
+          // Show "Session Resumed" toast if progress detected after recent nudge
+          if (s.lastNudgeAt > 0 && Date.now() - s.lastNudgeAt < 30000) {
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Session Resumed",
+                    message: "The AI has resumed working after the nudge.",
+                    variant: "info",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            s.lastNudgeAt = 0; // Reset to avoid duplicate toasts
+          }
           // NOTE: s.planning is NOT cleared here — session.status(busy) fires
           // during plan generation too (the session IS busy). Clearing it would
           // cause plan-aware continue messages to use the generic message instead.
