@@ -248,22 +248,9 @@ export function createNudgeModule(deps: NudgeDeps) {
       s.lastNudgeAt = Date.now();
       s.messageCount++;
       log("nudge sent successfully", { newCount: s.nudgeCount });
-
-      // Show info toast
-      if (config.showToasts) {
-        try {
-          await input.client.tui.showToast({
-            query: { directory: input.directory || "" },
-            body: {
-              title: "Nudge Sent",
-              message: `${pending.length} task(s) remaining`,
-              variant: "info",
-            },
-          });
-        } catch (e) {
-          log("nudge toast error (ignored)", String(e));
-        }
-      }
+      // Note: We intentionally do NOT show a toast here because we don't know
+      // if the AI will actually respond. The toast would be misleading.
+      // Instead, we show "Session Resumed" when progress is detected.
     } catch (e: unknown) {
       const errorStr = String(e);
       const errorName = (e as any)?.name || "";
