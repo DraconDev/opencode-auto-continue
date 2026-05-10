@@ -4,6 +4,10 @@ import { join } from "path";
 
 export type TypedPluginInput = PluginInput;
 
+// Used internally by functions below; also re-exported for downstream consumers.
+import type { PluginConfig } from "./config.js";
+import type { SessionState } from "./session-state.js";
+
 // Re-export canonical types from their dedicated modules.
 // These types are DEFINED in config.ts and session-state.ts;
 // shared.ts only re-exports them to maintain backward compatibility
