@@ -2176,20 +2176,28 @@ describe("opencode-auto-continue", () => {
 
     it("should NOT show Session Resumed toast when user sends message after nudge", async () => {
       vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      mockTodo.mockResolvedValue({ data: [{ id: "1", status: "pending", content: "task" }], error: undefined });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({ data: [{ id: "1", status: "in_progress", content: "task" }], error: undefined });
 
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 5000,
         nudgeEnabled: true,
+        nudgeIdleDelayMs: 500,
+        nudgeCooldownMs: 1000,
         showToasts: true,
         terminalTitleEnabled: false,
         statusFilePath: ""
       });
 
-      // Session goes idle with pending todos
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      // Set hasOpenTodos
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
+
+      // Session goes idle - schedules nudge
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTimeAsync(500);
       await Promise.resolve();
 
       // Nudge was sent
@@ -2205,6 +2213,7 @@ describe("opencode-auto-continue", () => {
 
       // Toast should NOT be shown because user message reset lastNudgeAt
       expect(mockShowToast).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should show Recovery Successful toast when session goes busy after continue", async () => {
