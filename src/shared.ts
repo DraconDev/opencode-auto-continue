@@ -12,17 +12,9 @@ import type { SessionState } from "./session-state.js";
 import { createSession } from "./session-state.js";
 
 // Re-exports for downstream consumers (maintains backward compatibility)
+// These are already imported locally above, so we just re-export them.
 export type { PluginConfig, SessionState };
 export { DEFAULT_CONFIG, validateConfig, createSession };
-
-// Re-export canonical types from their dedicated modules.
-// These types are DEFINED in config.ts and session-state.ts;
-// shared.ts only re-exports them to maintain backward compatibility
-// for all existing importers.
-export type { SessionState } from "./session-state.js";
-export { createSession } from "./session-state.js";
-export type { PluginConfig } from "./config.js";
-export { DEFAULT_CONFIG } from "./config.js";
 
 // Cache for model context limit to avoid re-reading opencode.json
 // Encapsulated in a class to avoid module-level state pollution and improve testability
