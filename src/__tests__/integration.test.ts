@@ -333,7 +333,7 @@ describe("opencode-auto-continue integration", () => {
     // Should have sent review prompt
     expect(mockPrompt).toHaveBeenCalled();
     const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
-    expect(lastCall[0].body.parts[0].text).toContain("completed");
+    expect(lastCall[0].body.parts[0].text).toContain("complete");
 
     vi.useRealTimers();
   });
