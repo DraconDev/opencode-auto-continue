@@ -385,6 +385,20 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.nudgeCount = 0;
       cancelNudge(sessionId);
 
+      // Show toast so user knows auto-continue is happening
+      try {
+        await input.client.tui.showToast({
+          query: { directory: input.directory || "" },
+          body: {
+            title: "Auto-Continue",
+            message: `Session stalled. Sending continue message (attempt ${s.attempts}/${config.maxRecoveries})...`,
+            variant: "warning",
+          },
+        });
+      } catch (e) {
+        log('recovery toast error (ignored):', e);
+      }
+
       // If abort polling already confirmed idle, send the queued prompt now.
       // Otherwise do one final status check; relying only on a future idle event
       // can strand the custom continue message after a successful abort.
