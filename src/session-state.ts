@@ -65,6 +65,7 @@ export interface SessionState {
   continueRetryCount: number; // FIX 1: Track continue retry attempts
   lastContinueRetryAt: number; // FIX 1: Track last continue retry time
   continueInProgress: boolean; // FIX 2: Concurrency guard for sendContinue
+  lastContinueAt: number; // Track when continue was sent for success toast
 
   // === Timer Generation (Fix 4: Prevent stale timer races) ===
   timerGeneration: number;
