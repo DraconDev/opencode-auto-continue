@@ -196,6 +196,10 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.compactMaxRetries < 0) errors.push(`compactMaxRetries must be >= 0, got ${normalized.compactMaxRetries}`);
   if (normalized.compactCooldownMs < 0) errors.push(`compactCooldownMs must be >= 0, got ${normalized.compactCooldownMs}`);
   if (typeof normalized.compactReductionFactor !== 'number' || normalized.compactReductionFactor <= 0 || normalized.compactReductionFactor >= 1) errors.push(`compactReductionFactor must be between 0 and 1 (exclusive), got ${normalized.compactReductionFactor}`);
+  
+  // New config options validation
+  if (normalized.planningTimeoutMs < 0) errors.push(`planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
+  if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) errors.push(`tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);
   if (normalized.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${normalized.nudgeIdleDelayMs}`);
   if (normalized.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${normalized.nudgeMaxSubmits}`);
   if (!normalized.shortContinueMessage || normalized.shortContinueMessage.trim().length === 0) errors.push(`shortContinueMessage must be non-empty`);

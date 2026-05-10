@@ -998,6 +998,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       isDisposed = true;
       sessionMonitor.stop();
       unregisterCustomPromptRuntime(customPromptRuntime);
+      customPromptRuntimes.clear();
+      latestCustomPromptRuntime = null;
       sessions.forEach((s) => {
         if (s.timer) {
           clearTimeout(s.timer);
