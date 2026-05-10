@@ -545,7 +545,7 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | Decision | Rationale | Trade-off |
 |----------|-----------|-----------|
 | Token estimation from three sources | Error messages give exact counts; step-finish gives per-completion; AssistantMessage gives per-message | Running sum overestimates context (old msgs dropped) — but better early than late |
-| `synthetic` filter in message events | Prevents plugin's own prompts from resetting timers | Need to explicitly mark plugin prompts as synthetic |
+| All plugin prompts use `synthetic: true` | Semantic clarity: these are plugin-generated, not user messages. AI processes them identically regardless of flag. | Adds a toggle if user wants real-user-style prompts. No behavioral difference confirmed. |
 | `needsContinue` queue mechanism | Prevents abort+prompt race condition with TUI | Extra flag to track |
 | Last-known todos cache | Eliminates double-fetch in nudge.ts | Only updated on todo.updated events |
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
