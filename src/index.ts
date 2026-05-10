@@ -581,6 +581,24 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             s.lastNudgeAt = 0; // Reset to avoid duplicate toasts
           }
+          // Show recovery success toast if AI resumes after continue
+          if (s.lastContinueAt > 0 && Date.now() - s.lastContinueAt < 30000) {
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Recovery Successful",
+                    message: "The AI has resumed working after recovery.",
+                    variant: "success",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            s.lastContinueAt = 0; // Reset to avoid duplicate toasts
+          }
           // NOTE: s.planning is NOT cleared here — session.status(busy) fires
           // during plan generation too (the session IS busy). Clearing it would
           // cause plan-aware continue messages to use the generic message instead.
