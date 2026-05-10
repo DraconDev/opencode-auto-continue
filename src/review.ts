@@ -139,6 +139,7 @@ export function createReviewModule(deps: ReviewDeps) {
       s.continueRetryCount = 0;
       s.lastContinueRetryAt = 0;
       s.continueInProgress = false;
+      s.lastContinueAt = Date.now(); // Track for recovery success toast
 
       log('continue sent successfully');
       s.recoverySuccessful++;
