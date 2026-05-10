@@ -498,6 +498,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 await review.sendContinue(sid);
               } else {
                 log('emergency compaction failed for session:', sid);
+                // Show compaction failure toast
+                if (config.showToasts) {
+                  try {
+                    input.client.tui.showToast({
+                      query: { directory: input.directory || "" },
+                      body: {
+                        title: "Compaction Failed",
+                        message: "Could not free up tokens. Session may be stuck.",
+                        variant: "error",
+                      },
+                    }).catch(() => {});
+                  } catch (e) {
+                    // ignore toast errors
+                  }
+                }
               }
             }).catch((e) => {
               log('emergency compaction error:', e);
