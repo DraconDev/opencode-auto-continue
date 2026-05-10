@@ -2219,12 +2219,17 @@ describe("opencode-auto-continue", () => {
     it("should show Recovery Successful toast when session goes busy after continue", async () => {
       vi.useFakeTimers();
       // First status check during recovery returns busy, then idle
-      mockStatus.mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
-                 .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined });
+      mockStatus
+        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+        .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined });
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
 
       const plugin = await createPlugin({ client: mockClient }, {
-        stallTimeoutMs: 5000,
+        stallTimeoutMs: 100,
+        waitAfterAbortMs: 10,
+        cooldownMs: 0,
+        abortPollIntervalMs: 5,
+        abortPollMaxTimeMs: 50,
         showToasts: true,
         terminalTitleEnabled: false,
         statusFilePath: ""
@@ -2232,15 +2237,13 @@ describe("opencode-auto-continue", () => {
 
       // Trigger recovery by setting busy and letting stall timer fire
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTimeAsync(150);
+      await Promise.resolve();
       await Promise.resolve();
 
       // Recovery should abort and then send continue when idle
       expect(mockAbort).toHaveBeenCalled();
-
-      // Wait for continue to be sent
-      await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      expect(mockPrompt).toHaveBeenCalled();
 
       // Now session goes busy (AI responding to continue)
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
