@@ -888,4 +888,4 @@ planning cleared by non-plan progress:
 
 ---
 
-*Generated from source code analysis of opencode-auto-continue v7.8.131*
+*Generated from source code analysis of opencode-auto-continue v7.8.235*
