@@ -121,6 +121,9 @@ describe("opencode-auto-continue", () => {
       await vi.advanceTimersByTimeAsync(150);
       await Promise.resolve();
       await Promise.resolve();
+      // Flush debounced status file write (500ms debounce)
+      await vi.advanceTimersByTimeAsync(500);
+      await Promise.resolve();
 
       const status = JSON.parse(readFileSync(statusFilePath, "utf-8"));
       expect(status.sessions.test.userCancelled).toBe(false);
