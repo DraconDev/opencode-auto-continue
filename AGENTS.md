@@ -1,10 +1,16 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.212)
+## Current State (v7.8.235)
 
 **Status:** Released & Dogfooding  
-**Tests:** 377/377 passing  
-**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.212
+**Tests:** 381/381 passing  
+**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.235
+
+### v7.8.235 Changes
+- **Toast Notifications**: Session Resumed, Recovery Successful, Nudge Failed, Token Limit, Compaction Failed
+- **Runtime Validation**: Added validation for `planningTimeoutMs` and `tokenEstimateMultiplier`
+- **Memory Leak Fix**: Clear `customPromptRuntimes` Set on plugin dispose
+- **Config Safety**: All new config options validated at runtime
 
 ### v7.8.212 Changes
 - **Directive Messages**: All recovery/nudge/review messages use imperative tone with anti-loop guards ("Do not ask for permission — just proceed")
