@@ -229,7 +229,7 @@ export function createNudgeModule(deps: NudgeDeps) {
             {
               type: "text",
               text: messageText,
-              synthetic: false,
+              synthetic: true,
             },
           ],
         },
