@@ -50,10 +50,10 @@ git push origin --tags
 ### 5. npm publish (manual)
 
 ```bash
-npm publish
+npm publish --access public
 ```
 
-> Note: Requires being logged into npm (`npm login`)
+> Note: Requires being logged into npm (`npm login`). Uses scoped package `@dracondev/opencode-auto-continue`.
 
 ## Checking a Tag
 
