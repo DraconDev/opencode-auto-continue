@@ -2218,7 +2218,10 @@ describe("opencode-auto-continue", () => {
 
     it("should show Recovery Successful toast when session goes busy after continue", async () => {
       vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      // First status check during recovery returns busy, then idle
+      mockStatus.mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+                 .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
 
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 5000,
@@ -2227,12 +2230,12 @@ describe("opencode-auto-continue", () => {
         statusFilePath: ""
       });
 
-      // Trigger recovery by letting stall timer fire
+      // Trigger recovery by setting busy and letting stall timer fire
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(5000);
       await Promise.resolve();
 
-      // Recovery should abort and send continue
+      // Recovery should abort and then send continue when idle
       expect(mockAbort).toHaveBeenCalled();
 
       // Wait for continue to be sent
@@ -2250,6 +2253,7 @@ describe("opencode-auto-continue", () => {
           title: "Recovery Successful"
         })
       }));
+      vi.useRealTimers();
     });
   });
 });
