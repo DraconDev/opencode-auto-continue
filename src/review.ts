@@ -187,6 +187,7 @@ export function createReviewModule(deps: ReviewDeps) {
             // Only clear after retry success
             s.needsContinue = false;
             s.continueMessageText = '';
+            s.lastContinueAt = Date.now();
             log('retry after compaction succeeded');
           } catch (e2) {
             log('retry after compaction failed:', e2);
