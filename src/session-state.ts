@@ -140,6 +140,7 @@ export function createSession(): SessionState {
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
     continueInProgress: false, // FIX 2
+    lastContinueAt: 0,
 
     // Timer Generation (Fix 4)
     timerGeneration: 0,
