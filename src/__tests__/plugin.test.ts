@@ -37,6 +37,7 @@ describe("opencode-auto-continue", () => {
     mockStatus = vi.fn().mockResolvedValue({ data: { "default": { type: "idle" } }, error: undefined });
     mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
     mockSummarize = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockShowToast = vi.fn().mockResolvedValue({ data: {}, error: undefined });
 
     mockClient = {
       session: {
@@ -45,6 +46,9 @@ describe("opencode-auto-continue", () => {
         status: mockStatus,
         todo: mockTodo,
         summarize: mockSummarize,
+      },
+      tui: {
+        showToast: mockShowToast,
       },
     };
   });
