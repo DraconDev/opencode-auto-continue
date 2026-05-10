@@ -182,6 +182,9 @@ describe("opencode-auto-continue integration", () => {
 
     // Step 1: Create session — status file should be written
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
+    // Flush debounced status file write
+    await vi.advanceTimersByTimeAsync(500);
+    await Promise.resolve();
 
     let statusContent = readFileSync(tmpStatusFile, "utf-8");
     let status = JSON.parse(statusContent);
@@ -194,6 +197,9 @@ describe("opencode-auto-continue integration", () => {
 
     // Step 2: Send a progress event — status file updates
     await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test-session", messageID: "msg1" }, delta: "hello" } } });
+    // Flush debounced status file write
+    await vi.advanceTimersByTimeAsync(500);
+    await Promise.resolve();
 
     statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
