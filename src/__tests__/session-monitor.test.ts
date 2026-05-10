@@ -308,7 +308,7 @@ describe("SessionMonitor", () => {
       customMonitor.stop();
     });
 
-    it("should arm recovery timer for discovered sessions with unknown status", async () => {
+    it("should NOT arm recovery timer for discovered sessions with unknown status", async () => {
       const mockList = vi.fn().mockResolvedValue({
         data: [{ id: "unknown-session" }],
       });
@@ -339,11 +339,12 @@ describe("SessionMonitor", () => {
       await Promise.resolve();
 
       expect(sessions.has("unknown-session")).toBe(true);
-      expect(sessions.get("unknown-session")?.timer).not.toBeNull();
+      // FIX 10: Unknown status sessions are tracked but NOT armed for recovery
+      expect(sessions.get("unknown-session")?.timer).toBeNull();
 
       await vi.advanceTimersByTimeAsync(100);
 
-      expect(recoverCalls).toContain("unknown-session");
+      expect(recoverCalls).not.toContain("unknown-session");
       customMonitor.stop();
     });
   });

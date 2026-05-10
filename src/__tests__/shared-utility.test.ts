@@ -607,7 +607,7 @@ describe("shared.ts utilities", () => {
       expect(result).toBe(true);
       expect(input.client.session.messages).toHaveBeenCalledWith({
         path: { id: "test" },
-        query: { limit: 50 },
+        query: { limit: 15 },
       });
     });
 
