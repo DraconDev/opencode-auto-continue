@@ -1,6 +1,6 @@
 # Plugin Flow Chart — What Actually Happens
 
-> This document maps the actual behavior of `opencode-auto-continue` v7.8.131. Every flow described here has been verified against the source code.
+> This document maps the actual behavior of `opencode-auto-continue` v7.8.235. Every flow described here has been verified against the source code.
 
 ---
 

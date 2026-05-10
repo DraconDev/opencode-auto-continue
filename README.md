@@ -631,7 +631,7 @@ cp -r dist/* ~/.config/opencode/plugins/opencode-auto-continue/
 cat > ~/.config/opencode/plugins/opencode-auto-continue/package.json << 'EOF'
 {
   "name": "opencode-auto-continue",
-  "version": "7.8.131",
+  "version": "7.8.235",
   "main": "./index.js",
   "types": "./index.d.ts"
 }
@@ -1372,7 +1372,7 @@ opencode plugin @mohak34/opencode-notifier@latest --global
    ```json
    {
      "name": "opencode-auto-continue",
-     "version": "7.8.131",
+     "version": "7.8.235",
      "main": "./index.js"
    }
    ```
