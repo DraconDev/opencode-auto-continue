@@ -229,8 +229,8 @@ export function validateConfig(config: PluginConfig): PluginConfig {
     // For each field in normalized, check if it's valid (not in errors for this field)
     // and if so, use the normalized value
     (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
-      // Check if any error message mentions this field
-      const fieldError = errors.some(e => e.includes(String(key)));
+      // Check if any error message starts with this field name (precise match)
+      const fieldError = errors.some(e => e.startsWith(String(key) + ' '));
       if (!fieldError) {
         (result as any)[key] = normalized[key];
       }
