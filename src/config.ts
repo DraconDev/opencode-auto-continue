@@ -205,6 +205,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   
   // New config options validation
   if (normalized.planningTimeoutMs < 0) errors.push(`planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
+  if (normalized.busyStallTimeoutMs < 0) errors.push(`busyStallTimeoutMs must be >= 0, got ${normalized.busyStallTimeoutMs}`);
   if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) errors.push(`tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);
   if (normalized.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${normalized.nudgeIdleDelayMs}`);
   if (normalized.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${normalized.nudgeMaxSubmits}`);
