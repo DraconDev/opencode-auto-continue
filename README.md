@@ -544,7 +544,7 @@ Check: enableAdvisory && shouldUseAI()?
 
 **Integration points:**
 - **Recovery**: Before final abort attempt, advisor analyzes stall pattern. May suggest wait instead of abort.
-- **Nudge**: After question detection check, advisor analyzes if nudging is appropriate. Skips nudge if advice is `wait` (≥0.7 confidence) or `abort` (≥0.6 confidence).
+- **Nudge**: Advisor analyzes if nudging is appropriate. Skips nudge if advice is `wait` (≥0.7 confidence) or `abort` (≥0.6 confidence).
 
 For **significantly better context management**, install DCP alongside this plugin:
 
