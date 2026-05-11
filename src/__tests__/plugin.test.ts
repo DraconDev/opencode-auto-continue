@@ -1628,6 +1628,7 @@ describe("opencode-auto-continue", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
+        waitAfterAbortMs: 20,
         planningTimeoutMs: 5000, // Long timeout so we can test clearing
         cooldownMs: 0,
         autoCompact: false,
@@ -1669,6 +1670,7 @@ describe("opencode-auto-continue", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
+        waitAfterAbortMs: 20,
         planningTimeoutMs: 5000,
         cooldownMs: 0,
         autoCompact: false,
