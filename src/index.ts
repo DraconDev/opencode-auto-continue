@@ -736,6 +736,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             // Track part type for stall pattern detection
             s.lastStallPartType = partType || "unknown";
             
+            // Track actual output for busy-but-dead detection
+            s.lastOutputAt = Date.now();
+            
+            // Track text content length to detect even small changes
+            if (partType === "text" || partType === "reasoning") {
+              const text = e?.properties?.part?.text || "";
+              if (text.length > s.lastOutputLength) {
+                s.lastOutputLength = text.length;
+                log('output tracked: text length', text.length, 'session:', sid);
+              }
+            } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
+              // Non-text output also counts
+              s.lastOutputLength++;
+              log('output tracked:', partType, 'session:', sid);
+            }
+            
             // FIX 5: Estimate tokens only for parts without actual token counts.
             // Text/reasoning parts are counted via message.updated (actual tokens).
             // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
