@@ -594,12 +594,37 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         
         if (status?.type === "busy" || status?.type === "retry") {
-          updateProgress(s);
+          // NOTE: We do NOT call updateProgress() here because "busy" status
+          // pings don't mean actual progress. Only real output (text, tools, etc.)
+          // should reset the progress timer. This prevents the "busy but dead"
+          // stall where the AI is stuck but keeps reporting busy.
           sessionMonitor.touchSession(sid);
           s.userCancelled = false;
           if (s.actionStartedAt === 0) {
             s.actionStartedAt = Date.now();
           }
+          
+          // Check for busy-but-dead: session claims busy but no actual output for too long
+          const timeSinceOutput = Date.now() - s.lastOutputAt;
+          if (timeSinceOutput > config.busyStallTimeoutMs) {
+            log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Session Stuck",
+                    message: `Session busy but no output for ${Math.round(timeSinceOutput / 1000)}s. Forcing recovery...`,
+                    variant: "warning",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            recovery.recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
+          }
+          
           // Show "Session Resumed" toast if progress detected after recent nudge
           if (s.lastNudgeAt > 0 && Date.now() - s.lastNudgeAt < 30000) {
             if (config.showToasts) {
