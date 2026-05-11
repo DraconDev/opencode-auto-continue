@@ -1105,7 +1105,7 @@ describe("opencode-auto-continue", () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       // Empty shortContinueMessage should trigger validation failure
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, shortContinueMessage: "" });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50000, waitAfterAbortMs: 100, shortContinueMessage: "" });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
