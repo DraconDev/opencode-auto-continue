@@ -846,8 +846,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         } else if (s.planning && !s.timer) {
           // Ensure planning has a timeout timer
+          log('DEBUG: planning safety check scheduling timer');
           scheduleRecovery(sid, config.planningTimeoutMs);
         }
+        log('DEBUG: end of message.part.updated, s.planning=', s.planning, 's.timer=', s.timer);
         writeStatusFile(sid);
         return;
       }
