@@ -110,12 +110,13 @@ export function createRecoveryModule(deps: RecoveryDeps) {
   }
 
   async function recover(sessionId: string) {
-    if (isDisposed()) return;
+    console.log('RECOVER CALLED for', sessionId);
+    if (isDisposed()) { console.log('RECOVER: disposed'); return; }
     const s = sessions.get(sessionId);
-    if (!s) return;
+    if (!s) { console.log('RECOVER: no session'); return; }
 
-    if (s.aborting) return;
-    if (s.userCancelled) return;
+    if (s.aborting) { console.log('RECOVER: already aborting'); return; }
+    if (s.userCancelled) { console.log('RECOVER: user cancelled'); return; }
     // FIX 3/11: Allow recovery if planning has been going on too long
     if (s.planning && Date.now() - s.planningStartedAt < config.planningTimeoutMs) {
       log('session is planning, skipping recovery (planning timeout not reached):', sessionId);
