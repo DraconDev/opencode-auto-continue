@@ -2364,5 +2364,206 @@ describe("opencode-auto-continue", () => {
       expect(mockShowToast).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it("should show Recovery Successful toast when session goes busy after continue", async () => {
+      vi.useFakeTimers();
+      mockStatus
+        .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
+        .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 200,
+        waitAfterAbortMs: 50,
+        cooldownMs: 0,
+        maxRecoveries: 3,
+        showToasts: true,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Simulate a part to set up session and progress
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
+
+      // Advance timers past stall timeout to trigger recovery (sets lastContinueAt)
+      await vi.advanceTimersByTimeAsync(250);
+      await Promise.resolve();
+
+      // Verify recovery was triggered (abort + continue)
+      expect(mockAbort).toHaveBeenCalled();
+      expect(mockPrompt).toHaveBeenCalled();
+
+      mockShowToast.mockClear();
+
+      // Now session goes busy (AI resumed after continue)
+      // Mock status to return busy
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await Promise.resolve();
+
+      // Recovery Successful toast should be shown
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        body: expect.objectContaining({
+          title: "Recovery Successful"
+        })
+      }));
+      vi.useRealTimers();
+    });
+  });
+});
+
+describe("test-fix loop", () => {
+  let mockAbort: ReturnType<typeof vi.fn>;
+  let mockPrompt: ReturnType<typeof vi.fn>;
+  let mockStatus: ReturnType<typeof vi.fn>;
+  let mockTodo: ReturnType<typeof vi.fn>;
+  let mockSummarize: ReturnType<typeof vi.fn>;
+  let mockShowToast: ReturnType<typeof vi.fn>;
+  let mockClient: MockClient;
+
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    
+    mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
+    mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockStatus = vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+    mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
+    mockSummarize = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+    mockShowToast = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+
+    mockClient = {
+      session: {
+        abort: mockAbort,
+        prompt: mockPrompt,
+        status: mockStatus,
+        todo: mockTodo,
+        summarize: mockSummarize,
+      },
+      tui: {
+        showToast: mockShowToast,
+      },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("should reset reviewFired when new pending todos appear after review, enabling test-fix loop", async () => {
+    vi.useFakeTimers();
+    mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+    const plugin = await createPlugin({ client: mockClient }, {
+      stallTimeoutMs: 5000,
+      reviewOnComplete: true,
+      reviewDebounceMs: 300,
+      showToasts: true,
+      terminalTitleEnabled: false,
+      statusFilePath: "",
+      autoCompact: false
+    });
+
+    // Create session with busy status
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+    // Add pending todos (initial)
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "in_progress" },
+      { id: "t2", content: "task 2", status: "in_progress" }
+    ] } } });
+
+    // Complete all todos — should trigger review
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "completed" },
+      { id: "t2", content: "task 2", status: "completed" }
+    ] } } });
+
+    // Wait for review debounce
+    await vi.advanceTimersByTimeAsync(350);
+    await Promise.resolve();
+
+    // Verify review prompt was sent
+    expect(mockPrompt).toHaveBeenCalled();
+    const reviewCall1 = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+    expect(reviewCall1[0].body.parts[0].text).toContain("complete");
+
+    mockPrompt.mockClear();
+
+    // Add new pending todos — should reset reviewFired, enabling test-fix loop
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "completed" },
+      { id: "t2", content: "task 2", status: "completed" },
+      { id: "t3", content: "fix failing test", status: "in_progress" }
+    ] } } });
+
+    // Complete all todos again — should trigger another review
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "completed" },
+      { id: "t2", content: "task 2", status: "completed" },
+      { id: "t3", content: "fix failing test", status: "completed" }
+    ] } } });
+
+    // Wait for review debounce
+    await vi.advanceTimersByTimeAsync(350);
+    await Promise.resolve();
+
+    // Verify review was sent a second time (test-fix loop works)
+    expect(mockPrompt).toHaveBeenCalled();
+    const reviewCall2 = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+    expect(reviewCall2[0].body.parts[0].text).toContain("complete");
+
+    vi.useRealTimers();
+  });
+
+  it("should NOT trigger review when same todos are re-sent (no new pending todos)", async () => {
+    vi.useFakeTimers();
+    mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+    const plugin = await createPlugin({ client: mockClient }, {
+      stallTimeoutMs: 5000,
+      reviewOnComplete: true,
+      reviewDebounceMs: 300,
+      showToasts: true,
+      terminalTitleEnabled: false,
+      statusFilePath: "",
+      autoCompact: false
+    });
+
+    // Create session with busy status
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+    // Add pending todos
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "in_progress" }
+    ] } } });
+
+    // Complete all todos — should trigger review
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "completed" }
+    ] } } });
+
+    // Wait for review debounce
+    await vi.advanceTimersByTimeAsync(350);
+    await Promise.resolve();
+
+    // Verify review prompt was sent
+    expect(mockPrompt).toHaveBeenCalled();
+    mockPrompt.mockClear();
+
+    // Send same completed todos again (no state change)
+    await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+      { id: "t1", content: "task 1", status: "completed" }
+    ] } } });
+
+    // Wait for review debounce
+    await vi.advanceTimersByTimeAsync(350);
+    await Promise.resolve();
+
+    // Review should NOT fire again (no new pending todos to reset reviewFired)
+    expect(mockPrompt).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 });
