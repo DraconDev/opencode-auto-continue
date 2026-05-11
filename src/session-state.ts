@@ -17,6 +17,10 @@ export interface SessionState {
   timer: ReturnType<typeof setTimeout> | null;
   lastProgressAt: number;
   actionStartedAt: number;
+  
+  // === Output Tracking (busy-but-dead detection) ===
+  lastOutputAt: number;      // Last actual output (text/tool/file), not status ping
+  lastOutputLength: number;  // Total content length to detect even small changes
 
   // === Recovery (recovery.ts) ===
   attempts: number;
@@ -97,6 +101,10 @@ export function createSession(): SessionState {
     timer: null,
     lastProgressAt: now,
     actionStartedAt: 0,
+    
+    // Output Tracking (busy-but-dead detection)
+    lastOutputAt: now,
+    lastOutputLength: 0,
 
     attempts: 0,
     lastRecoveryTime: 0,
