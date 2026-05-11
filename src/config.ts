@@ -138,6 +138,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Planning timeout (default 5 minutes)
   planningTimeoutMs: 300000,
   
+  // Busy-but-dead detection (default 3 minutes)
+  busyStallTimeoutMs: 180000,
+  
   // Plan-Driven Continue defaults
   planDrivenContinue: false,
   planFilePath: null,
