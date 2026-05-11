@@ -360,6 +360,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.nudgeFailureCount = 0;
       s.lastNudgeFailureAt = 0;
       s.continueInProgress = false;
+      s.lastContinueAt = 0;
+      // Reset output tracking
+      s.lastOutputAt = Date.now();
+      s.lastOutputLength = 0;
       s.statusHistory = [];
     }
     sessions.delete(id);
