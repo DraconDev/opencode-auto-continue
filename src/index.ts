@@ -753,6 +753,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 log('plan detected in updated text part, pausing stall monitoring');
                 s.planning = true;
                 s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+                // Schedule planning timeout recovery
+                clearTimer(sid);
+                scheduleRecovery(sid, config.planningTimeoutMs);
               }
             }
           }
