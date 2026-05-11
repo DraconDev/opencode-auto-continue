@@ -155,12 +155,6 @@ await sendCustomPrompt(sessionId, {
 
 ## New Features (v6.54+)
 
-### Question Detection
-- Before nudging, fetches last assistant message
-- Checks if message is a question (ends with `?` or contains phrases like "would you like", "should i", "do you want", etc.)
-- **Skips nudge if AI is asking user for input** — prevents annoying the user
-- Prevents false nudges when AI genuinely needs clarification
-
 ### Tool-Text Recovery
 - After stall detection, scans recent messages for XML tool calls in reasoning/text
 - Detects 18 patterns: `<function=...>`, `<invoke>`, `<tool_call>`, etc.
