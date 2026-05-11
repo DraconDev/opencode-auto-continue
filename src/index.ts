@@ -806,9 +806,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
                 // Schedule planning timeout recovery
                 clearTimer(sid);
-                log('DEBUG: cleared timer, s.timer=', s.timer);
+                console.log('DEBUG PLAN: cleared timer, s.timer=', s.timer);
                 scheduleRecovery(sid, config.planningTimeoutMs);
-                log('DEBUG: scheduled planning recovery, s.timer=', s.timer, 'delay=', config.planningTimeoutMs);
+                console.log('DEBUG PLAN: scheduled planning recovery, s.timer exists=', !!s.timer, 'delay=', config.planningTimeoutMs);
               }
             }
           }
@@ -846,10 +846,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         } else if (s.planning && !s.timer) {
           // Ensure planning has a timeout timer
-          log('DEBUG: planning safety check scheduling timer');
+          console.log('DEBUG PLAN: planning safety check scheduling timer');
           scheduleRecovery(sid, config.planningTimeoutMs);
         }
-        log('DEBUG: end of message.part.updated, s.planning=', s.planning, 's.timer=', s.timer);
+        console.log('DEBUG PLAN: end of handler, s.planning=', s.planning, 's.timer exists=', !!s.timer);
         writeStatusFile(sid);
         return;
       }
