@@ -325,6 +325,7 @@ export function scheduleRecoveryWithGeneration(
   
   const timer = setTimeout(() => {
     const current = sessions.get(sessionId);
+    console.log('TIMER FIRED for', sessionId, 'current.timer=', current?.timer === timer, 'gen=', current?.timerGeneration, 'expected=', currentGeneration);
     // Only proceed if this timer is still the current one (not overwritten)
     if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
       current.timer = null;
