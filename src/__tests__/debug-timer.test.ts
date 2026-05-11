@@ -60,6 +60,10 @@ describe("debug planning timer", () => {
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
     console.log("=== AFTER session.status ===");
     
+    // Access internal state to check timer
+    const pluginAny = plugin as any;
+    const sessions = pluginAny._sessions || new Map();
+    
     console.log("=== BEFORE message.part.updated ===");
     await plugin.event({ event: { type: "message.part.updated", properties: {
       sessionID: "test",
@@ -74,6 +78,7 @@ describe("debug planning timer", () => {
     console.log("=== Done ===");
     
     console.log("Abort calls:", mockAbort.mock.calls.length);
+    console.log("Session state:", sessions.get("test"));
     
     vi.useRealTimers();
   });
