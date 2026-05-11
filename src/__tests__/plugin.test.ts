@@ -1539,104 +1539,101 @@ describe("opencode-auto-continue", () => {
     });
 
     it("should schedule recovery timer with planningTimeoutMs when planning is detected", async () => {
-      const mockClient = createMockClient();
-      const plugin = createAutoContinuePlugin({
-        ...TEST_CONFIG,
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
         planningTimeoutMs: 200,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
       });
 
-      await plugin.init(mockClient);
-      await mockClient.emit("session.created", { properties: { id: "test" } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
       // Simulate plan detection via text part
-      await mockClient.emit("message.part.updated", {
-        properties: {
-          part: { id: "part1", type: "text", text: "Let me plan this out:\n1. First step", sessionID: "test", messageID: "msg1" },
-          sessionID: "test",
-          delta: "Let me plan this out"
-        }
-      });
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Let me plan this out:\n1. First step", sessionID: "test", messageID: "msg1" },
+        delta: "Let me plan this out"
+      }}});
 
       // Verify planning state
-      const statusBefore = JSON.parse(fs.readFileSync(STATUS_FILE, "utf-8"));
-      const testSessionBefore = statusBefore.sessions?.test || statusBefore.session;
-      expect(testSessionBefore.planning).toBe(true);
+      const s = plugin.getSession("test");
+      expect(s.planning).toBe(true);
 
       // Wait for planning timeout (200ms)
       await vi.advanceTimersByTimeAsync(250);
 
       // Verify recovery was triggered (planning timeout forces recovery)
-      const abortCalls = mockClient.session.calls.filter(
-        (c: any) => c.method === "abort"
-      );
-      expect(abortCalls.length).toBeGreaterThanOrEqual(1);
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should schedule normal recovery timer when planning is cleared by tool progress", async () => {
-      const mockClient = createMockClient();
-      const plugin = createAutoContinuePlugin({
-        ...TEST_CONFIG,
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
         planningTimeoutMs: 5000, // Long timeout so we can test clearing
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
       });
 
-      await plugin.init(mockClient);
-      await mockClient.emit("session.created", { properties: { id: "test" } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
       // Detect planning
-      await mockClient.emit("message.part.updated", {
-        properties: {
-          part: { id: "part1", type: "text", text: "Let me plan this out:\n1. First step", sessionID: "test", messageID: "msg1" },
-          sessionID: "test",
-          delta: "Let me plan this out"
-        }
-      });
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "Let me plan this out:\n1. First step", sessionID: "test", messageID: "msg1" },
+        delta: "Let me plan this out"
+      }}});
+
+      // Verify planning is set
+      const s = plugin.getSession("test");
+      expect(s.planning).toBe(true);
 
       // Now simulate tool call (non-plan progress)
-      await mockClient.emit("message.part.updated", {
-        properties: {
-          part: { id: "part2", type: "tool", sessionID: "test", messageID: "msg1" },
-          sessionID: "test",
-        }
-      });
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part2", type: "tool", sessionID: "test", messageID: "msg1" }
+      }}});
 
       // Verify planning is cleared
-      const status = JSON.parse(fs.readFileSync(STATUS_FILE, "utf-8"));
-      const testSession = status.sessions?.test || status.session;
-      expect(testSession.planning).toBe(false);
+      expect(s.planning).toBe(false);
 
       // Normal recovery timer should be scheduled (not planning timeout)
       // Wait for stall timeout (100ms)
       await vi.advanceTimersByTimeAsync(150);
 
       // Should trigger normal recovery (abort was called)
-      const abortCalls = mockClient.session.calls.filter(
-        (c: any) => c.method === "abort"
-      );
-      expect(abortCalls.length).toBeGreaterThanOrEqual(1);
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it("should clear planning flag when session becomes busy", async () => {
-      const mockClient = createMockClient();
-      const plugin = createAutoContinuePlugin({
-        ...TEST_CONFIG,
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
         planningTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
       });
 
-      await plugin.init(mockClient);
-      await mockClient.emit("session.created", { properties: { id: "test" } });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       const s = plugin.getSession("test");
       s.planning = true;
 
-      await mockClient.emit("session.status", {
-        properties: { id: "test", status: { type: "busy" } }
-      });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      const status = JSON.parse(fs.readFileSync(STATUS_FILE, "utf-8"));
-      const testSession = status.sessions?.test || status.session;
-      expect(testSession.planning).toBe(false);
+      expect(s.planning).toBe(false);
+      vi.useRealTimers();
     });
   });
 
