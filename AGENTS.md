@@ -500,6 +500,23 @@ stall timer fires → recover(sid)
   └─ Set needsContinue = false, record recovery stats
 ```
 
+### Busy-But-Dead Detection (v7.8.254+)
+
+**Problem**: `session.status(busy)` fires repeatedly even when the AI is stuck ("busy but dead"). The old code treated status pings as progress, preventing recovery from ever firing.
+
+**Solution**: Distinguish status pings from real output:
+
+| Field | Purpose |
+|-------|---------|
+| `lastOutputAt` | Timestamp of last real output (text, tool, file, subtask, step parts) |
+| `lastOutputLength` | Length of last text output (to detect even tiny progress) |
+| `lastProgressAt` | Timestamp of last status ping OR real output |
+
+**Behavior**:
+- `session.status(busy)` no longer counts as progress — only actual message parts do
+- If session reports busy but no real output for `busyStallTimeoutMs` (3min default) → immediate recovery with toast
+- Recovery checks `lastOutputAt` first; if status pings are recent but output is stale, proceeds with recovery anyway
+
 ### Backoff After Max Recoveries
 
 - 1st failure: immediate retry
