@@ -457,7 +457,6 @@ if (isDisposed) return;           // Plugin disposed
 if (!s.lastUserMessageId) return;  // User recently engaged
 if (Date.now() - s.lastNudgeAt < config.nudgeCooldownMs) return; // Cooldown active
 if (!s.hasOpenTodos) return;       // No pending todos
-// Question detection — skip if last assistant message is a question
 // Prompt guard — skip if similar prompt sent recently
 // session.status() check — skip if busy/retry
 // fetch todos for context (if includeTodoContext)
