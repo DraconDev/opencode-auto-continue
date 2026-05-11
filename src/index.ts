@@ -708,12 +708,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Idle sessions should not have a stall recovery timer running
         if (status?.type === "busy" || status?.type === "retry") {
           clearTimer(sid);
-          console.log('DEBUG STATUS: planning=', s.planning, 'compacting=', s.compacting, 'stallTimeoutMs=', config.stallTimeoutMs);
           if (!s.planning && !s.compacting) {
-            console.log('DEBUG STATUS: scheduling recovery');
             scheduleRecovery(sid, config.stallTimeoutMs);
-          } else {
-            console.log('DEBUG STATUS: SKIPPING recovery scheduling');
           }
         }
 
