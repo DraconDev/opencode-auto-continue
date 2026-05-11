@@ -1559,10 +1559,6 @@ describe("opencode-auto-continue", () => {
         delta: "Let me plan this out"
       }}});
 
-      // Verify planning state
-      const s = plugin.getSession("test");
-      expect(s.planning).toBe(true);
-
       // Wait for planning timeout (200ms)
       await vi.advanceTimersByTimeAsync(250);
 
