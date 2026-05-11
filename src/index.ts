@@ -622,7 +622,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 // ignore toast errors
               }
             }
-            recovery.recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
+            recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
           }
           
           // Show "Session Resumed" toast if progress detected after recent nudge
