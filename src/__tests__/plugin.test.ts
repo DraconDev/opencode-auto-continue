@@ -1597,6 +1597,7 @@ describe("opencode-auto-continue", () => {
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
+        waitAfterAbortMs: 20,
         planningTimeoutMs: 200,
         cooldownMs: 0,
         autoCompact: false,
