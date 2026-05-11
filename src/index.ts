@@ -891,6 +891,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
             s.estimatedTokens += estimatedTokens;
           }
+          // Track actual output for busy-but-dead detection (assistant messages are real output)
+          s.lastOutputAt = Date.now();
+          if (msgText && msgText.length > s.lastOutputLength) {
+            s.lastOutputLength = msgText.length;
+          }
         }
         
         updateProgress(s);
