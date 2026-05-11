@@ -778,12 +778,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.planning = true;
             s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
             s.planBuffer = '';
+            // Schedule planning timeout recovery instead of leaving timer cleared
+            clearTimer(sid);
+            scheduleRecovery(sid, config.planningTimeoutMs);
           }
         }
 
-        clearTimer(sid);
+        // Only schedule normal recovery if not planning
         if (!s.planning && !s.compacting) {
+          clearTimer(sid);
           scheduleRecovery(sid, config.stallTimeoutMs);
+        } else if (s.planning && !s.timer) {
+          // Ensure planning has a timeout timer
+          scheduleRecovery(sid, config.planningTimeoutMs);
         }
         writeStatusFile(sid);
         return;
