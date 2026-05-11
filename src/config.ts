@@ -223,7 +223,8 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.planFilePath !== null && (typeof normalized.planFilePath !== 'string' || normalized.planFilePath.trim().length === 0)) errors.push(`planFilePath must be null or a non-empty string`);
 
   if (errors.length > 0) {
-    return { ...DEFAULT_CONFIG };
+    // Merge with defaults: use provided values where valid, fallback to defaults
+    return { ...DEFAULT_CONFIG, ...normalized };
   }
   
   return normalized;
