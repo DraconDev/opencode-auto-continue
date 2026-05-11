@@ -57,6 +57,9 @@ export interface PluginConfig {
   // Planning timeout
   planningTimeoutMs: number;
   
+  // Busy-but-dead detection (session busy but no actual output)
+  busyStallTimeoutMs: number;
+  
   // Plan-Driven Continue
   planDrivenContinue: boolean;
   planFilePath: string | null;
