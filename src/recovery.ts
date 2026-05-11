@@ -209,11 +209,18 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       const currentTime = Date.now();
 
+      // Check normal stall timeout (no progress at all)
       if (currentTime - s.lastProgressAt < config.stallTimeoutMs) {
-        s.aborting = false;
-        const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
-        scheduleRecovery(sessionId, Math.max(remaining, 100));
-        return;
+        // Check busy-but-dead: session has "progress" pings but no actual output
+        const timeSinceOutput = currentTime - s.lastOutputAt;
+        if (timeSinceOutput < config.busyStallTimeoutMs) {
+          s.aborting = false;
+          const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
+          scheduleRecovery(sessionId, Math.max(remaining, 100));
+          return;
+        }
+        log('busy-but-dead detected: last progress recent but no actual output for', timeSinceOutput, 'ms');
+        // Fall through to recovery despite recent progress ping
       }
 
       // Check if the model output tool calls as raw text (XML in reasoning)
