@@ -223,8 +223,20 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.planFilePath !== null && (typeof normalized.planFilePath !== 'string' || normalized.planFilePath.trim().length === 0)) errors.push(`planFilePath must be null or a non-empty string`);
 
   if (errors.length > 0) {
-    // Merge with defaults: use provided values where valid, fallback to defaults
-    return { ...DEFAULT_CONFIG, ...normalized };
+    // Build result starting from defaults, then overlay valid user values field by field
+    const result = { ...DEFAULT_CONFIG };
+    
+    // For each field in normalized, check if it's valid (not in errors for this field)
+    // and if so, use the normalized value
+    (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
+      // Check if any error message mentions this field
+      const fieldError = errors.some(e => e.includes(String(key)));
+      if (!fieldError) {
+        (result as any)[key] = normalized[key];
+      }
+    });
+    
+    return result;
   }
   
   return normalized;
