@@ -1077,7 +1077,7 @@ describe("opencode-auto-continue", () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       // Negative token threshold should trigger validation failure
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, proactiveCompactAtTokens: -1 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50000, waitAfterAbortMs: 100, proactiveCompactAtTokens: -1 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
@@ -1091,7 +1091,7 @@ describe("opencode-auto-continue", () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       // Invalid percent should trigger validation failure
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, proactiveCompactAtPercent: 150 });
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 50000, waitAfterAbortMs: 100, proactiveCompactAtPercent: 150 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
