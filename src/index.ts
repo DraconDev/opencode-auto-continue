@@ -799,8 +799,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           // Handle text parts for plan detection
           if (partType === "text") {
             const partText = e?.properties?.part?.text as string | undefined;
+            console.log('DEBUG PLAN: text part, partText=', JSON.stringify(partText));
             if (partText) {
-              if (isPlanContent(partText)) {
+              const isPlan = isPlanContent(partText);
+              console.log('DEBUG PLAN: isPlanContent=', isPlan);
+              if (isPlan) {
                 log('plan detected in updated text part, pausing stall monitoring');
                 s.planning = true;
                 s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
