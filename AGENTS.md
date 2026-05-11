@@ -1,14 +1,15 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.235)
+## Current State (v7.8.306)
 
 **Status:** Released & Dogfooding  
 **Tests:** 389/389 passing  
-**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.235
+**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.306
 
-### v7.8.235 Changes
+### v7.8.306 Changes
+- **Busy-But-Dead Detection**: Distinguishes status pings from real output using `lastOutputAt`/`lastOutputLength` tracking
 - **Toast Notifications**: Session Resumed, Recovery Successful, Nudge Failed, Token Limit, Compaction Failed
-- **Runtime Validation**: Added validation for `planningTimeoutMs` and `tokenEstimateMultiplier`
+- **Runtime Validation**: Added validation for `planningTimeoutMs`, `tokenEstimateMultiplier`, `busyStallTimeoutMs`
 - **Memory Leak Fix**: Clear `customPromptRuntimes` Set on plugin dispose
 - **Config Safety**: All new config options validated at runtime
 
@@ -56,7 +57,8 @@ All config options are set in `opencode.json` under the plugin entry:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `stallTimeoutMs` | number | `45000` | Time without progress before considering session stalled |
+| `stallTimeoutMs` | number | `45000` | Time without real output before considering session stalled |
+| `busyStallTimeoutMs` | number | `180000` | Time without real output when session reports busy (3min) |
 | `maxRecoveries` | number | `3` | Max recovery attempts per session |
 | `cooldownMs` | number | `60000` | Min time between recovery attempts |
 | `waitAfterAbortMs` | number | `5000` | Wait after abort before sending continue |
