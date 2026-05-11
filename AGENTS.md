@@ -653,8 +653,7 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 3. Check `lastNudgeAt` — may be in cooldown
 4. Check `lastUserMessageId` — user engaged recently
 5. Check session status — plugin skips if session is busy/retry
-6. **Check if last assistant message was a question** — question detection may have skipped it
-7. **Check advisory** — if `enableAdvisory: true`, advisor may have recommended skipping the nudge. Check logs for advisory advice.
+6. **Check advisory** — if `enableAdvisory: true`, advisor may have recommended skipping the nudge. Check logs for advisory advice.
 
 ### Recovery not triggering
 1. Check `maxRecoveries > 0`
