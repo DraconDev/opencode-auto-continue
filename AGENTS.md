@@ -3,7 +3,7 @@
 ## Current State (v7.8.235)
 
 **Status:** Released & Dogfooding  
-**Tests:** 386/386 passing  
+**Tests:** 389/389 passing  
 **GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.235
 
 ### v7.8.235 Changes
