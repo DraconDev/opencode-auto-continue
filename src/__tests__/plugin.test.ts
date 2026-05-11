@@ -2374,12 +2374,14 @@ describe("opencode-auto-continue", () => {
 
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 200,
-        waitAfterAbortMs: 50,
+        waitAfterAbortMs: 10,
         cooldownMs: 0,
         maxRecoveries: 3,
         showToasts: true,
         autoCompact: false,
+        abortPollMaxTimeMs: 0,
         terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
         statusFilePath: ""
       });
 
@@ -2388,6 +2390,7 @@ describe("opencode-auto-continue", () => {
 
       // Advance timers past stall timeout to trigger recovery (sets lastContinueAt)
       await vi.advanceTimersByTimeAsync(250);
+      await Promise.resolve();
       await Promise.resolve();
 
       // Verify recovery was triggered (abort + continue)
