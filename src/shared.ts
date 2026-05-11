@@ -324,13 +324,10 @@ export function scheduleRecoveryWithGeneration(
   const currentGeneration = s.timerGeneration;
   
   const timer = setTimeout(() => {
-    console.log('TIMER CALLBACK EXECUTING for', sessionId, 'delay was', delayMs);
     const current = sessions.get(sessionId);
-    console.log('TIMER: current exists=', !!current, 'timer match=', current?.timer === timer, 'gen match=', current?.timerGeneration === currentGeneration);
     // Only proceed if this timer is still the current one (not overwritten)
     if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
       current.timer = null;
-      console.log('TIMER: calling recover for', sessionId);
       recover(sessionId);
     } else {
       log?.('stale recovery timer ignored, generation mismatch:', sessionId);
