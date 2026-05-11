@@ -403,12 +403,12 @@ session.deleted / session.ended → cleanup
 
 | Event | Effect |
 |-------|--------|
-| `session.status (busy)` | Start stall timer, update progress. **Does NOT clear `s.planning`** — session.status(busy) fires during plan generation too and must not destroy the plan flag |
+| `session.status (busy)` | Start stall timer. **Does NOT call `updateProgress()`** — status pings are not real output. Checks `busyStallTimeoutMs` for stuck sessions. **Does NOT clear `s.planning`** — session.status(busy) fires during plan generation too and must not destroy the plan flag |
 | `session.status (idle)` | If `needsContinue` → send queued continue. If `hasOpenTodos` → send nudge. |
 | `session.status (retry)` | Treat as busy (valid progress) |
 | `message.updated` (assistant tokens) | Update `estimatedTokens` for status tracking |
-| `message.updated` (user) | Reset counters, cancel nudge |
-| `message.part.updated` (real progress) | Reset stall timer, reset attempts |
+| `message.updated` (user) | Reset counters, cancel nudge, reset `lastNudgeAt` |
+| `message.part.updated` (real progress) | Reset stall timer, reset attempts, update `lastOutputAt` |
 | `message.part.updated` (step-finish tokens) | Update `estimatedTokens` with actual token counts |
 | `message.part.updated` (synthetic) | **Ignore** — prevents infinite loop |
 | `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
@@ -431,7 +431,8 @@ session.deleted / session.ended → cleanup
 4. **Token estimation from three sources** — error messages, step-finish tokens, AssistantMessage tokens (see above)
 5. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
 6. **Plan/compaction pause** — stall timer and nudge timer both pause during these states
-7. **Tool-text recovery** — recovery uses specialized prompt when XML tool calls detected in reasoning
+7. **Busy-but-dead detection** — `session.status(busy)` does not count as progress; only actual output updates `lastOutputAt`
+8. **Tool-text recovery** — recovery uses specialized prompt when XML tool calls detected in reasoning
 9. **Hallucination loop break** — 3+ continues in 10min forces abort+resume
 10. **Prompt guard blocks duplicates** — checks recent messages before injecting
 11. **Timer generation counter** — `timerGeneration` prevents stale timers from firing after being overwritten
