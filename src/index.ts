@@ -799,19 +799,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           // Handle text parts for plan detection
           if (partType === "text") {
             const partText = e?.properties?.part?.text as string | undefined;
-            console.log('DEBUG PLAN: text part, partText=', JSON.stringify(partText));
             if (partText) {
-              const isPlan = isPlanContent(partText);
-              console.log('DEBUG PLAN: isPlanContent=', isPlan);
-              if (isPlan) {
+              if (isPlanContent(partText)) {
                 log('plan detected in updated text part, pausing stall monitoring');
                 s.planning = true;
                 s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
                 // Schedule planning timeout recovery
                 clearTimer(sid);
-                console.log('DEBUG PLAN: cleared timer, s.timer=', s.timer);
                 scheduleRecovery(sid, config.planningTimeoutMs);
-                console.log('DEBUG PLAN: scheduled planning recovery, s.timer exists=', !!s.timer, 'delay=', config.planningTimeoutMs);
               }
             }
           }
@@ -849,10 +844,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         } else if (s.planning && !s.timer) {
           // Ensure planning has a timeout timer
-          console.log('DEBUG PLAN: planning safety check scheduling timer');
           scheduleRecovery(sid, config.planningTimeoutMs);
         }
-        console.log('DEBUG PLAN: end of handler, s.planning=', s.planning, 's.timer exists=', !!s.timer);
         writeStatusFile(sid);
         return;
       }
