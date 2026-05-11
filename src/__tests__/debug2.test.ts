@@ -10,7 +10,10 @@ describe("debug planning2", () => {
   it("should set planning=true when plan text is detected", async () => {
     vi.useFakeTimers();
     
-    const mockAbort = vi.fn().mockResolvedValue({ data: true });
+    const mockAbort = vi.fn().mockResolvedValue({ data: true }).mockImplementation(() => {
+      console.log('ABORT CALLED from:', new Error().stack);
+      return Promise.resolve({ data: true });
+    });
     const mockStatus = vi.fn().mockResolvedValue({ data: { "test": { type: "busy" } } });
     
     const plugin = await createPlugin({
