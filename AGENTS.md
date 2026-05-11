@@ -431,8 +431,7 @@ session.deleted / session.ended → cleanup
 4. **Token estimation from three sources** — error messages, step-finish tokens, AssistantMessage tokens (see above)
 5. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
 6. **Plan/compaction pause** — stall timer and nudge timer both pause during these states
-7. **Question detection prevents nudge** — if last assistant message is a question, nudge is skipped
-8. **Tool-text recovery** — recovery uses specialized prompt when XML tool calls detected in reasoning
+7. **Tool-text recovery** — recovery uses specialized prompt when XML tool calls detected in reasoning
 9. **Hallucination loop break** — 3+ continues in 10min forces abort+resume
 10. **Prompt guard blocks duplicates** — checks recent messages before injecting
 11. **Timer generation counter** — `timerGeneration` prevents stale timers from firing after being overwritten
@@ -573,7 +572,7 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | Last-known todos cache | Eliminates double-fetch in nudge.ts | Only updated on todo.updated events |
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
 | safeHook fail-open wrapper | Prevents plugin errors from crashing the host | Errors are logged but never propagated |
-| Question detection | Prevents annoying nudges when AI asks user | Extra API call per nudge (~50-200ms) |
+
 | Tool-text recovery | Catches XML-in-reasoning stalls | 18 regex patterns may have false positives |
 | Hallucination loop break | Prevents infinite loops | 3-in-10min threshold may catch legitimate rapid continues |
 | Prompt guard | Prevents duplicate injections | Extra API call per prompt (~50-200ms) |
