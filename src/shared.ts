@@ -98,10 +98,11 @@ export const PLAN_PATTERNS = [
   /^-\s*\[x\]\s/i,
   /^-\s*\[\s\]\s/i,
   /^let\s+me\s+outline/i,
+  /^let\s+me\s+plan/i,
   /^here'?s?\s+(what i|what we|how i|how we)/i,
   /^my\s+plan\s+is/i,
   /^step\s+\d+[\:\.]/i,
-  /^\d+\.\s+[A-Z]/i,
+  /^\d+\.\s+[A-Z]/im,
   /^-\s+[A-Z][^\.]*$/im,
   /^\*\s+[A-Z][^\.]*$/im,
 ];
