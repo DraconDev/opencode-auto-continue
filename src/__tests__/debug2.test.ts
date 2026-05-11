@@ -42,8 +42,7 @@ describe("debug planning2", () => {
       messageID: "msg1",
       part: { id: "part1", type: "text", text: "Let me plan this out:\n1. First step\n2. Second step", sessionID: "test", messageID: "msg1" },
       delta: "Let me plan this out"
-    }}}});
-
+    }}});
     console.log("Before advance: Date.now() =", Date.now());
     await vi.advanceTimersByTimeAsync(10000);
     console.log("After advance: Date.now() =", Date.now());
