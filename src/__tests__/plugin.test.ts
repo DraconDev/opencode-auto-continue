@@ -1615,6 +1615,7 @@ describe("opencode-auto-continue", () => {
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
         planningTimeoutMs: 5000,
+        cooldownMs: 0,
         autoCompact: false,
         terminalTitleEnabled: false,
         statusFilePath: ""
