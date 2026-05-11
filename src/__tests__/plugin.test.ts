@@ -2181,9 +2181,9 @@ describe("opencode-auto-continue", () => {
     it("should validate continueWithPlanMessage is non-empty", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      // Empty continueWithPlanMessage should trigger validation failure (uses defaults)
+      // Empty continueWithPlanMessage should trigger validation, but stallTimeoutMs preserved
       const plugin = await createPlugin({ client: mockClient }, {
-        stallTimeoutMs: 1000,
+        stallTimeoutMs: 5000,
         waitAfterAbortMs: 100,
         continueWithPlanMessage: ""
       });
@@ -2191,7 +2191,7 @@ describe("opencode-auto-continue", () => {
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      // Should use defaults, so no abort should happen
+      // stallTimeoutMs preserved at 5000, no abort after 1000ms
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
