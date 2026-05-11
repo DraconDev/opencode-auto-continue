@@ -399,6 +399,16 @@ session.deleted / session.ended → cleanup
 | `compacting` | Context compaction in progress — monitoring pauses |
 | `userCancelled` | User pressed ESC / aborted — recovery disabled |
 
+### Output Tracking Fields (v7.8.254+)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `lastOutputAt` | `number` | Timestamp of last real output (text, tool, file, subtask, step parts) |
+| `lastOutputLength` | `number` | Length of last text output content (detects even tiny progress) |
+| `lastProgressAt` | `number` | Timestamp of last status ping OR real output (legacy, prefer `lastOutputAt`) |
+
+These fields distinguish real progress from `session.status(busy)` pings. Recovery uses `lastOutputAt` for stall detection; `lastProgressAt` is maintained for backward compatibility.
+
 ### Event → State Transitions
 
 | Event | Effect |
