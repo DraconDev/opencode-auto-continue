@@ -333,7 +333,6 @@ export function scheduleRecoveryWithGeneration(
       log?.('stale recovery timer ignored, generation mismatch:', sessionId);
     }
   }, delayMs);
-  console.log('TIMER SCHEDULED for', sessionId, 'delay=', delayMs, 'gen=', currentGeneration);
   
   (timer as any).unref?.();
   s.timer = timer;
