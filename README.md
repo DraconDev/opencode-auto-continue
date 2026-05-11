@@ -12,7 +12,6 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
 | **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
 | **Plan-Aware Continue** | Nothing — unique feature | Uses `continueWithPlanMessage` when planning phase detected |
-| **Question Detection** | Nothing — unique feature | Prevents nudging when AI is asking user a question |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
 | **Prompt Guard** | Nothing — unique feature | Prevents duplicate injections across plugin instances |
@@ -100,32 +99,6 @@ createTerminalModule({ config, sessions, log, input })  // Terminal title/progre
 ```
 
 Each module is initialized early and its API is called from event handlers in `index.ts`.
-
-### Question Detection (Stops Nudges When AI Asks You Something)
-
-The plugin detects when the AI is asking _you_ a question and **skips nudging** during that time. This prevents the plugin from interrupting when the AI genuinely needs user input.
-
-```
-[Session idle with pending todos]
-        │
-        ▼
-Fetch last 5 assistant messages
-        │
-        ▼
-Check: does last message end with "?"
-        │   OR contain phrases like:
-        │   "would you like", "should i", "do you want",
-        │   "can you", "could you", "what do you think",
-        │   "how would you", "is there anything", "shall i"
-        │
-        ├──YES (it's a question) ──► Skip nudge — AI is waiting for you
-        │
-        └──NO ──► Proceed with normal nudge flow
-```
-
-**Why this matters**: Without question detection, the plugin would send "Please continue working on your tasks..." right after the AI asked you "Should I refactor this or leave it as-is?" — which is annoying and counterproductive.
-
-**Trade-off**: Adds ~50-200ms latency per nudge check (fetches last 5 messages).
 
 ### Tool-Text Recovery (Catches XML Tool Calls in Reasoning)
 
