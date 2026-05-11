@@ -806,7 +806,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
                 // Schedule planning timeout recovery
                 clearTimer(sid);
+                log('DEBUG: cleared timer, s.timer=', s.timer);
                 scheduleRecovery(sid, config.planningTimeoutMs);
+                log('DEBUG: scheduled planning recovery, s.timer=', s.timer, 'delay=', config.planningTimeoutMs);
               }
             }
           }
