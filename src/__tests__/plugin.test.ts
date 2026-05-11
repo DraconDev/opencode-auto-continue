@@ -911,13 +911,68 @@ describe("opencode-auto-continue", () => {
     it("should validate token limit patterns config", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      // Empty tokenLimitPatterns should trigger validation failure and use defaults
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, tokenLimitPatterns: [] });
+      // Pass invalid tokenLimitPatterns (empty array), but valid stallTimeoutMs is preserved
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        waitAfterAbortMs: 100, 
+        tokenLimitPatterns: [] 
+      });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      // Should use default stallTimeoutMs (180000) since validation failed
+      // stallTimeoutMs preserved at 5000, abort NOT called after 1000ms
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should validate proactive compaction token threshold", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        waitAfterAbortMs: 100, 
+        proactiveCompactAtTokens: -1 
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // stallTimeoutMs preserved at 5000, abort NOT called after 1000ms
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should validate proactive compaction percent threshold", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        waitAfterAbortMs: 100, 
+        proactiveCompactAtPercent: 150 
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // stallTimeoutMs preserved at 5000, abort NOT called after 1000ms
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should validate short continue message config", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, { 
+        stallTimeoutMs: 5000, 
+        waitAfterAbortMs: 100, 
+        shortContinueMessage: "" 
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // stallTimeoutMs preserved at 5000, abort NOT called after 1000ms
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
