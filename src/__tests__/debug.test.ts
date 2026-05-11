@@ -2,7 +2,7 @@ import { vi, describe, it, expect } from 'vitest';
 import type { Plugin } from "@opencode-ai/plugin";
 
 async function createPlugin(input: any, options?: Record<string, unknown>) {
-  const { AutoForceResumePlugin } = await import('./index.js');
+    const { AutoForceResumePlugin } = await import('../index.js');
   return AutoForceResumePlugin(input, options as Parameters<Plugin>[1]);
 }
 
