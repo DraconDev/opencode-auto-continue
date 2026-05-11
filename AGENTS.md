@@ -567,6 +567,22 @@ DCP's `compress` tool is superior:
 
 Our emergency compaction is a safety net for edge cases DCP doesn't catch.
 
+## Toast Notifications (v7.8.235+)
+
+The plugin shows toast notifications via `input.client.tui.showToast()` to provide user visibility into its actions:
+
+| Toast | Trigger | Meaning |
+|-------|---------|---------|
+| **Session Resumed** | Session goes busy within 30s after a nudge | AI resumed working after being nudged |
+| **Recovery Successful** | Session goes busy within 30s after a continue | AI resumed working after recovery |
+| **Nudge Failed** | Nudge prompt fails to send | Will retry with backoff |
+| **Token Limit Reached** | Emergency compaction starts | Context was too large, compacting now |
+| **Compaction Failed** | Emergency compaction fails | Manual intervention may be needed |
+
+**State tracking**:
+- `lastNudgeAt` — timestamp of last nudge send (reset on user messages to prevent false Session Resumed)
+- `lastContinueAt` — timestamp of last continue send (reset on user messages to prevent false Recovery Successful)
+
 ## Status File
 
 Written atomically (`.tmp` + rename) to `~/.opencode/logs/auto-force-resume.status` on every event.
