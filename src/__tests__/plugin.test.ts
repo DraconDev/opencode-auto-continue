@@ -1638,16 +1638,6 @@ describe("opencode-auto-continue", () => {
       const testSession = status.sessions?.test || status.session;
       expect(testSession.planning).toBe(false);
     });
-
-      // Session busy sets planning=false
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-
-      // Clear flag on next busy status
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-
-      expect(true).toBe(true);
-      vi.useRealTimers();
-    });
   });
 
   describe("nudge pause and resume behavior", () => {
