@@ -1433,7 +1433,7 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 | Feature | Priority | Description |
 |---------|----------|-------------|
 | **Plan-Driven Continue Messages** | High | Read PLAN.md and send contextual "next item is X" continue messages when todos run out. Code exists (`buildPlanContinueMessage`) but not wired into recovery flow. |
-| **Test-Fix Loop** | High | Reset `reviewFired` when new fix todos are created after review, enabling automatic test-run → fix → re-test cycles. Currently review is one-shot per session. |
+| **Test-Fix Loop** | High | ✅ **Implemented in v7.8.306** — reviewFired resets when new pending todos appear after review, enabling automatic test-run → fix → re-test cycles. |
 | **v7.0 Autonomy Module** | High | Self-improving recovery with intent extraction and strategy selection |
 | **Learning Database** | High | SQLite-based effectiveness tracking for recovery strategies |
 | **Predictive Engine** | Medium | Predict stalls before they happen using token trends |
