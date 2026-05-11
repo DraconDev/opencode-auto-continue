@@ -324,21 +324,13 @@ export function scheduleRecoveryWithGeneration(
   s.timerGeneration++;
   const currentGeneration = s.timerGeneration;
   
-  console.log('DEBUG_SCHED: creating timer with delayMs=', delayMs, 'gen=', currentGeneration, 'sessionId=', sessionId, 'timerRefSet=', !!s.timer);
   const timer = setTimeout(() => {
     const current = sessions.get(sessionId);
-    console.log('DEBUG_SCHED: timer FIRED! gen=', currentGeneration, 'sessionId=', sessionId, 'current?.timer === timer:', current?.timer === timer, 'current?.timerGeneration === currentGeneration:', current?.timerGeneration === currentGeneration);
     // Only proceed if this timer is still the current one (not overwritten)
     if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
       current.timer = null;
-      console.log('DEBUG_SCHED: calling recover for', sessionId);
       recover(sessionId);
     } else {
-      if (current) {
-        console.log('DEBUG_SCHED: stale timer, current.timer:', current.timer === timer, 'current.gen:', current.timerGeneration, 'expected gen:', currentGeneration);
-      } else {
-        console.log('DEBUG_SCHED: stale timer, session gone');
-      }
       log?.('stale recovery timer ignored, generation mismatch:', sessionId);
     }
   }, delayMs);
