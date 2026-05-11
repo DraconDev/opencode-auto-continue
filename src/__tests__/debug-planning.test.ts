@@ -19,9 +19,13 @@ describe("planning debug", () => {
     mockSummarize = vi.fn().mockResolvedValue({ data: {}, error: undefined });
     mockShowToast = vi.fn().mockResolvedValue({ data: {}, error: undefined });
 
+    // CORRECT: match the createPlugin wrapper in plugin.test.ts
+    // The plugin expects input.client to have session/tui methods
     mockClient = {
-      session: { abort: mockAbort, prompt: mockPrompt, status: mockStatus, todo: mockTodo, summarize: mockSummarize },
-      tui: { showToast: mockShowToast },
+      client: {
+        session: { abort: mockAbort, prompt: mockPrompt, status: mockStatus, todo: mockTodo, summarize: mockSummarize },
+        tui: { showToast: mockShowToast },
+      },
     };
   });
 
@@ -36,7 +40,7 @@ describe("planning debug", () => {
     const { AutoForceResumePlugin } = await import('../index.js');
     const plugin = await AutoForceResumePlugin(
       mockClient as any,
-      { stallTimeoutMs: 100, planningTimeoutMs: 200, cooldownMs: 0, autoCompact: false, terminalTitleEnabled: false, statusFilePath: "" } as any
+      { stallTimeoutMs: 100, planningTimeoutMs: 200, cooldownMs: 0, waitAfterAbortMs: 50, autoCompact: false, terminalTitleEnabled: false, statusFilePath: "" } as any
     );
     
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
