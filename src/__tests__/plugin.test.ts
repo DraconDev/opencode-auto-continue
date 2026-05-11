@@ -1544,6 +1544,7 @@ describe("opencode-auto-continue", () => {
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
         planningTimeoutMs: 200,
+        cooldownMs: 0,
         autoCompact: false,
         terminalTitleEnabled: false,
         statusFilePath: ""
@@ -1573,6 +1574,7 @@ describe("opencode-auto-continue", () => {
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 100,
         planningTimeoutMs: 5000, // Long timeout so we can test clearing
+        cooldownMs: 0,
         autoCompact: false,
         terminalTitleEnabled: false,
         statusFilePath: ""
