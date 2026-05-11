@@ -818,14 +818,14 @@ describe("opencode-auto-continue", () => {
     it("should use defaults when maxRecoveries is negative", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
-      // Pass invalid maxRecoveries, but validation will use ALL defaults
-      // Default stallTimeoutMs is 180000, so timer won't fire quickly
-      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 1000, waitAfterAbortMs: 100, maxRecoveries: -1 });
+      // Pass invalid maxRecoveries - only invalid field is reset to default
+      // Valid fields (stallTimeoutMs) are preserved
+      const plugin = await createPlugin({ client: mockClient }, { stallTimeoutMs: 5000, waitAfterAbortMs: 100, maxRecoveries: -1 });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
 
-      // Should use default stallTimeoutMs (180000), so abort NOT called after 1000ms
+      // stallTimeoutMs (5000) is preserved, so abort NOT called after 1000ms
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
