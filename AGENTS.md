@@ -261,7 +261,6 @@ shouldUseAI() checks config + session age
 ### Integration Points
 
 - **Recovery** (`recovery.ts`): Before the final abort attempt in `recover()`, calls `shouldUseAI()` then `getAdvice()`. If advice is `wait` with ≥0.7 confidence, skips abort entirely. Logs all advice regardless.
-- **Nudge** (`nudge.ts`): After question detection check, calls `getAdvice()`. If `shouldSkipNudge(advice)` returns true (wait ≥0.7 or abort ≥0.6 confidence), skips the nudge.
 
 ### Config
 
