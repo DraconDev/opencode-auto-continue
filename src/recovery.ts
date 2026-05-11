@@ -236,12 +236,15 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       // Abort the session first (required before compaction)
       try {
+        console.log('RECOVER: calling abort');
         await input.client.session.abort({
           path: { id: sessionId },
           query: { directory: input.directory || "" }
         });
+        console.log('RECOVER: abort succeeded');
         log('session aborted for recovery:', sessionId);
       } catch (e) {
+        console.log('RECOVER: abort failed', e);
         log('abort failed:', e);
         s.aborting = false;
         scheduleRecovery(sessionId, config.stallTimeoutMs * 2);
