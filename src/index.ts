@@ -604,6 +604,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.actionStartedAt = Date.now();
           }
           
+          // Schedule recovery timer for normal stall detection
+          // (lastProgressAt is NOT updated, so timer will fire based on actual output time)
+          if (!s.planning && !s.compacting) {
+            scheduleRecovery(sid, config.stallTimeoutMs);
+          }
+          
           // Check for busy-but-dead: session claims busy but no actual output for too long
           const timeSinceOutput = Date.now() - s.lastOutputAt;
           if (timeSinceOutput > config.busyStallTimeoutMs) {
