@@ -172,10 +172,8 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     }
 
     const now = Date.now();
-    console.log('RECOVER: now=', now, 'lastProgressAt=', s.lastProgressAt, 'stallTimeoutMs=', config.stallTimeoutMs, 'diff=', now - s.lastProgressAt);
 
     if (now - s.lastRecoveryTime < config.cooldownMs) {
-      console.log('RECOVER: cooldown');
       const remainingCooldown = config.cooldownMs - (now - s.lastRecoveryTime);
       const delay = Math.max(remainingCooldown, 100);
       log('recovery cooldown active, rescheduling:', delay, 'ms');
@@ -184,14 +182,12 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     }
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
-      console.log('RECOVER: session too old. age=', now - s.sessionCreatedAt, 'max=', config.maxSessionAgeMs);
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
       s.aborting = false;
       return;
     }
 
     s.aborting = true;
-    console.log('RECOVER: proceeding to abort');
     s.stallDetections++;
     s.recoveryStartTime = Date.now();
 
