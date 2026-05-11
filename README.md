@@ -1417,7 +1417,7 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 | **Tool-Text Recovery** | ✅ Complete | v6.54 |
 | **Hallucination Loop Detection** | ✅ Complete | v6.54 |
 | **Cross-Instance Prompt Guard** | ✅ Complete | v6.54 |
-| **Question Detection** | ✅ Complete | v6.54 |
+| **Busy-But-Dead Detection** | ✅ Complete | v7.8.254 |
 
 ### In Progress 🚧
 
