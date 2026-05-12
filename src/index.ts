@@ -242,6 +242,7 @@ export async function sendCustomPrompt(
     if (state) {
       state.messageCount++;
       state.sentMessageAt = Date.now();
+      state.lastNudgeAt = Date.now(); // Prevent immediate nudge after custom prompt
     }
 
     return {
@@ -452,6 +453,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
           if (s) {
             s.userCancelled = true;
+            s.lastKnownStatus = 'error';
             nudge.pauseNudge(sid);
           }
           log('user cancelled session:', sid);
