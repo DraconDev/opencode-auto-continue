@@ -52,7 +52,6 @@ export interface PluginConfig {
   compactAtMessageCount: number;
   tokenEstimateMultiplier: number;
   dcpDetected: boolean;
-  dcpDetected: boolean;
   dcpVersion: string | null;
 
   // Planning timeout
@@ -63,6 +62,7 @@ export interface PluginConfig {
 
   // AI Advisory
   enableAdvisory: boolean;
+  advisoryModel: string;
   advisoryTimeoutMs: number;
   advisoryMaxTokens: number;
   advisoryTemperature: number;
@@ -126,7 +126,6 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
-  tokenEstimateMultiplier: number,
   dcpDetected: false,
   dcpVersion: null,
 
