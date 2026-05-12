@@ -383,6 +383,7 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
 
   // Read provider config from opencode.json
   // FIX 9: Match provider by model name if specified
+  // FIX 10: Add caching to avoid re-reading opencode.json on every advisory call
   function readProviderConfig(targetModel?: string): { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null {
     try {
       const configPath = join(
@@ -397,10 +398,21 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
         return null;
       }
 
+      // Check cache validity using mtime
+      const stats = statSync(configPath, { throwIfNoEntry: false });
+      const mtime = stats?.mtimeMs || 0;
+      
+      if (providerCache.path === configPath && providerCache.mtime === mtime && providerCache.config !== null) {
+        log("using cached provider config for model:", targetModel);
+        return providerCache.config;
+      }
+
       const raw = readFileSync(configPath, "utf-8");
       const config = JSON.parse(raw);
       const providers = config?.provider;
       if (!providers) return null;
+
+      let result: { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null = null;
 
       // If a target model is specified, try to find the provider that has it
       if (targetModel) {
@@ -416,28 +428,37 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
               const headers = opts.headers;
               if (baseURL) {
                 log("using matched provider:", name, "for model:", targetModel, "baseURL:", baseURL);
-                return { baseURL, apiKey, headers };
+                result = { baseURL, apiKey, headers };
+                break;
               }
             }
           }
+          if (result) break;
         }
-        log("no provider found for model:", targetModel, ", falling back to first available");
+        if (!result) {
+          log("no provider found for model:", targetModel, ", falling back to first available");
+        }
       }
 
       // Find the first enabled provider with OpenAI-compatible models
-      for (const [name, provider] of Object.entries(providers) as [string, any][]) {
-        const opts = provider.options || {};
-        const baseURL = opts.baseURL || opts.baseUrl;
-        const apiKey = opts.apiKey || opts.api_key;
-        const headers = opts.headers;
+      if (!result) {
+        for (const [name, provider] of Object.entries(providers) as [string, any][]) {
+          const opts = provider.options || {};
+          const baseURL = opts.baseURL || opts.baseUrl;
+          const apiKey = opts.apiKey || opts.api_key;
+          const headers = opts.headers;
 
-        if (baseURL) {
-          log("using provider:", name, "baseURL:", baseURL);
-          return { baseURL, apiKey, headers };
+          if (baseURL) {
+            log("using provider:", name, "baseURL:", baseURL);
+            result = { baseURL, apiKey, headers };
+            break;
+          }
         }
       }
 
-      return null;
+      // Update cache
+      providerCache = { path: configPath, mtime, config: result };
+      return result;
     } catch (e) {
       log("failed to read provider config:", e);
       return null;
