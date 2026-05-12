@@ -452,6 +452,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
           if (s) {
             s.userCancelled = true;
+            s.lastKnownStatus = 'error';
             nudge.pauseNudge(sid);
           }
           log('user cancelled session:', sid);
