@@ -143,6 +143,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   advisoryTemperature: 0.1,
 
   // Session Monitor defaults
+  subagentWaitMs: 15000,
   orphanWaitMs: 15000,
   sessionDiscoveryIntervalMs: 60000,
   idleSessionTimeoutMs: 600000,
