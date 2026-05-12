@@ -181,57 +181,61 @@ export function validateConfig(config: PluginConfig): PluginConfig {
     normalized.idleCleanup = false;
   }
 
+  // Track invalid fields explicitly rather than parsing error messages
+  const invalidFields = new Set<string>();
   const errors: string[] = [];
   
-  if (normalized.stallTimeoutMs <= 0) errors.push(`stallTimeoutMs must be > 0, got ${normalized.stallTimeoutMs}`);
-  if (normalized.waitAfterAbortMs <= 0) errors.push(`waitAfterAbortMs must be > 0, got ${normalized.waitAfterAbortMs}`);
-  if (normalized.stallTimeoutMs < normalized.waitAfterAbortMs) errors.push(`stallTimeoutMs (${normalized.stallTimeoutMs}) must be >= waitAfterAbortMs (${normalized.waitAfterAbortMs})`);
-  if (normalized.maxRecoveries < 0) errors.push(`maxRecoveries must be >= 0, got ${normalized.maxRecoveries}`);
-  if (normalized.cooldownMs < 0) errors.push(`cooldownMs must be >= 0, got ${normalized.cooldownMs}`);
-  if (normalized.abortPollIntervalMs <= 0) errors.push(`abortPollIntervalMs must be > 0, got ${normalized.abortPollIntervalMs}`);
-  if (normalized.abortPollMaxTimeMs < 0) errors.push(`abortPollMaxTimeMs must be >= 0, got ${normalized.abortPollMaxTimeMs}`);
-  if (normalized.abortPollMaxFailures <= 0) errors.push(`abortPollMaxFailures must be > 0, got ${normalized.abortPollMaxFailures}`);
-  if (normalized.maxBackoffMs < normalized.stallTimeoutMs) errors.push(`maxBackoffMs (${normalized.maxBackoffMs}) must be >= stallTimeoutMs (${normalized.stallTimeoutMs})`);
-  if (normalized.maxAutoSubmits < 0) errors.push(`maxAutoSubmits must be >= 0, got ${normalized.maxAutoSubmits}`);
-  if (!normalized.continueMessage || typeof normalized.continueMessage !== 'string') errors.push(`continueMessage must be a non-empty string`);
-  if (!normalized.reviewMessage || typeof normalized.reviewMessage !== 'string') errors.push(`reviewMessage must be a non-empty string`);
-  if (normalized.reviewDebounceMs < 0) errors.push(`reviewDebounceMs must be >= 0, got ${normalized.reviewDebounceMs}`);
-  if (normalized.proactiveCompactAtTokens < 0) errors.push(`proactiveCompactAtTokens must be >= 0, got ${normalized.proactiveCompactAtTokens}`);
-  if (normalized.proactiveCompactAtPercent < 0 || normalized.proactiveCompactAtPercent > 100) errors.push(`proactiveCompactAtPercent must be between 0 and 100, got ${normalized.proactiveCompactAtPercent}`);
-  if (normalized.compactRetryDelayMs < 0) errors.push(`compactRetryDelayMs must be >= 0, got ${normalized.compactRetryDelayMs}`);
-  if (normalized.compactMaxRetries < 0) errors.push(`compactMaxRetries must be >= 0, got ${normalized.compactMaxRetries}`);
-  if (normalized.compactCooldownMs < 0) errors.push(`compactCooldownMs must be >= 0, got ${normalized.compactCooldownMs}`);
-  if (typeof normalized.compactReductionFactor !== 'number' || normalized.compactReductionFactor <= 0 || normalized.compactReductionFactor >= 1) errors.push(`compactReductionFactor must be between 0 and 1 (exclusive), got ${normalized.compactReductionFactor}`);
+  const addError = (field: keyof PluginConfig, message: string) => {
+    invalidFields.add(String(field));
+    errors.push(message);
+  };
+  
+  if (normalized.stallTimeoutMs <= 0) addError('stallTimeoutMs', `stallTimeoutMs must be > 0, got ${normalized.stallTimeoutMs}`);
+  if (normalized.waitAfterAbortMs <= 0) addError('waitAfterAbortMs', `waitAfterAbortMs must be > 0, got ${normalized.waitAfterAbortMs}`);
+  if (normalized.stallTimeoutMs < normalized.waitAfterAbortMs) addError('stallTimeoutMs', `stallTimeoutMs (${normalized.stallTimeoutMs}) must be >= waitAfterAbortMs (${normalized.waitAfterAbortMs})`);
+  if (normalized.maxRecoveries < 0) addError('maxRecoveries', `maxRecoveries must be >= 0, got ${normalized.maxRecoveries}`);
+  if (normalized.cooldownMs < 0) addError('cooldownMs', `cooldownMs must be >= 0, got ${normalized.cooldownMs}`);
+  if (normalized.abortPollIntervalMs <= 0) addError('abortPollIntervalMs', `abortPollIntervalMs must be > 0, got ${normalized.abortPollIntervalMs}`);
+  if (normalized.abortPollMaxTimeMs < 0) addError('abortPollMaxTimeMs', `abortPollMaxTimeMs must be >= 0, got ${normalized.abortPollMaxTimeMs}`);
+  if (normalized.abortPollMaxFailures <= 0) addError('abortPollMaxFailures', `abortPollMaxFailures must be > 0, got ${normalized.abortPollMaxFailures}`);
+  if (normalized.maxBackoffMs < normalized.stallTimeoutMs) addError('maxBackoffMs', `maxBackoffMs (${normalized.maxBackoffMs}) must be >= stallTimeoutMs (${normalized.stallTimeoutMs})`);
+  if (normalized.maxAutoSubmits < 0) addError('maxAutoSubmits', `maxAutoSubmits must be >= 0, got ${normalized.maxAutoSubmits}`);
+  if (!normalized.continueMessage || typeof normalized.continueMessage !== 'string') addError('continueMessage', `continueMessage must be a non-empty string`);
+  if (!normalized.reviewMessage || typeof normalized.reviewMessage !== 'string') addError('reviewMessage', `reviewMessage must be a non-empty string`);
+  if (normalized.reviewDebounceMs < 0) addError('reviewDebounceMs', `reviewDebounceMs must be >= 0, got ${normalized.reviewDebounceMs}`);
+  if (normalized.proactiveCompactAtTokens < 0) addError('proactiveCompactAtTokens', `proactiveCompactAtTokens must be >= 0, got ${normalized.proactiveCompactAtTokens}`);
+  if (normalized.proactiveCompactAtPercent < 0 || normalized.proactiveCompactAtPercent > 100) addError('proactiveCompactAtPercent', `proactiveCompactAtPercent must be between 0 and 100, got ${normalized.proactiveCompactAtPercent}`);
+  if (normalized.compactRetryDelayMs < 0) addError('compactRetryDelayMs', `compactRetryDelayMs must be >= 0, got ${normalized.compactRetryDelayMs}`);
+  if (normalized.compactMaxRetries < 0) addError('compactMaxRetries', `compactMaxRetries must be >= 0, got ${normalized.compactMaxRetries}`);
+  if (normalized.compactCooldownMs < 0) addError('compactCooldownMs', `compactCooldownMs must be >= 0, got ${normalized.compactCooldownMs}`);
+  if (typeof normalized.compactReductionFactor !== 'number' || normalized.compactReductionFactor <= 0 || normalized.compactReductionFactor >= 1) addError('compactReductionFactor', `compactReductionFactor must be between 0 and 1 (exclusive), got ${normalized.compactReductionFactor}`);
   
   // New config options validation
-  if (normalized.planningTimeoutMs < 0) errors.push(`planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
-  if (normalized.busyStallTimeoutMs < 0) errors.push(`busyStallTimeoutMs must be >= 0, got ${normalized.busyStallTimeoutMs}`);
-  if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) errors.push(`tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);
-  if (normalized.nudgeIdleDelayMs < 0) errors.push(`nudgeIdleDelayMs must be >= 0, got ${normalized.nudgeIdleDelayMs}`);
-  if (normalized.nudgeMaxSubmits < 0) errors.push(`nudgeMaxSubmits must be >= 0, got ${normalized.nudgeMaxSubmits}`);
-  if (!normalized.shortContinueMessage || normalized.shortContinueMessage.trim().length === 0) errors.push(`shortContinueMessage must be non-empty`);
-  if (!normalized.continueWithPlanMessage || normalized.continueWithPlanMessage.trim().length === 0) errors.push(`continueWithPlanMessage must be non-empty`);
-  if (!Array.isArray(normalized.tokenLimitPatterns) || normalized.tokenLimitPatterns.length === 0) errors.push(`tokenLimitPatterns must be a non-empty array`);
+  if (normalized.planningTimeoutMs < 0) addError('planningTimeoutMs', `planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
+  if (normalized.busyStallTimeoutMs < 0) addError('busyStallTimeoutMs', `busyStallTimeoutMs must be >= 0, got ${normalized.busyStallTimeoutMs}`);
+  if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) addError('tokenEstimateMultiplier', `tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);
+  if (normalized.nudgeIdleDelayMs < 0) addError('nudgeIdleDelayMs', `nudgeIdleDelayMs must be >= 0, got ${normalized.nudgeIdleDelayMs}`);
+  if (normalized.nudgeMaxSubmits < 0) addError('nudgeMaxSubmits', `nudgeMaxSubmits must be >= 0, got ${normalized.nudgeMaxSubmits}`);
+  if (!normalized.shortContinueMessage || normalized.shortContinueMessage.trim().length === 0) addError('shortContinueMessage', `shortContinueMessage must be non-empty`);
+  if (!normalized.continueWithPlanMessage || normalized.continueWithPlanMessage.trim().length === 0) addError('continueWithPlanMessage', `continueWithPlanMessage must be non-empty`);
+  if (!Array.isArray(normalized.tokenLimitPatterns) || normalized.tokenLimitPatterns.length === 0) addError('tokenLimitPatterns', `tokenLimitPatterns must be a non-empty array`);
 
-  if (normalized.subagentWaitMs < 0) errors.push(`subagentWaitMs must be >= 0, got ${normalized.subagentWaitMs}`);
-  if (normalized.sessionDiscoveryIntervalMs < 0) errors.push(`sessionDiscoveryIntervalMs must be >= 0, got ${normalized.sessionDiscoveryIntervalMs}`);
-  if (normalized.idleSessionTimeoutMs < 0) errors.push(`idleSessionTimeoutMs must be >= 0, got ${normalized.idleSessionTimeoutMs}`);
-  if (normalized.maxSessions < 0) errors.push(`maxSessions must be >= 0, got ${normalized.maxSessions}`);
+  if (normalized.subagentWaitMs < 0) addError('subagentWaitMs', `subagentWaitMs must be >= 0, got ${normalized.subagentWaitMs}`);
+  if (normalized.sessionDiscoveryIntervalMs < 0) addError('sessionDiscoveryIntervalMs', `sessionDiscoveryIntervalMs must be >= 0, got ${normalized.sessionDiscoveryIntervalMs}`);
+  if (normalized.idleSessionTimeoutMs < 0) addError('idleSessionTimeoutMs', `idleSessionTimeoutMs must be >= 0, got ${normalized.idleSessionTimeoutMs}`);
+  if (normalized.maxSessions < 0) addError('maxSessions', `maxSessions must be >= 0, got ${normalized.maxSessions}`);
 
   // Plan-driven continue validation
-  if (normalized.planMaxItemsPerContinue < 1) errors.push(`planMaxItemsPerContinue must be >= 1, got ${normalized.planMaxItemsPerContinue}`);
-  if (normalized.planFilePath !== null && (typeof normalized.planFilePath !== 'string' || normalized.planFilePath.trim().length === 0)) errors.push(`planFilePath must be null or a non-empty string`);
+  if (normalized.planMaxItemsPerContinue < 1) addError('planMaxItemsPerContinue', `planMaxItemsPerContinue must be >= 1, got ${normalized.planMaxItemsPerContinue}`);
+  if (normalized.planFilePath !== null && (typeof normalized.planFilePath !== 'string' || normalized.planFilePath.trim().length === 0)) addError('planFilePath', `planFilePath must be null or a non-empty string`);
 
   if (errors.length > 0) {
     // Build result starting from defaults, then overlay valid user values field by field
     const result = { ...DEFAULT_CONFIG };
     
-    // For each field in normalized, check if it's valid (not in errors for this field)
-    // and if so, use the normalized value
+    // For each field in normalized, use the normalized value only if the field is valid
     (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
-      // Check if any error message starts with this field name (precise match)
-      const fieldError = errors.some(e => e.startsWith(String(key) + ' '));
-      if (!fieldError) {
+      if (!invalidFields.has(String(key))) {
         (result as any)[key] = normalized[key];
       }
     });
