@@ -122,7 +122,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
       // Find the remaining busy session
       for (const [id, s] of sessions) {
-        if (s.timer !== null || s.aborting || s.compacting) {
+        if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
           // Check if this session has children that recently finished
           const children = parentChildMap.get(id);
           if (children && children.size > 0) {
@@ -137,7 +137,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               setTimeout(() => {
                 if (!isDisposed()) {
                   const session = sessions.get(id);
-                  if (session && (session.timer !== null || session.aborting || session.compacting)) {
+                  if (session && (session.lastKnownStatus === 'busy' || session.lastKnownStatus === 'retry' || session.aborting || session.compacting)) {
                     const elapsed = Date.now() - session.lastProgressAt;
                     if (elapsed > config.subagentWaitMs) {
                       log('[SessionMonitor] orphan parent confirmed:', id, 'after delayed check');
@@ -159,7 +159,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     // FIX 5: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
     if (currentBusyCount >= 1) {
       for (const [id, s] of sessions) {
-        if (s.timer !== null || s.aborting || s.compacting) {
+        if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
           const timeSinceProgress = Date.now() - s.lastProgressAt;
           const stuckThreshold = config.stallTimeoutMs;
           if (timeSinceProgress > stuckThreshold) {
