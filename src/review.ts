@@ -107,6 +107,7 @@ export function createReviewModule(deps: ReviewDeps) {
       const now = Date.now();
       if (s.continueRetryCount > 0 && now - s.lastContinueRetryAt < CONTINUE_RETRY_BACKOFF_MS) {
         log('continue retry backoff active, skipping:', sessionId);
+        s.continueInProgress = false;
         return;
       }
 
