@@ -46,6 +46,7 @@ export interface SessionState {
   compacting: boolean;
   sessionCreatedAt: number;
   messageCount: number;
+  lastKnownStatus: string; // 'busy' | 'retry' | 'idle' | 'unknown'
 
   // === Compaction (compaction.ts) ===
   estimatedTokens: number;
@@ -128,6 +129,7 @@ export function createSession(): SessionState {
     compacting: false,
     sessionCreatedAt: now,
     messageCount: 0,
+    lastKnownStatus: 'unknown',
 
     estimatedTokens: 0,
     lastCompactionAt: 0,
