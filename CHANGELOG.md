@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.331] - 2026-05-12
+
+### Fixed
+
+- **Critical: cleanupIdleSessions dangling timers** — Now clears `timer`, `nudgeTimer`, and `reviewDebounceTimer` before deleting idle sessions. Prevents zombie sessions from resurrecting when stale timers fire.
+- **Critical: session.compacted continue not sent** — After emergency compaction, now directly queues and sends continue via `review.sendContinue()` instead of relying on subsequent idle event that may never fire.
+- **High: Double token counting for assistant messages** — Skip token estimation when `msgRole === 'assistant'` since actual tokens arrive via `message.updated`. Prevents inflated estimates triggering premature compaction.
+- **High: Discovered sessions timeout too long** — Use `Math.min(stallTimeoutMs, 30000)` for faster detection of already-stuck sessions discovered via `session.list()` polling.
+- **Medium: actionStartedAt never resets** — Reset `actionStartedAt = 0` when session goes idle. Fixes incorrect elapsed time for sessions oscillating between busy/idle.
+- **Medium: lastNudgeAt not updated in custom prompts** — Set `lastNudgeAt = Date.now()` when sending custom prompts to prevent immediate nudge after custom prompt.
+- **Medium: lastKnownStatus stale on error** — Set `lastKnownStatus = 'error'` on `MessageAbortedError` to prevent stale status misleading orphan detection.
+
+### Removed
+
+- **Dead code: event-router.ts** — Removed 424-line unused parallel implementation that was never imported. Eliminates maintenance hazard and code drift.
+- **Dead config: Plan-driven continue options** — Removed `planDrivenContinue`, `planFilePath`, `planAutoMarkComplete`, `planMaxItemsPerContinue` from config interface and defaults. These options were never wired into the recovery flow.
+
 ## [7.8.0] - 2026-05-08
 
 ### Added
