@@ -607,58 +607,6 @@ EOF
 
 **Then register it in your OpenCode config** (see [Plugin Registration](#plugin-registration) below).
 
-## Plan-Aware Features
-
-The plugin has partial plan support. What's implemented vs planned:
-
-### ✅ Implemented: Auto-Mark Complete
-
-When `planDrivenContinue: true` and `planAutoMarkComplete: true`, completing a todo automatically marks the matching plan item as complete in your plan file.
-
-**How it works**:
-- Watches `todo.updated` events
-- When a todo is marked completed, searches the plan file for a matching description (fuzzy string match)
-- Updates `- [ ]` to `- [x]` in the plan file
-
-**Supported plan files** (checked in order):
-1. `PLAN.md`
-2. `ROADMAP.md`
-3. `.opencode/plan.md`
-
-**Plan format**:
-```markdown
-# Project Plan
-
-## Phase 1: Foundation
-- [ ] Setup project structure
-- [x] Add configuration
-- [ ] Write tests
-```
-
-### Configuration
-
-```json
-{
-  "plugin": [
-    ["opencode-auto-continue", {
-      "planDrivenContinue": true,
-      "planFilePath": null,
-      "planAutoMarkComplete": true
-    }]
-  ]
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `planDrivenContinue` | boolean | `false` | Enable plan features (currently auto-mark only) |
-| `planFilePath` | string | `null` | Custom plan file path. If null, searches standard locations. |
-| `planAutoMarkComplete` | boolean | `true` | Auto-mark plan items when corresponding todos finish |
-
-### 🚧 Planned: Plan-Driven Continue Messages
-
-The codebase includes plan parsing and message building utilities, but they're not yet wired into the recovery flow. See [Roadmap](#roadmap).
-
 ## Plugin Registration
 
 Add the plugin to your `~/.config/opencode/opencode.json`:
