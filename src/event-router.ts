@@ -7,7 +7,7 @@
 
 import type { SessionState, Todo } from "./session-state.js";
 import type { PluginConfig } from "./config.js";
-import { safeHook, parseTokensFromError, estimateTokens, isPlanContent } from "./shared.js";
+import { safeHook, parseTokensFromError, estimateTokens, isPlanContent, scheduleRecoveryWithGeneration } from "./shared.js";
 import { existsSync } from "fs";
 import { getPlanPath, markPlanItemComplete } from "./plan.js";
 
