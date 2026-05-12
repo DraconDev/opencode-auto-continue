@@ -113,6 +113,7 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     reviewFired: false,
     reviewDebounceTimer: null,
     lastAdvisoryAdvice: null,
+    lastKnownStatus: 'unknown',
     ...partial,
   };
 }
