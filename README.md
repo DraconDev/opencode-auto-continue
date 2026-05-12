@@ -11,7 +11,7 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Review on Completion** | `opencode-auto-review-completed-todos` | Sends review prompt when all todos are done |
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
 | **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
-| **Plan-Aware Continue** | Nothing — unique feature | Uses `continueWithPlanMessage` when planning phase detected |
+| **Plan-Aware Continue** | Nothing — unique feature | Detects planning phase and uses `continueWithPlanMessage` when recovering |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
 | **Prompt Guard** | Nothing — unique feature | Prevents duplicate injections across plugin instances |
@@ -259,14 +259,8 @@ When the AI is in a planning phase (detected by plan-related text in messages), 
 **What works now**:
 - **Planning detection**: The plugin detects when the AI outputs planning text (e.g., "Here's my plan:") and sets a `planning` flag
 - **Plan-aware continue**: When recovering during planning, it uses `continueWithPlanMessage` instead of `shortContinueMessage`
-- **Auto-mark complete**: When `planDrivenContinue: true`, completing todos automatically marks matching plan items as complete (via fuzzy string matching)
 
-**What the code has but doesn't wire up yet**:
-- Plan file parsing (`PLAN.md`, `ROADMAP.md`, `.opencode/plan.md`)
-- `buildPlanContinueMessage()` — builds contextual "next item is X" messages
-- These are tested but not yet integrated into the recovery flow
-
-See [Roadmap](#roadmap) for planned improvements.
+**Note**: The plugin does not parse external plan files (PLAN.md, ROADMAP.md, etc.). Planning is detected dynamically from the AI's output text.
 
 ### Review on Completion
 
