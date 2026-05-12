@@ -682,9 +682,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.updateTerminalProgress(sid);
         }
         if (status?.type === "idle") {
+        if (status?.type === "idle") {
+          s.lastKnownStatus = 'idle';
+          s.actionStartedAt = 0;
           clearTimer(sid);
         }
-        // Send queued continue when session becomes idle/stable
         if (status?.type === "idle" && s.needsContinue) {
           if (s.aborting) {
             log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
@@ -888,9 +890,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.estimatedTokens += estimatedTokens;
           log('message count incremented:', s.messageCount, 'estimated tokens added:', estimatedTokens, 'total:', s.estimatedTokens);
         } else {
-          // Also estimate tokens from assistant/tool responses (only when actual tokens not available)
+          // Non-user message (tool, system, assistant without tokens)
+          // Only estimate tokens for non-assistant messages to avoid double-counting.
+          // Assistant messages with actual tokens are handled in message.updated.
           const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
-          if (msgText) {
+          if (msgText && msgRole !== 'assistant') {
             const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
             s.estimatedTokens += estimatedTokens;
           }
