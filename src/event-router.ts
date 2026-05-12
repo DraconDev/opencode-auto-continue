@@ -153,6 +153,7 @@ export function createEventRouter(deps: EventRouterDeps) {
         const s = getSession(sid);
         
         if (status?.type === "busy" || status?.type === "retry") {
+          s.lastKnownStatus = status.type;
           updateProgress(s);
           sessionMonitor.touchSession(sid);
           s.userCancelled = false;
@@ -167,13 +168,16 @@ export function createEventRouter(deps: EventRouterDeps) {
           terminal.updateTerminalProgress(sid);
         }
         if (status?.type === "idle" && s.needsContinue) {
+          s.lastKnownStatus = 'idle';
           log('session idle, sending queued continue for:', sid);
           await review.sendContinue(sid);
         }
         if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
+          s.lastKnownStatus = 'idle';
           nudge.scheduleNudge(sid);
         }
         if (status?.type === "idle") {
+          s.lastKnownStatus = 'idle';
           terminal.clearTerminalTitle();
           terminal.clearTerminalProgress();
         }
