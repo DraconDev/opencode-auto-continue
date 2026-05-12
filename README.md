@@ -688,9 +688,6 @@ Minimal configuration with sensible defaults:
       "recoveryHistogramEnabled": true,
       "stallPatternDetection": true,
       "terminalProgressEnabled": true,
-      "planDrivenContinue": false,
-      "planFilePath": null,
-      "planAutoMarkComplete": true,
       "enableAdvisory": false,
       "advisoryModel": "",
       "advisoryTimeoutMs": 5000,
@@ -788,14 +785,6 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 **AI provider**: Reads `baseURL` and `apiKey` from your model config in `opencode.json`. Uses OpenAI-compatible chat completions endpoint.
 
 **When AI is not configured** (`enableAdvisory: false` or `advisoryModel: ""`), the advisor still runs heuristic pattern analysis. Setting `enableAdvisory: true` with a valid `advisoryModel` enables real AI calls as the primary advisor, with heuristics as fallback.
-
-### Plan Options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `planDrivenContinue` | `false` | Enable plan-driven auto-continue |
-| `planFilePath` | `null` | Custom plan file path (relative or absolute). If null, searches standard locations |
-| `planAutoMarkComplete` | `true` | Auto-mark plan items as complete when corresponding todos finish |
 
 ### Other Options
 
