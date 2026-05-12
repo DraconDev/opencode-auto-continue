@@ -178,10 +178,10 @@ export function createEventRouter(deps: EventRouterDeps) {
           terminal.clearTerminalProgress();
         }
         if (status?.type === "busy" || status?.type === "retry") {
-          clearTimer(sid);
-          if (!s.planning && !s.compacting) {
-            scheduleRecoveryWithGeneration(sessions, sid, config.stallTimeoutMs, recover, log);
-          }
+        clearTimer(sid);
+        if (!s.planning && !s.compacting) {
+          scheduleRecoveryWithGeneration(sessions, sid, config.stallTimeoutMs, recover, log);
+        }
         }
         writeStatusFile(sid);
         return;
