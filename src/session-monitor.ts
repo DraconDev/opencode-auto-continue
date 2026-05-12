@@ -86,7 +86,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     const idle: string[] = [];
     const now = Date.now();
     for (const [id, s] of sessions) {
-      if (s.timer == null && !s.aborting && !s.compacting) {
+      if (s.lastKnownStatus !== 'busy' && s.lastKnownStatus !== 'retry' && !s.aborting && !s.compacting) {
         idle.push(id);
       }
     }
