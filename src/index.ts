@@ -681,6 +681,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.updateTerminalProgress(sid);
         }
         if (status?.type === "idle") {
+          s.actionStartedAt = 0;
           clearTimer(sid);
         }
         // Send queued continue when session becomes idle/stable
@@ -889,7 +890,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         } else {
           // Also estimate tokens from assistant/tool responses (only when actual tokens not available)
           const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
-          if (msgText) {
+          if (msgText && msgRole !== 'assistant') {
             const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
             s.estimatedTokens += estimatedTokens;
           }
@@ -994,6 +995,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
+        // FIX 3: Queue and send continue after compaction to resume work
+        s.needsContinue = true;
+        s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+        review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
         writeStatusFile(sid);
         return;
       }
