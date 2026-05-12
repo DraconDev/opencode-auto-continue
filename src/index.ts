@@ -706,12 +706,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
         // Only set recovery timer for busy/retry sessions, not for idle
         // Idle sessions should not have a stall recovery timer running
-        if (status?.type === "busy" || status?.type === "retry") {
-          clearTimer(sid);
-          if (!s.planning && !s.compacting) {
-            scheduleRecovery(sid, config.stallTimeoutMs);
-          }
-        }
+        // NOTE: Recovery timer is already scheduled above in the busy/retry branch (lines 609-611)
+        // This duplicate scheduling has been removed to prevent timer cascade.
 
         writeStatusFile(sid);
         return;
