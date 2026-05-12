@@ -59,6 +59,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     // FIX 4: Increment generation to invalidate stale timers
     state.timerGeneration++;
     const currentGeneration = state.timerGeneration;
+    // FIX 9: Use shorter initial timeout for discovered sessions that may already be stuck
+    const timeoutMs = Math.min(config.stallTimeoutMs, 30000);
     const timer = setTimeout(() => {
       const current = sessions.get(sessionId);
       if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
@@ -67,7 +69,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       } else {
         log('[SessionMonitor] stale discovered recovery timer ignored:', sessionId);
       }
-    }, config.stallTimeoutMs);
+    }, timeoutMs);
     (timer as any).unref?.();
     state.timer = timer;
   }
@@ -272,6 +274,22 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     }
 
     for (const id of toDelete) {
+      const s = sessions.get(id);
+      if (s) {
+        // FIX 2: Clear dangling timers before deleting session
+        if (s.timer) {
+          clearTimeout(s.timer);
+          s.timer = null;
+        }
+        if (s.nudgeTimer) {
+          clearTimeout(s.nudgeTimer);
+          s.nudgeTimer = null;
+        }
+        if (s.reviewDebounceTimer) {
+          clearTimeout(s.reviewDebounceTimer);
+          s.reviewDebounceTimer = null;
+        }
+      }
       sessions.delete(id);
       parentChildMap.delete(id);
       childParentMap.delete(id);

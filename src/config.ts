@@ -52,23 +52,17 @@ export interface PluginConfig {
   compactAtMessageCount: number;
   tokenEstimateMultiplier: number;
   dcpDetected: boolean;
+  dcpDetected: boolean;
   dcpVersion: string | null;
-  
+
   // Planning timeout
   planningTimeoutMs: number;
-  
+
   // Busy-but-dead detection (session busy but no actual output)
   busyStallTimeoutMs: number;
-  
-  // Plan-Driven Continue
-  planDrivenContinue: boolean;
-  planFilePath: string | null;
-  planAutoMarkComplete: boolean;
-  planMaxItemsPerContinue: number;
 
   // AI Advisory
   enableAdvisory: boolean;
-  advisoryModel: string;
   advisoryTimeoutMs: number;
   advisoryMaxTokens: number;
   advisoryTemperature: number;
@@ -132,20 +126,15 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
+  tokenEstimateMultiplier: number,
   dcpDetected: false,
   dcpVersion: null,
-  
+
   // Planning timeout (default 5 minutes)
   planningTimeoutMs: 300000,
-  
+
   // Busy-but-dead detection (default 3 minutes)
   busyStallTimeoutMs: 180000,
-  
-  // Plan-Driven Continue defaults
-  planDrivenContinue: false,
-  planFilePath: null,
-  planAutoMarkComplete: true,
-  planMaxItemsPerContinue: 3,
 
   // AI Advisory defaults
   enableAdvisory: false,
@@ -155,7 +144,6 @@ export const DEFAULT_CONFIG: PluginConfig = {
   advisoryTemperature: 0.1,
 
   // Session Monitor defaults
-  subagentWaitMs: 15000,
   orphanWaitMs: 15000,
   sessionDiscoveryIntervalMs: 60000,
   idleSessionTimeoutMs: 600000,
@@ -224,10 +212,6 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.sessionDiscoveryIntervalMs < 0) addError('sessionDiscoveryIntervalMs', `sessionDiscoveryIntervalMs must be >= 0, got ${normalized.sessionDiscoveryIntervalMs}`);
   if (normalized.idleSessionTimeoutMs < 0) addError('idleSessionTimeoutMs', `idleSessionTimeoutMs must be >= 0, got ${normalized.idleSessionTimeoutMs}`);
   if (normalized.maxSessions < 0) addError('maxSessions', `maxSessions must be >= 0, got ${normalized.maxSessions}`);
-
-  // Plan-driven continue validation
-  if (normalized.planMaxItemsPerContinue < 1) addError('planMaxItemsPerContinue', `planMaxItemsPerContinue must be >= 1, got ${normalized.planMaxItemsPerContinue}`);
-  if (normalized.planFilePath !== null && (typeof normalized.planFilePath !== 'string' || normalized.planFilePath.trim().length === 0)) addError('planFilePath', `planFilePath must be null or a non-empty string`);
 
   if (errors.length > 0) {
     // Build result starting from defaults, then overlay valid user values field by field
