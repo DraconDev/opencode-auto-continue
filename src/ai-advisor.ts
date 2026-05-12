@@ -1,7 +1,16 @@
 import type { SessionState } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
+
+// Cache for provider config to avoid re-reading opencode.json
+interface ProviderCache {
+  path: string | null;
+  mtime: number;
+  config: { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null;
+}
+
+let providerCache: ProviderCache = { path: null, mtime: 0, config: null };
 
 export interface AIAdvisorConfig {
   enableAdvisory: boolean;
