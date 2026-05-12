@@ -400,7 +400,7 @@ export function createEventRouter(deps: EventRouterDeps) {
         s.backoffAttempts = 0;
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          s.timer = setTimeout(() => recover(sid), 0);
+          scheduleRecoveryWithGeneration(sessions, sid, 0, recover, log);
         }
         writeStatusFile(sid);
         return;
