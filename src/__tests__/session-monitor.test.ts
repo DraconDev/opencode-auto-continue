@@ -412,9 +412,9 @@ describe("SessionMonitor", () => {
 
   describe("Stats", () => {
     it("should report correct stats", () => {
-      sessions.set("busy-1", createMockSession({ timer: setTimeout(() => {}, 1000) }));
-      sessions.set("busy-2", createMockSession({ timer: setTimeout(() => {}, 1000) }));
-      sessions.set("idle-1", createMockSession({ timer: null }));
+      sessions.set("busy-1", createMockSession({ timer: setTimeout(() => {}, 1000), lastKnownStatus: 'busy' as const }));
+      sessions.set("busy-2", createMockSession({ timer: setTimeout(() => {}, 1000), lastKnownStatus: 'busy' as const }));
+      sessions.set("idle-1", createMockSession({ timer: null, lastKnownStatus: 'idle' as const }));
 
       const stats = monitor.getStats();
       
