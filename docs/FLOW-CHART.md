@@ -882,7 +882,6 @@ planning cleared by non-plan progress:
 | `nudgeMaxSubmits` | Nudge | Loop protection threshold |
 | `autoCompact` | Compaction | Enable emergency compaction |
 | `reviewOnComplete` | Review | Enable review prompts |
-| `planDrivenContinue` | Plan | Enable auto-mark complete |
 | `enableAdvisory` | Advisor | Enable AI/heuristic analysis |
 | `sessionMonitorEnabled` | Monitor | Enable orphan discovery cleanup |
 
