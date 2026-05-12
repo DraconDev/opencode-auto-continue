@@ -180,7 +180,7 @@ export function createEventRouter(deps: EventRouterDeps) {
         if (status?.type === "busy" || status?.type === "retry") {
           clearTimer(sid);
           if (!s.planning && !s.compacting) {
-            s.timer = setTimeout(() => recover(sid), config.stallTimeoutMs);
+            scheduleRecoveryWithGeneration(sessions, sid, config.stallTimeoutMs, recover, log);
           }
         }
         writeStatusFile(sid);
