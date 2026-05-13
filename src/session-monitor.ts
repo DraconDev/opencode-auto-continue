@@ -112,7 +112,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
    * When busyCount drops from >1 to 1, a subagent may have finished
    * but the parent is still stuck as busy.
    * 
-   * FIX 2: Also detect single busy sessions that have been stuck for too long.
+   * Orphan check: Also detect single busy sessions that have been stuck for too long.
    */
   function checkOrphanParents(): void {
     if (isDisposed()) return;
@@ -160,9 +160,9 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       }
     }
 
-    // FIX 2: Also check for single busy sessions stuck for too long
+    // Orphan check: Also check for single busy sessions stuck for too long
     // (catches orphans even without parent-child tracking, and single-session stalls)
-    // FIX 5: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
+    // Orphan wait: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
     if (currentBusyCount >= 1) {
       for (const [id, s] of sessions) {
         if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
@@ -223,7 +223,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           const state = createSession();
           state.actionStartedAt = Date.now();
 
-          // FIX 10: Only arm recovery on busy/retry status, skip on null/unknown
+          // Busy threshold: Only arm recovery on busy/retry status, skip on null/unknown
           if (statusType === "busy" || statusType === "retry") {
             scheduleDiscoveredRecovery(id, state);
           } else if (statusType === null) {
@@ -279,7 +279,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     for (const id of toDelete) {
       const s = sessions.get(id);
       if (s) {
-        // FIX 2: Clear dangling timers before deleting session
+        // Orphan check: Clear dangling timers before deleting session
         if (s.timer) {
           clearTimeout(s.timer);
           s.timer = null;
