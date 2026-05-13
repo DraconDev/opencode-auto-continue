@@ -1,8 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 
-// Re-export autonomy types for convenience
-export * from "./autonomy-types.js";
-
 /**
  * Typed client interface for OpenCode plugin modules.
  * 
