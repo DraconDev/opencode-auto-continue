@@ -422,7 +422,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   terminal.registerStatusLineHook();
 
   const staleTypes = [
-    "session.error",
     "session.ended",
     "session.deleted"
   ];
@@ -713,10 +712,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (event?.type === "message.part.updated") {
         log('progress event:', event?.type, sid);
         const s = getSession(sid);
-
-        if (event?.type === "message.part.updated") {
-          const part = e?.properties?.part;
-          const partType = part?.type;
+        const part = e?.properties?.part;
+        const partType = part?.type;
           
           // CRITICAL: Ignore synthetic messages to prevent infinite loops
           if (part?.synthetic === true) {
@@ -813,7 +810,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             // Schedule normal recovery now that planning is done
             scheduleRecovery(sid, config.stallTimeoutMs);
           }
-        }
 
         // Check if this is a delta update containing plan content
         const deltaText = e?.properties?.delta as string | undefined;
