@@ -12,7 +12,7 @@ export interface RecoveryDeps {
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
-  scheduleRecovery: (sessionId: string, delayMs: number) => void; // FIX 1: Unified scheduling
+  scheduleRecovery: (sessionId: string, delayMs: number) => void; // Unify recovery timer scheduling with generation counter
   aiAdvisor?: AIAdvisor;
   sendContinue?: (sessionId: string) => Promise<void>;
 }
@@ -97,7 +97,7 @@ function isHallucinationLoop(s: SessionState): boolean {
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge, scheduleRecovery } = deps;
 
-  // FIX 1: scheduleRecovery is now passed in from index.ts (unified implementation with generation counter)
+  // scheduleRecovery injected from index.ts with generation tracking
 
   async function isSessionIdle(sessionId: string): Promise<boolean> {
     try {
@@ -117,7 +117,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
-    // FIX 3/11: Allow recovery if planning has been going on too long
+    // Force recovery when planning exceeds timeout
     const wasPlanning = s.planning;
     if (s.planning && Date.now() - s.planningStartedAt < config.planningTimeoutMs) {
       log('session is planning, skipping recovery (planning timeout not reached):', sessionId);
@@ -290,7 +290,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       if (s.autoSubmitCount >= config.maxAutoSubmits) {
         log('loop protection: max auto-submits reached:', s.autoSubmitCount);
-        // FIX 14: Show toast when loop protection activates
+        // Notify user when hallucination loop protection triggers
         try {
           await input.client.tui.showToast({
             query: { directory: input.directory || "" },
@@ -415,7 +415,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } catch (e) {
       log('recovery failed:', e);
-      // FIX 3: Only increment recoveryFailed here - attempts was already incremented in try block (line 379)
+      // Avoid double-counting recovery attempts
       s.recoveryFailed++;
       
       if (s.attempts >= config.maxRecoveries) {

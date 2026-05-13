@@ -98,7 +98,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    // FIX 8: Check failure backoff before proceeding
+    // Respect failure backoff before sending nudge
     const NUDGE_FAILURE_BACKOFF_MS = 5000;
     if (s.nudgeFailureCount > 0 && Date.now() - s.lastNudgeFailureAt < NUDGE_FAILURE_BACKOFF_MS) {
       log("nudge failure backoff active, skipping:", sessionId, "failures:", s.nudgeFailureCount);
@@ -128,7 +128,7 @@ export function createNudgeModule(deps: NudgeDeps) {
         todos = Array.isArray(resp.data) ? resp.data : [];
       } catch (e) {
         log("error fetching todos for nudge, falling back to cached", String(e));
-        // FIX 6: Fallback to cached todos instead of abandoning
+        // Use cached todos as fallback when API fetch fails
         if (s.hasOpenTodos && s.lastKnownTodos.length > 0) {
           todos = s.lastKnownTodos;
           log("using cached todos for nudge fallback", { count: todos.length });
@@ -248,7 +248,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
 
       s.nudgeCount++;
-      s.nudgeFailureCount = 0; // FIX 8: Reset failure count on success
+      s.nudgeFailureCount = 0; // Reset failure counter after successful nudge
       s.lastNudgeAt = Date.now();
       s.messageCount++;
       log("nudge sent successfully", { newCount: s.nudgeCount });
@@ -283,7 +283,7 @@ export function createNudgeModule(deps: NudgeDeps) {
 
       log("error sending nudge", errorStr);
       
-      // FIX 8: Track failures and use backoff to prevent tight nudge loops
+      // Exponential backoff prevents tight nudge loops on repeated failures
       s.nudgeFailureCount++;
       s.lastNudgeFailureAt = Date.now();
       const failureBackoff = Math.min(30000, 2000 * Math.pow(2, s.nudgeFailureCount - 1));

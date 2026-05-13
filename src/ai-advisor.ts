@@ -381,8 +381,8 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
   }
 
   // Read provider config from opencode.json
-  // FIX 9: Match provider by model name if specified
-  // FIX 10: Add caching to avoid re-reading opencode.json on every advisory call
+  // Prefer matching provider by model name over first available
+  // Cache parsed opencode.json to avoid repeated disk reads
   function readProviderConfig(targetModel?: string): { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null {
     try {
       const configPath = join(

@@ -287,7 +287,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   function clearTimer(id: string) {
     const s = sessions.get(id);
     if (!s) return;
-    // FIX 6: Clear all timers, not just recovery timer
+    // Clear all timers (recovery, nudge, debounce) when removing a session
     if (s.timer) {
       clearTimeout(s.timer);
       s.timer = null;
@@ -421,7 +421,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             
             // Attempt emergency compaction asynchronously
             compaction.forceCompact(sid).then(async (compacted) => {
-              // FIX 4: Check session still exists before accessing state
+              // Guard against session deletion during async compaction
               if (!sessions.has(sid)) {
                 log('session deleted during emergency compaction, skipping continue:', sid);
                 return;
@@ -686,7 +686,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               log('output tracked:', partType, 'session:', sid);
             }
             
-            // FIX 5: Estimate tokens only for parts without actual token counts.
+            // Only estimate tokens for parts lacking actual token metadata
             // Text/reasoning parts are counted via message.updated (actual tokens).
             // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
             let partText = "";
@@ -701,7 +701,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             
             if (partText) {
-              // FIX 5: Use configurable multiplier instead of hardcoded ×2
+              // Apply user-configured multiplier to text-based token estimates
               const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
               s.estimatedTokens += estimatedTokens;
             }
@@ -731,7 +731,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               if (isPlanContent(partText)) {
                 log('plan detected in updated text part, pausing stall monitoring');
                 s.planning = true;
-                s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+                s.planningStartedAt = Date.now(); // Track planning start time to enforce planning timeout
                 // Schedule planning timeout recovery
                 clearTimer(sid);
                 scheduleRecovery(sid, config.planningTimeoutMs);
@@ -758,7 +758,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (isPlanContent(s.planBuffer)) {
             log('plan detected in delta, pausing stall monitoring — user must address');
             s.planning = true;
-            s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+            s.planningStartedAt = Date.now(); // Track planning start time to enforce planning timeout
             s.planBuffer = '';
             // Schedule planning timeout recovery instead of leaving timer cleared
             clearTimer(sid);
@@ -877,7 +877,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.reviewDebounceTimer = null;
         }
 
-        // FIX 7: Reset reviewFired when new pending todos appear after review was fired
+        // Enable test-fix loop by resetting review flag when new work appears
         // This enables the test-fix loop: review creates fix todos → review fires again
         if (hasPending && s.reviewFired) {
           log('new pending todos detected after review, resetting review flag:', sid);
@@ -923,10 +923,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Restart stall timer since we just freed context
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
+          // Use standard stall timeout instead of immediate recovery after compaction
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
-        // FIX 3: Queue and send continue after compaction to resume work
+        // Resume work after compaction by queueing a continue
         s.needsContinue = true;
         s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
         review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
