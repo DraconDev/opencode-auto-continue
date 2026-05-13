@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { flushPromises } from './helpers.js';
 import type { Plugin } from "@opencode-ai/plugin";
 import { readFileSync, unlinkSync } from "fs";
 
@@ -92,8 +93,7 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(150);
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
