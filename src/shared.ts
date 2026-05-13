@@ -204,7 +204,7 @@ function getMessageTimestamp(message: any): number | null {
   return null;
 }
 
-function getMessageText(message: any): string {
+export function getMessageText(message: any): string {
   const direct = message?.content ?? message?.text ?? message?.info?.content ?? message?.info?.text;
   if (typeof direct === "string" && direct.length > 0) return direct;
 
@@ -343,11 +343,13 @@ export function scheduleRecoveryWithGeneration(
  * DCP handles context optimization better than our naive compaction,
  * so we should disable our proactive compaction when it's present.
  */
-export function detectDCP(): boolean {
+let dcpDetectedCached: boolean | null = null;
+
+export function detectDCP(bypassCache: boolean = false): boolean {
+  if (!bypassCache && dcpDetectedCached !== null) return dcpDetectedCached;
   try {
     const home = process.env.HOME || "/tmp";
     
-    // Check global config for DCP in plugins array
     const globalConfigPath = join(home, ".config", "opencode", "opencode.json");
     if (existsSync(globalConfigPath)) {
       const content = readFileSync(globalConfigPath, "utf-8");
@@ -357,13 +359,13 @@ export function detectDCP(): boolean {
           const pluginName = Array.isArray(p) ? p[0] : p;
           if (typeof pluginName === "string" && 
               (pluginName.includes("dcp") || pluginName.includes("dynamic-context-pruning"))) {
+            dcpDetectedCached = true;
             return true;
           }
         }
       }
     }
     
-    // Check if DCP npm package is installed in opencode's plugin cache
     const dcpPaths = [
       join(home, ".config", "opencode", "plugins", "opencode-dynamic-context-pruning"),
       join(home, ".cache", "opencode", "node_modules", "@tarquinen", "opencode-dcp"),
@@ -372,14 +374,21 @@ export function detectDCP(): boolean {
     
     for (const p of dcpPaths) {
       if (existsSync(p)) {
+        dcpDetectedCached = true;
         return true;
       }
     }
     
+    dcpDetectedCached = false;
     return false;
   } catch {
+    dcpDetectedCached = false;
     return false;
   }
+}
+
+export function invalidateDCPCache(): void {
+  dcpDetectedCached = null;
 }
 
 /**

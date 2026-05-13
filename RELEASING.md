@@ -33,27 +33,36 @@ npm version major --no-git-tag
 git tag v$(node -p "require('./package.json').version")
 ```
 
-### 3. Push tags to remote
+### 3. Push tags to trigger automated publish
 
 ```bash
 git push origin --tags
 ```
 
-### 4. GitHub Release (manual)
+Pushing a tag matching `v*` triggers the [publish workflow](.github/workflows/publish.yml) which:
+1. Installs dependencies and builds
+2. Runs tests
+3. Publishes to npm (`@dracondev/opencode-auto-continue`)
+4. Creates a GitHub Release with release notes
 
-1. Go to https://github.com/DraconDev/opencode-auto-continue/releases
-2. Click "Draft a new release"
-3. Select the tag you just pushed
-4. Title: `v1.0.0` (matching the tag)
-5. Description: summarize changes since last release
+## Emergency Manual Publish (fallback only)
 
-### 5. npm publish (manual)
+If the automated workflow fails and you need to publish manually:
 
 ```bash
 npm publish --access public
 ```
 
 > Note: Requires being logged into npm (`npm login`). Uses scoped package `@dracondev/opencode-auto-continue`.
+
+### Manual GitHub Release (fallback only)
+
+If the automated release creation fails:
+1. Go to https://github.com/DraconDev/opencode-auto-continue/releases
+2. Click "Draft a new release"
+3. Select the tag you just pushed
+4. Title: `v1.0.0` (matching the tag)
+5. Description: summarize changes since last release
 
 ## Checking a Tag
 

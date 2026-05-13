@@ -1,3 +1,5 @@
+> **STATUS: Design RFC** — This document describes aspirational features not yet implemented. See FLOW-CHART.md for current behavior.
+
 # Spec-Driven Auto-Continue: Feature Design Document
 
 **Date**: 2026-05-08

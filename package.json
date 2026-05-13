@@ -1,6 +1,6 @@
 {
   "name": "@dracondev/opencode-auto-continue",
-  "version": "7.8.333",
+  "version": "7.8.334",
   "description": "Auto-continue stalled OpenCode sessions — stall recovery, todo nudging, review on completion, and AI-driven session analysis",
   "keywords": [
     "opencode",
@@ -57,6 +57,8 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "sync": "npm run build && node -e \"const p=require('./package.json');const fs=require('fs');fs.writeFileSync('./dist/package.json',JSON.stringify({name:p.name,version:p.version,main:'./index.js',types:'./index.d.ts',description:p.description,peerDependencies:p.peerDependencies},null,2)+'\\n');console.log('sync: dist/package.json v'+p.version)\"",
     "prepublishOnly": "npm run build"
   }

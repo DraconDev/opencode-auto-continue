@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Review Loop**: Review message now prompts AI to run tests and create fix todos
   - If tests fail, AI creates fix todos
   - When fix todos complete, review fires again
-  - `reviewFired` resets when new todos created after review, enabling test-fix loop
+  - `reviewFired` is permanent per session (one-shot) — verified against source code
 
 ### Changed
 

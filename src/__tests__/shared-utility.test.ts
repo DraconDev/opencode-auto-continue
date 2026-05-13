@@ -657,52 +657,49 @@ describe("shared.ts utilities", () => {
     it("should always return proactiveCompactAtTokens", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      // Model limit, percentage, and small model cap are all ignored
-      // Always returns proactiveCompactAtTokens regardless of model size
-      const result = getCompactionThreshold(128000, { proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
       expect(result).toBe(100000);
     });
 
     it("should return proactiveCompactAtTokens for large models", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const result = getCompactionThreshold(300000, { proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
       expect(result).toBe(100000);
     });
 
     it("should return proactiveCompactAtTokens for very large models", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const result = getCompactionThreshold(1000000, { proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
       expect(result).toBe(100000);
     });
 
     it("should return proactiveCompactAtTokens when configured lower", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      // proactiveCompactAtPercent and small model caps are all ignored
-      const result = getCompactionThreshold(500000, { proactiveCompactAtTokens: 50000, proactiveCompactAtPercent: 90 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtTokens: 50000, proactiveCompactAtPercent: 90 } as any);
       expect(result).toBe(50000);
     });
 
     it("should return proactiveCompactAtTokens for null model limit", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const result = getCompactionThreshold(null, { proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
       expect(result).toBe(100000);
     });
 
     it("should return proactiveCompactAtTokens for zero model limit", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const result = getCompactionThreshold(0, { proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
       expect(result).toBe(100000);
     });
 
     it("should return proactiveCompactAtTokens for negative model limit", async () => {
       const { getCompactionThreshold } = await import('../shared.js');
 
-      const result = getCompactionThreshold(-100, { proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
+      const result = getCompactionThreshold({ proactiveCompactAtPercent: 50, proactiveCompactAtTokens: 100000 } as any);
       expect(result).toBe(100000);
     });
   });

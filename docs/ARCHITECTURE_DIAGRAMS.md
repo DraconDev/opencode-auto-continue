@@ -1,3 +1,5 @@
+> **STATUS: Design RFC** — This document describes aspirational features not yet implemented. See FLOW-CHART.md for current behavior.
+
 # Auto-Continue Architecture Diagrams
 
 **Status**: Visual Documentation  

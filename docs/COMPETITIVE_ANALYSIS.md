@@ -37,12 +37,12 @@
 | **Auto-Continue** | ✅ Yes | ✅ Yes | N/A |
 | **Tool-Text Recovery** | ✅ 18 regex patterns | ✅ XML pattern scan | N/A |
 | **Hallucination Loop** | ✅ Sliding window (3/10min) | ✅ Counter window | N/A |
-| **Orphan Parent** | ❌ No | ✅ busyCount drop detection | N/A |
+| **Orphan Parent** | ✅ Yes | ✅ busyCount drop detection | N/A |
 | **Subagent Stuck** | ❌ No | ✅ Subagent timeout | N/A |
 | **Abort Required** | ✅ Yes (before compact) | ✅ Yes | N/A |
 | **Model Preservation** | ❌ No | ✅ Extract from messages | N/A |
-| **Session Discovery** | ❌ No | ✅ session.list() polling | N/A |
-| **Idle Cleanup** | ❌ No | ✅ 10min timeout | N/A |
+| **Session Discovery** | ✅ Yes | ✅ session.list() polling | N/A |
+| **Idle Cleanup** | ✅ Yes | ✅ 10min timeout | N/A |
 | **Token Limit Recovery** | ✅ Exact/error/step-finish | ❌ No | N/A |
 | **Proactive Compaction** | ✅ Auto-compact at 100k | ❌ No | ✅ Manual |
 | **Todo Nudge** | ✅ Idle nudge with cooldown | ❌ No | N/A |
@@ -56,10 +56,10 @@
 | **Context Pruning** | ✅ DCP integration | ❌ No | N/A |
 | **Multi-Agent** | ❌ No | ❌ No | ✅ Fork/Handoff/Compress |
 | **Learning System** | 🚧 v7.0 planned | ❌ No | ❌ No |
-| **Intent Extraction** | 🚧 v7.0 implemented | ❌ No | ❌ No |
-| **Strategy Pool** | 🚧 v7.0 implemented | ❌ No | ❌ No |
+| **Intent Extraction** | 🚧 code exists but not wired into main plugin | ❌ No | ❌ No |
+| **Strategy Pool** | 🚧 code exists but not wired into main plugin | ❌ No | ❌ No |
 | **Config Options** | 45+ | 8 | ~5 |
-| **Test Coverage** | 319 tests | Unknown | Unknown |
+| **Test Coverage** | 389 tests (growing) | Unknown | Unknown |
 | **Modular Code** | ✅ 13 source files | ❌ Single file | ❌ Single file |
 
 ---
@@ -69,7 +69,7 @@
 ### 1. **Orphan Parent Detection** ⭐ CRITICAL
 - **What**: Detects when subagent finishes but parent stays busy
 - **How**: Monitors busyCount dropping from >1 to 1, waits 15s, aborts parent
-- **Our Gap**: No orphan parent recovery
+- **Our Status**: ✅ Implemented in v7.5 session-monitor.ts
 - **Impact**: Users with subagents experience stuck parents
 
 ### 2. **Subagent Stuck Detection**
@@ -87,13 +87,13 @@
 ### 4. **Session Discovery**
 - **What**: Periodic session.list() to find missed sessions
 - **Why**: Event hooks can miss sessions in some edge cases
-- **Our Gap**: Relies purely on event hooks
+- **Our Status**: ✅ Implemented in v7.5 session-monitor.ts
 - **Impact**: Some sessions may never get monitored
 
 ### 5. **Idle Session Cleanup**
 - **What**: Removes sessions idle >10min or >50 entries
 - **Why**: Prevents memory leaks in long-running OpenCode
-- **Our Gap**: Sessions accumulate forever
+- **Our Status**: ✅ Implemented in v7.5 session-monitor.ts
 - **Impact**: Memory bloat over days of use
 
 ### 6. **Simplicity**
@@ -366,9 +366,9 @@ function getHealthStatus(): HealthReport {
 
 ## Next Steps
 
-1. **Implement orphan parent detection** (steal from Mte90's approach)
-2. **Add session discovery polling**
-3. **Add idle session cleanup**
+1. ~~**Implement orphan parent detection**~~ ✅ Done in v7.5
+2. ~~**Add session discovery polling**~~ ✅ Done in v7.5
+3. ~~**Add idle session cleanup**~~ ✅ Done in v7.5
 4. **Update README** with competitive comparison
 5. **Create "Why auto-continue over auto-resume?"** documentation page
 

@@ -20,6 +20,7 @@ import {
   getDCPVersion,
   shouldBlockPrompt,
   scheduleRecoveryWithGeneration,
+  getMessageText,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
@@ -30,7 +31,7 @@ import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
 
-type Todo = { id: string; status: string; content?: string; title?: string };
+import type { Todo } from "./session-state.js";
 
 export interface CustomPromptOptions {
   message: string;
@@ -78,22 +79,6 @@ function getCustomPromptRuntime(sessionId: string): CustomPromptRuntime | null {
   return latestCustomPromptRuntime;
 }
 
-function extractTextFromMessage(message: any): string {
-  const direct = message?.content ?? message?.text ?? message?.info?.content ?? message?.info?.text;
-  if (typeof direct === "string" && direct.trim()) return direct.trim();
-
-  const parts = [
-    ...(Array.isArray(message?.parts) ? message.parts : []),
-    ...(Array.isArray(message?.info?.parts) ? message.info.parts : []),
-  ];
-
-  return parts
-    .map((part: any) => part?.text || part?.content || part?.reasoning || "")
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-}
-
 function buildContextSummary(pending: Todo[], recentMessages: any[]): string {
   if (pending.length > 0) {
     const todoList = pending
@@ -107,7 +92,7 @@ function buildContextSummary(pending: Todo[], recentMessages: any[]): string {
     const msg = recentMessages[i] as any;
     const role = msg?.role || msg?.info?.role;
     if (role !== "assistant") continue;
-    const text = extractTextFromMessage(msg).replace(/\s+/g, " ").slice(0, 180);
+    const text = getMessageText(msg).replace(/\s+/g, " ").slice(0, 180);
     if (text) return `Recent assistant activity: ${text}${text.length === 180 ? "..." : ""}`;
   }
 

@@ -1,3 +1,5 @@
+> **STATUS: Design RFC** — This document describes aspirational features not yet implemented. See FLOW-CHART.md for current behavior.
+
 # Self-Improving Recovery System Design
 
 **Status**: Design Document  

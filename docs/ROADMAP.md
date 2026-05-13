@@ -1,3 +1,5 @@
+> **STATUS: Design RFC** — This document describes aspirational features not yet implemented. See FLOW-CHART.md for current behavior.
+
 # Implementation Roadmap: Auto-Continue v7.0
 
 **Status**: Planning Document  

@@ -1,6 +1,8 @@
+> **STATUS: Design RFC** — This document describes aspirational features not yet implemented. See FLOW-CHART.md for current behavior.
+
 # Autonomous Session Lifecycle Architecture
 
-**Status**: Design Document  
+**Status**: Design RFC  
 **Version**: 1.0  
 **Related**: VISION-v7.0.md  
 
