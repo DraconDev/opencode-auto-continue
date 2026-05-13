@@ -242,15 +242,18 @@ function hasSimilarPrompt(a: string, b: string): boolean {
  * Checks if a similar prompt was recently sent to the same session.
  * Results are cached per (input, sessionId) with a TTL to avoid redundant API calls.
  */
-const messagesCache = new WeakMap<any, { data: any[]; ts: number; sid: string }>();
+const messagesCache = new WeakMap<any, Map<string, { data: any[]; ts: number }>>();
 const MESSAGES_CACHE_TTL = 300;
 
 async function fetchRecentMessages(sessionId: string, input: TypedPluginInput): Promise<any[]> {
   const key = input.client?.session;
   if (key) {
-    const cached = messagesCache.get(key);
-    if (cached && cached.sid === sessionId && Date.now() - cached.ts < MESSAGES_CACHE_TTL) {
-      return cached.data;
+    const sessionMap = messagesCache.get(key);
+    if (sessionMap) {
+      const cached = sessionMap.get(sessionId);
+      if (cached && Date.now() - cached.ts < MESSAGES_CACHE_TTL) {
+        return cached.data;
+      }
     }
   }
   
@@ -259,12 +262,19 @@ async function fetchRecentMessages(sessionId: string, input: TypedPluginInput): 
     query: { limit: 15 },
   });
   const data = Array.isArray(resp.data) ? resp.data : [];
-  if (key) messagesCache.set(key, { data, ts: Date.now(), sid: sessionId });
+  if (key) {
+    let sessionMap = messagesCache.get(key);
+    if (!sessionMap) {
+      sessionMap = new Map();
+      messagesCache.set(key, sessionMap);
+    }
+    sessionMap.set(sessionId, { data, ts: Date.now() });
+  }
   return data;
 }
 
 export function clearMessagesCache(): void {
-  /* WeakMap clears itself — no manual cleanup needed */
+  /* WeakMap entries are garbage-collected when client objects are released — no manual cleanup possible */
 }
 
 export async function shouldBlockPrompt(
