@@ -553,6 +553,259 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     writeStatusFile(sid);
   }
 
+  async function handleSessionStatus(e: any, sid: string): Promise<void> {
+    const status = e?.properties?.status;
+    log('session.status:', sid, status?.type);
+    const s = getSession(sid);
+
+    if (status?.type === "busy" || status?.type === "retry") {
+      // NOTE: We do NOT call updateProgress() here because "busy" status
+      // pings don't mean actual progress. Only real output (text, tools, etc.)
+      // should reset the progress timer. This prevents the "busy but dead"
+      // stall where the AI is stuck but keeps reporting busy.
+      sessionMonitor.touchSession(sid);
+      s.userCancelled = false;
+      if (s.actionStartedAt === 0) {
+        s.actionStartedAt = Date.now();
+      }
+
+      // Schedule recovery timer for normal stall detection
+      // (lastProgressAt is NOT updated, so timer will fire based on actual output time)
+      if (!s.planning && !s.compacting) {
+        scheduleRecovery(sid, config.stallTimeoutMs);
+      }
+
+      // Check for busy-but-dead: session claims busy but no actual output for too long
+      const timeSinceOutput = Date.now() - s.lastOutputAt;
+      if (timeSinceOutput > config.busyStallTimeoutMs) {
+        log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
+        if (config.showToasts) {
+          try {
+            input.client.tui.showToast({
+              query: { directory: input.directory || "" },
+              body: {
+                title: "Session Stuck",
+                message: `Session busy but no output for ${Math.round(timeSinceOutput / 1000)}s. Forcing recovery...`,
+                variant: "warning",
+              },
+            }).catch(() => {});
+          } catch (e) {
+            // ignore toast errors
+          }
+        }
+        recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
+      }
+
+      // Show "Session Resumed" toast if progress detected after recent nudge
+      if (s.lastNudgeAt > 0 && Date.now() - s.lastNudgeAt < 30000) {
+        if (config.showToasts) {
+          try {
+            input.client.tui.showToast({
+              query: { directory: input.directory || "" },
+              body: {
+                title: "Session Resumed",
+                message: "The AI has resumed working after the nudge.",
+                variant: "info",
+              },
+            }).catch(() => {});
+          } catch (e) {
+            // ignore toast errors
+          }
+        }
+        s.lastNudgeAt = 0; // Reset to avoid duplicate toasts
+      }
+      // Show recovery success toast if AI resumes after continue
+      if (s.lastContinueAt > 0 && Date.now() - s.lastContinueAt < 30000) {
+        if (config.showToasts) {
+          try {
+            input.client.tui.showToast({
+              query: { directory: input.directory || "" },
+              body: {
+                title: "Recovery Successful",
+                message: "The AI has resumed working after recovery.",
+                variant: "success",
+              },
+            }).catch(() => {});
+          } catch (e) {
+            // ignore toast errors
+          }
+        }
+        s.lastContinueAt = 0; // Reset to avoid duplicate toasts
+      }
+      // NOTE: s.planning is NOT cleared here — session.status(busy) fires
+      // during plan generation too (the session IS busy). Clearing it would
+      // cause plan-aware continue messages to use the generic message instead.
+      // Instead, s.planning is cleared by message.part.updated when non-plan
+      // progress parts (tool, file, subtask, step-start, step-finish) arrive.
+      if (s.compacting) {
+        log('session busy, clearing compacting flag (compaction likely finished)');
+        s.compacting = false;
+      }
+      // Update terminal title and progress
+      terminal.updateTerminalTitle(sid);
+      terminal.updateTerminalProgress(sid);
+    }
+    if (status?.type === "idle") {
+      s.actionStartedAt = 0;
+      clearTimer(sid);
+    }
+    // Send queued continue when session becomes idle/stable
+    if (status?.type === "idle" && s.needsContinue) {
+      if (s.aborting) {
+        log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
+      } else {
+        log('session idle, sending queued continue for:', sid);
+        await review.sendContinue(sid);
+      }
+    }
+    // Auto-continue when transitioning busy→idle with pending todos
+    // Nudge is always scheduled on idle — injectNudge fetches todos from API
+    // and decides whether to send based on actual pending count
+    if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
+      nudge.scheduleNudge(sid);
+    }
+    // Clear terminal title/progress when session becomes idle
+    if (status?.type === "idle") {
+      terminal.clearTerminalTitle();
+      terminal.clearTerminalProgress();
+    }
+
+    // Only set recovery timer for busy/retry sessions, not for idle
+    // Idle sessions should not have a stall recovery timer running
+    // NOTE: Recovery timer is already scheduled above in the busy/retry branch
+    // This duplicate scheduling has been removed to prevent timer cascade.
+
+    writeStatusFile(sid);
+  }
+
+  async function handleMessagePartUpdated(e: any, sid: string): Promise<void> {
+    log('progress event:', e?.type, sid);
+    const s = getSession(sid);
+    const part = e?.properties?.part;
+    const partType = part?.type;
+
+    // CRITICAL: Ignore synthetic messages to prevent infinite loops
+    if (part?.synthetic === true) {
+      log('ignoring synthetic message part');
+      return;
+    }
+
+    const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
+    log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
+    if (isRealProgress) {
+      updateProgress(s);
+      sessionMonitor.touchSession(sid);
+      s.attempts = 0;
+      s.userCancelled = false;
+      // Track part type for stall pattern detection
+      s.lastStallPartType = partType || "unknown";
+
+      // Track actual output for busy-but-dead detection
+      s.lastOutputAt = Date.now();
+
+      // Track text content length to detect even small changes
+      if (partType === "text" || partType === "reasoning") {
+        const text = e?.properties?.part?.text || "";
+        if (text.length > s.lastOutputLength) {
+          s.lastOutputLength = text.length;
+          log('output tracked: text length', text.length, 'session:', sid);
+        }
+      } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
+        // Non-text output also counts
+        s.lastOutputLength++;
+        log('output tracked:', partType, 'session:', sid);
+      }
+
+      // FIX 5: Estimate tokens only for parts without actual token counts.
+      // Text/reasoning parts are counted via message.updated (actual tokens).
+      // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
+      let partText = "";
+      if (partType === "tool") {
+        partText = JSON.stringify(e?.properties?.part) || "";
+      } else if (partType === "file") {
+        partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
+      } else if (partType === "subtask") {
+        partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
+      } else if (partType === "step-start") {
+        partText = e?.properties?.part?.name || "";
+      }
+
+      if (partText) {
+        // FIX 5: Use configurable multiplier instead of hardcoded ×2
+        const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
+        s.estimatedTokens += estimatedTokens;
+      }
+      // Extract actual tokens from step-finish parts (most accurate source)
+      if (partType === "step-finish" && part?.tokens) {
+        const stepTokens = part.tokens;
+        const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
+        if (totalStepTokens > 0) {
+          // step-finish tokens represent the actual tokens used in this completion step
+          // This is the most accurate token count available
+          s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
+          log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
+        }
+      }
+    }
+
+    // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
+    if (partType === "compaction") {
+      log('compaction started, pausing stall monitoring');
+      s.compacting = true;
+    }
+
+    // Handle text parts for plan detection
+    if (partType === "text") {
+      const partText = e?.properties?.part?.text as string | undefined;
+      if (partText) {
+        if (isPlanContent(partText)) {
+          log('plan detected in updated text part, pausing stall monitoring');
+          s.planning = true;
+          s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+          // Schedule planning timeout recovery
+          clearTimer(sid);
+          scheduleRecovery(sid, config.planningTimeoutMs);
+        }
+      }
+    }
+
+    // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
+    // These indicate the model has moved from planning to execution, so:
+    // 1. Stall monitoring resumes (planning pauses it)
+    // 2. Continue messages use generic text instead of plan-aware message
+    if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
+      log('non-plan progress detected, clearing plan flag');
+      s.planning = false;
+      // Schedule normal recovery now that planning is done
+      scheduleRecovery(sid, config.stallTimeoutMs);
+    }
+
+    // Check if this is a delta update containing plan content
+    const deltaText = e?.properties?.delta as string | undefined;
+    if (deltaText) {
+      s.planBuffer = (s.planBuffer + deltaText).slice(-200);
+      if (isPlanContent(s.planBuffer)) {
+        log('plan detected in delta, pausing stall monitoring — user must address');
+        s.planning = true;
+        s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+        s.planBuffer = '';
+        // Schedule planning timeout recovery instead of leaving timer cleared
+        clearTimer(sid);
+        scheduleRecovery(sid, config.planningTimeoutMs);
+      }
+    }
+
+    // Only schedule normal recovery if not planning
+    if (!s.planning && !s.compacting) {
+      clearTimer(sid);
+      scheduleRecovery(sid, config.stallTimeoutMs);
+    } else if (s.planning && !s.timer) {
+      // Ensure planning has a timeout timer
+      scheduleRecovery(sid, config.planningTimeoutMs);
+    }
+    writeStatusFile(sid);
+  }
+
   return {
     event: async ({ event }: { event: any }) => {
       await safeHook("event", async () => {
@@ -591,258 +844,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "session.status") {
-        const status = e?.properties?.status;
-        log('session.status:', sid, status?.type);
-        const s = getSession(sid);
-        
-        if (status?.type === "busy" || status?.type === "retry") {
-          // NOTE: We do NOT call updateProgress() here because "busy" status
-          // pings don't mean actual progress. Only real output (text, tools, etc.)
-          // should reset the progress timer. This prevents the "busy but dead"
-          // stall where the AI is stuck but keeps reporting busy.
-          sessionMonitor.touchSession(sid);
-          s.userCancelled = false;
-          if (s.actionStartedAt === 0) {
-            s.actionStartedAt = Date.now();
-          }
-          
-          // Schedule recovery timer for normal stall detection
-          // (lastProgressAt is NOT updated, so timer will fire based on actual output time)
-          if (!s.planning && !s.compacting) {
-            scheduleRecovery(sid, config.stallTimeoutMs);
-          }
-          
-          // Check for busy-but-dead: session claims busy but no actual output for too long
-          const timeSinceOutput = Date.now() - s.lastOutputAt;
-          if (timeSinceOutput > config.busyStallTimeoutMs) {
-            log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
-            if (config.showToasts) {
-              try {
-                input.client.tui.showToast({
-                  query: { directory: input.directory || "" },
-                  body: {
-                    title: "Session Stuck",
-                    message: `Session busy but no output for ${Math.round(timeSinceOutput / 1000)}s. Forcing recovery...`,
-                    variant: "warning",
-                  },
-                }).catch(() => {});
-              } catch (e) {
-                // ignore toast errors
-              }
-            }
-            recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
-          }
-          
-          // Show "Session Resumed" toast if progress detected after recent nudge
-          if (s.lastNudgeAt > 0 && Date.now() - s.lastNudgeAt < 30000) {
-            if (config.showToasts) {
-              try {
-                input.client.tui.showToast({
-                  query: { directory: input.directory || "" },
-                  body: {
-                    title: "Session Resumed",
-                    message: "The AI has resumed working after the nudge.",
-                    variant: "info",
-                  },
-                }).catch(() => {});
-              } catch (e) {
-                // ignore toast errors
-              }
-            }
-            s.lastNudgeAt = 0; // Reset to avoid duplicate toasts
-          }
-          // Show recovery success toast if AI resumes after continue
-          if (s.lastContinueAt > 0 && Date.now() - s.lastContinueAt < 30000) {
-            if (config.showToasts) {
-              try {
-                input.client.tui.showToast({
-                  query: { directory: input.directory || "" },
-                  body: {
-                    title: "Recovery Successful",
-                    message: "The AI has resumed working after recovery.",
-                    variant: "success",
-                  },
-                }).catch(() => {});
-              } catch (e) {
-                // ignore toast errors
-              }
-            }
-            s.lastContinueAt = 0; // Reset to avoid duplicate toasts
-          }
-          // NOTE: s.planning is NOT cleared here — session.status(busy) fires
-          // during plan generation too (the session IS busy). Clearing it would
-          // cause plan-aware continue messages to use the generic message instead.
-          // Instead, s.planning is cleared by message.part.updated when non-plan
-          // progress parts (tool, file, subtask, step-start, step-finish) arrive.
-          if (s.compacting) {
-            log('session busy, clearing compacting flag (compaction likely finished)');
-            s.compacting = false;
-          }
-          // Update terminal title and progress
-          terminal.updateTerminalTitle(sid);
-          terminal.updateTerminalProgress(sid);
-        }
-        if (status?.type === "idle") {
-          s.actionStartedAt = 0;
-          clearTimer(sid);
-        }
-        // Send queued continue when session becomes idle/stable
-        if (status?.type === "idle" && s.needsContinue) {
-          if (s.aborting) {
-            log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
-          } else {
-            log('session idle, sending queued continue for:', sid);
-            await review.sendContinue(sid);
-          }
-        }
-        // Auto-continue when transitioning busy→idle with pending todos
-        // Nudge is always scheduled on idle — injectNudge fetches todos from API
-        // and decides whether to send based on actual pending count
-        if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
-          nudge.scheduleNudge(sid);
-        }
-        // Clear terminal title/progress when session becomes idle
-        if (status?.type === "idle") {
-          terminal.clearTerminalTitle();
-          terminal.clearTerminalProgress();
-        }
-
-        // Only set recovery timer for busy/retry sessions, not for idle
-        // Idle sessions should not have a stall recovery timer running
-        // NOTE: Recovery timer is already scheduled above in the busy/retry branch (lines 609-611)
-        // This duplicate scheduling has been removed to prevent timer cascade.
-
-        writeStatusFile(sid);
+        await handleSessionStatus(e, sid);
         return;
       }
 
       // FIX 19: Replace single-element array with direct comparison
       if (event?.type === "message.part.updated") {
-        log('progress event:', event?.type, sid);
-        const s = getSession(sid);
-        const part = e?.properties?.part;
-        const partType = part?.type;
-
-        // CRITICAL: Ignore synthetic messages to prevent infinite loops
-        if (part?.synthetic === true) {
-          log('ignoring synthetic message part');
-          return;
-        }
-
-        const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
-        log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
-        if (isRealProgress) {
-          updateProgress(s);
-          sessionMonitor.touchSession(sid);
-          s.attempts = 0;
-          s.userCancelled = false;
-          // Track part type for stall pattern detection
-          s.lastStallPartType = partType || "unknown";
-
-          // Track actual output for busy-but-dead detection
-          s.lastOutputAt = Date.now();
-
-          // Track text content length to detect even small changes
-          if (partType === "text" || partType === "reasoning") {
-            const text = e?.properties?.part?.text || "";
-            if (text.length > s.lastOutputLength) {
-              s.lastOutputLength = text.length;
-              log('output tracked: text length', text.length, 'session:', sid);
-            }
-          } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
-            // Non-text output also counts
-            s.lastOutputLength++;
-            log('output tracked:', partType, 'session:', sid);
-          }
-
-          // FIX 5: Estimate tokens only for parts without actual token counts.
-          // Text/reasoning parts are counted via message.updated (actual tokens).
-          // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
-          let partText = "";
-          if (partType === "tool") {
-            partText = JSON.stringify(e?.properties?.part) || "";
-          } else if (partType === "file") {
-            partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
-          } else if (partType === "subtask") {
-            partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
-          } else if (partType === "step-start") {
-            partText = e?.properties?.part?.name || "";
-          }
-
-          if (partText) {
-            // FIX 5: Use configurable multiplier instead of hardcoded ×2
-            const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
-            s.estimatedTokens += estimatedTokens;
-          }
-          // Extract actual tokens from step-finish parts (most accurate source)
-          if (partType === "step-finish" && part?.tokens) {
-            const stepTokens = part.tokens;
-            const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
-            if (totalStepTokens > 0) {
-              // step-finish tokens represent the actual tokens used in this completion step
-              // This is the most accurate token count available
-              s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
-              log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
-            }
-          }
-        }
-
-        // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
-        if (partType === "compaction") {
-          log('compaction started, pausing stall monitoring');
-          s.compacting = true;
-        }
-
-        // Handle text parts for plan detection
-        if (partType === "text") {
-          const partText = e?.properties?.part?.text as string | undefined;
-          if (partText) {
-            if (isPlanContent(partText)) {
-              log('plan detected in updated text part, pausing stall monitoring');
-              s.planning = true;
-              s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
-              // Schedule planning timeout recovery
-              clearTimer(sid);
-              scheduleRecovery(sid, config.planningTimeoutMs);
-            }
-          }
-        }
-
-        // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
-        // These indicate the model has moved from planning to execution, so:
-        // 1. Stall monitoring resumes (planning pauses it)
-        // 2. Continue messages use generic text instead of plan-aware message
-        if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
-          log('non-plan progress detected, clearing plan flag');
-          s.planning = false;
-          // Schedule normal recovery now that planning is done
-          scheduleRecovery(sid, config.stallTimeoutMs);
-        }
-
-        // Check if this is a delta update containing plan content
-        const deltaText = e?.properties?.delta as string | undefined;
-        if (deltaText) {
-          s.planBuffer = (s.planBuffer + deltaText).slice(-200);
-          if (isPlanContent(s.planBuffer)) {
-            log('plan detected in delta, pausing stall monitoring — user must address');
-            s.planning = true;
-            s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
-            s.planBuffer = '';
-            // Schedule planning timeout recovery instead of leaving timer cleared
-            clearTimer(sid);
-            scheduleRecovery(sid, config.planningTimeoutMs);
-          }
-        }
-
-        // Only schedule normal recovery if not planning
-        if (!s.planning && !s.compacting) {
-          clearTimer(sid);
-          scheduleRecovery(sid, config.stallTimeoutMs);
-        } else if (s.planning && !s.timer) {
-          // Ensure planning has a timeout timer
-          scheduleRecovery(sid, config.planningTimeoutMs);
-        }
-        writeStatusFile(sid);
+        await handleMessagePartUpdated(e, sid);
         return;
       }
 
