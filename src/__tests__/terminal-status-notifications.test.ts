@@ -10,6 +10,7 @@ describe("terminal module output", () => {
   let writeSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
