@@ -118,6 +118,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.aborting) return;
     if (s.userCancelled) return;
     // FIX 3/11: Allow recovery if planning has been going on too long
+    const wasPlanning = s.planning;
     if (s.planning && Date.now() - s.planningStartedAt < config.planningTimeoutMs) {
       log('session is planning, skipping recovery (planning timeout not reached):', sessionId);
       return;
@@ -329,7 +330,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         // Use AI-generated custom prompt if available
         messageText = s.lastAdvisoryAdvice.customPrompt;
         log('using AI-generated custom prompt:', messageText);
-      } else if (s.planning) {
+      } else if (wasPlanning) {
         messageText = config.continueWithPlanMessage;
         log('using plan-aware continue message');
       } else if (config.includeTodoContext) {
