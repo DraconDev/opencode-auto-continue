@@ -57,8 +57,8 @@ export interface SessionState {
   nudgeTimer: ReturnType<typeof setTimeout> | null;
   lastNudgeAt: number;
   nudgeCount: number;
-  nudgeFailureCount: number; // FIX 8: Track nudge failures
-  lastNudgeFailureAt: number; // FIX 8: Track last nudge failure time
+  nudgeFailureCount: number; // Track nudge failure count for backoff
+  lastNudgeFailureAt: number; // Track last nudge failure timestamp
   lastTodoSnapshot: string;
   nudgePaused: boolean;
   hasOpenTodos: boolean;
@@ -67,9 +67,9 @@ export interface SessionState {
   // === Continue Queue (recovery.ts, review.ts) ===
   needsContinue: boolean;
   continueMessageText: string;
-  continueRetryCount: number; // FIX 1: Track continue retry attempts
-  lastContinueRetryAt: number; // FIX 1: Track last continue retry time
-  continueInProgress: boolean; // FIX 2: Concurrency guard for sendContinue
+  continueRetryCount: number; // Track continue retry count
+  lastContinueRetryAt: number; // Track last continue retry timestamp
+  continueInProgress: boolean; // Prevent concurrent sendContinue calls
   lastContinueAt: number; // Track when continue was sent for success toast
 
   // === Timer Generation (Fix 4: Prevent stale timer races) ===
@@ -138,8 +138,8 @@ export function createSession(): SessionState {
     nudgeTimer: null,
     lastNudgeAt: 0,
     nudgeCount: 0,
-    nudgeFailureCount: 0, // FIX 8
-    lastNudgeFailureAt: 0, // FIX 8
+    nudgeFailureCount: 0, // 
+    lastNudgeFailureAt: 0, // 
     lastTodoSnapshot: '',
     nudgePaused: false,
     hasOpenTodos: false,
@@ -149,7 +149,7 @@ export function createSession(): SessionState {
     continueMessageText: '',
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
-    continueInProgress: false, // FIX 2
+    continueInProgress: false, // 
     lastContinueAt: 0,
 
     // Timer Generation (Fix 4)

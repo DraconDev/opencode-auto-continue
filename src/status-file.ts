@@ -38,14 +38,14 @@ export function createStatusFileModule(deps: StatusFileDeps) {
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
   const defaultStatusFile = join(logDir, "auto-force-resume.status");
   
-  // FIX 13: Debounce status file writes - max once per 500ms per session
+  // Debounce status writes to avoid event loop blocking
   const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>();
   const DEBOUNCE_MS = 500;
 
   function writeStatusFile(sessionId: string) {
     if (!config.statusFileEnabled) return;
     
-    // FIX 13: Debounce writes to prevent event loop blocking
+    // Coalesce rapid status updates into single write
     const existing = pendingWrites.get(sessionId);
     if (existing) {
       clearTimeout(existing);
