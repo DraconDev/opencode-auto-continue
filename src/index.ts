@@ -421,11 +421,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   terminal.registerStatusLineHook();
 
-  const staleTypes = [
-    "session.error",
-    "session.ended",
-    "session.deleted"
-  ];
 
   return {
     event: async ({ event }: { event: any }) => {
@@ -998,7 +993,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      if (staleTypes.includes(event?.type)) {
+      if (event?.type === "session.ended" || event?.type === "session.deleted") {
         log('stale event:', event?.type, sid);
         nudge.cancelNudge(sid);
         resetSession(sid);
