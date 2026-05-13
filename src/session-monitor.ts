@@ -57,10 +57,10 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   const childParentMap = new Map<string, string>();
 
   function scheduleDiscoveredRecovery(sessionId: string, state: SessionState): void {
-    // FIX 4: Increment generation to invalidate stale timers
+    // Increment generation to invalidate stale timers from previous cycles
     state.timerGeneration++;
     const currentGeneration = state.timerGeneration;
-    // FIX 9: Use shorter initial timeout for discovered sessions that may already be stuck
+    // Use shorter initial timeout for discovered sessions that may already be stuck
     const timeoutMs = Math.min(config.stallTimeoutMs, 30000);
     const timer = setTimeout(() => {
       const current = sessions.get(sessionId);
