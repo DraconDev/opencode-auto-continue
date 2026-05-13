@@ -100,9 +100,9 @@ export const PLAN_PATTERNS = [
   /^here'?s?\s+(what i|what we|how i|how we)/i,
   /^my\s+plan\s+is/i,
   /^step\s+\d+[\:\.]/i,
-  /^\d+\.\s+[A-Z]/im,
-  /^-\s+[A-Z][^\.]*$/im,
-  /^\*\s+[A-Z][^\.]*$/im,
+  /^##\s+steps?/i,
+  /^##\s+tasks?/i,
+  /^##\s+approach/i,
 ];
 
 export function isPlanContent(text: string): boolean {
@@ -110,20 +110,17 @@ export function isPlanContent(text: string): boolean {
 }
 
 export function estimateTokens(text: string, multiplier: number = 1.0): number {
-  const englishRatio = 0.75;
-  const codeRatio = 1.0;
-  const digitRatio = 0.5;
-  const codeChars = new Set("{}[]();+-*/=<>!&||^~%@#$");
+  const codeChars = new Set("{}[]();+-*/=<>!&||^~%@#$'\"`");
   const digitChars = new Set("0123456789");
 
-  let english = 0, code = 0, digits = 0;
+  let code = 0, digits = 0;
   for (const ch of text) {
     if (digitChars.has(ch)) digits++;
     else if (codeChars.has(ch)) code++;
-    else english++;
   }
-  // FIX 5: Use configurable multiplier instead of hardcoded ×2
-  return Math.ceil((english * englishRatio + code * codeRatio + digits * digitRatio) / 4 * multiplier);
+  const english = text.length - code - digits;
+  // Weighted char-to-token ratios: English ~0.35, code ~0.50, digits ~0.25
+  return Math.max(1, Math.ceil((english * 0.35 + code * 0.50 + digits * 0.25) * multiplier));
 }
 
 export function formatDuration(ms: number): string {
@@ -248,7 +245,33 @@ function hasSimilarPrompt(a: string, b: string): boolean {
 /**
  * Prompt guard — prevents duplicate injections within a time window.
  * Checks if a similar prompt was recently sent to the same session.
+ * Results are cached per (input, sessionId) with a TTL to avoid redundant API calls.
  */
+const messagesCache = new WeakMap<any, { data: any[]; ts: number; sid: string }>();
+const MESSAGES_CACHE_TTL = 300;
+
+async function fetchRecentMessages(sessionId: string, input: TypedPluginInput): Promise<any[]> {
+  const key = input.client?.session;
+  if (key) {
+    const cached = messagesCache.get(key);
+    if (cached && cached.sid === sessionId && Date.now() - cached.ts < MESSAGES_CACHE_TTL) {
+      return cached.data;
+    }
+  }
+  
+  const resp = await input.client.session.messages({
+    path: { id: sessionId },
+    query: { limit: 15 },
+  });
+  const data = Array.isArray(resp.data) ? resp.data : [];
+  if (key) messagesCache.set(key, { data, ts: Date.now(), sid: sessionId });
+  return data;
+}
+
+export function clearMessagesCache(): void {
+  /* WeakMap clears itself — no manual cleanup needed */
+}
+
 export async function shouldBlockPrompt(
   sessionId: string,
   promptText: string,
@@ -256,11 +279,7 @@ export async function shouldBlockPrompt(
   log?: (...args: unknown[]) => void
 ): Promise<boolean> {
   try {
-    const resp = await input.client.session.messages({
-      path: { id: sessionId },
-      query: { limit: 15 }, // FIX 12: Reduced from 50 to reduce SDK load
-    });
-    const messages = Array.isArray(resp.data) ? resp.data : [];
+    const messages = await fetchRecentMessages(sessionId, input);
     const now = Date.now();
     
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -270,17 +289,15 @@ export async function shouldBlockPrompt(
       
       const msgTime = getMessageTimestamp(msg);
       if (msgTime === null) continue;
-      if (now - msgTime > 30000) continue; // Only check last 30s
+      if (now - msgTime > 30000) continue;
       
       const text = getMessageText(msg);
-      // Check if the recent message contains similar content
       if (hasSimilarPrompt(text, promptText)) {
         log?.("prompt guard blocked duplicate injection", { sessionId, text: text.substring(0, 100) });
         return true;
       }
     }
   } catch (e) {
-    // Fail-open: allow prompt if check fails, but log the error
     log?.("prompt guard check failed, allowing prompt:", String(e));
   }
   return false;

@@ -21,6 +21,7 @@ import {
   shouldBlockPrompt,
   scheduleRecoveryWithGeneration,
   getMessageText,
+  clearMessagesCache,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
@@ -60,6 +61,12 @@ const customPromptRuntimes = new Set<CustomPromptRuntime>();
 let latestCustomPromptRuntime: CustomPromptRuntime | null = null;
 
 function registerCustomPromptRuntime(runtime: CustomPromptRuntime): CustomPromptRuntime {
+  // Prune stale references to prevent leaks on hot reload
+  for (const existing of customPromptRuntimes) {
+    if (existing.sessions === runtime.sessions || existing.input === runtime.input) {
+      customPromptRuntimes.delete(existing);
+    }
+  }
   customPromptRuntimes.add(runtime);
   latestCustomPromptRuntime = runtime;
   return runtime;
@@ -1056,6 +1063,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       isDisposed = true;
       sessionMonitor.stop();
       clearPendingWrites();
+      clearMessagesCache();
       unregisterCustomPromptRuntime(customPromptRuntime);
       customPromptRuntimes.clear();
       latestCustomPromptRuntime = null;
