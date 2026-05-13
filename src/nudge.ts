@@ -1,4 +1,6 @@
-import { type PluginConfig, type SessionState, formatMessage, shouldBlockPrompt } from "./shared.js";
+import type { PluginConfig } from "./config.js";
+import type { SessionState } from "./session-state.js";
+import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface NudgeDeps {

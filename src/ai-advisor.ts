@@ -3,7 +3,6 @@ import type { TypedPluginInput } from "./types.js";
 import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 
-// Cache for provider config to avoid re-reading opencode.json
 interface ProviderCache {
   path: string | null;
   mtime: number;

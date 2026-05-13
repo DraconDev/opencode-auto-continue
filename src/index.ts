@@ -19,6 +19,8 @@ import {
   scheduleRecoveryWithGeneration,
   getMessageText,
   clearMessagesCache,
+  invalidateModelLimitCache,
+  invalidateDCPCache,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
@@ -1061,6 +1063,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       sessionMonitor.stop();
       clearPendingWrites();
       clearMessagesCache();
+      invalidateModelLimitCache();
+      invalidateDCPCache();
       unregisterCustomPromptRuntime(customPromptRuntime);
       customPromptRuntimes.clear();
       latestCustomPromptRuntime = null;
