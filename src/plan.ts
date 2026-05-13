@@ -225,9 +225,13 @@ export function markPlanItemComplete(
     const itemMatch = line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.+)$/);
     if (itemMatch) {
       const itemDesc = itemMatch[2].trim();
-      // Fuzzy match - check if description contains or is contained
-      if (itemDesc.toLowerCase().includes(description.toLowerCase()) ||
-          description.toLowerCase().includes(itemDesc.toLowerCase())) {
+        // Fuzzy match: exact match first, then require description to be
+        // at least 10 characters for substring matching to avoid false positives
+        const itemDescLower = itemDesc.toLowerCase();
+        const descLower = description.toLowerCase();
+        const isMatch = itemDescLower === descLower ||
+          (description.length >= 10 && itemDescLower.includes(descLower)) ||
+          (itemDesc.length >= 10 && descLower.includes(itemDescLower));
         // Mark as complete
         lines[i] = line.replace(/\[ \]/, "[x]");
         found = true;
