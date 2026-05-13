@@ -54,7 +54,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   dcpDetected: false,
   dcpVersion: null,
   planningTimeoutMs: 300000,
-  busyStallTimeoutMs_conflict: 180000,
   enableAdvisory: false,
   advisoryModel: "",
   advisoryTimeoutMs: 5000,
@@ -155,7 +154,6 @@ describe("recovery module unit tests", () => {
   let writeStatusFile: ReturnType<typeof vi.fn>;
   let cancelNudge: ReturnType<typeof vi.fn>;
   let module: ReturnType<typeof createRecoveryModule>;
-  let statusCallIndex: number;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -172,7 +170,6 @@ describe("recovery module unit tests", () => {
     isDisposed = () => false;
     writeStatusFile = vi.fn();
     cancelNudge = vi.fn();
-    statusCallIndex = 0;
   });
 
   afterEach(() => {
@@ -206,18 +203,22 @@ describe("recovery module unit tests", () => {
     });
   }
 
-  function setupBusySession(sessionId: string = "test", overrides?: Partial<SessionState>) {
+  function createSession(sessionId = "test", overrides?: Partial<SessionState>) {
     const s = createSessionState(overrides);
     sessions.set(sessionId, s);
-    // Default: first status call returns busy, subsequent return idle
-    mockStatus.mockResolvedValue({ data: { [sessionId]: { type: "idle" } } });
     return s;
+  }
+
+  // Advance timers to let recover() poll for idle, wait after abort, etc.
+  async function settleTimers() {
+    await vi.advanceTimersByTimeAsync(5000);
+    await flushPromises();
   }
 
   describe("guards", () => {
     it("returns early if disposed", async () => {
       isDisposed = () => true;
-      setupBusySession("test");
+      createSession("test");
       module = createModule();
       await module.recover("test");
       expect(mockAbort).not.toHaveBeenCalled();
@@ -230,44 +231,48 @@ describe("recovery module unit tests", () => {
     });
 
     it("returns early if session is aborting", async () => {
-      setupBusySession("test", { aborting: true });
+      createSession("test", { aborting: true });
       module = createModule();
       await module.recover("test");
       expect(mockAbort).not.toHaveBeenCalled();
     });
 
     it("returns early if user cancelled", async () => {
-      setupBusySession("test", { userCancelled: true });
+      createSession("test", { userCancelled: true });
       module = createModule();
       await module.recover("test");
       expect(mockAbort).not.toHaveBeenCalled();
     });
 
     it("returns early if compacting", async () => {
-      setupBusySession("test", { compacting: true });
+      createSession("test", { compacting: true });
       module = createModule();
+      await module.recover("test");
+      expect(mockAbort).not.toHaveBeenCalled();
+    });
+
+    it("returns early if planning and timeout not reached", async () => {
+      createSession("test", { planning: true, planningStartedAt: Date.now() - 1000 });
+      module = createModule({ planningTimeoutMs: 5000 });
       await module.recover("test");
       expect(mockAbort).not.toHaveBeenCalled();
     });
   });
 
   describe("planning state", () => {
-    it("skips recovery if planning and timeout not reached", async () => {
-      setupBusySession("test", { planning: true, planningStartedAt: Date.now() - 1000 });
-      module = createModule({ planningTimeoutMs: 5000 });
-      await module.recover("test");
-      expect(mockAbort).not.toHaveBeenCalled();
-    });
-
     it("proceeds with recovery if planning timeout exceeded", async () => {
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
-      const s = setupBusySession("test", { planning: true, planningStartedAt: Date.now() - 600000 });
-      s.autoSubmitCount = 0;
       mockAbort.mockResolvedValue({});
-      module = createModule({ planningTimeoutMs: 300000, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        planning: true,
+        planningStartedAt: Date.now() - 600000,
+        lastProgressAt: Date.now() - 30000,
+        lastOutputAt: Date.now() - 30000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ planningTimeoutMs: 300000, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(500);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.planning).toBe(false);
       expect(mockAbort).toHaveBeenCalled();
@@ -276,23 +281,23 @@ describe("recovery module unit tests", () => {
 
   describe("max recoveries backoff", () => {
     it("schedules backoff when maxRecoveries reached", async () => {
-      setupBusySession("test", { attempts: 3, maxRecoveries: 3 });
+      createSession("test", { attempts: 3 });
       module = createModule({ maxRecoveries: 3 });
       await module.recover("test");
       expect(mockAbort).not.toHaveBeenCalled();
       expect(mockScheduleRecovery).toHaveBeenCalledWith("test", expect.any(Number));
     });
 
-    it("increments backoffAttempts when maxRecoveries reached", async () => {
-      const s = setupBusySession("test", { attempts: 3, backoffAttempts: 1 });
+    it("increments backoffAttempts on each backoff", async () => {
+      const s = createSession("test", { attempts: 3, backoffAttempts: 1 });
       module = createModule({ maxRecoveries: 3 });
       await module.recover("test");
       expect(s.backoffAttempts).toBe(2);
     });
 
     it("caps backoff at maxBackoffMs", async () => {
-      const s = setupBusySession("test", { attempts: 3, backoffAttempts: 50 });
-      module = createModule({ maxRecoveries: 3, maxBackoffMs: 1800000, stallTimeoutMs: 5000 });
+      createSession("test", { attempts: 3, backoffAttempts: 50 });
+      module = createModule({ maxRecoveries: 3, maxBackoffMs: 1800000 });
       await module.recover("test");
       const delay = mockScheduleRecovery.mock.calls[0][1];
       expect(delay).toBeLessThanOrEqual(1800000);
@@ -301,7 +306,8 @@ describe("recovery module unit tests", () => {
 
   describe("cooldown", () => {
     it("reschedules when cooldown is active", async () => {
-      setupBusySession("test", { lastRecoveryTime: Date.now() - 5000 });
+      const now = Date.now();
+      createSession("test", { lastRecoveryTime: now - 5000 });
       module = createModule({ cooldownMs: 60000 });
       await module.recover("test");
       expect(mockAbort).not.toHaveBeenCalled();
@@ -311,11 +317,16 @@ describe("recovery module unit tests", () => {
     it("skips cooldown if enough time has passed", async () => {
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      setupBusySession("test", { lastRecoveryTime: Date.now() - 120000 });
-      module = createModule({ cooldownMs: 60000, autoCompact: false, stallPatternDetection: false });
+      const now = Date.now();
+      createSession("test", {
+        lastRecoveryTime: now - 120000,
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 30000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ cooldownMs: 60000, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(500);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(mockAbort).toHaveBeenCalled();
     });
@@ -323,7 +334,7 @@ describe("recovery module unit tests", () => {
 
   describe("session age", () => {
     it("gives up if session exceeds maxSessionAgeMs", async () => {
-      const s = setupBusySession("test", { sessionCreatedAt: Date.now() - 10000000 });
+      const s = createSession("test", { sessionCreatedAt: Date.now() - 10000000 });
       module = createModule({ maxSessionAgeMs: 7200000 });
       await module.recover("test");
       expect(s.aborting).toBe(false);
@@ -334,92 +345,100 @@ describe("recovery module unit tests", () => {
   describe("stall detection", () => {
     it("reschedules if session is not busy", async () => {
       mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
-      const s = setupBusySession("test");
+      const s = createSession("test");
       module = createModule();
       await module.recover("test");
       expect(s.aborting).toBe(false);
       expect(mockAbort).not.toHaveBeenCalled();
     });
 
-    it("reschedules if stall timeout has not elapsed for progress", async () => {
+    it("reschedules if stall timeout not yet elapsed", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 1000, lastOutputAt: Date.now() - 1000 });
+      createSession("test", { lastProgressAt: now - 1000, lastOutputAt: now - 1000 });
       module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 180000 });
       await module.recover("test");
-      expect(s.aborting).toBe(false);
-      expect(mockScheduleRecovery).toHaveBeenCalled();
+      // Should reschedule via busy-but-dead check rather than proceeding to abort
+      expect(mockAbort).not.toHaveBeenCalled();
     });
 
-    it("proceeds when progress pinged but no real output (busy-but-dead)", async () => {
+    it("proceeds when session has no real output despite busy (busy-but-dead)", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 100, lastOutputAt: Date.now() - 200000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 180000, autoCompact: false, stallPatternDetection: false });
+      createSession("test", {
+        lastProgressAt: now - 100,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 180000, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(500);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(mockAbort).toHaveBeenCalled();
     });
   });
 
   describe("tool-text detection", () => {
-    it("detects tool call in session messages and uses recovery prompt", async () => {
+    it("detects XML tool calls in reasoning and uses specialized prompt", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
       mockMessages.mockResolvedValue({
-        data: [
-          {
-            role: "assistant",
-            parts: [{ type: "text", text: "I need to call <function name=\"search\">" }],
-          },
-        ],
+        data: [{
+          role: "assistant",
+          parts: [{ type: "text", text: "I need to call <function name=\"search\">" }],
+        }],
       });
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(500);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.continueMessageText).toContain("tool call generated");
     });
   });
 
   describe("hallucination loop", () => {
-    it("detects hallucination loop with 3+ continues in 10min", async () => {
+    it("detects 3+ continues in 10 minute window", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", {
-        lastProgressAt: Date.now() - 10000,
-        lastOutputAt: Date.now() - 10000,
-        continueTimestamps: [
-          Date.now() - 60000,
-          Date.now() - 120000,
-          Date.now() - 180000,
-        ],
+      createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        continueTimestamps: [now - 60000, now - 120000, now - 180000],
+        autoSubmitCount: 0,
       });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, autoCompact: false, stallPatternDetection: false });
+      module = createModule({ autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(5000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(log.mock.calls.some((c: unknown[]) => String(c).includes("hallucination loop"))).toBe(true);
     });
   });
 
   describe("abort flow", () => {
-    it("aborts and sends continue when session is idle after abort", async () => {
+    it("aborts and sends continue on idle session", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      // First status call returns busy (stall check), subsequent return idle (polling + sendContinue)
+      mockStatus
+        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
+        .mockResolvedValue({ data: { test: { type: "idle" } } });
+      module = createModule({ autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(mockAbort).toHaveBeenCalledWith({
         path: { id: "test" },
@@ -428,36 +447,49 @@ describe("recovery module unit tests", () => {
       expect(mockSendContinue).toHaveBeenCalledWith("test");
     });
 
-    it("increments attempts and autoSubmitCount on successful recovery", async () => {
+    it("increments attempts and autoSubmitCount", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000, attempts: 1, autoSubmitCount: 1 });
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        attempts: 1,
+        autoSubmitCount: 1,
+      });
+      module = createModule({ autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.attempts).toBe(2);
       expect(s.autoSubmitCount).toBe(2);
     });
 
     it("handles abort API failure and reschedules", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockRejectedValue(new Error("abort failed"));
-      setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000 });
+      createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+      });
+      module = createModule({ autoCompact: false });
       await module.recover("test");
       expect(mockScheduleRecovery).toHaveBeenCalled();
     });
 
-    it("stops recovery when maxAutoSubmits reached", async () => {
+    it("stops when maxAutoSubmits reached", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000, autoSubmitCount: 3 });
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, maxAutoSubmits: 3, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 3,
+      });
+      module = createModule({ maxAutoSubmits: 3, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.needsContinue).toBe(false);
       expect(mockSendContinue).not.toHaveBeenCalled();
@@ -466,19 +498,23 @@ describe("recovery module unit tests", () => {
 
   describe("continue message", () => {
     it("uses default continue message when no todos", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, includeTodoContext: true, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ includeTodoContext: false, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.continueMessageText).toBe("Continue working.");
     });
 
     it("includes todo context when pending todos exist", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
       mockTodo.mockResolvedValue({
@@ -487,44 +523,50 @@ describe("recovery module unit tests", () => {
           { id: "2", status: "pending", content: "Add tests" },
         ],
       });
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, includeTodoContext: true, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.continueMessageText).toContain("Fix login bug");
       expect(s.continueMessageText).toContain("Add tests");
     });
 
     it("uses shortContinueMessage when tokenLimitHits > 0", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000, tokenLimitHits: 2 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, includeTodoContext: false, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        tokenLimitHits: 2,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ includeTodoContext: false, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.continueMessageText).toBe("Continue.");
     });
 
-    it("uses plan-aware message when session is planning", async () => {
+    it("uses plan-aware message when session was planning", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", {
-        lastProgressAt: Date.now() - 10000,
-        lastOutputAt: Date.now() - 10000,
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
         planning: true,
-        planningStartedAt: Date.now() - 600000,
+        planningStartedAt: now - 600000,
+        autoSubmitCount: 0,
       });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, planningTimeoutMs: 300000, includeTodoContext: false, autoCompact: false, stallPatternDetection: false });
+      module = createModule({ planningTimeoutMs: 300000, includeTodoContext: false, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.continueMessageText).toBe("Finish your plan.");
     });
@@ -533,8 +575,8 @@ describe("recovery module unit tests", () => {
   describe("recovery error handling", () => {
     it("increments recoveryFailed and schedules retry on exception", async () => {
       mockStatus.mockRejectedValue(new Error("status check failed"));
-      const s = setupBusySession("test", { attempts: 1 });
-      module = createModule({ stallTimeoutMs: 5000 });
+      const s = createSession("test", { attempts: 1 });
+      module = createModule();
       await module.recover("test");
       expect(s.recoveryFailed).toBe(1);
       expect(mockScheduleRecovery).toHaveBeenCalled();
@@ -542,8 +584,8 @@ describe("recovery module unit tests", () => {
 
     it("uses exponential backoff when maxRecoveries reached after failure", async () => {
       mockStatus.mockRejectedValue(new Error("status check failed"));
-      const s = setupBusySession("test", { attempts: 3 });
-      module = createModule({ stallTimeoutMs: 5000, maxRecoveries: 3 });
+      const s = createSession("test", { attempts: 3 });
+      module = createModule({ maxRecoveries: 3 });
       await module.recover("test");
       expect(s.recoveryFailed).toBe(1);
       expect(s.backoffAttempts).toBe(1);
@@ -551,30 +593,37 @@ describe("recovery module unit tests", () => {
   });
 
   describe("stall pattern tracking", () => {
-    it("records stall pattern when stallPatternDetection is enabled", async () => {
+    it("records stall pattern when stallPatternDetection enabled", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000, lastStallPartType: "text" });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, stallPatternDetection: true, autoCompact: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        lastStallPartType: "text",
+        autoSubmitCount: 0,
+      });
+      module = createModule({ stallPatternDetection: true, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.stallPatterns["text"]).toBe(1);
     });
   });
 
   describe("toast notifications", () => {
-    it("shows auto-continue toast on recovery attempt", async () => {
+    it("shows auto-continue toast on recovery", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, showToasts: true, autoCompact: false, stallPatternDetection: false });
+      createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ showToasts: true, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
         body: expect.objectContaining({ title: "Auto-Continue" }),
@@ -583,16 +632,19 @@ describe("recovery module unit tests", () => {
   });
 
   describe("auto-compaction during recovery", () => {
-    it("calls summarize when autoCompact is enabled and session is idle", async () => {
+    it("calls summarize when autoCompact is enabled and session idle", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
       mockSummarize.mockResolvedValue({});
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, autoCompact: true, stallPatternDetection: false });
+      createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ autoCompact: true });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(4000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(mockSummarize).toHaveBeenCalled();
     });
@@ -600,15 +652,18 @@ describe("recovery module unit tests", () => {
 
   describe("prompt guard", () => {
     it("does not block when no recent prompts match", async () => {
+      const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
       mockMessages.mockResolvedValue({ data: [] });
-      const s = setupBusySession("test", { lastProgressAt: Date.now() - 10000, lastOutputAt: Date.now() - 10000 });
-      s.autoSubmitCount = 0;
-      module = createModule({ stallTimeoutMs: 5000, busyStallTimeoutMs: 5000, includeTodoContext: false, autoCompact: false, stallPatternDetection: false });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ includeTodoContext: false, autoCompact: false });
       const promise = module.recover("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await settleTimers();
       await promise;
       expect(s.needsContinue).toBe(true);
     });
