@@ -3,14 +3,13 @@ import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import type { TypedPluginInput } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
-import { type SessionState, createSession } from "./session-state.js";
+import { type SessionState, createSession, updateProgress } from "./session-state.js";
 import {
   PLAN_PATTERNS,
   isPlanContent,
   estimateTokens,
   formatDuration,
   parseTokensFromError,
-  updateProgress,
   formatMessage,
   safeHook,
   detectDCP,
@@ -614,30 +613,29 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
         }
-        if (status?.type === "idle") {
-          s.actionStartedAt = 0;
-          clearTimer(sid);
+    if (status?.type === "idle") {
+      s.actionStartedAt = 0;
+      clearTimer(sid);
+      
+      // Send queued continue when session becomes idle/stable
+      if (s.needsContinue) {
+        if (s.aborting) {
+          log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
+        } else {
+          log('session idle, sending queued continue for:', sid);
+          await review.sendContinue(sid);
         }
-        // Send queued continue when session becomes idle/stable
-        if (status?.type === "idle" && s.needsContinue) {
-          if (s.aborting) {
-            log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
-          } else {
-            log('session idle, sending queued continue for:', sid);
-            await review.sendContinue(sid);
-          }
-        }
+      } else if (config.nudgeEnabled) {
         // Auto-continue when transitioning busy→idle with pending todos
         // Nudge is always scheduled on idle — injectNudge fetches todos from API
         // and decides whether to send based on actual pending count
-        if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
-          nudge.scheduleNudge(sid);
-        }
-        // Clear terminal title/progress when session becomes idle
-        if (status?.type === "idle") {
-          terminal.clearTerminalTitle();
-          terminal.clearTerminalProgress();
-        }
+        nudge.scheduleNudge(sid);
+      }
+      
+      // Clear terminal title/progress when session becomes idle
+      terminal.clearTerminalTitle();
+      terminal.clearTerminalProgress();
+    }
 
         // Only set recovery timer for busy/retry sessions, not for idle
         // Idle sessions should not have a stall recovery timer running

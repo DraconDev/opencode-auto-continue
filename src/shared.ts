@@ -173,10 +173,6 @@ export function parseTokensFromError(error: any): { total: number; input: number
   return null;
 }
 
-export function updateProgress(s: SessionState) {
-  s.lastProgressAt = Date.now();
-}
-
 export function formatMessage(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
 }
