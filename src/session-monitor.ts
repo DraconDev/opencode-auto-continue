@@ -47,6 +47,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   let cleanupTimer: ReturnType<typeof setInterval> | null = null;
   let orphanCheckTimer: ReturnType<typeof setInterval> | null = null;
   let previousBusyCount = 0;
+  const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   let orphanRecoveryCount = 0;
   let discoveredCount = 0;
   let cleanedUpCount = 0;
