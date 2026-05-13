@@ -325,6 +325,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
     }, config.nudgeIdleDelayMs);
+    (s.nudgeTimer as any).unref?.();
   }
 
   return {

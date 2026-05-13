@@ -662,10 +662,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           // cause plan-aware continue messages to use the generic message instead.
           // Instead, s.planning is cleared by message.part.updated when non-plan
           // progress parts (tool, file, subtask, step-start, step-finish) arrive.
-          if (s.compacting) {
-            log('session busy, clearing compacting flag (compaction likely finished)');
-            s.compacting = false;
-          }
+          // NOTE: s.compacting is NOT cleared here either — compaction may still
+          // be in progress when the session becomes busy for other reasons.
+          // The flag is cleared by session.compacted or message.part.updated.
           // Update terminal title and progress
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
