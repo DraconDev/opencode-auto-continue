@@ -607,7 +607,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           
           // Check for busy-but-dead: session claims busy but no actual output for too long
           const timeSinceOutput = Date.now() - s.lastOutputAt;
-          if (timeSinceOutput > config.busyStallTimeoutMs) {
+          if (timeSinceOutput > config.busyStallTimeoutMs && !s.aborting) {
             log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
             if (config.showToasts) {
               try {
