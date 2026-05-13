@@ -203,7 +203,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const statusData = statusResult.data as Record<string, { type: string }>;
       const sessionStatus = statusData[sessionId];
 
-      if (!sessionStatus || sessionStatus.type !== "busy") {
+      if (!sessionStatus || (sessionStatus.type !== "busy" && sessionStatus.type !== "retry")) {
         s.aborting = false;
         return;
       }

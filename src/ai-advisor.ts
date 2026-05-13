@@ -288,7 +288,7 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
       return {
         action: "continue",
         confidence: 0.75,
-        reasoning: `Has ${context.hasOpenTodos} pending todos but stalled — needs nudge to continue`,
+        reasoning: `Has pending todos but stalled — needs nudge to continue`,
         stallPattern: "todo-stalled",
         customPrompt: "You have pending todos that need attention. Please continue working on the next incomplete task.",
         contextSummary: "Model has pending todos but stalled, needs encouragement to continue",
