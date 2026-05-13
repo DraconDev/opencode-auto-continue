@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { flushPromises } from './helpers.js';
 import { readFileSync } from "fs";
 import type { Plugin } from "@opencode-ai/plugin";
 
@@ -401,16 +402,16 @@ describe("opencode-auto-continue integration", () => {
     // Trigger 3 recovery cycles in quick succession (within 10 minutes)
     for (let i = 0; i < 3; i++) {
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushPromises();
+      await flushPromises();
+      await flushPromises();
       
       // Trigger idle to send continue
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushPromises();
+      await flushPromises();
+      await flushPromises();
       
       // Reset to busy for next cycle
       if (i < 2) {

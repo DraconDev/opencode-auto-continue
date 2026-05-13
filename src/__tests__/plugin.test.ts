@@ -127,11 +127,10 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(150);
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushPromises();
       // Flush debounced status file write (500ms debounce)
       await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
+      await flushPromises();
 
       const status = JSON.parse(readFileSync(statusFilePath, "utf-8"));
       expect(status.sessions.test.userCancelled).toBe(false);
@@ -303,7 +302,7 @@ describe("opencode-auto-continue", () => {
       
       // First recovery (attempts=0 → 1)
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       // After recovery, new message starts - simulate event to set new timer
@@ -311,19 +310,19 @@ describe("opencode-auto-continue", () => {
       
       // Second recovery (attempts=1 → 2)  
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(2);
 
       // After maxRecoveries, should enter backoff - no abort within normal time
       mockAbort.mockClear();
       await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).not.toHaveBeenCalled();
 
       // Verify backoff is working by checking that more time passes without abort
       // Backoff delay is 500 * 2^1 = 1000ms, so advance less than that
       await vi.advanceTimersByTimeAsync(400);
-      await Promise.resolve();
+      await flushPromises();
       // Should still be in backoff - timer hasn't fired yet
       expect(mockAbort).not.toHaveBeenCalled();
 
@@ -714,21 +713,21 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(50);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(50);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test", messageID: "msg1" }, delta: " world" } } });
       await vi.advanceTimersByTimeAsync(50);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
@@ -743,7 +742,7 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
@@ -845,7 +844,7 @@ describe("opencode-auto-continue", () => {
       
       // Timer fires - but should NOT abort because compacting = true
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -865,7 +864,7 @@ describe("opencode-auto-continue", () => {
       
       // Now wait for stall - should abort because compacting was cleared
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -997,7 +996,7 @@ describe("opencode-auto-continue", () => {
 
       // Should trigger emergency compaction (summarize)
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalled();
       vi.useRealTimers();
@@ -1025,9 +1024,9 @@ describe("opencode-auto-continue", () => {
       // Wait for async emergency compaction and continue
       // forceCompact → attemptCompact → summarize() → wait 500ms → status check → sendContinue
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should send continue prompt after compaction
       expect(mockPrompt).toHaveBeenCalled();
@@ -1054,7 +1053,7 @@ describe("opencode-auto-continue", () => {
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeError", message: "Something went wrong" } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should NOT trigger compaction
       expect(mockSummarize).not.toHaveBeenCalled();
@@ -1220,7 +1219,7 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       // Recovery should have been attempted
       expect(mockAbort).toHaveBeenCalled();
@@ -1264,7 +1263,7 @@ describe("opencode-auto-continue", () => {
       // Simulate progress then stall
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "text", text: "hello", sessionID: "test", messageID: "msg1" }, delta: "hello" } } });
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
@@ -1286,7 +1285,7 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should attempt to summarize (compact) before aborting
       expect(mockStatus).toHaveBeenCalled();
@@ -1319,8 +1318,7 @@ describe("opencode-auto-continue", () => {
 
         await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
         await vi.advanceTimersByTimeAsync(3200);
-        await Promise.resolve();
-        await Promise.resolve();
+        await flushPromises();
 
         expect(mockSummarize).toHaveBeenCalled();
         expect(mockPrompt).not.toHaveBeenCalled();
@@ -1473,7 +1471,7 @@ describe("opencode-auto-continue", () => {
 
       // Wait for the async sendContinue to complete
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       // Test passes if no crash
       expect(true).toBe(true);
@@ -1586,7 +1584,7 @@ describe("opencode-auto-continue", () => {
 
       // Planning should pause stall detection
       await vi.advanceTimersByTimeAsync(10000);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -1995,7 +1993,7 @@ describe("opencode-auto-continue", () => {
 
       // Trigger recovery
       await vi.advanceTimersByTimeAsync(2000);
-      await Promise.resolve();
+      await flushPromises();
 
       // Auto-submit count incremented during recovery
       expect(true).toBe(true);
@@ -2026,7 +2024,7 @@ describe("opencode-auto-continue", () => {
 
       // First recovery
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
@@ -2034,12 +2032,12 @@ describe("opencode-auto-continue", () => {
       // After maxRecoveries, exponential backoff kicks in
       // At 1 failure, backoff delay = 500 * 2^0 = 500ms
       await vi.advanceTimersByTimeAsync(300);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).not.toHaveBeenCalled();
 
       // Backoff should still be active at 400ms
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).not.toHaveBeenCalled();
 
       vi.useRealTimers();
@@ -2152,7 +2150,7 @@ describe("opencode-auto-continue", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       // Recovery should have been attempted (even if it failed)
       expect(mockAbort).toHaveBeenCalled();
@@ -2266,14 +2264,14 @@ describe("opencode-auto-continue", () => {
       
       // Advance timers to trigger nudge
       await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
+      await flushPromises();
 
       // Verify nudge was sent
       expect(mockPrompt).toHaveBeenCalled();
 
       // Now session goes busy (AI responding to nudge)
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await Promise.resolve();
+      await flushPromises();
 
       // Toast should be shown
       expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
@@ -2297,7 +2295,7 @@ describe("opencode-auto-continue", () => {
 
       // Session goes busy without any nudge
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await Promise.resolve();
+      await flushPromises();
 
       // Toast should NOT be shown
       expect(mockShowToast).not.toHaveBeenCalled();
@@ -2327,18 +2325,18 @@ describe("opencode-auto-continue", () => {
       // Session goes idle - schedules nudge
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(500);
-      await Promise.resolve();
+      await flushPromises();
 
       // Nudge was sent
       expect(mockPrompt).toHaveBeenCalled();
 
       // User sends a message (resets lastNudgeAt)
       await plugin.event({ event: { type: "message.updated", properties: { sessionID: "test", info: { role: "user", id: "user-msg-1" } } } });
-      await Promise.resolve();
+      await flushPromises();
 
       // Session goes busy (user's message, not nudge response)
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await Promise.resolve();
+      await flushPromises();
 
       // Toast should NOT be shown because user message reset lastNudgeAt
       expect(mockShowToast).not.toHaveBeenCalled();
@@ -2358,7 +2356,7 @@ describe("opencode-auto-continue", () => {
 
       // Session goes busy without any continue sent
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await Promise.resolve();
+      await flushPromises();
 
       // Recovery Successful toast should NOT be shown (no continue was sent)
       expect(mockShowToast).not.toHaveBeenCalled();
@@ -2390,8 +2388,7 @@ describe("opencode-auto-continue", () => {
 
       // Advance timers past stall timeout to trigger recovery (sets lastContinueAt)
       await vi.advanceTimersByTimeAsync(250);
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushPromises();
 
       // Verify recovery was triggered (abort + continue)
       expect(mockAbort).toHaveBeenCalled();
@@ -2403,7 +2400,7 @@ describe("opencode-auto-continue", () => {
       // Mock status to return busy
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await Promise.resolve();
+      await flushPromises();
 
       // Recovery Successful toast should be shown
       expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
@@ -2485,7 +2482,7 @@ describe("test-fix loop", () => {
 
     // Wait for review debounce
     await vi.advanceTimersByTimeAsync(350);
-    await Promise.resolve();
+    await flushPromises();
 
     // Verify review prompt was sent
     expect(mockPrompt).toHaveBeenCalled();
@@ -2510,7 +2507,7 @@ describe("test-fix loop", () => {
 
     // Wait for review debounce
     await vi.advanceTimersByTimeAsync(350);
-    await Promise.resolve();
+    await flushPromises();
 
     // Verify review was sent a second time (test-fix loop works)
     expect(mockPrompt).toHaveBeenCalled();
@@ -2549,7 +2546,7 @@ describe("test-fix loop", () => {
 
     // Wait for review debounce
     await vi.advanceTimersByTimeAsync(350);
-    await Promise.resolve();
+    await flushPromises();
 
     // Verify review prompt was sent
     expect(mockPrompt).toHaveBeenCalled();
@@ -2562,7 +2559,7 @@ describe("test-fix loop", () => {
 
     // Wait for review debounce
     await vi.advanceTimersByTimeAsync(350);
-    await Promise.resolve();
+    await flushPromises();
 
     // Review should NOT fire again (no new pending todos to reset reviewFired)
     expect(mockPrompt).not.toHaveBeenCalled();

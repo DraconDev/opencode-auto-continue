@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { flushPromises } from './helpers.js';
 
 // Test the compaction module's behavior
 describe("compaction module", () => {
@@ -61,7 +62,7 @@ describe("compaction module", () => {
 
       // Should trigger emergency compaction (summarize)
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalled();
       vi.useRealTimers();
@@ -85,7 +86,7 @@ describe("compaction module", () => {
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "SomeError", message: "Something went wrong" } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should NOT trigger compaction
       expect(mockSummarize).not.toHaveBeenCalled();
@@ -112,7 +113,7 @@ describe("compaction module", () => {
       } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalled();
       vi.useRealTimers();
@@ -138,7 +139,7 @@ describe("compaction module", () => {
       } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalled();
       vi.useRealTimers();
@@ -164,7 +165,7 @@ describe("compaction module", () => {
       } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalled();
       vi.useRealTimers();
@@ -190,7 +191,7 @@ describe("compaction module", () => {
       } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalled();
       vi.useRealTimers();
@@ -215,7 +216,7 @@ describe("compaction module", () => {
       } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -237,7 +238,7 @@ describe("compaction module", () => {
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: null } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -259,7 +260,7 @@ describe("compaction module", () => {
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "Error" } } } });
 
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockSummarize).not.toHaveBeenCalled();
       vi.useRealTimers();
@@ -354,7 +355,7 @@ describe("compaction module", () => {
       } } } });
 
       await vi.advanceTimersByTimeAsync(200);
-      await Promise.resolve();
+      await flushPromises();
 
       // Compaction was attempted
       expect(mockSummarize).toHaveBeenCalled();
@@ -383,7 +384,7 @@ describe("compaction module", () => {
 
       // Wait for compaction
       await vi.advanceTimersByTimeAsync(200);
-      await Promise.resolve();
+      await flushPromises();
 
       // Verify compaction was called
       expect(mockSummarize).toHaveBeenCalled();
@@ -427,7 +428,7 @@ describe("compaction module", () => {
 
       // Wait for compaction
       await vi.advanceTimersByTimeAsync(300);
-      await Promise.resolve();
+      await flushPromises();
 
       // Test passes if no crash
       expect(true).toBe(true);
@@ -522,7 +523,7 @@ describe("recovery module", () => {
 
       // No progress events - wait for stall
       await vi.advanceTimersByTimeAsync(1100);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should have tried to abort
       expect(mockAbort).toHaveBeenCalled();
@@ -563,7 +564,7 @@ describe("recovery module", () => {
 
       // Wait for original timeout from last progress
       await vi.advanceTimersByTimeAsync(200);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalled();
 
@@ -634,7 +635,7 @@ describe("recovery module", () => {
 
       // Wait for stall
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalled();
 
@@ -661,7 +662,7 @@ describe("recovery module", () => {
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       // Status should have been polled at least once after abort
       expect(mockStatus.mock.calls.length).toBeGreaterThan(0);
@@ -690,14 +691,14 @@ describe("recovery module", () => {
 
       // Wait for stall + recovery
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalled();
 
       // Session becomes idle - sends continue
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
       await vi.advanceTimersByTimeAsync(100);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockPrompt).toHaveBeenCalled();
 
@@ -731,7 +732,7 @@ describe("recovery module", () => {
       } } });
 
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
@@ -741,14 +742,14 @@ describe("recovery module", () => {
 
       // Second stall - recovery 2 (attempts becomes 2)
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
 
       // Now in backoff - wait a bit but don't expect abort since we're in backoff
       await vi.advanceTimersByTimeAsync(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       // Test passes if no crash
       expect(true).toBe(true);
@@ -781,7 +782,7 @@ describe("recovery module", () => {
 
       // First recovery
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
@@ -791,7 +792,7 @@ describe("recovery module", () => {
 
       // With backoff cap of 5s, timer shouldn't fire before 5s
       await vi.advanceTimersByTimeAsync(4000);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).not.toHaveBeenCalled();
 
       vi.useRealTimers();
@@ -819,7 +820,7 @@ describe("recovery module", () => {
 
       // Wait for stall and failed recovery
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(mockAbort).toHaveBeenCalled();
 
@@ -846,7 +847,7 @@ describe("recovery module", () => {
 
       // Wait for recovery attempt
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should have tried abort
       expect(mockAbort).toHaveBeenCalled();
@@ -880,7 +881,7 @@ describe("recovery module", () => {
 
       // Wait for stall timeout
       await vi.advanceTimersByTimeAsync(2000);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should NOT try to abort after user cancelled
       expect(mockAbort).not.toHaveBeenCalled();
@@ -915,7 +916,7 @@ describe("recovery module", () => {
 
       // Wait for stall
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       // Should recover because userCancelled was cleared
       expect(mockAbort).toHaveBeenCalled();
@@ -943,7 +944,7 @@ describe("recovery module", () => {
       // First stall
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       mockAbort.mockClear();
@@ -958,7 +959,7 @@ describe("recovery module", () => {
 
       // Second stall
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
       expect(mockAbort).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
