@@ -137,7 +137,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               recover(id);
             } else {
               // Schedule another check after the wait period
-              setTimeout(() => {
+              const timer = setTimeout(() => {
+                pendingTimers.delete(timer);
                 if (!isDisposed()) {
                   const session = sessions.get(id);
                   if (session && (session.lastKnownStatus === 'busy' || session.lastKnownStatus === 'retry' || session.aborting || session.compacting)) {
@@ -150,6 +151,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                   }
                 }
               }, config.subagentWaitMs - timeSinceProgress + 1000);
+              (timer as any).unref?.();
+              pendingTimers.add(timer);
             }
           }
           break;
@@ -361,6 +364,10 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       clearInterval(cleanupTimer);
       cleanupTimer = null;
     }
+    for (const timer of pendingTimers) {
+      clearTimeout(timer);
+    }
+    pendingTimers.clear();
     log('[SessionMonitor] stopped');
   }
 
