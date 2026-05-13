@@ -714,102 +714,102 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         const part = e?.properties?.part;
         const partType = part?.type;
-          
-          // CRITICAL: Ignore synthetic messages to prevent infinite loops
-          if (part?.synthetic === true) {
-            log('ignoring synthetic message part');
-            return;
-          }
-          
-          const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
-          log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
-          if (isRealProgress) {
-            updateProgress(s);
-            sessionMonitor.touchSession(sid);
-            s.attempts = 0;
-            s.userCancelled = false;
-            // Track part type for stall pattern detection
-            s.lastStallPartType = partType || "unknown";
-            
-            // Track actual output for busy-but-dead detection
-            s.lastOutputAt = Date.now();
-            
-            // Track text content length to detect even small changes
-            if (partType === "text" || partType === "reasoning") {
-              const text = e?.properties?.part?.text || "";
-              if (text.length > s.lastOutputLength) {
-                s.lastOutputLength = text.length;
-                log('output tracked: text length', text.length, 'session:', sid);
-              }
-            } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
-              // Non-text output also counts
-              s.lastOutputLength++;
-              log('output tracked:', partType, 'session:', sid);
+
+        // CRITICAL: Ignore synthetic messages to prevent infinite loops
+        if (part?.synthetic === true) {
+          log('ignoring synthetic message part');
+          return;
+        }
+
+        const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
+        log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
+        if (isRealProgress) {
+          updateProgress(s);
+          sessionMonitor.touchSession(sid);
+          s.attempts = 0;
+          s.userCancelled = false;
+          // Track part type for stall pattern detection
+          s.lastStallPartType = partType || "unknown";
+
+          // Track actual output for busy-but-dead detection
+          s.lastOutputAt = Date.now();
+
+          // Track text content length to detect even small changes
+          if (partType === "text" || partType === "reasoning") {
+            const text = e?.properties?.part?.text || "";
+            if (text.length > s.lastOutputLength) {
+              s.lastOutputLength = text.length;
+              log('output tracked: text length', text.length, 'session:', sid);
             }
-            
-            // FIX 5: Estimate tokens only for parts without actual token counts.
-            // Text/reasoning parts are counted via message.updated (actual tokens).
-            // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
-            let partText = "";
-            if (partType === "tool") {
-              partText = JSON.stringify(e?.properties?.part) || "";
-            } else if (partType === "file") {
-              partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
-            } else if (partType === "subtask") {
-              partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
-            } else if (partType === "step-start") {
-              partText = e?.properties?.part?.name || "";
-            }
-            
-            if (partText) {
-              // FIX 5: Use configurable multiplier instead of hardcoded ×2
-              const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
-              s.estimatedTokens += estimatedTokens;
-            }
-            // Extract actual tokens from step-finish parts (most accurate source)
-            if (partType === "step-finish" && part?.tokens) {
-              const stepTokens = part.tokens;
-              const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
-              if (totalStepTokens > 0) {
-                // step-finish tokens represent the actual tokens used in this completion step
-                // This is the most accurate token count available
-                s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
-                log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
-              }
-            }
+          } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
+            // Non-text output also counts
+            s.lastOutputLength++;
+            log('output tracked:', partType, 'session:', sid);
           }
 
-          // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
-          if (partType === "compaction") {
-            log('compaction started, pausing stall monitoring');
-            s.compacting = true;
+          // FIX 5: Estimate tokens only for parts without actual token counts.
+          // Text/reasoning parts are counted via message.updated (actual tokens).
+          // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
+          let partText = "";
+          if (partType === "tool") {
+            partText = JSON.stringify(e?.properties?.part) || "";
+          } else if (partType === "file") {
+            partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
+          } else if (partType === "subtask") {
+            partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
+          } else if (partType === "step-start") {
+            partText = e?.properties?.part?.name || "";
           }
 
-          // Handle text parts for plan detection
-          if (partType === "text") {
-            const partText = e?.properties?.part?.text as string | undefined;
-            if (partText) {
-              if (isPlanContent(partText)) {
-                log('plan detected in updated text part, pausing stall monitoring');
-                s.planning = true;
-                s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
-                // Schedule planning timeout recovery
-                clearTimer(sid);
-                scheduleRecovery(sid, config.planningTimeoutMs);
-              }
+          if (partText) {
+            // FIX 5: Use configurable multiplier instead of hardcoded ×2
+            const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
+            s.estimatedTokens += estimatedTokens;
+          }
+          // Extract actual tokens from step-finish parts (most accurate source)
+          if (partType === "step-finish" && part?.tokens) {
+            const stepTokens = part.tokens;
+            const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
+            if (totalStepTokens > 0) {
+              // step-finish tokens represent the actual tokens used in this completion step
+              // This is the most accurate token count available
+              s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
+              log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
             }
           }
+        }
 
-          // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
-          // These indicate the model has moved from planning to execution, so:
-          // 1. Stall monitoring resumes (planning pauses it)
-          // 2. Continue messages use generic text instead of plan-aware message
-          if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
-            log('non-plan progress detected, clearing plan flag');
-            s.planning = false;
-            // Schedule normal recovery now that planning is done
-            scheduleRecovery(sid, config.stallTimeoutMs);
+        // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
+        if (partType === "compaction") {
+          log('compaction started, pausing stall monitoring');
+          s.compacting = true;
+        }
+
+        // Handle text parts for plan detection
+        if (partType === "text") {
+          const partText = e?.properties?.part?.text as string | undefined;
+          if (partText) {
+            if (isPlanContent(partText)) {
+              log('plan detected in updated text part, pausing stall monitoring');
+              s.planning = true;
+              s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+              // Schedule planning timeout recovery
+              clearTimer(sid);
+              scheduleRecovery(sid, config.planningTimeoutMs);
+            }
           }
+        }
+
+        // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
+        // These indicate the model has moved from planning to execution, so:
+        // 1. Stall monitoring resumes (planning pauses it)
+        // 2. Continue messages use generic text instead of plan-aware message
+        if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
+          log('non-plan progress detected, clearing plan flag');
+          s.planning = false;
+          // Schedule normal recovery now that planning is done
+          scheduleRecovery(sid, config.stallTimeoutMs);
+        }
 
         // Check if this is a delta update containing plan content
         const deltaText = e?.properties?.delta as string | undefined;
