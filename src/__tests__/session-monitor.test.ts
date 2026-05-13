@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { flushPromises } from "./helpers.js";
 import { createSessionMonitor } from "../session-monitor.js";
 import type { PluginConfig, SessionState } from "../shared.js";
 import type { TypedPluginInput } from "../types.js";
@@ -298,7 +299,7 @@ describe("SessionMonitor", () => {
 
       customMonitor.start();
       await vi.advanceTimersByTimeAsync(60);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(sessions.has("busy-session")).toBe(true);
       expect(sessions.get("busy-session")?.timer).not.toBeNull();
@@ -337,7 +338,7 @@ describe("SessionMonitor", () => {
 
       customMonitor.start();
       await vi.advanceTimersByTimeAsync(60);
-      await Promise.resolve();
+      await flushPromises();
 
       expect(sessions.has("unknown-session")).toBe(true);
       // FIX 10: Unknown status sessions are tracked but NOT armed for recovery

@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { flushPromises } from './helpers.js';
 
 // Test terminal output generation
 describe("terminal module output", () => {
@@ -482,7 +483,7 @@ describe("status file module", () => {
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await vi.advanceTimersByTimeAsync(600);
-      await Promise.resolve();
+      await flushPromises();
 
       // Recovery attempted
       expect(mockClient.session.abort).toHaveBeenCalled();

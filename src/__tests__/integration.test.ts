@@ -70,9 +70,7 @@ describe("opencode-auto-continue integration", () => {
     
     // Step 3: Wait for stall (no progress for 1000ms) + waitAfterAbortMs
     await vi.advanceTimersByTimeAsync(1100);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();  // Wait for async recover() to complete
+    await flushPromises();  // Wait for async recover() to complete
     
     // Step 4: Should have called abort
     expect(mockAbort).toHaveBeenCalledTimes(1);
@@ -84,9 +82,7 @@ describe("opencode-auto-continue integration", () => {
     // Step 5: Simulate session becoming idle (triggers sendContinue)
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
     await vi.advanceTimersByTimeAsync(100);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();  // Wait for async sendContinue
+    await flushPromises();  // Wait for async sendContinue
     
     vi.useRealTimers();
   });
@@ -102,7 +98,7 @@ describe("opencode-auto-continue integration", () => {
 
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
     await vi.advanceTimersByTimeAsync(500);
-    await Promise.resolve();
+    await flushPromises();
     
     // Should check status and see idle, so no abort
     expect(mockAbort).not.toHaveBeenCalled();
@@ -121,19 +117,15 @@ describe("opencode-auto-continue integration", () => {
 
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
     await vi.advanceTimersByTimeAsync(1100);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();  // Wait for async recover()
-    
+    await flushPromises();  // Wait for async recover()
+
     expect(mockAbort).toHaveBeenCalledTimes(1);
     
     // Trigger continue via session.status (idle)
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
     await vi.advanceTimersByTimeAsync(100);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();  // Wait for async sendContinue
-    
+    await flushPromises();  // Wait for async sendContinue
+
     // only the continue message, no notification
     expect(mockPrompt).toHaveBeenCalledTimes(1);
     
@@ -154,7 +146,7 @@ describe("opencode-auto-continue integration", () => {
     
     // Wait almost full timeout
     await vi.advanceTimersByTimeAsync(900);
-    await Promise.resolve();
+    await flushPromises();
     
     // Should NOT abort because tool is making progress
     expect(mockAbort).not.toHaveBeenCalled();
@@ -185,7 +177,7 @@ describe("opencode-auto-continue integration", () => {
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "busy" } } } });
     // Flush debounced status file write
     await vi.advanceTimersByTimeAsync(500);
-    await Promise.resolve();
+    await flushPromises();
 
     let statusContent = readFileSync(tmpStatusFile, "utf-8");
     let status = JSON.parse(statusContent);
@@ -200,7 +192,7 @@ describe("opencode-auto-continue integration", () => {
     await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test-session", messageID: "msg1", part: { id: "part1", type: "text", text: "hello world", sessionID: "test-session", messageID: "msg1" }, delta: "hello" } } });
     // Flush debounced status file write
     await vi.advanceTimersByTimeAsync(500);
-    await Promise.resolve();
+    await flushPromises();
 
     statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
@@ -210,7 +202,7 @@ describe("opencode-auto-continue integration", () => {
     await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test-session", todos: [{ id: "t1", content: "test task", status: "in_progress" }] } } });
     // Flush debounced status file write
     await vi.advanceTimersByTimeAsync(500);
-    await Promise.resolve();
+    await flushPromises();
 
     statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
@@ -222,7 +214,7 @@ describe("opencode-auto-continue integration", () => {
     await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test-session" } } });
     // Flush debounced status file write (also flushes nudge timer at 500ms)
     await vi.advanceTimersByTimeAsync(500);
-    await Promise.resolve();
+    await flushPromises();
 
     statusContent = readFileSync(tmpStatusFile, "utf-8");
     status = JSON.parse(statusContent);
@@ -289,7 +281,7 @@ describe("opencode-auto-continue integration", () => {
 
     // Timer fires — should NOT abort because compacting = true
     await vi.advanceTimersByTimeAsync(1000);
-    await Promise.resolve();
+    await flushPromises();
     expect(mockAbort).not.toHaveBeenCalled();
 
     // session.compacted fires — should clear compacting flag
@@ -328,8 +320,7 @@ describe("opencode-auto-continue integration", () => {
 
     // Wait for debounce
     await vi.advanceTimersByTimeAsync(600);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     // Should have sent review prompt
     expect(mockPrompt).toHaveBeenCalled();
@@ -372,8 +363,7 @@ describe("opencode-auto-continue integration", () => {
 
     // Wait for nudge delay
     await vi.advanceTimersByTimeAsync(200);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     // Should have sent nudge prompt
     expect(mockPrompt).toHaveBeenCalled();
@@ -403,14 +393,10 @@ describe("opencode-auto-continue integration", () => {
     for (let i = 0; i < 3; i++) {
       await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
-      await flushPromises();
-      await flushPromises();
       
       // Trigger idle to send continue
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
       await vi.advanceTimersByTimeAsync(100);
-      await flushPromises();
-      await flushPromises();
       await flushPromises();
       
       // Reset to busy for next cycle
@@ -464,8 +450,7 @@ describe("opencode-auto-continue integration", () => {
 
     // Wait for nudge delay
     await vi.advanceTimersByTimeAsync(200);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     // Should still send nudge — question detection was removed from nudge path
     // (plugin nudges regardless of whether AI is asking a question)
@@ -503,20 +488,12 @@ describe("opencode-auto-continue integration", () => {
     
     // Wait for stall
     await vi.advanceTimersByTimeAsync(1100);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     // Trigger continue
     await plugin.event({ event: { type: "session.status", properties: { sessionID: "test-session", status: { type: "idle" } } } });
     await vi.advanceTimersByTimeAsync(200);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     // Should have sent tool-text recovery prompt
     expect(mockPrompt).toHaveBeenCalled();
