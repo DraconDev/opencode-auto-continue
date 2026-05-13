@@ -416,15 +416,14 @@ describe("shared.ts utilities", () => {
       expect(result.idleCleanup).toBe(false);
     });
 
-    it("should keep shared and extracted config defaults in sync", async () => {
-      const shared = await import('../shared.js');
-      const extracted = await import('../config.js');
+    it("should keep config defaults consistent", async () => {
+      const { DEFAULT_CONFIG } = await import('../config.js');
 
-      expect(shared.DEFAULT_CONFIG.sessionMonitorEnabled).toBe(extracted.DEFAULT_CONFIG.sessionMonitorEnabled);
-      expect(shared.DEFAULT_CONFIG.orphanWaitMs).toBe(extracted.DEFAULT_CONFIG.orphanWaitMs);
-      expect(shared.DEFAULT_CONFIG.subagentWaitMs).toBe(extracted.DEFAULT_CONFIG.subagentWaitMs);
-      expect(shared.DEFAULT_CONFIG.idleCleanupMs).toBe(extracted.DEFAULT_CONFIG.idleCleanupMs);
-      expect(shared.DEFAULT_CONFIG.idleSessionTimeoutMs).toBe(extracted.DEFAULT_CONFIG.idleSessionTimeoutMs);
+      expect(DEFAULT_CONFIG.sessionMonitorEnabled).toBe(true);
+      expect(DEFAULT_CONFIG.orphanWaitMs).toBe(15000);
+      expect(DEFAULT_CONFIG.subagentWaitMs).toBe(15000);
+      expect(DEFAULT_CONFIG.idleCleanupMs).toBe(600000);
+      expect(DEFAULT_CONFIG.idleSessionTimeoutMs).toBe(600000);
     });
 
     it("should normalize documented aliases in extracted config module", async () => {
