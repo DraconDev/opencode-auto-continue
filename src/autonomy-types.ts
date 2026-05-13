@@ -174,7 +174,7 @@ export interface TaskGraph {
   root: TaskNode;
   
   /** All nodes by ID for quick lookup */
-  nodes: Map<string, TaskNode>;
+  nodes: Record<string, TaskNode>;
   
   /** Current depth of the graph */
   maxDepth: number;
@@ -667,8 +667,8 @@ export interface MetaCognitiveState {
   // System-level metrics
   globalRecoveryRate: number;
   averageTimeToCompletion: number;
-  strategyPerformance: Map<string, number>;
-  parameterEffectiveness: Map<string, number>;
+  strategyPerformance: Record<string, number>;
+  parameterEffectiveness: Record<string, number>;
   
   // Trends
   recoveryTrend: EffectivenessTrend;
