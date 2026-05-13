@@ -511,9 +511,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           const totalMsgTokens = (msgTokens.input || 0) + (msgTokens.output || 0) + (msgTokens.reasoning || 0);
           if (totalMsgTokens > 0) {
             // AssistantMessage.tokens represents tokens for this specific message
-            // We accumulate to get a rough total (this will be an overestimate since
-            // it counts all messages, not just the ones in context window)
-            s.estimatedTokens += totalMsgTokens;
+            // Use max to avoid double-counting across multiple messages
+            s.estimatedTokens = Math.max(s.estimatedTokens, totalMsgTokens);
             log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
           }
 

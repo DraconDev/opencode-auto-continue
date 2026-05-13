@@ -305,6 +305,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     const s = sessions.get(sessionId);
     if (s) {
       s.lastProgressAt = Date.now();
+      s.lastOutputAt = Date.now();
     }
   }
 
