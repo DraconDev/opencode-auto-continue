@@ -11,8 +11,7 @@ import { DEFAULT_CONFIG, validateConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
 import { createSession } from "./session-state.js";
 
-// Re-exports for downstream consumers (maintains backward compatibility)
-// These are already imported locally above, so we just re-export them.
+// Re-exports for backward compatibility — import directly from ./config.js or ./session-state.js
 export type { PluginConfig, SessionState };
 export { DEFAULT_CONFIG, validateConfig, createSession };
 

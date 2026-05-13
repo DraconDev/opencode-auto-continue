@@ -2,17 +2,14 @@ import type { Plugin } from "@opencode-ai/plugin";
 import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import type { TypedPluginInput } from "./types.js";
+import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
+import { type SessionState, createSession } from "./session-state.js";
 import {
-  type SessionState,
-  type PluginConfig,
-  DEFAULT_CONFIG,
-  validateConfig,
   PLAN_PATTERNS,
   isPlanContent,
   estimateTokens,
   formatDuration,
   parseTokensFromError,
-  createSession,
   updateProgress,
   formatMessage,
   safeHook,
