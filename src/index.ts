@@ -422,6 +422,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   terminal.registerStatusLineHook();
 
   const staleTypes = [
+    "session.error",
     "session.ended",
     "session.deleted"
   ];
@@ -433,7 +434,92 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
       if (event?.type === "session.error") {
-        await handleSessionError(e, sid);
+        const err = e?.properties?.error;
+        log('session.error:', err?.name, err?.message);
+        if (err?.name === "MessageAbortedError") {
+          const s = sessions.get(sid);
+          if (s?.aborting) {
+            log('session abort was plugin-initiated, keeping recovery enabled:', sid);
+            clearTimer(sid);
+            writeStatusFile(sid);
+            return;
+          }
+          if (s) {
+            s.userCancelled = true;
+            s.lastKnownStatus = 'error';
+            nudge.pauseNudge(sid);
+          }
+          log('user cancelled session:', sid);
+        } else if (compaction.isTokenLimitError(err)) {
+          const s = sessions.get(sid);
+          if (s) {
+            s.tokenLimitHits++;
+            
+            // Parse exact token counts from error message
+            const parsedTokens = parseTokensFromError(err);
+            if (parsedTokens) {
+              s.estimatedTokens = Math.max(s.estimatedTokens, parsedTokens.total);
+              log('parsed tokens from error:', parsedTokens.total, 'input:', parsedTokens.input, 'output:', parsedTokens.output, 'session:', sid);
+            }
+            
+            log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
+            
+            // Show token limit toast
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Token Limit Reached",
+                    message: `Compacting context to free up tokens (hit #${s.tokenLimitHits})...`,
+                    variant: "warning",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            
+            // Attempt emergency compaction asynchronously
+            compaction.forceCompact(sid).then(async (compacted) => {
+              // FIX 4: Check session still exists before accessing state
+              if (!sessions.has(sid)) {
+                log('session deleted during emergency compaction, skipping continue:', sid);
+                return;
+              }
+              const currentSession = sessions.get(sid)!;
+              if (compacted) {
+                log('emergency compaction succeeded for session:', sid);
+                // Queue a short continue after emergency compaction
+                // Use plan-aware message if session was planning
+                currentSession.needsContinue = true;
+                currentSession.continueMessageText = currentSession.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+                await review.sendContinue(sid);
+              } else {
+                log('emergency compaction failed for session:', sid);
+                // Show compaction failure toast
+                if (config.showToasts) {
+                  try {
+                    input.client.tui.showToast({
+                      query: { directory: input.directory || "" },
+                      body: {
+                        title: "Compaction Failed",
+                        message: "Could not free up tokens. Session may be stuck.",
+                        variant: "error",
+                      },
+                    }).catch(() => {});
+                  } catch (e) {
+                    // ignore toast errors
+                  }
+                }
+              }
+            }).catch((e) => {
+              log('emergency compaction error:', e);
+            });
+          }
+        }
+        clearTimer(sid);
+        writeStatusFile(sid);
         return;
       }
 
@@ -459,42 +545,456 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "message.updated") {
-        await handleMessageUpdated(e, sid);
+        const info = e?.properties?.info;
+        const isSynthetic = isSyntheticMessageEvent(e);
+        if (info?.role === "user" && isSynthetic) {
+          log('ignoring synthetic user message update:', sid);
+          writeStatusFile(sid);
+          return;
+        }
+        if (info?.role === "user" && info?.id) {
+          const s = getSession(sid);
+          if (s.lastUserMessageId !== info.id) {
+            s.lastUserMessageId = info.id;
+            s.autoSubmitCount = 0;
+            s.attempts = 0;
+            s.backoffAttempts = 0;
+            s.lastNudgeAt = 0; // Prevent false "Session Resumed" toast
+            s.lastContinueAt = 0; // Prevent false "Recovery Successful" toast
+            nudge.resetNudge(sid);
+            log('user message detected, resetting counters:', sid);
+          }
+        }
+        // Track actual tokens from assistant messages
+        if (info?.role === "assistant" && info?.tokens) {
+          const s = getSession(sid);
+          const msgTokens = info.tokens;
+          const totalMsgTokens = (msgTokens.input || 0) + (msgTokens.output || 0) + (msgTokens.reasoning || 0);
+          if (totalMsgTokens > 0) {
+            // AssistantMessage.tokens represents tokens for this specific message
+            // We accumulate to get a rough total (this will be an overestimate since
+            // it counts all messages, not just the ones in context window)
+            s.estimatedTokens += totalMsgTokens;
+            log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
+          }
+
+        }
+        writeStatusFile(sid);
         return;
       }
 
       if (event?.type === "session.status") {
-        await handleSessionStatus(e, sid);
+        const status = e?.properties?.status;
+        log('session.status:', sid, status?.type);
+        const s = getSession(sid);
+        
+        if (status?.type === "busy" || status?.type === "retry") {
+          // NOTE: We do NOT call updateProgress() here because "busy" status
+          // pings don't mean actual progress. Only real output (text, tools, etc.)
+          // should reset the progress timer. This prevents the "busy but dead"
+          // stall where the AI is stuck but keeps reporting busy.
+          sessionMonitor.touchSession(sid);
+          s.userCancelled = false;
+          if (s.actionStartedAt === 0) {
+            s.actionStartedAt = Date.now();
+          }
+          
+          // Schedule recovery timer for normal stall detection
+          // (lastProgressAt is NOT updated, so timer will fire based on actual output time)
+          if (!s.planning && !s.compacting) {
+            scheduleRecovery(sid, config.stallTimeoutMs);
+          }
+          
+          // Check for busy-but-dead: session claims busy but no actual output for too long
+          const timeSinceOutput = Date.now() - s.lastOutputAt;
+          if (timeSinceOutput > config.busyStallTimeoutMs) {
+            log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Session Stuck",
+                    message: `Session busy but no output for ${Math.round(timeSinceOutput / 1000)}s. Forcing recovery...`,
+                    variant: "warning",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
+          }
+          
+          // Show "Session Resumed" toast if progress detected after recent nudge
+          if (s.lastNudgeAt > 0 && Date.now() - s.lastNudgeAt < 30000) {
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Session Resumed",
+                    message: "The AI has resumed working after the nudge.",
+                    variant: "info",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            s.lastNudgeAt = 0; // Reset to avoid duplicate toasts
+          }
+          // Show recovery success toast if AI resumes after continue
+          if (s.lastContinueAt > 0 && Date.now() - s.lastContinueAt < 30000) {
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Recovery Successful",
+                    message: "The AI has resumed working after recovery.",
+                    variant: "success",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+            s.lastContinueAt = 0; // Reset to avoid duplicate toasts
+          }
+          // NOTE: s.planning is NOT cleared here — session.status(busy) fires
+          // during plan generation too (the session IS busy). Clearing it would
+          // cause plan-aware continue messages to use the generic message instead.
+          // Instead, s.planning is cleared by message.part.updated when non-plan
+          // progress parts (tool, file, subtask, step-start, step-finish) arrive.
+          if (s.compacting) {
+            log('session busy, clearing compacting flag (compaction likely finished)');
+            s.compacting = false;
+          }
+          // Update terminal title and progress
+          terminal.updateTerminalTitle(sid);
+          terminal.updateTerminalProgress(sid);
+        }
+        if (status?.type === "idle") {
+          s.actionStartedAt = 0;
+          clearTimer(sid);
+        }
+        // Send queued continue when session becomes idle/stable
+        if (status?.type === "idle" && s.needsContinue) {
+          if (s.aborting) {
+            log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
+          } else {
+            log('session idle, sending queued continue for:', sid);
+            await review.sendContinue(sid);
+          }
+        }
+        // Auto-continue when transitioning busy→idle with pending todos
+        // Nudge is always scheduled on idle — injectNudge fetches todos from API
+        // and decides whether to send based on actual pending count
+        if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
+          nudge.scheduleNudge(sid);
+        }
+        // Clear terminal title/progress when session becomes idle
+        if (status?.type === "idle") {
+          terminal.clearTerminalTitle();
+          terminal.clearTerminalProgress();
+        }
+
+        // Only set recovery timer for busy/retry sessions, not for idle
+        // Idle sessions should not have a stall recovery timer running
+        // NOTE: Recovery timer is already scheduled above in the busy/retry branch (lines 609-611)
+        // This duplicate scheduling has been removed to prevent timer cascade.
+
+        writeStatusFile(sid);
         return;
       }
 
       // FIX 19: Replace single-element array with direct comparison
       if (event?.type === "message.part.updated") {
-        await handleMessagePartUpdated(e, sid);
+        log('progress event:', event?.type, sid);
+        const s = getSession(sid);
+
+        if (event?.type === "message.part.updated") {
+          const part = e?.properties?.part;
+          const partType = part?.type;
+          
+          // CRITICAL: Ignore synthetic messages to prevent infinite loops
+          if (part?.synthetic === true) {
+            log('ignoring synthetic message part');
+            return;
+          }
+          
+          const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
+          log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
+          if (isRealProgress) {
+            updateProgress(s);
+            sessionMonitor.touchSession(sid);
+            s.attempts = 0;
+            s.userCancelled = false;
+            // Track part type for stall pattern detection
+            s.lastStallPartType = partType || "unknown";
+            
+            // Track actual output for busy-but-dead detection
+            s.lastOutputAt = Date.now();
+            
+            // Track text content length to detect even small changes
+            if (partType === "text" || partType === "reasoning") {
+              const text = e?.properties?.part?.text || "";
+              if (text.length > s.lastOutputLength) {
+                s.lastOutputLength = text.length;
+                log('output tracked: text length', text.length, 'session:', sid);
+              }
+            } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
+              // Non-text output also counts
+              s.lastOutputLength++;
+              log('output tracked:', partType, 'session:', sid);
+            }
+            
+            // FIX 5: Estimate tokens only for parts without actual token counts.
+            // Text/reasoning parts are counted via message.updated (actual tokens).
+            // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
+            let partText = "";
+            if (partType === "tool") {
+              partText = JSON.stringify(e?.properties?.part) || "";
+            } else if (partType === "file") {
+              partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
+            } else if (partType === "subtask") {
+              partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
+            } else if (partType === "step-start") {
+              partText = e?.properties?.part?.name || "";
+            }
+            
+            if (partText) {
+              // FIX 5: Use configurable multiplier instead of hardcoded ×2
+              const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
+              s.estimatedTokens += estimatedTokens;
+            }
+            // Extract actual tokens from step-finish parts (most accurate source)
+            if (partType === "step-finish" && part?.tokens) {
+              const stepTokens = part.tokens;
+              const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
+              if (totalStepTokens > 0) {
+                // step-finish tokens represent the actual tokens used in this completion step
+                // This is the most accurate token count available
+                s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
+                log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
+              }
+            }
+          }
+
+          // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
+          if (partType === "compaction") {
+            log('compaction started, pausing stall monitoring');
+            s.compacting = true;
+          }
+
+          // Handle text parts for plan detection
+          if (partType === "text") {
+            const partText = e?.properties?.part?.text as string | undefined;
+            if (partText) {
+              if (isPlanContent(partText)) {
+                log('plan detected in updated text part, pausing stall monitoring');
+                s.planning = true;
+                s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+                // Schedule planning timeout recovery
+                clearTimer(sid);
+                scheduleRecovery(sid, config.planningTimeoutMs);
+              }
+            }
+          }
+
+          // Clear plan flag on non-plan progress (tool calls, file ops, step transitions).
+          // These indicate the model has moved from planning to execution, so:
+          // 1. Stall monitoring resumes (planning pauses it)
+          // 2. Continue messages use generic text instead of plan-aware message
+          if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
+            log('non-plan progress detected, clearing plan flag');
+            s.planning = false;
+            // Schedule normal recovery now that planning is done
+            scheduleRecovery(sid, config.stallTimeoutMs);
+          }
+        }
+
+        // Check if this is a delta update containing plan content
+        const deltaText = e?.properties?.delta as string | undefined;
+        if (deltaText) {
+          s.planBuffer = (s.planBuffer + deltaText).slice(-200);
+          if (isPlanContent(s.planBuffer)) {
+            log('plan detected in delta, pausing stall monitoring — user must address');
+            s.planning = true;
+            s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
+            s.planBuffer = '';
+            // Schedule planning timeout recovery instead of leaving timer cleared
+            clearTimer(sid);
+            scheduleRecovery(sid, config.planningTimeoutMs);
+          }
+        }
+
+        // Only schedule normal recovery if not planning
+        if (!s.planning && !s.compacting) {
+          clearTimer(sid);
+          scheduleRecovery(sid, config.stallTimeoutMs);
+        } else if (s.planning && !s.timer) {
+          // Ensure planning has a timeout timer
+          scheduleRecovery(sid, config.planningTimeoutMs);
+        }
+        writeStatusFile(sid);
         return;
       }
 
       if (event?.type === "message.created" || event?.type === "message.part.added") {
-        await handleMessageCreated(e, sid);
+        // Check if this is a real user message (not our synthetic prompt)
+        const msgRole = e?.properties?.info?.role;
+        const isSynthetic = isSyntheticMessageEvent(e);
+        const isUserMessage = msgRole === "user" && !isSynthetic;
+
+        if (isSynthetic) {
+          log('ignoring synthetic message activity event:', event?.type, sid);
+          writeStatusFile(sid);
+          return;
+        }
+        
+        if (isUserMessage) {
+          // User sent a message - cancel any queued continue and process normally
+          const s = sessions.get(sid);
+          if (s && s.needsContinue) {
+            log('user message during recovery, cancelling queued continue');
+            s.needsContinue = false;
+            s.continueMessageText = '';
+          }
+        } else {
+          // Non-user message (likely our synthetic prompt) - check if we're recovering
+          const s = sessions.get(sid);
+          if (s && s.needsContinue) {
+            log('ignoring synthetic message event during recovery:', event?.type);
+            return;
+          }
+        }
+        
+        log('activity event:', event?.type, sid, 'role:', msgRole);
+        const s = getSession(sid);
+        
+        // Track message count and estimate tokens for proactive compaction
+        if (isUserMessage) {
+          s.messageCount++;
+          // Estimate tokens from message text (only when actual tokens not available)
+          const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+          const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
+          s.estimatedTokens += estimatedTokens;
+          log('message count incremented:', s.messageCount, 'estimated tokens added:', estimatedTokens, 'total:', s.estimatedTokens);
+        } else {
+          // Also estimate tokens from assistant/tool responses (only when actual tokens not available)
+          const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+          if (msgText && msgRole !== 'assistant') {
+            const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
+            s.estimatedTokens += estimatedTokens;
+          }
+          // Track actual output for busy-but-dead detection (assistant messages are real output)
+          s.lastOutputAt = Date.now();
+          if (msgText && msgText.length > s.lastOutputLength) {
+            s.lastOutputLength = msgText.length;
+          }
+        }
+        
+        updateProgress(s);
+        s.attempts = 0;
+        s.userCancelled = false;
+        if (s.planning && isUserMessage) {
+          log('user sent message, clearing plan flag');
+          s.planning = false;
+        }
+        if (s.compacting) {
+          log('activity after compaction, clearing compacting flag');
+          s.compacting = false;
+        }
+        clearTimer(sid);
+        if (!s.planning && !s.compacting) {
+          scheduleRecovery(sid, config.stallTimeoutMs);
+        }
+        writeStatusFile(sid);
         return;
       }
 
       if (event?.type === "todo.updated") {
-        await handleTodoUpdated(e, sid);
+        const todos = e?.properties?.todos;
+        if (!Array.isArray(todos)) return;
+        
+        const s = getSession(sid);
+        const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
+        const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
+        
+        // Track open todos for nudging
+        s.hasOpenTodos = hasPending;
+        s.lastKnownTodos = todos;
+        
+        // Handle review on completion
+        if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
+          if (s.reviewDebounceTimer) {
+            clearTimeout(s.reviewDebounceTimer);
+          }
+          s.reviewDebounceTimer = setTimeout(() => {
+            s.reviewDebounceTimer = null;
+            review.triggerReview(sid);
+          }, config.reviewDebounceMs);
+        } else if (!allCompleted && s.reviewDebounceTimer) {
+          clearTimeout(s.reviewDebounceTimer);
+          s.reviewDebounceTimer = null;
+        }
+
+        // FIX 7: Reset reviewFired when new pending todos appear after review was fired
+        // This enables the test-fix loop: review creates fix todos → review fires again
+        if (hasPending && s.reviewFired) {
+          log('new pending todos detected after review, resetting review flag:', sid);
+          s.reviewFired = false;
+        }
+
+        // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
+        writeStatusFile(sid);
         return;
       }
 
       // session.idle fires when the model stops generating and goes idle
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
-        await handleSessionIdle(e, sid);
+        const s = getSession(sid);
+        clearTimer(sid);
+        if (s.needsContinue) {
+          if (s.aborting) {
+            log('session.idle while recovery is finalizing, recovery will send queued continue for:', sid);
+          } else {
+            log('session.idle, sending queued continue for:', sid);
+            await review.sendContinue(sid);
+          }
+          writeStatusFile(sid);
+          return;
+        }
+        nudge.scheduleNudge(sid);
+        writeStatusFile(sid);
         return;
       }
 
       // session.compacted fires when context compaction completes
       // The session is still active after compaction, so preserve state
       if (event?.type === "session.compacted") {
-        await handleSessionCompacted(e, sid);
+        const s = getSession(sid);
+        log('session compacted, clearing compacting flag:', sid);
+        s.compacting = false;
+        s.lastCompactionAt = Date.now();
+        s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
+        // Reset recovery counters since we just freed context space
+        s.attempts = 0;
+        s.backoffAttempts = 0;
+        // Restart stall timer since we just freed context
+        clearTimer(sid);
+        if (!s.planning && !s.compacting) {
+          // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
+          scheduleRecovery(sid, config.stallTimeoutMs);
+        }
+        // FIX 3: Queue and send continue after compaction to resume work
+        s.needsContinue = true;
+        s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+        review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
+        writeStatusFile(sid);
         return;
       }
 
