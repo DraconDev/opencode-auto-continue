@@ -426,6 +426,133 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     "session.deleted"
   ];
 
+  async function handleSessionError(e: any, sid: string): Promise<void> {
+    const err = e?.properties?.error;
+    log('session.error:', err?.name, err?.message);
+    if (err?.name === "MessageAbortedError") {
+      const s = sessions.get(sid);
+      if (s?.aborting) {
+        log('session abort was plugin-initiated, keeping recovery enabled:', sid);
+        clearTimer(sid);
+        writeStatusFile(sid);
+        return;
+      }
+      if (s) {
+        s.userCancelled = true;
+        s.lastKnownStatus = 'error';
+        nudge.pauseNudge(sid);
+      }
+      log('user cancelled session:', sid);
+    } else if (compaction.isTokenLimitError(err)) {
+      const s = sessions.get(sid);
+      if (s) {
+        s.tokenLimitHits++;
+
+        // Parse exact token counts from error message
+        const parsedTokens = parseTokensFromError(err);
+        if (parsedTokens) {
+          s.estimatedTokens = Math.max(s.estimatedTokens, parsedTokens.total);
+          log('parsed tokens from error:', parsedTokens.total, 'input:', parsedTokens.input, 'output:', parsedTokens.output, 'session:', sid);
+        }
+
+        log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
+
+        // Show token limit toast
+        if (config.showToasts) {
+          try {
+            input.client.tui.showToast({
+              query: { directory: input.directory || "" },
+              body: {
+                title: "Token Limit Reached",
+                message: `Compacting context to free up tokens (hit #${s.tokenLimitHits})...`,
+                variant: "warning",
+              },
+            }).catch(() => {});
+          } catch (e) {
+            // ignore toast errors
+          }
+        }
+
+        // Attempt emergency compaction asynchronously
+        compaction.forceCompact(sid).then(async (compacted) => {
+          // FIX 4: Check session still exists before accessing state
+          if (!sessions.has(sid)) {
+            log('session deleted during emergency compaction, skipping continue:', sid);
+            return;
+          }
+          const currentSession = sessions.get(sid)!;
+          if (compacted) {
+            log('emergency compaction succeeded for session:', sid);
+            // Queue a short continue after emergency compaction
+            // Use plan-aware message if session was planning
+            currentSession.needsContinue = true;
+            currentSession.continueMessageText = currentSession.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+            await review.sendContinue(sid);
+          } else {
+            log('emergency compaction failed for session:', sid);
+            // Show compaction failure toast
+            if (config.showToasts) {
+              try {
+                input.client.tui.showToast({
+                  query: { directory: input.directory || "" },
+                  body: {
+                    title: "Compaction Failed",
+                    message: "Could not free up tokens. Session may be stuck.",
+                    variant: "error",
+                  },
+                }).catch(() => {});
+              } catch (e) {
+                // ignore toast errors
+              }
+            }
+          }
+        }).catch((e) => {
+          log('emergency compaction error:', e);
+        });
+      }
+    }
+    clearTimer(sid);
+    writeStatusFile(sid);
+  }
+
+  async function handleMessageUpdated(e: any, sid: string): Promise<void> {
+    const info = e?.properties?.info;
+    const isSynthetic = isSyntheticMessageEvent(e);
+    if (info?.role === "user" && isSynthetic) {
+      log('ignoring synthetic user message update:', sid);
+      writeStatusFile(sid);
+      return;
+    }
+    if (info?.role === "user" && info?.id) {
+      const s = getSession(sid);
+      if (s.lastUserMessageId !== info.id) {
+        s.lastUserMessageId = info.id;
+        s.autoSubmitCount = 0;
+        s.attempts = 0;
+        s.backoffAttempts = 0;
+        s.lastNudgeAt = 0; // Prevent false "Session Resumed" toast
+        s.lastContinueAt = 0; // Prevent false "Recovery Successful" toast
+        nudge.resetNudge(sid);
+        log('user message detected, resetting counters:', sid);
+      }
+    }
+    // Track actual tokens from assistant messages
+    if (info?.role === "assistant" && info?.tokens) {
+      const s = getSession(sid);
+      const msgTokens = info.tokens;
+      const totalMsgTokens = (msgTokens.input || 0) + (msgTokens.output || 0) + (msgTokens.reasoning || 0);
+      if (totalMsgTokens > 0) {
+        // AssistantMessage.tokens represents tokens for this specific message
+        // We accumulate to get a rough total (this will be an overestimate since
+        // it counts all messages, not just the ones in context window)
+        s.estimatedTokens += totalMsgTokens;
+        log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
+      }
+
+    }
+    writeStatusFile(sid);
+  }
+
   return {
     event: async ({ event }: { event: any }) => {
       await safeHook("event", async () => {
@@ -433,92 +560,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID || "default";
 
       if (event?.type === "session.error") {
-        const err = e?.properties?.error;
-        log('session.error:', err?.name, err?.message);
-        if (err?.name === "MessageAbortedError") {
-          const s = sessions.get(sid);
-          if (s?.aborting) {
-            log('session abort was plugin-initiated, keeping recovery enabled:', sid);
-            clearTimer(sid);
-            writeStatusFile(sid);
-            return;
-          }
-          if (s) {
-            s.userCancelled = true;
-            s.lastKnownStatus = 'error';
-            nudge.pauseNudge(sid);
-          }
-          log('user cancelled session:', sid);
-        } else if (compaction.isTokenLimitError(err)) {
-          const s = sessions.get(sid);
-          if (s) {
-            s.tokenLimitHits++;
-            
-            // Parse exact token counts from error message
-            const parsedTokens = parseTokensFromError(err);
-            if (parsedTokens) {
-              s.estimatedTokens = Math.max(s.estimatedTokens, parsedTokens.total);
-              log('parsed tokens from error:', parsedTokens.total, 'input:', parsedTokens.input, 'output:', parsedTokens.output, 'session:', sid);
-            }
-            
-            log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
-            
-            // Show token limit toast
-            if (config.showToasts) {
-              try {
-                input.client.tui.showToast({
-                  query: { directory: input.directory || "" },
-                  body: {
-                    title: "Token Limit Reached",
-                    message: `Compacting context to free up tokens (hit #${s.tokenLimitHits})...`,
-                    variant: "warning",
-                  },
-                }).catch(() => {});
-              } catch (e) {
-                // ignore toast errors
-              }
-            }
-            
-            // Attempt emergency compaction asynchronously
-            compaction.forceCompact(sid).then(async (compacted) => {
-              // FIX 4: Check session still exists before accessing state
-              if (!sessions.has(sid)) {
-                log('session deleted during emergency compaction, skipping continue:', sid);
-                return;
-              }
-              const currentSession = sessions.get(sid)!;
-              if (compacted) {
-                log('emergency compaction succeeded for session:', sid);
-                // Queue a short continue after emergency compaction
-                // Use plan-aware message if session was planning
-                currentSession.needsContinue = true;
-                currentSession.continueMessageText = currentSession.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
-                await review.sendContinue(sid);
-              } else {
-                log('emergency compaction failed for session:', sid);
-                // Show compaction failure toast
-                if (config.showToasts) {
-                  try {
-                    input.client.tui.showToast({
-                      query: { directory: input.directory || "" },
-                      body: {
-                        title: "Compaction Failed",
-                        message: "Could not free up tokens. Session may be stuck.",
-                        variant: "error",
-                      },
-                    }).catch(() => {});
-                  } catch (e) {
-                    // ignore toast errors
-                  }
-                }
-              }
-            }).catch((e) => {
-              log('emergency compaction error:', e);
-            });
-          }
-        }
-        clearTimer(sid);
-        writeStatusFile(sid);
+        await handleSessionError(e, sid);
         return;
       }
 
@@ -544,41 +586,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "message.updated") {
-        const info = e?.properties?.info;
-        const isSynthetic = isSyntheticMessageEvent(e);
-        if (info?.role === "user" && isSynthetic) {
-          log('ignoring synthetic user message update:', sid);
-          writeStatusFile(sid);
-          return;
-        }
-        if (info?.role === "user" && info?.id) {
-          const s = getSession(sid);
-          if (s.lastUserMessageId !== info.id) {
-            s.lastUserMessageId = info.id;
-            s.autoSubmitCount = 0;
-            s.attempts = 0;
-            s.backoffAttempts = 0;
-            s.lastNudgeAt = 0; // Prevent false "Session Resumed" toast
-            s.lastContinueAt = 0; // Prevent false "Recovery Successful" toast
-            nudge.resetNudge(sid);
-            log('user message detected, resetting counters:', sid);
-          }
-        }
-        // Track actual tokens from assistant messages
-        if (info?.role === "assistant" && info?.tokens) {
-          const s = getSession(sid);
-          const msgTokens = info.tokens;
-          const totalMsgTokens = (msgTokens.input || 0) + (msgTokens.output || 0) + (msgTokens.reasoning || 0);
-          if (totalMsgTokens > 0) {
-            // AssistantMessage.tokens represents tokens for this specific message
-            // We accumulate to get a rough total (this will be an overestimate since
-            // it counts all messages, not just the ones in context window)
-            s.estimatedTokens += totalMsgTokens;
-            log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
-          }
-
-        }
-        writeStatusFile(sid);
+        await handleMessageUpdated(e, sid);
         return;
       }
 
