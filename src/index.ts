@@ -363,8 +363,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
   sessionMonitor.start();
 
-  terminal.registerStatusLineHook();
-
 
   return {
     event: async ({ event }: { event: any }) => {
