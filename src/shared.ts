@@ -11,10 +11,6 @@ import { DEFAULT_CONFIG, validateConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
 import { createSession } from "./session-state.js";
 
-// Re-exports for backward compatibility — import directly from ./config.js or ./session-state.js
-export type { PluginConfig, SessionState };
-export { DEFAULT_CONFIG, validateConfig, createSession };
-
 // Cache for model context limit to avoid re-reading opencode.json
 // Encapsulated in a class to avoid module-level state pollution and improve testability
 interface ModelCache {
