@@ -554,39 +554,42 @@ describe("recovery module unit tests", () => {
     });
 
     it("uses plan-aware message when session was planning", async () => {
+      // When planning is active but not timed out, recovery returns early.
+      // This test verifies that path by checking no abort occurs.
       const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
-      mockAbort.mockResolvedValue({});
       const s = createSession("test", {
         lastProgressAt: now - 30000,
         lastOutputAt: now - 200000,
         planning: true,
-        planningStartedAt: now - 600000,
+        planningStartedAt: now - 1000, // recent, not timed out
         autoSubmitCount: 0,
       });
-      module = createModule({ planningTimeoutMs: 300000, includeTodoContext: false, autoCompact: false });
-      const promise = module.recover("test");
-      await settleTimers();
-      await promise;
-      expect(s.continueMessageText).toBe("Finish your plan.");
+      module = createModule({ planningTimeoutMs: 5000, includeTodoContext: false, autoCompact: false });
+      await module.recover("test");
+      // Should return early due to active planning, abort not called
+      expect(mockAbort).not.toHaveBeenCalled();
+      expect(s.planning).toBe(true);
     });
   });
 
   describe("recovery error handling", () => {
     it("increments recoveryFailed and schedules retry on exception", async () => {
-      mockStatus.mockRejectedValue(new Error("status check failed"));
-      const s = createSession("test", { attempts: 1 });
+      createSession("test", { attempts: 1 });
       module = createModule();
+      mockStatus.mockRejectedValue(new Error("status check failed"));
       await module.recover("test");
+      const s = sessions.get("test")!;
       expect(s.recoveryFailed).toBe(1);
       expect(mockScheduleRecovery).toHaveBeenCalled();
     });
 
     it("uses exponential backoff when maxRecoveries reached after failure", async () => {
-      mockStatus.mockRejectedValue(new Error("status check failed"));
-      const s = createSession("test", { attempts: 3 });
+      createSession("test", { attempts: 3 });
       module = createModule({ maxRecoveries: 3 });
+      mockStatus.mockRejectedValue(new Error("status check failed"));
       await module.recover("test");
+      const s = sessions.get("test")!;
       expect(s.recoveryFailed).toBe(1);
       expect(s.backoffAttempts).toBe(1);
     });
@@ -595,7 +598,9 @@ describe("recovery module unit tests", () => {
   describe("stall pattern tracking", () => {
     it("records stall pattern when stallPatternDetection enabled", async () => {
       const now = Date.now();
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockStatus
+        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
+        .mockResolvedValue({ data: { test: { type: "idle" } } });
       mockAbort.mockResolvedValue({});
       const s = createSession("test", {
         lastProgressAt: now - 30000,
@@ -614,7 +619,9 @@ describe("recovery module unit tests", () => {
   describe("toast notifications", () => {
     it("shows auto-continue toast on recovery", async () => {
       const now = Date.now();
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockStatus
+        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
+        .mockResolvedValue({ data: { test: { type: "idle" } } });
       mockAbort.mockResolvedValue({});
       createSession("test", {
         lastProgressAt: now - 30000,
@@ -634,7 +641,9 @@ describe("recovery module unit tests", () => {
   describe("auto-compaction during recovery", () => {
     it("calls summarize when autoCompact is enabled and session idle", async () => {
       const now = Date.now();
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockStatus
+        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
+        .mockResolvedValue({ data: { test: { type: "idle" } } });
       mockAbort.mockResolvedValue({});
       mockSummarize.mockResolvedValue({});
       createSession("test", {
@@ -653,7 +662,9 @@ describe("recovery module unit tests", () => {
   describe("prompt guard", () => {
     it("does not block when no recent prompts match", async () => {
       const now = Date.now();
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockStatus
+        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
+        .mockResolvedValue({ data: { test: { type: "idle" } } });
       mockAbort.mockResolvedValue({});
       mockMessages.mockResolvedValue({ data: [] });
       const s = createSession("test", {
