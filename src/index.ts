@@ -806,6 +806,154 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     writeStatusFile(sid);
   }
 
+  async function handleMessageCreated(e: any, sid: string): Promise<void> {
+    // Check if this is a real user message (not our synthetic prompt)
+    const msgRole = e?.properties?.info?.role;
+    const isSynthetic = isSyntheticMessageEvent(e);
+    const isUserMessage = msgRole === "user" && !isSynthetic;
+
+    if (isSynthetic) {
+      log('ignoring synthetic message activity event:', e?.type, sid);
+      writeStatusFile(sid);
+      return;
+    }
+
+    if (isUserMessage) {
+      // User sent a message - cancel any queued continue and process normally
+      const s = sessions.get(sid);
+      if (s && s.needsContinue) {
+        log('user message during recovery, cancelling queued continue');
+        s.needsContinue = false;
+        s.continueMessageText = '';
+      }
+    } else {
+      // Non-user message (likely our synthetic prompt) - check if we're recovering
+      const s = sessions.get(sid);
+      if (s && s.needsContinue) {
+        log('ignoring synthetic message event during recovery:', e?.type);
+        return;
+      }
+    }
+
+    log('activity event:', e?.type, sid, 'role:', msgRole);
+    const s = getSession(sid);
+
+    // Track message count and estimate tokens for proactive compaction
+    if (isUserMessage) {
+      s.messageCount++;
+      // Estimate tokens from message text (only when actual tokens not available)
+      const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+      const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
+      s.estimatedTokens += estimatedTokens;
+      log('message count incremented:', s.messageCount, 'estimated tokens added:', estimatedTokens, 'total:', s.estimatedTokens);
+    } else {
+      // Also estimate tokens from assistant/tool responses (only when actual tokens not available)
+      const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+      if (msgText && msgRole !== 'assistant') {
+        const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
+        s.estimatedTokens += estimatedTokens;
+      }
+      // Track actual output for busy-but-dead detection (assistant messages are real output)
+      s.lastOutputAt = Date.now();
+      if (msgText && msgText.length > s.lastOutputLength) {
+        s.lastOutputLength = msgText.length;
+      }
+    }
+
+    updateProgress(s);
+    s.attempts = 0;
+    s.userCancelled = false;
+    if (s.planning && isUserMessage) {
+      log('user sent message, clearing plan flag');
+      s.planning = false;
+    }
+    if (s.compacting) {
+      log('activity after compaction, clearing compacting flag');
+      s.compacting = false;
+    }
+    clearTimer(sid);
+    if (!s.planning && !s.compacting) {
+      scheduleRecovery(sid, config.stallTimeoutMs);
+    }
+    writeStatusFile(sid);
+  }
+
+  async function handleTodoUpdated(e: any, sid: string): Promise<void> {
+    const todos = e?.properties?.todos;
+    if (!Array.isArray(todos)) return;
+
+    const s = getSession(sid);
+    const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
+    const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
+
+    // Track open todos for nudging
+    s.hasOpenTodos = hasPending;
+    s.lastKnownTodos = todos;
+
+    // Handle review on completion
+    if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
+      if (s.reviewDebounceTimer) {
+        clearTimeout(s.reviewDebounceTimer);
+      }
+      s.reviewDebounceTimer = setTimeout(() => {
+        s.reviewDebounceTimer = null;
+        review.triggerReview(sid);
+      }, config.reviewDebounceMs);
+    } else if (!allCompleted && s.reviewDebounceTimer) {
+      clearTimeout(s.reviewDebounceTimer);
+      s.reviewDebounceTimer = null;
+    }
+
+    // FIX 7: Reset reviewFired when new pending todos appear after review was fired
+    // This enables the test-fix loop: review creates fix todos → review fires again
+    if (hasPending && s.reviewFired) {
+      log('new pending todos detected after review, resetting review flag:', sid);
+      s.reviewFired = false;
+    }
+
+    // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
+    writeStatusFile(sid);
+  }
+
+  async function handleSessionIdle(e: any, sid: string): Promise<void> {
+    const s = getSession(sid);
+    clearTimer(sid);
+    if (s.needsContinue) {
+      if (s.aborting) {
+        log('session.idle while recovery is finalizing, recovery will send queued continue for:', sid);
+      } else {
+        log('session.idle, sending queued continue for:', sid);
+        await review.sendContinue(sid);
+      }
+      writeStatusFile(sid);
+      return;
+    }
+    nudge.scheduleNudge(sid);
+    writeStatusFile(sid);
+  }
+
+  async function handleSessionCompacted(e: any, sid: string): Promise<void> {
+    const s = getSession(sid);
+    log('session compacted, clearing compacting flag:', sid);
+    s.compacting = false;
+    s.lastCompactionAt = Date.now();
+    s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
+    // Reset recovery counters since we just freed context space
+    s.attempts = 0;
+    s.backoffAttempts = 0;
+    // Restart stall timer since we just freed context
+    clearTimer(sid);
+    if (!s.planning && !s.compacting) {
+      // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
+      scheduleRecovery(sid, config.stallTimeoutMs);
+    }
+    // FIX 3: Queue and send continue after compaction to resume work
+    s.needsContinue = true;
+    s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+    review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
+    writeStatusFile(sid);
+  }
+
   return {
     event: async ({ event }: { event: any }) => {
       await safeHook("event", async () => {
@@ -855,158 +1003,26 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }
 
       if (event?.type === "message.created" || event?.type === "message.part.added") {
-        // Check if this is a real user message (not our synthetic prompt)
-        const msgRole = e?.properties?.info?.role;
-        const isSynthetic = isSyntheticMessageEvent(e);
-        const isUserMessage = msgRole === "user" && !isSynthetic;
-
-        if (isSynthetic) {
-          log('ignoring synthetic message activity event:', event?.type, sid);
-          writeStatusFile(sid);
-          return;
-        }
-        
-        if (isUserMessage) {
-          // User sent a message - cancel any queued continue and process normally
-          const s = sessions.get(sid);
-          if (s && s.needsContinue) {
-            log('user message during recovery, cancelling queued continue');
-            s.needsContinue = false;
-            s.continueMessageText = '';
-          }
-        } else {
-          // Non-user message (likely our synthetic prompt) - check if we're recovering
-          const s = sessions.get(sid);
-          if (s && s.needsContinue) {
-            log('ignoring synthetic message event during recovery:', event?.type);
-            return;
-          }
-        }
-        
-        log('activity event:', event?.type, sid, 'role:', msgRole);
-        const s = getSession(sid);
-        
-        // Track message count and estimate tokens for proactive compaction
-        if (isUserMessage) {
-          s.messageCount++;
-          // Estimate tokens from message text (only when actual tokens not available)
-          const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
-          const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
-          s.estimatedTokens += estimatedTokens;
-          log('message count incremented:', s.messageCount, 'estimated tokens added:', estimatedTokens, 'total:', s.estimatedTokens);
-        } else {
-          // Also estimate tokens from assistant/tool responses (only when actual tokens not available)
-          const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
-          if (msgText && msgRole !== 'assistant') {
-            const estimatedTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
-            s.estimatedTokens += estimatedTokens;
-          }
-          // Track actual output for busy-but-dead detection (assistant messages are real output)
-          s.lastOutputAt = Date.now();
-          if (msgText && msgText.length > s.lastOutputLength) {
-            s.lastOutputLength = msgText.length;
-          }
-        }
-        
-        updateProgress(s);
-        s.attempts = 0;
-        s.userCancelled = false;
-        if (s.planning && isUserMessage) {
-          log('user sent message, clearing plan flag');
-          s.planning = false;
-        }
-        if (s.compacting) {
-          log('activity after compaction, clearing compacting flag');
-          s.compacting = false;
-        }
-        clearTimer(sid);
-        if (!s.planning && !s.compacting) {
-          scheduleRecovery(sid, config.stallTimeoutMs);
-        }
-        writeStatusFile(sid);
+        await handleMessageCreated(e, sid);
         return;
       }
 
       if (event?.type === "todo.updated") {
-        const todos = e?.properties?.todos;
-        if (!Array.isArray(todos)) return;
-        
-        const s = getSession(sid);
-        const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
-        const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
-        
-        // Track open todos for nudging
-        s.hasOpenTodos = hasPending;
-        s.lastKnownTodos = todos;
-        
-        // Handle review on completion
-        if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
-          if (s.reviewDebounceTimer) {
-            clearTimeout(s.reviewDebounceTimer);
-          }
-          s.reviewDebounceTimer = setTimeout(() => {
-            s.reviewDebounceTimer = null;
-            review.triggerReview(sid);
-          }, config.reviewDebounceMs);
-        } else if (!allCompleted && s.reviewDebounceTimer) {
-          clearTimeout(s.reviewDebounceTimer);
-          s.reviewDebounceTimer = null;
-        }
-
-        // FIX 7: Reset reviewFired when new pending todos appear after review was fired
-        // This enables the test-fix loop: review creates fix todos → review fires again
-        if (hasPending && s.reviewFired) {
-          log('new pending todos detected after review, resetting review flag:', sid);
-          s.reviewFired = false;
-        }
-
-        // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
-        writeStatusFile(sid);
+        await handleTodoUpdated(e, sid);
         return;
       }
 
       // session.idle fires when the model stops generating and goes idle
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
-        const s = getSession(sid);
-        clearTimer(sid);
-        if (s.needsContinue) {
-          if (s.aborting) {
-            log('session.idle while recovery is finalizing, recovery will send queued continue for:', sid);
-          } else {
-            log('session.idle, sending queued continue for:', sid);
-            await review.sendContinue(sid);
-          }
-          writeStatusFile(sid);
-          return;
-        }
-        nudge.scheduleNudge(sid);
-        writeStatusFile(sid);
+        await handleSessionIdle(e, sid);
         return;
       }
 
       // session.compacted fires when context compaction completes
       // The session is still active after compaction, so preserve state
       if (event?.type === "session.compacted") {
-        const s = getSession(sid);
-        log('session compacted, clearing compacting flag:', sid);
-        s.compacting = false;
-        s.lastCompactionAt = Date.now();
-        s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
-        // Reset recovery counters since we just freed context space
-        s.attempts = 0;
-        s.backoffAttempts = 0;
-        // Restart stall timer since we just freed context
-        clearTimer(sid);
-        if (!s.planning && !s.compacting) {
-          // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
-          scheduleRecovery(sid, config.stallTimeoutMs);
-        }
-        // FIX 3: Queue and send continue after compaction to resume work
-        s.needsContinue = true;
-        s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
-        review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
-        writeStatusFile(sid);
+        await handleSessionCompacted(e, sid);
         return;
       }
 
