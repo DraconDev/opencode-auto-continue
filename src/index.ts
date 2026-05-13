@@ -645,7 +645,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      // FIX 19: Replace single-element array with direct comparison
+      // Part update handler: Replace single-element array with direct comparison
       if (event?.type === "message.part.updated") {
         log('progress event:', event?.type, sid);
         const s = getSession(sid);
