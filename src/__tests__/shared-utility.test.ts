@@ -208,7 +208,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should set initial timestamps", async () => {
-      const { createSession } = await import('../shared.js');
+      const { createSession } = await import('../session-state.js');
 
       const before = Date.now();
       const session = createSession();
@@ -221,7 +221,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should initialize empty arrays and objects", async () => {
-      const { createSession } = await import('../shared.js');
+      const { createSession } = await import('../session-state.js');
 
       const session = createSession();
 
@@ -231,7 +231,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should initialize default values for all counters", async () => {
-      const { createSession } = await import('../shared.js');
+      const { createSession } = await import('../session-state.js');
 
       const session = createSession();
 
@@ -247,7 +247,7 @@ describe("shared.ts utilities", () => {
 
   describe("validateConfig", () => {
     it("should accept valid config", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const result = validateConfig(DEFAULT_CONFIG);
 
@@ -255,7 +255,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject stallTimeoutMs <= waitAfterAbortMs", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, stallTimeoutMs: 100, waitAfterAbortMs: 200 };
       const result = validateConfig(config);
@@ -264,7 +264,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject negative maxRecoveries", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, maxRecoveries: -1 };
       const result = validateConfig(config);
@@ -273,7 +273,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject zero stallTimeoutMs", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, stallTimeoutMs: 0 };
       const result = validateConfig(config);
@@ -282,7 +282,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject negative cooldownMs", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, cooldownMs: -1000 };
       const result = validateConfig(config);
@@ -291,7 +291,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject empty continueMessage", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, continueMessage: "" };
       const result = validateConfig(config);
@@ -300,7 +300,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject negative reviewDebounceMs", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, reviewDebounceMs: -1 };
       const result = validateConfig(config);
@@ -309,7 +309,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject negative proactiveCompactAtTokens", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, proactiveCompactAtTokens: -100 };
       const result = validateConfig(config);
@@ -318,7 +318,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject proactiveCompactAtPercent > 100", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, proactiveCompactAtPercent: 150 };
       const result = validateConfig(config);
@@ -327,7 +327,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject empty shortContinueMessage", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, shortContinueMessage: "   " };
       const result = validateConfig(config);
@@ -336,7 +336,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject empty tokenLimitPatterns", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, tokenLimitPatterns: [] };
       const result = validateConfig(config);
@@ -345,7 +345,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject invalid compactReductionFactor = 0", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, compactReductionFactor: 0 };
       const result = validateConfig(config);
@@ -354,7 +354,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject invalid compactReductionFactor = 1", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, compactReductionFactor: 1 };
       const result = validateConfig(config);
@@ -363,7 +363,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should reject invalid compactReductionFactor > 1", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, compactReductionFactor: 1.5 };
       const result = validateConfig(config);
@@ -372,7 +372,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should accept valid compactReductionFactor = 0.5", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, compactReductionFactor: 0.5 };
       const result = validateConfig(config);
@@ -381,7 +381,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should accept valid compactReductionFactor = 0.99", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, compactReductionFactor: 0.99 };
       const result = validateConfig(config);
@@ -390,7 +390,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should accept valid compactReductionFactor = 0.01", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = { ...DEFAULT_CONFIG, compactReductionFactor: 0.01 };
       const result = validateConfig(config);
@@ -399,7 +399,7 @@ describe("shared.ts utilities", () => {
     });
 
     it("should normalize documented session monitor aliases", async () => {
-      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+      const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const config = {
         ...DEFAULT_CONFIG,
