@@ -333,8 +333,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.nudgeTimer = null;
       }
       s.lastNudgeAt = 0;
+      s.nudgeCount = 0;
+      s.nudgePaused = false;
       s.hasOpenTodos = false;
       s.lastKnownTodos = [];
+      s.lastTodoSnapshot = "";
       s.needsContinue = false;
       s.continueMessageText = '';
       s.continueRetryCount = 0;
@@ -354,15 +357,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.recoveryStartTime = 0;
       s.recoveryTimes = [];
       s.lastStallPartType = '';
-      // FIX 16: Reset missing fields
       s.continueTimestamps = [];
       s.lastAdvisoryAdvice = null;
       s.stallPatterns = {};
+      s.lastPlanItemDescription = "";
       s.nudgeFailureCount = 0;
       s.lastNudgeFailureAt = 0;
       s.continueInProgress = false;
       s.lastContinueAt = 0;
-      // Reset output tracking
       s.lastOutputAt = Date.now();
       s.lastOutputLength = 0;
       s.statusHistory = [];
@@ -411,7 +413,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const aiAdvisor = createAIAdvisor({ config, log, input });
   const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
 
-  const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
+  const { writeStatusFile, clearPendingWrites } = createStatusFileModule({ config, sessions, log });
 
   const compaction = createCompactionModule({ config, sessions, log, input });
 
@@ -1068,6 +1070,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       log('disposing plugin');
       isDisposed = true;
       sessionMonitor.stop();
+      clearPendingWrites();
       unregisterCustomPromptRuntime(customPromptRuntime);
       customPromptRuntimes.clear();
       latestCustomPromptRuntime = null;
@@ -1084,7 +1087,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTimeout(s.nudgeTimer);
           s.nudgeTimer = null;
         }
-
       });
       sessions.clear();
     }

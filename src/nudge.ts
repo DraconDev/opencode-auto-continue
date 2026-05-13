@@ -7,7 +7,7 @@ export interface NudgeDeps {
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
     "showToasts">;
   sessions: Map<string, SessionState>;
-  log: (message: string, ...args: unknown[]) => void;
+  log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
   input: TypedPluginInput;
 }
@@ -50,6 +50,8 @@ export function createNudgeModule(deps: NudgeDeps) {
     cancelNudge(sessionId);
     s.nudgeCount = 0;
     s.nudgePaused = false;
+    s.nudgeFailureCount = 0;
+    s.lastNudgeFailureAt = 0;
     s.lastTodoSnapshot = "";
     log("nudge reset for session:", sessionId);
   }

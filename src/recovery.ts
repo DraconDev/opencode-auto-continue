@@ -307,18 +307,11 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         return;
       }
 
-      // Hallucination loop detection: if 3+ continues in 10min, force abort+resume
+      // Hallucination loop detection: if 3+ continues in 10min, just wait and resume
+      // No need to abort again — session was already aborted above
       if (isHallucinationLoop(s)) {
-        log('hallucination loop detected! forcing abort+resume to break cycle');
-        try {
-          await input.client.session.abort({
-            path: { id: sessionId },
-            query: { directory: input.directory || "" }
-          });
-          await new Promise(r => setTimeout(r, 3000));
-        } catch (e) {
-          log('abort in hallucination loop handler failed:', e);
-        }
+        log('hallucination loop detected! waiting before resume to break cycle');
+        await new Promise(r => setTimeout(r, 3000));
       }
 
       let messageText = config.continueMessage;

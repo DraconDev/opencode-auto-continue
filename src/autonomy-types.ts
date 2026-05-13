@@ -957,5 +957,4 @@ export interface LearningDatabase {
 // EXPORTS
 // ============================================================================
 
-// Re-export common types for convenience
-export { SessionMethodOptions, getResponseData } from "./types.js";
+// Re-export removed to break circular dependency chain

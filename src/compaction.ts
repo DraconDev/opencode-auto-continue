@@ -30,15 +30,8 @@ export function createCompactionModule(deps: CompactionDeps) {
         s.compacting = true;
       }
 
-      // Check if session is busy - summarize requires idle session
-      const preStatus = await input.client.session.status({});
-      const preData = preStatus.data as Record<string, { type: string }>;
-      if (preData[sessionId]?.type === "busy") {
-        log('compaction skipped: session is busy, cannot summarize while generating');
-        if (s) s.compacting = false;
-        return false;
-      }
-
+      // Call summarize directly — if the session is busy, it will fail and be caught below.
+      // This avoids the TOCTOU race of checking status then calling summarize separately.
       await input.client.session.summarize({
         path: { id: sessionId },
         query: { directory: input.directory || "" }

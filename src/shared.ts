@@ -80,9 +80,7 @@ export function invalidateModelLimitCache(): void {
   modelContextCache.invalidate();
 }
 
-export function getCompactionThreshold(modelContextLimit: number | null, config: PluginConfig): number {
-  // Always compact at proactiveCompactAtTokens (default 100k)
-  // The proactiveCompactAtPercent and 200k model distinction were over-engineered
+export function getCompactionThreshold(config: PluginConfig): number {
   return config.proactiveCompactAtTokens;
 }
 
@@ -168,10 +166,11 @@ export function parseTokensFromError(error: any): { total: number; input: number
     return { total, input: total, output: 0 };
   }
   
-  // Pattern 3: "... 264230 tokens ..." (just extract the largest number near "tokens")
-  const looseMatch = message.match(/(\d{4,})\s+tokens?/i);
-  if (looseMatch) {
-    const total = parseInt(looseMatch[1], 10);
+  // Pattern 3: "... 264230 tokens ..." (extract the LAST number near "tokens" to avoid matching limits)
+  const looseMatches = [...message.matchAll(/(\d{4,})\s+tokens?/ig)];
+  if (looseMatches.length > 0) {
+    const last = looseMatches[looseMatches.length - 1];
+    const total = parseInt(last[1], 10);
     return { total, input: total, output: 0 };
   }
   

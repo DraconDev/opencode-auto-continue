@@ -26,10 +26,10 @@ export function createTerminalModule(deps: TerminalDeps) {
     const title = `⏱️ ${formatDuration(actionDuration)} | Last: ${formatDuration(progressAgo)} ago`;
 
     try {
-      // OSC 0: set icon name and window title
-      process.stdout.write(`\x1b]0;${title}\x07`);
-      // OSC 2: set window title (fallback for some terminals)
-      process.stdout.write(`\x1b]2;${title}\x07`);
+      if (process.stdout.isTTY) {
+        process.stdout.write(`\x1b]0;${title}\x07`);
+        process.stdout.write(`\x1b]2;${title}\x07`);
+      }
     } catch {
       // ignore
     }
@@ -38,8 +38,10 @@ export function createTerminalModule(deps: TerminalDeps) {
   function clearTerminalTitle() {
     if (!config.terminalTitleEnabled) return;
     try {
-      process.stdout.write('\x1b]0;opencode\x07');
-      process.stdout.write('\x1b]2;opencode\x07');
+      if (process.stdout.isTTY) {
+        process.stdout.write('\x1b]0;opencode\x07');
+        process.stdout.write('\x1b]2;opencode\x07');
+      }
     } catch {
       // ignore
     }
@@ -61,8 +63,9 @@ export function createTerminalModule(deps: TerminalDeps) {
     const progress = Math.min(Math.floor((progressAgo / config.stallTimeoutMs) * 100), 99);
     
     try {
-      // OSC 9;4;1;p - set progress (mode 1 = normal, p = percentage 0-100)
-      process.stdout.write(`\x1b]9;4;1;${progress}\x07`);
+      if (process.stdout.isTTY) {
+        process.stdout.write(`\x1b]9;4;1;${progress}\x07`);
+      }
     } catch {
       // ignore
     }
@@ -71,8 +74,9 @@ export function createTerminalModule(deps: TerminalDeps) {
   function clearTerminalProgress() {
     if (!config.terminalProgressEnabled) return;
     try {
-      // OSC 9;4;0 - clear progress
-      process.stdout.write('\x1b]9;4;0\x07');
+      if (process.stdout.isTTY) {
+        process.stdout.write('\x1b]9;4;0\x07');
+      }
     } catch {
       // ignore
     }

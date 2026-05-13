@@ -1,8 +1,8 @@
-import { existsSync, writeFileSync, renameSync, appendFileSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, writeFileSync, renameSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
-import { formatDuration, getModelContextLimit, getCompactionThreshold } from "./shared.js";
+import { formatDuration, getCompactionThreshold } from "./shared.js";
 
 export interface StatusFileDeps {
   config: PluginConfig;
@@ -150,10 +150,7 @@ export function createStatusFileModule(deps: StatusFileDeps) {
               successful: s.lastCompactionAt > 0 ? 1 : 0,
               lastCompactAt: s.lastCompactionAt > 0 ? new Date(s.lastCompactionAt).toISOString() : null,
               estimatedTokens: s.estimatedTokens,
-              threshold: getCompactionThreshold(
-                getModelContextLimit(join(process.env.HOME || "/tmp", ".config", "opencode", "opencode.json")),
-                config
-              ),
+              threshold: getCompactionThreshold(config),
             },
             timer: {
               actionDuration: actionDuration > 0 ? formatDuration(actionDuration) : "idle",
@@ -214,5 +211,12 @@ export function createStatusFileModule(deps: StatusFileDeps) {
     }
   }
 
-  return { writeStatusFile };
+  function clearPendingWrites(): void {
+    for (const [id, timeout] of pendingWrites) {
+      clearTimeout(timeout);
+    }
+    pendingWrites.clear();
+  }
+
+  return { writeStatusFile, clearPendingWrites };
 }

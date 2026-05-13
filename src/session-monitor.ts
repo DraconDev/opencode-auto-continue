@@ -169,8 +169,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
             orphanRecoveryCount++;
             recover(id);
           }
-          // Only check the first busy session to avoid multiple recoveries at once
-          break;
+          // Don't break — check ALL busy sessions, not just the first
         }
       }
     }

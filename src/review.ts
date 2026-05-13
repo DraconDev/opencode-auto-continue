@@ -172,6 +172,17 @@ export function createReviewModule(deps: ReviewDeps) {
         if (compacted) {
           log('compaction succeeded, retrying continue with short message');
           await new Promise(r => setTimeout(r, 2000));
+          // Check session is idle before sending prompt
+          try {
+            const statusResult = await input.client.session.status({});
+            const statusData = statusResult.data as Record<string, { type: string }>;
+            if (statusData[sessionId]?.type !== "idle") {
+              log('session not idle after compaction, queueing continue for later:', sessionId);
+              return;
+            }
+          } catch {
+            log('status check after compaction failed, proceeding anyway');
+          }
           try {
             s.messageCount++;
             await input.client.session.prompt({

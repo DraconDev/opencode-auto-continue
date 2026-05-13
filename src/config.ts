@@ -214,10 +214,9 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.maxSessions < 0) addError('maxSessions', `maxSessions must be >= 0, got ${normalized.maxSessions}`);
 
   if (errors.length > 0) {
-    // Build result starting from defaults, then overlay valid user values field by field
+    console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);
     const result = { ...DEFAULT_CONFIG };
     
-    // For each field in normalized, use the normalized value only if the field is valid
     (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
       if (!invalidFields.has(String(key))) {
         (result as any)[key] = normalized[key];

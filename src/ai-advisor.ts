@@ -468,9 +468,10 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
   // Strip Authorization from headers if apiKey was used
   function headersWithoutAuth(headers?: Record<string, string>): Record<string, string> {
     if (!headers) return {};
+    const AUTH_HEADERS = ["authorization", "x-api-key", "x-auth-token", "api-key", "token", "proxy-authorization", "x-proxy-authorization"];
     const result: Record<string, string> = {};
     for (const [key, value] of Object.entries(headers)) {
-      if (key.toLowerCase() !== "authorization") {
+      if (!AUTH_HEADERS.includes(key.toLowerCase())) {
         result[key] = value;
       }
     }
