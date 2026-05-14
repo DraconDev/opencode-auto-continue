@@ -28,6 +28,7 @@ import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
+import { getSessionTokens } from "./tokens.js";
 
 import type { Todo } from "./session-state.js";
 
@@ -330,6 +331,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.planningStartedAt = 0;
       s.messageCount = 0;
       s.estimatedTokens = 0;
+      s.realTokens = 0;
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
       s.hardCompactionInProgress = false;
