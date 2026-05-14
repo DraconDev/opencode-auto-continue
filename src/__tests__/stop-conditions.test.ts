@@ -77,3 +77,145 @@ const DEFAULT_CONFIG: PluginConfig = {
   idleCleanup: true,
   tokenLimitPatterns: ["context length"],
 };
+
+describe("stop conditions module", () => {
+  let sessions: Map<string, SessionState>;
+  let log: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    sessions = new Map();
+    log = vi.fn();
+  });
+
+  function createModule(config?: Partial<PluginConfig>) {
+    return createStopConditionsModule({
+      config: { ...DEFAULT_CONFIG, ...config },
+      sessions,
+      log,
+    });
+  }
+
+  describe("checkStopConditions", () => {
+    it("returns shouldStop=false when no conditions configured", () => {
+      const s = createSession();
+      sessions.set("test", s);
+      const module = createModule();
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("returns shouldStop=false when session does not exist", () => {
+      const module = createModule({ maxRuntimeMs: 5000 });
+      const result = module.checkStopConditions("nonexistent");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("returns shouldStop=true when session already stopped", () => {
+      const s = createSession();
+      s.stoppedByCondition = "previous stop";
+      sessions.set("test", s);
+      const module = createModule();
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(true);
+      expect(result.reason).toBe("previous stop");
+    });
+
+    it("stops on maxRuntimeMs exceeded", () => {
+      const s = createSession();
+      s.sessionCreatedAt = Date.now() - 10000;
+      sessions.set("test", s);
+      const module = createModule({ maxRuntimeMs: 5000 });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(true);
+      expect(result.reason).toContain("maxRuntimeMs");
+      expect(s.stoppedByCondition).toBe(result.reason);
+    });
+
+    it("does not stop when maxRuntimeMs not exceeded", () => {
+      const s = createSession();
+      s.sessionCreatedAt = Date.now() - 1000;
+      sessions.set("test", s);
+      const module = createModule({ maxRuntimeMs: 5000 });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("does not stop when maxRuntimeMs is 0 (disabled)", () => {
+      const s = createSession();
+      s.sessionCreatedAt = Date.now() - 100000;
+      sessions.set("test", s);
+      const module = createModule({ maxRuntimeMs: 0 });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("stops when stopFilePath file exists", () => {
+      const s = createSession();
+      sessions.set("test", s);
+      const module = createModule({ stopFilePath: "/tmp/test-stop-file-marker" });
+      // Create the stop file
+      require('fs').writeFileSync('/tmp/test-stop-file-marker', 'stop');
+      try {
+        const result = module.checkStopConditions("test");
+        expect(result.shouldStop).toBe(true);
+        expect(result.reason).toContain("stopFile");
+      } finally {
+        require('fs').unlinkSync('/tmp/test-stop-file-marker');
+      }
+    });
+
+    it("does not stop when stopFilePath is empty", () => {
+      const s = createSession();
+      sessions.set("test", s);
+      const module = createModule({ stopFilePath: "" });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("does not stop when stopFilePath file does not exist", () => {
+      const s = createSession();
+      sessions.set("test", s);
+      const module = createModule({ stopFilePath: "/tmp/nonexistent-stop-file-xyz" });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("stops when untilMarker found in lastTodoSnapshot", () => {
+      const s = createSession();
+      s.lastTodoSnapshot = "todo1:completed,todo2:pending,ALL_DONE:completed";
+      sessions.set("test", s);
+      const module = createModule({ untilMarker: "ALL_DONE" });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(true);
+      expect(result.reason).toContain("untilMarker");
+    });
+
+    it("does not stop when untilMarker not in snapshot", () => {
+      const s = createSession();
+      s.lastTodoSnapshot = "todo1:completed,todo2:pending";
+      sessions.set("test", s);
+      const module = createModule({ untilMarker: "ALL_DONE" });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("does not stop when untilMarker is empty", () => {
+      const s = createSession();
+      s.lastTodoSnapshot = "todo1:completed";
+      sessions.set("test", s);
+      const module = createModule({ untilMarker: "" });
+      const result = module.checkStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("sets stoppedByCondition on session when stop triggered", () => {
+      const s = createSession();
+      s.sessionCreatedAt = Date.now() - 10000;
+      sessions.set("test", s);
+      const module = createModule({ maxRuntimeMs: 5000 });
+      expect(s.stoppedByCondition).toBeNull();
+      module.checkStopConditions("test");
+      expect(s.stoppedByCondition).toBeTruthy();
+    });
+  });
+});
