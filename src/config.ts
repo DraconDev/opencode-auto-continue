@@ -103,6 +103,7 @@ export interface PluginConfig {
   testOnIdle: boolean;
   testCommands: string[];
   testCommandTimeoutMs: number;
+  testCommandGates: Record<string, string>;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -203,6 +204,17 @@ export const DEFAULT_CONFIG: PluginConfig = {
   testOnIdle: true,
   testCommands: ["cargo test"],
   testCommandTimeoutMs: 300000,
+  testCommandGates: {
+    cargo: "Cargo.toml",
+    pnpm: "package.json",
+    npm: "package.json",
+    yarn: "package.json",
+    npx: "package.json",
+    make: "Makefile",
+    go: "go.mod",
+    pip: "pyproject.toml",
+    pytest: "pyproject.toml",
+  },
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
