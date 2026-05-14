@@ -52,6 +52,9 @@ export interface SessionState {
   estimatedTokens: number;
   lastCompactionAt: number;
   tokenLimitHits: number;
+  hardCompactionInProgress: boolean;
+  lastHardCompactionAt: number;
+  compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
 
   // === Nudge (nudge.ts) ===
   nudgeTimer: ReturnType<typeof setTimeout> | null;
@@ -137,6 +140,9 @@ export function createSession(): SessionState {
     estimatedTokens: 0,
     lastCompactionAt: 0,
     tokenLimitHits: 0,
+    hardCompactionInProgress: false,
+    lastHardCompactionAt: 0,
+    compactionSafetyTimer: null,
 
     nudgeTimer: null,
     lastNudgeAt: 0,
