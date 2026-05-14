@@ -176,8 +176,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Planning timeout (default 5 minutes)
   planningTimeoutMs: 300000,
 
-  // Busy-but-dead detection (default 3 minutes)
-  busyStallTimeoutMs: 180000,
+  // Busy-but-dead detection (default 1 minute — session busy but no real output)
+  busyStallTimeoutMs: 60000,
 
   // AI Advisory defaults
   enableAdvisory: false,

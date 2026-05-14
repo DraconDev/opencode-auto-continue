@@ -168,15 +168,6 @@ export function createStatusFileModule(deps: StatusFileDeps) {
             todos: {
               hasOpenTodos: s.hasOpenTodos,
             },
-            advisory: s.lastAdvisoryAdvice ? {
-              action: s.lastAdvisoryAdvice.action,
-              confidence: s.lastAdvisoryAdvice.confidence,
-              reasoning: s.lastAdvisoryAdvice.reasoning,
-              stallPattern: s.lastAdvisoryAdvice.stallPattern || null,
-              customPrompt: s.lastAdvisoryAdvice.customPrompt || null,
-              contextSummary: s.lastAdvisoryAdvice.contextSummary || null,
-              checkedAt: new Date().toISOString(),
-            } : null,
             autoSubmits: s.autoSubmitCount,
             userCancelled: s.userCancelled,
             planning: s.planning,

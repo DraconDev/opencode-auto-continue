@@ -275,6 +275,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function refreshRealTokens(id: string): number {
     const s = getSession(id);
+    // Throttle: only read from DB every 10 seconds
+    const now = Date.now();
+    if (now - s.lastRealTokenRefreshAt < 10000 && s.realTokens > 0) {
+      return getTokenCount(s);
+    }
+    s.lastRealTokenRefreshAt = now;
     try {
       const tokens = getSessionTokens(id);
       if (tokens.total > 0) {

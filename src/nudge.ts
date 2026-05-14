@@ -8,7 +8,7 @@ export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts" | "testOnIdle" | "testCommands" | "testCommandTimeoutMs">;
+    "showToasts">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -216,8 +216,9 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
 
     // Run tests before nudge (test-on-idle quality gate)
+    // testRunner.runTests() checks config.testOnIdle internally
     let testFailureOutput = "";
-    if (config.testOnIdle && deps.testRunner && s && !s.testRunInProgress) {
+    if (deps.testRunner && s && !s.testRunInProgress) {
       s.testRunInProgress = true;
       try {
         const results = await deps.testRunner.runTests();

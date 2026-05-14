@@ -5,7 +5,7 @@ import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
 export interface ReviewDeps {
-  config: Pick<PluginConfig, "reviewMessage" | "showToasts" | "shortContinueMessage" | "testOnIdle" | "testCommands" | "testCommandTimeoutMs">;
+  config: Pick<PluginConfig, "reviewMessage" | "showToasts" | "shortContinueMessage">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -47,7 +47,7 @@ export function createReviewModule(deps: ReviewDeps) {
 
       // Run tests before review to inject test output
       let testOutput = "";
-      if (config.testOnIdle && deps.testRunner && s && !s.testRunInProgress) {
+      if (deps.testRunner && s && !s.testRunInProgress) {
         s.testRunInProgress = true;
         try {
           const results = await deps.testRunner.runTests();

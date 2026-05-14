@@ -97,10 +97,7 @@ export interface SessionState {
   lastUserMessageId: string;
   sentMessageAt: number;
 
-  // === Advisory (ai-advisor.ts, recovery.ts, nudge.ts) ===
-  lastAdvisoryAdvice: { action: string; confidence: number; reasoning: string; stallPattern?: string; customPrompt?: string; contextSummary?: string } | null;
-
-  // === Plan-Driven Continue (plan.ts) ===
+  // === Plan-Driven Continue ===
   lastPlanItemDescription: string;
 
   // === Recovery Intent (recovery.ts) ===
@@ -156,6 +153,7 @@ export function createSession(): SessionState {
 
     estimatedTokens: 0,
     realTokens: 0,
+    lastRealTokenRefreshAt: 0,
     lastCompactionAt: 0,
     tokenLimitHits: 0,
     hardCompactionInProgress: false,
@@ -192,8 +190,6 @@ export function createSession(): SessionState {
 
     lastUserMessageId: '',
     sentMessageAt: 0,
-
-    lastAdvisoryAdvice: null,
 
     lastPlanItemDescription: '',
 
