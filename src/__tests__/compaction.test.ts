@@ -55,6 +55,10 @@ const DEFAULT_CONFIG: PluginConfig = {
   opportunisticCompactBeforeNudge: true,
   opportunisticCompactAfterReview: true,
   nudgeCompactThreshold: 80000,
+  hardCompactAtTokens: 100000,
+  hardCompactMaxWaitMs: 30000,
+  hardCompactBypassCooldown: true,
+  compactionSafetyTimeoutMs: 15000,
   stopFilePath: "",
   maxRuntimeMs: 0,
   untilMarker: "",
@@ -118,6 +122,9 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastKnownStatus: "idle",
     lastKnownTodos: [],
     stoppedByCondition: null,
+    hardCompactionInProgress: false,
+    lastHardCompactionAt: 0,
+    compactionSafetyTimer: null,
     ...overrides,
   };
 }
