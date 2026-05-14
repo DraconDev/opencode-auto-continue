@@ -8,6 +8,7 @@
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
 
 ### v7.8.1839 Changes
+- **Raised compaction thresholds**: opportunistic 40k→60k, proactive 60k→80k, hard 80k→100k. Compaction now fires less frequently (20k higher on all layers).
 - **`simulateCompacted()` test helper**: Extracted from 10+ repeated patterns in compaction tests — reduces boilerplate.
 - **`autoAnswerQuestions` config validation**: Added guard against non-boolean values.
 - **`_client` dependency documented**: Question auto-answer uses OpenCode SDK internal `_client` property — documented in Key Trade-offs.
