@@ -4,7 +4,7 @@ import { formatDuration } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface TerminalDeps {
-  config: Pick<PluginConfig, "terminalTitleEnabled" | "terminalProgressEnabled" | "stallTimeoutMs">;
+  config: Pick<PluginConfig, "terminalTitleEnabled" | "terminalProgressEnabled" | "stallTimeoutMs" | "hardCompactAtTokens" | "proactiveCompactAtTokens">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -15,6 +15,11 @@ export function createTerminalModule(deps: TerminalDeps) {
 
   // ── Terminal Title (OSC sequences) ────────────────────────────────────
 
+  function formatTokenCount(tokens: number): string {
+    if (tokens >= 1000) return `${Math.round(tokens / 1000)}k`;
+    return String(tokens);
+  }
+
   function updateTerminalTitle(sessionId: string) {
     if (!config.terminalTitleEnabled) return;
     const s = sessions.get(sessionId);
@@ -23,7 +28,16 @@ export function createTerminalModule(deps: TerminalDeps) {
     const now = Date.now();
     const actionDuration = now - s.actionStartedAt;
     const progressAgo = now - s.lastProgressAt;
-    const title = `⏱️ ${formatDuration(actionDuration)} | Last: ${formatDuration(progressAgo)} ago`;
+
+    let title = `⏱️ ${formatDuration(actionDuration)} | Last: ${formatDuration(progressAgo)} ago`;
+
+    const threshold = config.hardCompactAtTokens || config.proactiveCompactAtTokens;
+    if (threshold > 0 && s.estimatedTokens >= threshold * 0.5) {
+      const tok = formatTokenCount(s.estimatedTokens);
+      title = s.estimatedTokens >= threshold
+        ? `⏱️ ${formatDuration(actionDuration)} | ${tok}⚠️ | Last: ${formatDuration(progressAgo)} ago`
+        : `⏱️ ${formatDuration(actionDuration)} | ${tok} | Last: ${formatDuration(progressAgo)} ago`;
+    }
 
     try {
       if (process.stdout.isTTY) {
