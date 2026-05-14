@@ -118,18 +118,20 @@ export function createCompactionModule(deps: CompactionDeps) {
   async function maybeOpportunisticCompact(sessionId: string, reason: string): Promise<boolean> {
     const s = sessions.get(sessionId);
     if (!s) return false;
-    if (s.compacting) return false;
-    if (s.planning) return false;
-    if (s.stoppedByCondition) return false;
+    if (s.compacting) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — already compacting`); return false; }
+    if (s.planning) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — planning`); return false; }
+    if (s.stoppedByCondition) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — stopped by condition`); return false; }
 
     const now = Date.now();
     if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
+      log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — cooldown (${Math.round((config.compactCooldownMs - (now - s.lastCompactionAt)) / 1000)}s remaining)`);
       return false;
     }
 
     const threshold = config.opportunisticCompactAtTokens;
-    if (getTokenCount(s) >= threshold) {
-      log(`[Compaction] OPPORTUNISTIC TRIGGER (${reason}) — session ${sessionId} has ${getTokenCount(s)} tokens (threshold: ${threshold})`);
+    const tokenCount = getTokenCount(s);
+    if (tokenCount >= threshold) {
+      log(`[Compaction] OPPORTUNISTIC TRIGGER (${reason}) — session ${sessionId} has ${tokenCount} tokens (threshold: ${threshold})`);
       const success = await forceCompact(sessionId);
       if (success) {
         log(`[Compaction] OPPORTUNISTIC SUCCESS (${reason}) — session ${sessionId}`);
@@ -137,6 +139,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       return success;
     }
 
+    log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — tokens ${tokenCount} < threshold ${threshold}, session ${sessionId}`);
     return false;
   }
 
@@ -145,17 +148,19 @@ export function createCompactionModule(deps: CompactionDeps) {
     
     const s = sessions.get(sessionId);
     if (!s) return false;
-    if (s.compacting) return false;
-    if (s.planning) return false;
+    if (s.compacting) { log('[Compaction] PROACTIVE SKIP — already compacting'); return false; }
+    if (s.planning) { log('[Compaction] PROACTIVE SKIP — planning'); return false; }
     
     const now = Date.now();
     if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
+      log('[Compaction] PROACTIVE SKIP — cooldown');
       return false;
     }
     
     const threshold = config.proactiveCompactAtTokens;
-    if (getTokenCount(s) >= threshold) {
-      log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${getTokenCount(s)} tokens (threshold: ${threshold}), attempting compaction`);
+    const tokenCount = getTokenCount(s);
+    if (tokenCount >= threshold) {
+      log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${tokenCount} tokens (threshold: ${threshold}), attempting compaction`);
       s.proactiveCompactCount++;
       const success = await forceCompact(sessionId);
       if (success) {
@@ -166,6 +171,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       return success;
     }
     
+    log(`[Compaction] PROACTIVE SKIP — tokens ${tokenCount} < threshold ${threshold}, session ${sessionId}`);
     return false;
   }
 

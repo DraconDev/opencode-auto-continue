@@ -27,7 +27,7 @@ import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
 import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
-import { getSessionTokens } from "./tokens.js";
+import { getSessionTokens, getDbLastError } from "./tokens.js";
 
 import type { Todo } from "./session-state.js";
 
@@ -278,8 +278,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const tokens = getSessionTokens(id);
       if (tokens.total > 0) {
         s.realTokens = tokens.total;
+        log('refreshRealTokens:', id, 'realTokens=', s.realTokens, 'estimatedTokens=', s.estimatedTokens);
+      } else {
+        log('refreshRealTokens: no real tokens for', id, '(dbErr:', getDbLastError() || 'session has 0 tokens', ')', 'falling back to estimated=', s.estimatedTokens);
       }
-    } catch {}
+    } catch (e) {
+      log('refreshRealTokens FAILED for', id, ':', e);
+    }
     return getTokenCount(s);
   }
 
@@ -1025,6 +1030,43 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
 
         // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
+        writeStatusFile(sid);
+        return;
+      }
+
+      // question.asked: AI is asking a question with multiple-choice options.
+      // Auto-reply with the first (recommended) option to prevent the session from stalling.
+      if (event?.type === "question.asked") {
+        const props = e?.properties;
+        const requestID = props?.id;
+        const questions = props?.questions || [];
+        log('question.asked:', requestID, 'session:', sid, 'questions:', questions.length);
+
+        if (requestID && questions.length > 0) {
+          const answers = questions.map((q: any) => {
+            const firstOption = q.options?.[0]?.label || "";
+            log('auto-answering question:', q.header || q.question, '→', firstOption);
+            return [firstOption];
+          });
+
+          try {
+            await input.client.question.reply({
+              path: { requestID },
+              body: { answers },
+            });
+            log('auto-replied to question:', requestID);
+
+            const s = getSession(sid);
+            s.lastOutputAt = Date.now();
+            s.lastProgressAt = Date.now();
+            nudge.cancelNudge(sid);
+          } catch (err) {
+            log('question auto-reply FAILED:', err);
+            const s = getSession(sid);
+            s.nudgePaused = false;
+          }
+        }
+
         writeStatusFile(sid);
         return;
       }

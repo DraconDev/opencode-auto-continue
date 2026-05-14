@@ -83,7 +83,6 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    // Skip if session was aborted
     if (s.nudgePaused) {
       log("nudge skipped - session paused after abort", sessionId);
       return;
@@ -95,7 +94,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
 
     if (s.planning || s.compacting || s.hardCompactionInProgress) {
-      log("nudge skipped - planning, compacting, or hard compaction in progress", sessionId);
+      log("nudge skipped - planning:", s.planning, "compacting:", s.compacting, "hardCompaction:", s.hardCompactionInProgress, sessionId);
       return;
     }
 
@@ -110,10 +109,12 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
     }
 
-    // Early exit: skip nudge entirely if no open todos (based on cached state)
     if (!s.hasOpenTodos && s.lastKnownTodos.length > 0) {
-      log("no open todos (cached), skipping nudge", { sessionId });
+      log("no open todos (cached), skipping nudge", { sessionId, knownTodos: s.lastKnownTodos.length });
       return;
+    }
+    if (!s.hasOpenTodos && s.lastKnownTodos.length === 0) {
+      log("no todo data yet (no todo.updated events received), will try API fallback", { sessionId });
     }
 
     // FIX 8: Check failure backoff before proceeding
@@ -170,9 +171,8 @@ export function createNudgeModule(deps: NudgeDeps) {
       completed: completed.length,
     });
 
-    // No pending todos = nothing to do
     if (pending.length === 0) {
-      log("no pending todos, nudge done");
+      log("no pending todos after fetch, nudge done", { sessionId, total: todos.length, completed: completed.length });
       s.nudgeCount = 0;
       s.lastTodoSnapshot = "";
       return;
