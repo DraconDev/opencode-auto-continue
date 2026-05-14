@@ -55,6 +55,8 @@ export interface SessionState {
   hardCompactionInProgress: boolean;
   lastHardCompactionAt: number;
   compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
+  proactiveCompactCount: number;
+  hardCompactCount: number;
 
   // === Nudge (nudge.ts) ===
   nudgeTimer: ReturnType<typeof setTimeout> | null;
@@ -143,6 +145,8 @@ export function createSession(): SessionState {
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,
+    proactiveCompactCount: 0,
+    hardCompactCount: 0,
 
     nudgeTimer: null,
     lastNudgeAt: 0,

@@ -155,6 +155,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     const threshold = config.proactiveCompactAtTokens;
     if (s.estimatedTokens >= threshold) {
       log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${s.estimatedTokens} tokens (threshold: ${threshold}), attempting compaction`);
+      s.proactiveCompactCount++;
       const success = await forceCompact(sessionId);
       if (success) {
         log(`[Compaction] PROACTIVE SUCCESS — session ${sessionId} compacted successfully`);
@@ -180,6 +181,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (s.estimatedTokens < threshold) return false;
 
     s.hardCompactionInProgress = true;
+    s.hardCompactCount++;
     log(`[Compaction] HARD TRIGGER — session ${sessionId} has ${s.estimatedTokens} tokens (hard threshold: ${threshold}), blocking until compaction completes`);
 
     const bypassCooldown = config.hardCompactBypassCooldown;

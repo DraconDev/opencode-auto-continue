@@ -142,12 +142,17 @@ export function createStatusFileModule(deps: StatusFileDeps) {
               patterns: topStallPatterns,
             },
             compaction: {
-              proactiveTriggers: 0,
+              proactiveTriggers: s.proactiveCompactCount,
+              hardTriggers: s.hardCompactCount,
               tokenLimitTriggers: s.tokenLimitHits,
               successful: s.lastCompactionAt > 0 ? 1 : 0,
               lastCompactAt: s.lastCompactionAt > 0 ? new Date(s.lastCompactionAt).toISOString() : null,
+              lastHardCompactAt: s.lastHardCompactionAt > 0 ? new Date(s.lastHardCompactionAt).toISOString() : null,
               estimatedTokens: s.estimatedTokens,
               threshold: getCompactionThreshold(config),
+              tokenPressure: config.hardCompactAtTokens > 0
+                ? (s.estimatedTokens >= config.hardCompactAtTokens ? "high" : s.estimatedTokens >= config.hardCompactAtTokens * 0.5 ? "med" : "low")
+                : "unknown",
             },
             timer: {
               actionDuration: actionDuration > 0 ? formatDuration(actionDuration) : "idle",
