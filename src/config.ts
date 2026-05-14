@@ -138,6 +138,18 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
 
+  // Opportunistic compaction
+  opportunisticCompactAtTokens: 50000,
+  opportunisticCompactAfterRecovery: true,
+  opportunisticCompactOnIdle: true,
+  opportunisticCompactBeforeNudge: true,
+  opportunisticCompactAfterReview: true,
+  nudgeCompactThreshold: 80000,
+
+  // Stop conditions
+  stopFilePath: "",
+  maxRuntimeMs: 0,
+  untilMarker: "",
 
   // Planning timeout (default 5 minutes)
   planningTimeoutMs: 300000,
@@ -222,6 +234,10 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.sessionDiscoveryIntervalMs < 0) addError('sessionDiscoveryIntervalMs', `sessionDiscoveryIntervalMs must be >= 0, got ${normalized.sessionDiscoveryIntervalMs}`);
   if (normalized.idleSessionTimeoutMs < 0) addError('idleSessionTimeoutMs', `idleSessionTimeoutMs must be >= 0, got ${normalized.idleSessionTimeoutMs}`);
   if (normalized.maxSessions < 0) addError('maxSessions', `maxSessions must be >= 0, got ${normalized.maxSessions}`);
+
+  if (normalized.opportunisticCompactAtTokens < 0) addError('opportunisticCompactAtTokens', `opportunisticCompactAtTokens must be >= 0, got ${normalized.opportunisticCompactAtTokens}`);
+  if (normalized.nudgeCompactThreshold < 0) addError('nudgeCompactThreshold', `nudgeCompactThreshold must be >= 0, got ${normalized.nudgeCompactThreshold}`);
+  if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (errors.length > 0) {
     console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);
