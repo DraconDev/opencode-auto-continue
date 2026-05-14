@@ -27,6 +27,7 @@ import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
 import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
+import { createTestRunner } from "./test-runner.js";
 import { getSessionTokens, getDbLastError } from "./tokens.js";
 
 import type { Todo } from "./session-state.js";
@@ -424,9 +425,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     scheduleRecoveryWithGeneration(sessions, sessionId, delayMs, (id) => recoverFn(id), log);
   }
 
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, maybeHardCompact: compaction.maybeHardCompact });
+  const testRunner = createTestRunner({ config, log, input });
 
-  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery });
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, maybeHardCompact: compaction.maybeHardCompact, testRunner });
+
+  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery, testRunner });
 
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact });
   recoverFn = recover;

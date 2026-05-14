@@ -45,8 +45,27 @@ export function createReviewModule(deps: ReviewDeps) {
         }
       }
 
+      // Run tests before review to inject test output
+      let testOutput = "";
+      if (config.testOnIdle && deps.testRunner && s && !s.testRunInProgress) {
+        s.testRunInProgress = true;
+        try {
+          const results = await deps.testRunner.runTests();
+          s.lastTestRunAt = Date.now();
+          testOutput = deps.testRunner.formatResults(results);
+          log('test results for review:', testOutput ? 'output captured' : 'no output');
+        } catch (e) {
+          log('test runner error during review (non-fatal):', e);
+        } finally {
+          s.testRunInProgress = false;
+        }
+      }
+
+      // Build review message with test output
+      const messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)" });
+
       // Prompt guard: prevent duplicate review prompts
-      const isDuplicate = await shouldBlockPrompt(sessionId, config.reviewMessage, input, log);
+      const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
       if (isDuplicate) {
         log('prompt guard blocked duplicate review, skipping');
         return;
@@ -61,7 +80,7 @@ export function createReviewModule(deps: ReviewDeps) {
           agent: "plan",
           parts: [{
             type: "text",
-            text: config.reviewMessage,
+            text: messageText,
             synthetic: true,
           }],
         },
