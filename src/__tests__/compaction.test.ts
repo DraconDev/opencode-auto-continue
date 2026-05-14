@@ -615,17 +615,13 @@ describe("compaction module unit tests", () => {
 
     it("times out if compaction exceeds hardCompactMaxWaitMs", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
       module = createModule({ hardCompactAtTokens: 100000, hardCompactMaxWaitMs: 5000, compactionVerifyWaitMs: 1000, compactRetryDelayMs: 100 });
 
       const promise = module.maybeHardCompact("test");
-      // Advance enough to get through one attempt (1000ms verify wait) + one retry (100ms)
-      await vi.advanceTimersByTimeAsync(2000);
-      await flushPromises();
-      // Let the timeout check happen
-      await vi.advanceTimersByTimeAsync(5000);
+      // Don't clear compacting flag — let it time out
+      await vi.advanceTimersByTimeAsync(6000);
       await flushPromises();
 
       const result = await promise;
@@ -635,13 +631,16 @@ describe("compaction module unit tests", () => {
 
     it("logs reason string when triggered", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
       module = createModule({ hardCompactAtTokens: 100000 });
 
       const promise = module.maybeHardCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      const s = sessions.get("test")!;
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
       await promise;
 
@@ -651,13 +650,16 @@ describe("compaction module unit tests", () => {
 
     it("increments hardCompactCount on trigger", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
       module = createModule({ hardCompactAtTokens: 100000 });
 
       const promise = module.maybeHardCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      const s = sessions.get("test")!;
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
       await promise;
 
@@ -718,19 +720,19 @@ describe("compaction module unit tests", () => {
 
     it("estimates reduced tokens after successful compaction", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       const s = createSessionState({ estimatedTokens: 100000 });
       sessions.set("test", s);
       module = createModule({ compactReductionFactor: 0.5 });
 
       const promise = module.forceCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
       await promise;
-      // With reductionFactor 0.5: 100000 - floor(100000 * 0.5) = 50000
-      // or max(50000, floor(100000 * 0.5)) = max(50000, 50000) = 50000
       expect(s.estimatedTokens).toBe(50000);
     });
   });

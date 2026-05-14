@@ -1012,7 +1012,7 @@ describe("opencode-auto-continue", () => {
         terminalProgressEnabled: false,
         statusFilePath: "",
         shortContinueMessage: "Continue.",
-        compactionVerifyWaitMs: 500
+        compactionVerifyWaitMs: 5000
       });
 
       // Create session with busy status
@@ -1021,11 +1021,18 @@ describe("opencode-auto-continue", () => {
       // Fire token limit error
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Requested token count exceeds the model's maximum context length of 262144 tokens" } } } });
 
-      // Wait for async emergency compaction and continue
-      // forceCompact → attemptCompact → summarize() → wait 500ms → status check → sendContinue
-      await vi.advanceTimersByTimeAsync(100);
+      // First poll: summarize resolves, enters while loop
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
-      await vi.advanceTimersByTimeAsync(600);
+      // Simulate session.compacted event
+      const sessions = (plugin as any).sessions as Map<string, any>;
+      const s = sessions.get("test");
+      if (s) {
+        s.compacting = false;
+        s.lastCompactionAt = Date.now();
+      }
+      // Second poll: detects compacting=false, compaction succeeds, sends continue
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
       // Should send continue prompt after compaction
