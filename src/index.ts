@@ -334,7 +334,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   
   // Log DCP detection after log function is available
   if (config.dcpDetected) {
-    log('DCP (Dynamic Context Pruning) detected — proactive compaction disabled, DCP handles context optimization');
+    log('DCP (Dynamic Context Pruning) detected - proactive compaction disabled, DCP handles context optimization');
   }
 
   const customPromptRuntime = registerCustomPromptRuntime({
@@ -470,13 +470,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "session.updated") {
         log('session.updated:', sid);
-        // Session was modified (e.g., model/provider change) — preserve state
+        // Session was modified (e.g., model/provider change) - preserve state
         writeStatusFile(sid);
         return;
       }
 
       if (event?.type === "session.diff") {
-        // Session diff events are informational — no action needed
+        // Session diff events are informational - no action needed
         log('session.diff:', sid);
         return;
       }
@@ -598,12 +598,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             s.lastContinueAt = 0; // Reset to avoid duplicate toasts
           }
-          // NOTE: s.planning is NOT cleared here — session.status(busy) fires
+          // NOTE: s.planning is NOT cleared here - session.status(busy) fires
           // during plan generation too (the session IS busy). Clearing it would
           // cause plan-aware continue messages to use the generic message instead.
           // Instead, s.planning is cleared by message.part.updated when non-plan
           // progress parts (tool, file, subtask, step-start, step-finish) arrive.
-          // NOTE: s.compacting is NOT cleared here either — compaction may still
+          // NOTE: s.compacting is NOT cleared here either - compaction may still
           // be in progress when the session becomes busy for other reasons.
           // The flag is cleared by session.compacted or message.part.updated.
           // Update terminal title and progress
@@ -624,7 +624,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
       } else if (config.nudgeEnabled) {
         // Auto-continue when transitioning busy→idle with pending todos
-        // Nudge is always scheduled on idle — injectNudge fetches todos from API
+        // Nudge is always scheduled on idle - injectNudge fetches todos from API
         // and decides whether to send based on actual pending count
         nudge.scheduleNudge(sid);
       }
@@ -753,7 +753,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (deltaText) {
           s.planBuffer = (s.planBuffer + deltaText).slice(-200);
           if (isPlanContent(s.planBuffer)) {
-            log('plan detected in delta, pausing stall monitoring — user must address');
+            log('plan detected in delta, pausing stall monitoring - user must address');
             s.planning = true;
             s.planningStartedAt = Date.now(); // Track planning start time to enforce planning timeout
             s.planBuffer = '';
@@ -881,7 +881,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.reviewFired = false;
         }
 
-        // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
+        // Nudge is triggered by session.idle - todo.updated just sets hasOpenTodos flag
         writeStatusFile(sid);
         return;
       }
