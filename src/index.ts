@@ -649,6 +649,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               }
             }
             s.lastContinueAt = 0; // Reset to avoid duplicate toasts
+            // Opportunistic compaction after recovery
+            if (config.opportunisticCompactAfterRecovery && s.estimatedTokens >= config.opportunisticCompactAtTokens) {
+              compaction.maybeOpportunisticCompact(sid, 'post-recovery').catch((e: unknown) => log('opportunistic compact post-recovery failed:', e));
+            }
           }
           // NOTE: s.planning is NOT cleared here — session.status(busy) fires
           // during plan generation too (the session IS busy). Clearing it would
