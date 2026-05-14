@@ -56,13 +56,13 @@ export function createReviewModule(deps: ReviewDeps) {
         path: { id: sessionId },
         query: { directory: input.directory || "" },
         body: {
+          agent: "plan",
           parts: [{
             type: "text",
             text: config.reviewMessage,
             synthetic: true,
           }],
         },
-        agent: "plan",
       });
 
       // FIX 9: Only mark as fired after successful send
