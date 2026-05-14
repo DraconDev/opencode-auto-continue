@@ -149,7 +149,7 @@ All config options are set in `opencode.json` under the plugin entry:
 | `compactCooldownMs` | number | `60000` | Min time between compactions (soft layers) |
 | `compactMaxRetries` | number | `3` | Max compaction retry attempts |
 | `compactRetryDelayMs` | number | `3000` | Delay between compaction retries |
-| `compactionVerifyWaitMs` | number | `10000` | Max wait for compaction verification |
+| `compactionVerifyWaitMs` | number | `30000` | Max wait for compaction verification |
 | `compactReductionFactor` | number | `0.7` | Expected context reduction ratio |
 | `compactionSafetyTimeoutMs` | number | `15000` | Safety timeout to clear stuck `compacting` flag |
 
@@ -531,9 +531,9 @@ The plugin manages context with **four compaction layers**, each with different 
 
 | Layer | Threshold | Style | Behavior |
 |-------|-----------|-------|----------|
-| **Opportunistic** | 40k tokens | Fire-and-forget | Low-priority cleanup on idle/recovery/review/nudge |
-| **Proactive** | 60k tokens | Fire-and-forget | Pre-emptive before limits hit |
-| **Hard** | 80k tokens | **Blocking gate** | Must succeed before recovery/nudge/continue proceed |
+| **Opportunistic** | 60k tokens | Fire-and-forget | Low-priority cleanup on idle/recovery/review/nudge |
+| **Proactive** | 80k tokens | Fire-and-forget | Pre-emptive before limits hit |
+| **Hard** | 100k tokens | **Blocking gate** | Must succeed before recovery/nudge/continue proceed |
 | **Emergency** | Token limit error | Retry 3x | Last resort on hard limit hit |
 
 ### Opportunistic Compaction
