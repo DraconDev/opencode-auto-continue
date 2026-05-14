@@ -769,7 +769,7 @@ describe("compaction module unit tests", () => {
 
       sessions.set("test", createSessionState({
         estimatedTokens: 200000,
-        lastCompactionAt: Date.now() - 15000,
+        lastCompactionAt: Date.now() - 70000,
       }));
       module = createModule({
         proactiveCompactAtTokens: 100000,
