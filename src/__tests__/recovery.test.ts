@@ -51,8 +51,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
-  dcpDetected: false,
-  dcpVersion: null,
   planningTimeoutMs: 300000,
   enableAdvisory: false,
   advisoryModel: "",

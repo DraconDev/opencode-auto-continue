@@ -53,8 +53,6 @@ const mockConfig: PluginConfig = {
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
-  dcpDetected: false,
-  dcpVersion: null,
   enableAdvisory: false,
   advisoryModel: "",
   advisoryTimeoutMs: 5000,
