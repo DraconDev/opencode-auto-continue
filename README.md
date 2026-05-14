@@ -709,7 +709,7 @@ Minimal configuration with sensible defaults:
 
 ### Context Window
 
-The plugin handles **4-layer compaction**: opportunistic at 40k, proactive at 60k, hard at 80k, and emergency on token limit errors.
+The plugin handles **4-layer compaction**: opportunistic at 60k, proactive at 80k, hard at 100k, and emergency on token limit errors.
 
 If you frequently hit token limits with large pastes (HTML, JSON, etc.), consider lowering your model's context window.
 
@@ -891,8 +891,8 @@ The plugin manages context with **four compaction layers**, each with different 
 
 | Layer | Threshold | Style | When It Fires |
 |-------|-----------|-------|---------------|
-| **Opportunistic** | 50k tokens | Fire-and-forget | Post-recovery, on-idle, pre-nudge, post-review |
-| **Proactive** | 100k tokens | Fire-and-forget | Token updates, session create, pre-continue |
+| **Opportunistic** | 60k tokens | Fire-and-forget | Post-recovery, on-idle, pre-nudge, post-review |
+| **Proactive** | 80k tokens | Fire-and-forget | Token updates, session create, pre-continue |
 | **Hard** | 100k tokens | **Blocking gate** | Before recovery, nudge, or continue |
 | **Emergency** | Token limit error | Retry 3x | On `session.error` with limit message |
 
@@ -935,10 +935,27 @@ This matches the actual reduction — compaction removes ~70% of context, so the
 
 ### Why Four Layers?
 
-- **Opportunistic** (50k): Gentle cleanup during idle moments
-- **Proactive** (100k): Pre-emptive before limits hit
+- **Opportunistic** (60k): Gentle cleanup during idle moments
+- **Proactive** (80k): Pre-emptive before limits hit
 - **Hard** (100k): Mandatory gate — blocks operations until compacted
 - **Emergency**: Safety net for edge cases that slip through
+
+### Double Compact Prevention (v7.8.1904+)
+
+After `session.compacted` fires, the SQLite DB still holds pre-compaction token counts. Without intervention, the compaction check loop (`message.part.updated`) would see tokens still above threshold and trigger a second `session.summarize()` — causing double compaction.
+
+**Two-part fix**:
+
+1. **Grace period guard** (`compactionGracePeriodMs`, default 10s): All 3 compaction layers skip if `lastCompactionAt` is within this window, even if `hardCompactBypassCooldown: true`. Prevents triggering while DB values are stale.
+
+2. **`realTokens = 0` invalidation on `session.compacted`**: Sets `realTokens = 0` and `lastRealTokenRefreshAt = Date.now()` instead of calling `refreshRealTokens()`. Forces `getTokenCount()` to use the reduced `estimatedTokens` (already multiplied by `compactReductionFactor`) until the DB refreshes naturally (10s throttle).
+
+The `refreshRealTokens()` throttle has two paths:
+- Normal: `realTokens > 0 && now - lastRealTokenRefreshAt < 10s` → return cached
+- Post-compaction: `realTokens === 0 && lastCompactionAt > 0 && now - lastCompactionAt < 10s` → return reduced `estimatedTokens`
+- After either path expires: falls through to DB re-read
+
+`forceCompact()` (emergency) is NOT blocked by grace period — token limit errors require immediate action.
 
 ### Token Estimation
 

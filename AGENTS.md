@@ -1,11 +1,18 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1839)
+## Current State (v7.8.1904)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 452/452 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1839`
+**Tests:** 518/518 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1904`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1904 Changes
+- **Double compact prevention (grace period)**: All 3 compaction layers (opportunistic/proactive/hard) now skip if `lastCompactionAt` is within `compactionGracePeriodMs` (default 10s), even when `hardCompactBypassCooldown: true`. Prevents second `session.summarize()` from firing while DB token counts are still stale post-compaction.
+- **`realTokens = 0` on `session.compacted`**: Instead of calling `refreshRealTokens()` (which would read stale DB values), the handler now sets `realTokens = 0` + `lastRealTokenRefreshAt = Date.now()`. Forces `getTokenCount()` to use reduced `estimatedTokens` (already multiplied by `compactReductionFactor`) for 10s until DB refreshes.
+- **Two-path `refreshRealTokens` throttle**: Normal path (`realTokens > 0` + 10s) and post-compaction path (`realTokens === 0` + `lastCompactionAt` within 10s). Failed DB reads (where `realTokens = 0` from birth) now retry immediately instead of being throttled.
+- **`REAL_TOKEN_REFRESH_INTERVAL_MS` constant**: Extracted 10000ms magic number to named constant.
+- **`lastRealTokenRefreshAt = 0` in `resetSession()`**: Was missing — defensive reset.
 
 ### v7.8.1839 Changes
 - **Raised compaction thresholds**: opportunistic 40k→60k, proactive 60k→80k, hard 80k→100k. Compaction now fires less frequently (20k higher on all layers).
