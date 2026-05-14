@@ -804,7 +804,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
           }
 
-          compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact check failed:', e));
+          compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
+            if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
+          }).catch((e: unknown) => log('proactive compact check failed:', e));
 
           // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
           if (partType === "compaction") {
@@ -937,7 +939,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
-        compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact check failed:', e));
+        compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
+          if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
+        }).catch((e: unknown) => log('proactive compact check failed:', e));
                  return;
       }
 
