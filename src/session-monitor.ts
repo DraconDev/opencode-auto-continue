@@ -10,6 +10,7 @@
 import { createSession, type SessionState } from "./session-state.js";
 import type { PluginConfig } from "./config.js";
 import type { TypedPluginInput } from "./types.js";
+import type { StopConditionResult } from "./stop-conditions.js";
 
 export interface SessionMonitorDeps {
   config: PluginConfig;
@@ -18,6 +19,7 @@ export interface SessionMonitorDeps {
   input: TypedPluginInput;
   isDisposed: () => boolean;
   recover: (sessionId: string) => void;
+  checkStopConditions?: (sessionId: string) => StopConditionResult;
 }
 
 export interface SessionMonitor {
