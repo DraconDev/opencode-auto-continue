@@ -399,6 +399,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, aiAdvisor, sendContinue: review.sendContinue });
 
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
+  const stopConditions = createStopConditionsModule({ config, sessions, log });
   sessionMonitor.start();
 
   terminal.registerStatusLineHook();
