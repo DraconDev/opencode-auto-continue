@@ -120,9 +120,9 @@ All config options are set in `opencode.json` under the plugin entry:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `autoCompact` | boolean | `true` | Enable proactive and opportunistic compaction |
-| `proactiveCompactAtTokens` | number | `60000` | Token threshold for proactive auto-compaction |
-| `opportunisticCompactAtTokens` | number | `40000` | Token threshold for opportunistic compaction |
-| `hardCompactAtTokens` | number | `80000` | Token threshold for mandatory blocking compaction |
+| `proactiveCompactAtTokens` | number | `80000` | Token threshold for proactive auto-compaction |
+| `opportunisticCompactAtTokens` | number | `60000` | Token threshold for opportunistic compaction |
+| `hardCompactAtTokens` | number | `100000` | Token threshold for mandatory blocking compaction |
 | `hardCompactMaxWaitMs` | number | `30000` | Max wait for hard compaction before proceeding anyway |
 | `hardCompactBypassCooldown` | boolean | `true` | Hard compaction ignores `compactCooldownMs` |
 | `compactCooldownMs` | number | `60000` | Min time between compactions (soft layers) |
@@ -529,7 +529,7 @@ Fires at `opportunisticCompactAtTokens` (default: 40,000) at lifecycle points wh
 
 ### Proactive Compaction
 
-When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 100k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
+When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 80k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
 
 **Called from**: Token-update events (`message.part.updated`, `session.created`, `session.idle`)
 

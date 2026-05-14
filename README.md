@@ -696,9 +696,9 @@ Minimal configuration with sensible defaults:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `autoCompact` | `true` | Enable proactive and opportunistic compaction |
-| `proactiveCompactAtTokens` | `60000` | Token threshold for proactive compaction |
-| `opportunisticCompactAtTokens` | `40000` | Token threshold for opportunistic compaction |
-| `hardCompactAtTokens` | `80000` | Token threshold for mandatory blocking compaction |
+| `proactiveCompactAtTokens` | `80000` | Token threshold for proactive compaction |
+| `opportunisticCompactAtTokens` | `60000` | Token threshold for opportunistic compaction |
+| `hardCompactAtTokens` | `100000` | Token threshold for mandatory blocking compaction |
 | `hardCompactMaxWaitMs` | `30000` | Max wait for hard compaction before proceeding anyway |
 | `hardCompactBypassCooldown` | `true` | Hard compaction ignores cooldown |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
@@ -888,13 +888,13 @@ The plugin manages context with **four compaction layers**, each with different 
 
 ### Opportunistic Compaction
 
-At `opportunisticCompactAtTokens` (default: 50k), the plugin cleans up context during idle moments before the next operation pushes tokens higher. This is low-priority "housekeeping" compaction.
+At `opportunisticCompactAtTokens` (default: 60k), the plugin cleans up context during idle moments before the next operation pushes tokens higher. This is low-priority "housekeeping" compaction.
 
 **Triggers**: After recovery success, session idle, before nudge, after review.
 
 ### Proactive Compaction
 
-When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 100k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
+When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 80k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
 
 ### Hard Compaction (Blocking Gate)
 
