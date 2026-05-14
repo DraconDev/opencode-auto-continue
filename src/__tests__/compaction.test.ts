@@ -629,6 +629,30 @@ describe("compaction module unit tests", () => {
       expect(module.isTokenLimitError({ name: "Error", message: "" })).toBe(false);
     });
 
+    it("safety timeout clears stuck compacting flag", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
+      module = createModule({ compactionSafetyTimeoutMs: 5000, compactionVerifyWaitMs: 20000 });
+
+      const promise = module.forceCompact("test");
+      // After 2000ms + 3000ms = 5000ms, the safety timeout should fire
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      // Wait for safety timeout
+      await vi.advanceTimersByTimeAsync(3000);
+      await flushPromises();
+
+      const s = sessions.get("test")!;
+      expect(s.compacting).toBe(false);
+
+      // Finish the promise
+      await vi.advanceTimersByTimeAsync(15000);
+      await flushPromises();
+      await promise;
+    });
+
     it("does not compact if forceCompact called with no session", async () => {
       module = createModule();
       const result = await module.forceCompact("missing");
