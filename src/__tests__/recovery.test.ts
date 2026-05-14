@@ -51,6 +51,15 @@ const DEFAULT_CONFIG: PluginConfig = {
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
+  opportunisticCompactAtTokens: 50000,
+  opportunisticCompactAfterRecovery: true,
+  opportunisticCompactOnIdle: true,
+  opportunisticCompactBeforeNudge: true,
+  opportunisticCompactAfterReview: true,
+  nudgeCompactThreshold: 80000,
+  stopFilePath: "",
+  maxRuntimeMs: 0,
+  untilMarker: "",
   planningTimeoutMs: 300000,
   enableAdvisory: false,
   advisoryModel: "",
@@ -133,6 +142,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
     continueInProgress: false,
+    stoppedByCondition: null,
     ...overrides,
   };
 }
