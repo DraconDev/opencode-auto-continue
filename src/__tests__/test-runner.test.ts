@@ -545,7 +545,49 @@ describe("gate-based skipping", () => {
 
     const results = await runner.runTests();
     expect(results).toHaveLength(1);
-    expect(results[0].skipped).toBe(true); // no pyproject.toml in /tmp/nonexistent...
+    expect(results[0].skipped).toBe(true);
+  });
+
+  it("should skip gradle test when build.gradle not found", async () => {
+    const mockShell = makeSuccessShell("ok", 0);
+    const runner = createTestRunner({
+      config: { ...GATE_CONFIG, testCommands: ["gradle test"] },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(true);
+    expect(mockShell).not.toHaveBeenCalled();
+  });
+
+  it("should skip mvn test when pom.xml not found", async () => {
+    const mockShell = makeSuccessShell("ok", 0);
+    const runner = createTestRunner({
+      config: { ...GATE_CONFIG, testCommands: ["mvn test"] },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(true);
+    expect(mockShell).not.toHaveBeenCalled();
+  });
+
+  it("should skip deno test when deno.json not found", async () => {
+    const mockShell = makeSuccessShell("ok", 0);
+    const runner = createTestRunner({
+      config: { ...GATE_CONFIG, testCommands: ["deno test"] },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(true);
+    expect(mockShell).not.toHaveBeenCalled();
   });
 
   it("should NOT skip on legitimate test failure output", async () => {
