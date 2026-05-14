@@ -110,8 +110,14 @@ export function createTerminalModule(deps: TerminalDeps) {
               const now = Date.now();
               const actionDuration = now - s.actionStartedAt;
               const progressAgo = now - s.lastProgressAt;
-              result.variables[`afr_timer_${sid.slice(0, 8)}`] = formatDuration(actionDuration);
-              result.variables[`afr_progress_${sid.slice(0, 8)}`] = formatDuration(progressAgo);
+              const shortSid = sid.slice(0, 8);
+              result.variables[`afr_timer_${shortSid}`] = formatDuration(actionDuration);
+              result.variables[`afr_progress_${shortSid}`] = formatDuration(progressAgo);
+              const threshold = config.hardCompactAtTokens || config.proactiveCompactAtTokens;
+              if (threshold > 0) {
+                const pressure = s.estimatedTokens >= threshold ? "high" : s.estimatedTokens >= threshold * 0.5 ? "med" : "low";
+                result.variables[`afr_tokens_${shortSid}`] = `${formatTokenCount(s.estimatedTokens)}/${formatTokenCount(threshold)} ${pressure}`;
+              }
             }
           });
           return result;
