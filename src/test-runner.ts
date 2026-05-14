@@ -50,6 +50,10 @@ function isEnvError(output: string, exitCode: number): boolean {
   return ENV_ERROR_PATTERNS.some((pat) => pat.test(output));
 }
 
+function hasRealResults(results: TestResult[]): boolean {
+  return results.some((r) => !r.skipped);
+}
+
 export function createTestRunner(deps: TestRunnerDeps) {
   const { config, log, input } = deps;
 
@@ -165,11 +169,12 @@ export function createTestRunner(deps: TestRunnerDeps) {
   }
 
   function formatResults(results: TestResult[]): string {
-    if (results.length === 0) return "(no test output)";
+    const real = results.filter((r) => !r.skipped);
+    if (real.length === 0) return "";
 
-    return results
+    return real
       .map((r) => {
-        const status = r.skipped ? "SKIP" : r.passed ? "PASS" : r.timedOut ? "TIMEOUT" : "FAIL";
+        const status = r.passed ? "PASS" : r.timedOut ? "TIMEOUT" : "FAIL";
         return `$ ${r.command} — ${status}\n${r.output}`;
       })
       .join("\n\n");
