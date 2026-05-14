@@ -1120,7 +1120,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
         // FIX 3: Queue and send continue after compaction to resume work
-        if (!s.userCancelled && !isDisposed && !s.aborting) {
+        // NOTE: Don't check s.aborting — compaction can happen during recovery,
+        // and recovery needs the continue to resume after compaction completes.
+        if (!s.userCancelled && !isDisposed) {
           s.needsContinue = true;
           s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
           review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));

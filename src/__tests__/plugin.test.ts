@@ -48,6 +48,7 @@ describe("opencode-auto-continue", () => {
         status: mockStatus,
         todo: mockTodo,
         summarize: mockSummarize,
+        messages: vi.fn().mockResolvedValue({ data: [], error: undefined }),
       },
       tui: {
         showToast: mockShowToast,
@@ -1298,7 +1299,7 @@ describe("opencode-auto-continue", () => {
       vi.useRealTimers();
     });
 
-    it("should wait for post-compaction idle before sending queued continue", async () => {
+    it("should send continue after compaction completes", async () => {
       vi.useFakeTimers();
       const originalHome = process.env.HOME;
       process.env.HOME = `/tmp/opencode-test-home-${Date.now()}`;
@@ -1306,7 +1307,6 @@ describe("opencode-auto-continue", () => {
         mockStatus
           .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
           .mockResolvedValueOnce({ data: { "test": { type: "idle" } }, error: undefined })
-          .mockResolvedValueOnce({ data: { "test": { type: "busy" } }, error: undefined })
           .mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
         mockPrompt.mockResolvedValue({ data: {}, error: undefined });
 
@@ -1320,23 +1320,30 @@ describe("opencode-auto-continue", () => {
           terminalTitleEnabled: false,
           terminalProgressEnabled: false,
           statusFilePath: "",
-          hardCompactAtTokens: 999999, // Prevent hard compact from firing again in sendContinue
+          hardCompactAtTokens: 999999,
         });
 
+        // Start session busy
         await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+        // Trigger recovery via stall timeout
         await vi.advanceTimersByTimeAsync(3200);
         await flushPromises();
 
+        // Recovery should have called summarize
         expect(mockSummarize).toHaveBeenCalled();
         expect(mockPrompt).not.toHaveBeenCalled();
 
-        // Simulate compaction completing via session.compacted event
+        // Compaction completes via session.compacted event
         await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
-        // Advance timers and flush multiple times for the async continue chain
-        for (let i = 0; i < 5; i++) {
-          await vi.advanceTimersByTimeAsync(500);
-          await flushPromises();
-        }
+
+        // The session.compacted handler queues and sends continue
+        // Allow the async chain to complete (sendContinue → shouldBlockPrompt → maybeHardCompact → prompt)
+        await flushPromises();
+        await vi.advanceTimersByTimeAsync(100);
+        await flushPromises();
+        await vi.advanceTimersByTimeAsync(100);
+        await flushPromises();
 
         expect(mockPrompt).toHaveBeenCalled();
       } finally {
