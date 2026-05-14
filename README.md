@@ -616,22 +616,27 @@ Minimal configuration with sensible defaults:
 ```json
 {
   "plugin": [
-    ["opencode-auto-continue", {
-      "stallTimeoutMs": 180000,
-      "waitAfterAbortMs": 5000,
+    ["file:///home/dracon/Dev/opencode-auto-continue/dist/index.js", {
+      "stallTimeoutMs": 45000,
       "maxRecoveries": 3,
+      "waitAfterAbortMs": 5000,
       "cooldownMs": 60000,
       "nudgeEnabled": true,
-      "nudgeIdleDelayMs": 500,
-      "nudgeMaxSubmits": 3,
-      "nudgeMessage": "The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks.",
-      "nudgeCooldownMs": 60000,
+      "nudgeIdleDelayMs": 0,
+      "nudgeMaxSubmits": 10,
+      "nudgeCooldownMs": 30000,
       "autoCompact": true,
+      "autoAnswerQuestions": true,
       "maxSessionAgeMs": 7200000,
+      "proactiveCompactAtTokens": 60000,
+      "opportunisticCompactAtTokens": 40000,
+      "hardCompactAtTokens": 80000,
       "compactMaxRetries": 3,
       "compactReductionFactor": 0.7,
-      "shortContinueMessage": "Continue.",
-      "tokenLimitPatterns": ["context length", "maximum context length", "token count exceeds"],
+      "compactionVerifyWaitMs": 30000,
+      "compactRetryDelayMs": 3000,
+      "shortContinueMessage": "Continue. Create todos for any untracked work before starting it.",
+      "tokenLimitPatterns": ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],
       "terminalTitleEnabled": true,
       "statusFileEnabled": true,
       "statusFilePath": "",
@@ -640,11 +645,7 @@ Minimal configuration with sensible defaults:
       "recoveryHistogramEnabled": true,
       "stallPatternDetection": true,
       "terminalProgressEnabled": true,
-      "enableAdvisory": false,
-      "advisoryModel": "",
-      "advisoryTimeoutMs": 5000,
-      "advisoryMaxTokens": 500,
-      "advisoryTemperature": 0.1,
+      "sessionMonitorEnabled": true,
       "debug": false
     }]
   ]
