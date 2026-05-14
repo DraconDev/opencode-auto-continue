@@ -1089,11 +1089,6 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 }]
 ```
 
-**For proactive context pruning with large models, install DCP:**
-```bash
-opencode plugin @tarquinen/opencode-dcp@latest --global
-```
-
 ### Custom Messages
 
 ```json
