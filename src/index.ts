@@ -384,19 +384,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const terminal = createTerminalModule({ config, sessions, log, input });
   const aiAdvisor = createAIAdvisor({ config, log, input });
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, maybeHardCompact: compaction.maybeHardCompact });
-
   const { writeStatusFile, clearPendingWrites } = createStatusFileModule({ config, sessions, log });
 
   const compaction = createCompactionModule({ config, sessions, log, input });
 
-  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery });
-
+  // Forward declaration — recovery module sets the actual implementation after creation
+  let recoverFn: (sessionId: string) => Promise<void> = async () => {};
   function scheduleRecovery(sessionId: string, delayMs: number): void {
-    scheduleRecoveryWithGeneration(sessions, sessionId, delayMs, (id) => recover(id), log);
+    scheduleRecoveryWithGeneration(sessions, sessionId, delayMs, (id) => recoverFn(id), log);
   }
 
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, maybeHardCompact: compaction.maybeHardCompact });
+
+  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery });
+
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, aiAdvisor, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact });
+  recoverFn = recover;
 
   const stopConditions = createStopConditionsModule({ config, sessions, log });
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover, checkStopConditions: stopConditions.checkStopConditions });
@@ -1000,6 +1003,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         log('session compacted, clearing compacting flag:', sid);
         s.compacting = false;
+        s.hardCompactionInProgress = false;
+        if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         s.lastCompactionAt = Date.now();
         s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
         // Reset recovery counters since we just freed context space
