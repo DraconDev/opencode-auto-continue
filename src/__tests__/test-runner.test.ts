@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTestRunner, findGateFile, isEnvError } from "../test-runner.js";
+import { createTestRunner, findGateFile, isEnvError, hasRealResults } from "../test-runner.js";
 import type { PluginConfig } from "../config.js";
 
 const NO_GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCommandTimeoutMs" | "testCommandGates"> = {
@@ -19,6 +19,7 @@ const GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testComma
     npm: "package.json",
     yarn: "package.json",
     npx: "package.json",
+    bun: "package.json",
     make: "Makefile",
     go: "go.mod",
     pip: "pyproject.toml",

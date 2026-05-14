@@ -254,6 +254,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.maxBackoffMs < normalized.stallTimeoutMs) addError('maxBackoffMs', `maxBackoffMs (${normalized.maxBackoffMs}) must be >= stallTimeoutMs (${normalized.stallTimeoutMs})`);
   if (!normalized.continueMessage || typeof normalized.continueMessage !== 'string') addError('continueMessage', `continueMessage must be a non-empty string`);
   if (!normalized.reviewMessage || typeof normalized.reviewMessage !== 'string') addError('reviewMessage', `reviewMessage must be a non-empty string`);
+  if (!normalized.reviewWithoutTestsMessage || typeof normalized.reviewWithoutTestsMessage !== 'string') addError('reviewWithoutTestsMessage', `reviewWithoutTestsMessage must be a non-empty string`);
   if (normalized.reviewDebounceMs < 0) addError('reviewDebounceMs', `reviewDebounceMs must be >= 0, got ${normalized.reviewDebounceMs}`);
   if (normalized.proactiveCompactAtTokens < 0) addError('proactiveCompactAtTokens', `proactiveCompactAtTokens must be >= 0, got ${normalized.proactiveCompactAtTokens}`);
   if (normalized.proactiveCompactAtPercent < 0 || normalized.proactiveCompactAtPercent > 100) addError('proactiveCompactAtPercent', `proactiveCompactAtPercent must be between 0 and 100, got ${normalized.proactiveCompactAtPercent}`);
