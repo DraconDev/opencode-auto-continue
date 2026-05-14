@@ -3,13 +3,14 @@ import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import type { TypedPluginInput } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
-import { type SessionState, createSession, updateProgress } from "./session-state.js";
+import { type SessionState, createSession } from "./session-state.js";
 import {
   PLAN_PATTERNS,
   isPlanContent,
   estimateTokens,
   formatDuration,
   parseTokensFromError,
+  updateProgress,
   formatMessage,
   safeHook,
   detectDCP,
@@ -287,7 +288,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   function clearTimer(id: string) {
     const s = sessions.get(id);
     if (!s) return;
-    // Clear all timers (recovery, nudge, debounce) when removing a session
+    // FIX 6: Clear all timers, not just recovery timer
     if (s.timer) {
       clearTimeout(s.timer);
       s.timer = null;
@@ -304,6 +305,61 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function resetSession(id: string) {
     clearTimer(id);
+    const s = sessions.get(id);
+    if (s) {
+      s.planBuffer = '';
+      s.planning = false;
+      s.compacting = false;
+      s.backoffAttempts = 0;
+      s.autoSubmitCount = 0;
+      s.lastUserMessageId = '';
+      s.sentMessageAt = 0;
+      s.reviewFired = false;
+      if (s.reviewDebounceTimer) {
+        clearTimeout(s.reviewDebounceTimer);
+        s.reviewDebounceTimer = null;
+      }
+      if (s.nudgeTimer) {
+        clearTimeout(s.nudgeTimer);
+        s.nudgeTimer = null;
+      }
+      s.lastNudgeAt = 0;
+      s.nudgeCount = 0;
+      s.nudgePaused = false;
+      s.hasOpenTodos = false;
+      s.lastKnownTodos = [];
+      s.lastTodoSnapshot = "";
+      s.needsContinue = false;
+      s.continueMessageText = '';
+      s.continueRetryCount = 0;
+      s.lastContinueRetryAt = 0;
+      s.timerGeneration = 0;
+      s.planningStartedAt = 0;
+      s.messageCount = 0;
+      s.estimatedTokens = 0;
+      s.lastCompactionAt = 0;
+      s.tokenLimitHits = 0;
+      s.actionStartedAt = 0;
+      s.stallDetections = 0;
+      s.recoverySuccessful = 0;
+      s.recoveryFailed = 0;
+      s.lastRecoverySuccess = 0;
+      s.totalRecoveryTimeMs = 0;
+      s.recoveryStartTime = 0;
+      s.recoveryTimes = [];
+      s.lastStallPartType = '';
+      s.continueTimestamps = [];
+      s.lastAdvisoryAdvice = null;
+      s.stallPatterns = {};
+      s.lastPlanItemDescription = "";
+      s.nudgeFailureCount = 0;
+      s.lastNudgeFailureAt = 0;
+      s.continueInProgress = false;
+      s.lastContinueAt = 0;
+      s.lastOutputAt = Date.now();
+      s.lastOutputLength = 0;
+      s.statusHistory = [];
+    }
     sessions.delete(id);
   }
 
@@ -334,7 +390,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   
   // Log DCP detection after log function is available
   if (config.dcpDetected) {
-    log('DCP (Dynamic Context Pruning) detected - proactive compaction disabled, DCP handles context optimization');
+    log('DCP (Dynamic Context Pruning) detected — proactive compaction disabled, DCP handles context optimization');
   }
 
   const customPromptRuntime = registerCustomPromptRuntime({
@@ -363,6 +419,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
   sessionMonitor.start();
 
+  terminal.registerStatusLineHook();
+
+  const staleTypes = [
+    "session.ended",
+    "session.deleted"
+  ];
 
   return {
     event: async ({ event }: { event: any }) => {
@@ -419,7 +481,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             
             // Attempt emergency compaction asynchronously
             compaction.forceCompact(sid).then(async (compacted) => {
-              // Guard against session deletion during async compaction
+              // FIX 4: Check session still exists before accessing state
               if (!sessions.has(sid)) {
                 log('session deleted during emergency compaction, skipping continue:', sid);
                 return;
@@ -470,13 +532,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "session.updated") {
         log('session.updated:', sid);
-        // Session was modified (e.g., model/provider change) - preserve state
+        // Session was modified (e.g., model/provider change) — preserve state
         writeStatusFile(sid);
         return;
       }
 
       if (event?.type === "session.diff") {
-        // Session diff events are informational - no action needed
+        // Session diff events are informational — no action needed
         log('session.diff:', sid);
         return;
       }
@@ -509,8 +571,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           const totalMsgTokens = (msgTokens.input || 0) + (msgTokens.output || 0) + (msgTokens.reasoning || 0);
           if (totalMsgTokens > 0) {
             // AssistantMessage.tokens represents tokens for this specific message
-            // Use max to avoid double-counting across multiple messages
-            s.estimatedTokens = Math.max(s.estimatedTokens, totalMsgTokens);
+            // We accumulate to get a rough total (this will be an overestimate since
+            // it counts all messages, not just the ones in context window)
+            s.estimatedTokens += totalMsgTokens;
             log('assistant message tokens:', totalMsgTokens, 'input:', msgTokens.input, 'output:', msgTokens.output, 'reasoning:', msgTokens.reasoning, 'session:', sid);
           }
 
@@ -543,7 +606,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           
           // Check for busy-but-dead: session claims busy but no actual output for too long
           const timeSinceOutput = Date.now() - s.lastOutputAt;
-          if (timeSinceOutput > config.busyStallTimeoutMs && !s.aborting) {
+          if (timeSinceOutput > config.busyStallTimeoutMs) {
             log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
             if (config.showToasts) {
               try {
@@ -598,41 +661,43 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             s.lastContinueAt = 0; // Reset to avoid duplicate toasts
           }
-          // NOTE: s.planning is NOT cleared here - session.status(busy) fires
+          // NOTE: s.planning is NOT cleared here — session.status(busy) fires
           // during plan generation too (the session IS busy). Clearing it would
           // cause plan-aware continue messages to use the generic message instead.
           // Instead, s.planning is cleared by message.part.updated when non-plan
           // progress parts (tool, file, subtask, step-start, step-finish) arrive.
-          // NOTE: s.compacting is NOT cleared here either - compaction may still
-          // be in progress when the session becomes busy for other reasons.
-          // The flag is cleared by session.compacted or message.part.updated.
+          if (s.compacting) {
+            log('session busy, clearing compacting flag (compaction likely finished)');
+            s.compacting = false;
+          }
           // Update terminal title and progress
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
         }
-    } else if (status?.type === "idle") {
-      s.actionStartedAt = 0;
-      clearTimer(sid);
-      
-      // Send queued continue when session becomes idle/stable
-      if (s.needsContinue) {
-        if (s.aborting) {
-          log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
-        } else {
-          log('session idle, sending queued continue for:', sid);
-          await review.sendContinue(sid);
+        if (status?.type === "idle") {
+          s.actionStartedAt = 0;
+          clearTimer(sid);
         }
-      } else if (config.nudgeEnabled) {
+        // Send queued continue when session becomes idle/stable
+        if (status?.type === "idle" && s.needsContinue) {
+          if (s.aborting) {
+            log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
+          } else {
+            log('session idle, sending queued continue for:', sid);
+            await review.sendContinue(sid);
+          }
+        }
         // Auto-continue when transitioning busy→idle with pending todos
-        // Nudge is always scheduled on idle - injectNudge fetches todos from API
+        // Nudge is always scheduled on idle — injectNudge fetches todos from API
         // and decides whether to send based on actual pending count
-        nudge.scheduleNudge(sid);
-      }
-      
-      // Clear terminal title/progress when session becomes idle
-      terminal.clearTerminalTitle();
-      terminal.clearTerminalProgress();
-    }
+        if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
+          nudge.scheduleNudge(sid);
+        }
+        // Clear terminal title/progress when session becomes idle
+        if (status?.type === "idle") {
+          terminal.clearTerminalTitle();
+          terminal.clearTerminalProgress();
+        }
 
         // Only set recovery timer for busy/retry sessions, not for idle
         // Idle sessions should not have a stall recovery timer running
@@ -643,19 +708,18 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      // Part update handler: Replace single-element array with direct comparison
+      // FIX 19: Replace single-element array with direct comparison
       if (event?.type === "message.part.updated") {
         log('progress event:', event?.type, sid);
         const s = getSession(sid);
-
         const part = e?.properties?.part;
         const partType = part?.type;
-
-        // CRITICAL: Ignore synthetic messages to prevent infinite loops
-        if (part?.synthetic === true) {
-          log('ignoring synthetic message part');
-          return;
-        }
+          
+          // CRITICAL: Ignore synthetic messages to prevent infinite loops
+          if (part?.synthetic === true) {
+            log('ignoring synthetic message part');
+            return;
+          }
           
           const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
           log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
@@ -683,7 +747,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               log('output tracked:', partType, 'session:', sid);
             }
             
-            // Only estimate tokens for parts lacking actual token metadata
+            // FIX 5: Estimate tokens only for parts without actual token counts.
             // Text/reasoning parts are counted via message.updated (actual tokens).
             // Tool/file/subtask/step-start parts need estimation since they lack token metadata.
             let partText = "";
@@ -698,7 +762,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             
             if (partText) {
-              // Apply user-configured multiplier to text-based token estimates
+              // FIX 5: Use configurable multiplier instead of hardcoded ×2
               const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
               s.estimatedTokens += estimatedTokens;
             }
@@ -728,7 +792,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               if (isPlanContent(partText)) {
                 log('plan detected in updated text part, pausing stall monitoring');
                 s.planning = true;
-                s.planningStartedAt = Date.now(); // Track planning start time to enforce planning timeout
+                s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
                 // Schedule planning timeout recovery
                 clearTimer(sid);
                 scheduleRecovery(sid, config.planningTimeoutMs);
@@ -746,16 +810,15 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             // Schedule normal recovery now that planning is done
             scheduleRecovery(sid, config.stallTimeoutMs);
           }
-        }
 
         // Check if this is a delta update containing plan content
         const deltaText = e?.properties?.delta as string | undefined;
         if (deltaText) {
           s.planBuffer = (s.planBuffer + deltaText).slice(-200);
           if (isPlanContent(s.planBuffer)) {
-            log('plan detected in delta, pausing stall monitoring - user must address');
+            log('plan detected in delta, pausing stall monitoring — user must address');
             s.planning = true;
-            s.planningStartedAt = Date.now(); // Track planning start time to enforce planning timeout
+            s.planningStartedAt = Date.now(); // FIX 3: Track when planning started
             s.planBuffer = '';
             // Schedule planning timeout recovery instead of leaving timer cleared
             clearTimer(sid);
@@ -874,14 +937,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.reviewDebounceTimer = null;
         }
 
-        // Enable test-fix loop by resetting review flag when new work appears
+        // FIX 7: Reset reviewFired when new pending todos appear after review was fired
         // This enables the test-fix loop: review creates fix todos → review fires again
         if (hasPending && s.reviewFired) {
           log('new pending todos detected after review, resetting review flag:', sid);
           s.reviewFired = false;
         }
 
-        // Nudge is triggered by session.idle - todo.updated just sets hasOpenTodos flag
+        // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
         writeStatusFile(sid);
         return;
       }
@@ -920,10 +983,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Restart stall timer since we just freed context
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
-          // Use standard stall timeout instead of immediate recovery after compaction
+          // FIX 8: Use stallTimeoutMs instead of 0 to avoid aborting legitimately resumed work
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
-        // Resume work after compaction by queueing a continue
+        // FIX 3: Queue and send continue after compaction to resume work
         s.needsContinue = true;
         s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
         review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
@@ -931,7 +994,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      if (event?.type === "session.ended" || event?.type === "session.deleted") {
+      if (staleTypes.includes(event?.type)) {
         log('stale event:', event?.type, sid);
         nudge.cancelNudge(sid);
         resetSession(sid);

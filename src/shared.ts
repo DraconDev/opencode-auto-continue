@@ -4,12 +4,16 @@ import { join } from "path";
 
 export type TypedPluginInput = PluginInput;
 
-// Import canonical types/values for local use.
+// Import canonical types/values for local use, then re-export for downstream.
 // Canonical definitions live in config.ts and session-state.ts.
 import type { PluginConfig } from "./config.js";
 import { DEFAULT_CONFIG, validateConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
 import { createSession } from "./session-state.js";
+
+// Re-exports for backward compatibility — import directly from ./config.js or ./session-state.js
+export type { PluginConfig, SessionState };
+export { DEFAULT_CONFIG, validateConfig, createSession };
 
 // Cache for model context limit to avoid re-reading opencode.json
 // Encapsulated in a class to avoid module-level state pollution and improve testability
@@ -169,6 +173,10 @@ export function parseTokensFromError(error: any): { total: number; input: number
   return null;
 }
 
+export function updateProgress(s: SessionState) {
+  s.lastProgressAt = Date.now();
+}
+
 export function formatMessage(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
 }
@@ -238,18 +246,15 @@ function hasSimilarPrompt(a: string, b: string): boolean {
  * Checks if a similar prompt was recently sent to the same session.
  * Results are cached per (input, sessionId) with a TTL to avoid redundant API calls.
  */
-const messagesCache = new WeakMap<any, Map<string, { data: any[]; ts: number }>>();
+const messagesCache = new WeakMap<any, { data: any[]; ts: number; sid: string }>();
 const MESSAGES_CACHE_TTL = 300;
 
 async function fetchRecentMessages(sessionId: string, input: TypedPluginInput): Promise<any[]> {
   const key = input.client?.session;
   if (key) {
-    const sessionMap = messagesCache.get(key);
-    if (sessionMap) {
-      const cached = sessionMap.get(sessionId);
-      if (cached && Date.now() - cached.ts < MESSAGES_CACHE_TTL) {
-        return cached.data;
-      }
+    const cached = messagesCache.get(key);
+    if (cached && cached.sid === sessionId && Date.now() - cached.ts < MESSAGES_CACHE_TTL) {
+      return cached.data;
     }
   }
   
@@ -258,19 +263,12 @@ async function fetchRecentMessages(sessionId: string, input: TypedPluginInput): 
     query: { limit: 15 },
   });
   const data = Array.isArray(resp.data) ? resp.data : [];
-  if (key) {
-    let sessionMap = messagesCache.get(key);
-    if (!sessionMap) {
-      sessionMap = new Map();
-      messagesCache.set(key, sessionMap);
-    }
-    sessionMap.set(sessionId, { data, ts: Date.now() });
-  }
+  if (key) messagesCache.set(key, { data, ts: Date.now(), sid: sessionId });
   return data;
 }
 
 export function clearMessagesCache(): void {
-  /* WeakMap entries are garbage-collected when client objects are released — no manual cleanup possible */
+  /* WeakMap clears itself — no manual cleanup needed */
 }
 
 export async function shouldBlockPrompt(

@@ -216,19 +216,12 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (errors.length > 0) {
     console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);
     const result = { ...DEFAULT_CONFIG };
-    const overriddenFields: string[] = [];
     
     (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
       if (!invalidFields.has(String(key))) {
         (result as any)[key] = normalized[key];
-      } else {
-        overriddenFields.push(`${String(key)}: ${JSON.stringify(normalized[key])} → ${JSON.stringify((result as any)[key])} (default)`);
       }
     });
-    
-    if (overriddenFields.length > 0) {
-      console.warn(`[opencode-auto-continue] Using default values for invalid fields:\n${overriddenFields.map(f => `  - ${f}`).join('\n')}`);
-    }
     
     return result;
   }

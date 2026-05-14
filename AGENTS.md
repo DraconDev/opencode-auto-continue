@@ -1,42 +1,10 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.306+)
+## Current State (v7.8.306)
 
-**Status:** Released & Dogfooding
-**Tests:** 414/414 passing
+**Status:** Released & Dogfooding  
+**Tests:** 389/389 passing  
 **GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.306
-
-### v7.8.306+ Changes (30 Code Review Fixes)
-
-**CRITICAL (3):**
-- **resetSession simplification**: Removed 50+ dead field resets before `sessions.delete()` — reset is unreachable work
-- **Orphan check guards**: Added `!s.userCancelled && !s.aborting && !s.planning` to session monitor orphan recovery path
-- **busy-but-dead guard**: Added `!s.aborting` check to prevent recovery firing during ongoing recovery
-
-**HIGH (4 + 1 reverted):**
-- **wasPlanning capture**: Recovery now captures `wasPlanning` before clearing flag, ensuring planning timeout uses plan-aware continue message
-- **Compacting flag fix**: Removed premature clear on `session.status(busy)` — now only cleared by `session.compacted` or `message.part.updated` compaction event
-- **hasOpenTodos interpolation**: Fixed `"Has true pending todos"` → `"Has pending todos but stalled"` in AI advisor reasoning
-- **Orphan timer tracking**: Orphan setTimeout now stored in `pendingTimers` Set with `unref()` and cleared on `stop()`
-- **H2 (reverted)**: Attempted to accept `retry` as busy state — reverted per test expectations
-
-**MEDIUM (8):**
-- **M1: FIX comments removed**: All 45 stale `FIX N` comments replaced with descriptive explanations (0 remaining)
-- **M2: updateProgress deduplicated**: Removed duplicate from `shared.ts`, now imports from `session-state.js`
-- **M3: Token accumulation fixed**: Changed `+=` to `Math.max()` to prevent double-counting tokens across messages
-- **M4: staleTypes replaced**: Array removed, inline `if (type === "session.ended" || type === "session.deleted")` comparison
-- **M5: Compacting guard**: Added `if (s.compacting) return false` to `forceCompact()` preventing concurrent compaction
-- **M6: touchSession consistency**: Now updates both `lastProgressAt` and `lastOutputAt`
-- **M7: idle consolidation**: Four separate `if (status?.type === "idle")` blocks consolidated into one
-- **M8: WeakMap cache**: Changed to `Map<sid, data>` per client to support multiple sessions
-
-**LOW (6):**
-- **L1**: Removed unused 960-line `autonomy-types.ts` re-export from `types.ts`
-- **L2**: Removed dead re-exports from `shared.ts` (no production consumers)
-- **L3**: Removed dead `registerStatusLineHook` function from `terminal.ts`
-- **L4**: Added `unref()` to nudge timer
-- **L5**: Config validation now logs requested vs default values for overridden fields
-- **L6**: Tightened plan fuzzy matching — requires 10+ chars for substring matching
 
 ### v7.8.306 Changes
 - **Busy-But-Dead Detection**: Distinguishes status pings from real output using `lastOutputAt`/`lastOutputLength` tracking
@@ -61,22 +29,6 @@
   "debug": false
 }]
 ```
-
-### Test Suite
-
-| File | Tests | Description |
-|------|-------|-------------|
-| plugin.test.ts | 104 | Core plugin integration tests |
-| compaction-recovery.test.ts | 43 | Compaction and recovery integration tests |
-| recovery.test.ts | 32 | Unit tests for recovery module |
-| compaction.test.ts | 24 | Unit tests for compaction module |
-| shared-utility.test.ts | 75 | Shared utilities and helpers |
-| nudge.test.ts | 33 | Nudge module tests |
-| terminal-status-notifications.test.ts | 33 | Terminal and toast notification tests |
-| session-monitor.test.ts | 12 | Session monitor tests |
-| ai-advisor.test.ts | 18 | AI advisory heuristic tests |
-| integration.test.ts | 12 | Full integration tests |
-| plan.test.ts | 28 | Plan detection and handling tests |
 
 ## Overview
 
@@ -710,38 +662,6 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 
 ## Bug Fixes History
 
-### v7.8.306+ (30 Code Review Fixes)
-
-**CRITICAL (3):**
-1. **resetSession dead code removal** - Removed 50+ field resets before `sessions.delete()` — unreachable work
-2. **Orphan check bypass** - Added `!s.userCancelled && !s.aborting && !s.planning` guards to prevent dual recovery path
-3. **busy-but-dead guard** - Added `!s.aborting` check to prevent repeated recovery calls during ongoing recovery
-
-**HIGH (5):**
-1. **wasPlanning capture** - Recovery captures `wasPlanning` before clearing flag; planning timeout now uses plan-aware message
-2. **Compacting flag race** - Removed premature clear on `session.status(busy)`; only cleared by `session.compacted` or compaction part
-3. **hasOpenTodos boolean** - Fixed string interpolation from `"Has true pending todos"` to descriptive
-4. **Orphan timer leak** - Orphan setTimeout stored in `pendingTimers` Set with `unref()`, cleared on `stop()`
-5. **H2 (reverted)** - Tried accepting `retry` as busy state; test failure reverted
-
-**MEDIUM (8):**
-1. **FIX comments removed** - All 45 stale `FIX N` comments replaced with descriptive explanations (0 remaining)
-2. **updateProgress dedup** - Removed duplicate from `shared.ts`; canonical implementation in `session-state.js`
-3. **Token accumulation** - Changed `+=` to `Math.max()` to prevent double-counting tokens
-4. **staleTypes array** - Replaced with direct `if (type === "session.ended" || type === "session.deleted")` comparison
-5. **forceCompact guard** - Added `if (s.compacting) return false` to prevent concurrent compaction
-6. **touchSession consistency** - Now updates both `lastProgressAt` and `lastOutputAt`
-7. **idle block consolidation** - Four separate `if (status?.type === "idle")` blocks merged into one
-8. **WeakMap cache multi-session** - Changed `WeakMap<any, {data, ts, sid}>` to `WeakMap<any, Map<sid, {data, ts}>>`
-
-**LOW (6):**
-1. **autonomy-types re-export removed** - Removed 960-line unused re-export from `types.ts`
-2. **Dead re-exports removed** - Removed `DEFAULT_CONFIG`, `validateConfig`, `createSession` re-exports from `shared.ts`
-3. **registerStatusLineHook removed** - Dead code in `terminal.ts` (never called successfully)
-4. **Nudge timer unref** - Added `unref()` to prevent keeping Node.js event loop alive
-5. **Config validation logging** - Now logs requested vs default values for overridden fields
-6. **Plan fuzzy matching tightened** - Requires 10+ chars for substring matching to prevent false positives
-
 ### v7.8 (Current) - 34 Total Fixes
 
 #### Initial Audit (9 Fixes)
@@ -788,62 +708,5 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 ### UI breakage
 - Debug mode OFF by default — file logging can cause TUI crashes
 - No `console.log`/`console.error` in production paths
-
-## Session State Architecture
-
-### Current Structure
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `src/index.ts` | 1022 | Plugin entry point, module wiring, hooks registration |
-| `src/event-handlers.ts` | 552 | 12 event handler methods (extracted from index.ts inline handlers) |
-| `src/session-state.ts` | 177 | SessionState interface + createSession + updateProgress |
-| `src/recovery.ts` | 442 | Recovery logic with abort+continue flow |
-| `src/nudge.ts` | ~450 | Nudge scheduling and injection |
-| `src/compaction.ts` | ~200 | Emergency compaction on token limit |
-| `src/review.ts` | ~250 | Todo review after completion |
-| `src/ai-advisor.ts` | 512 | Hybrid AI/heuristic advisory module |
-| `src/session-monitor.ts` | ~150 | Orphan detection and session discovery |
-| `src/terminal.ts` | ~300 | Terminal title/progress updates |
-| `src/status-file.ts` | ~200 | Status file writes |
-| `src/plan.ts` | ~300 | Plan detection and handling |
-| `src/shared.ts` | 436 | Shared utilities (safeHook, scheduleRecoveryWithGeneration, etc.) |
-
-### Event Flow
-
-```
-event.type → eventHandlers.{handler}(e)
-  handleSessionError() — token limit, user cancelled
-  handleSessionCreated/Updated/Diff() — session lifecycle
-  handleMessageUpdated() — token tracking, user message detection
-  handleSessionStatus() — busy/retry/idle handling, toast notifications
-  handleMessagePartUpdated() — progress tracking, plan detection
-  handleMessageCreatedOrPartAdded() — activity events, token estimation
-  handleTodoUpdated() — todo state tracking
-  handleSessionIdle() — nudge scheduling
-  handleSessionCompacted() — post-compaction continuation
-  handleStaleEvent() — session.ended/session.deleted cleanup
-```
-
-### Deferred Improvements
-
-1. **A4: SessionState encapsulation** — Wrap SessionState fields with accessor methods to reduce direct `s.field = x` mutations across 10+ modules. Would improve maintainability but requires ~30 new methods. Deferred: too complex for single session.
-
-2. **T1: ai-advisor.test.ts edge cases** — Add tests for:
-   - AI advisory timeout (config.advisoryTimeoutMs exceeded)
-   - Malformed AI responses (non-parseable format)
-   - Boundary heuristics: exact 80% token threshold, exact 30s elapsed, exact 60s planning
-
-3. **H2: retry as busy state** — Re-attempt accepting `retry` as a valid busy state. Was reverted because test expected no abort on retry. Need to understand the test's intent before retrying.
-
-## Key Trade-offs (Design Decisions)
-
-| Decision | Rationale | Trade-off |
-|----------|-----------|-----------|
-| Event handlers in class | Better organization, easier to test | Extra indirection layer |
-| SessionState as plain object | Simple, no encapsulation overhead | Direct mutations across modules |
-| Heuristic-first advisory | Instant decisions, no AI latency | Can't handle novel edge cases |
-| Async compaction | Non-blocking token limit handling | Race conditions require guards |
-| Synthetic message flag | Semantic clarity for AI | No behavioral difference from plain text |
 
 

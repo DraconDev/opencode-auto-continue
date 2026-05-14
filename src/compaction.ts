@@ -86,10 +86,6 @@ export function createCompactionModule(deps: CompactionDeps) {
   async function forceCompact(sessionId: string): Promise<boolean> {
     const s = sessions.get(sessionId);
     if (!s) return false;
-    if (s.compacting) {
-      log('compaction already in progress, skipping:', sessionId);
-      return false;
-    }
 
     s.compacting = true;
 

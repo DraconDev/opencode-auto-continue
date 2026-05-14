@@ -47,7 +47,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   let cleanupTimer: ReturnType<typeof setInterval> | null = null;
   let orphanCheckTimer: ReturnType<typeof setInterval> | null = null;
   let previousBusyCount = 0;
-  const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   let orphanRecoveryCount = 0;
   let discoveredCount = 0;
   let cleanedUpCount = 0;
@@ -57,10 +56,10 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   const childParentMap = new Map<string, string>();
 
   function scheduleDiscoveredRecovery(sessionId: string, state: SessionState): void {
-    // Increment generation to invalidate stale timers from previous cycles
+    // FIX 4: Increment generation to invalidate stale timers
     state.timerGeneration++;
     const currentGeneration = state.timerGeneration;
-    // Use shorter initial timeout for discovered sessions that may already be stuck
+    // FIX 9: Use shorter initial timeout for discovered sessions that may already be stuck
     const timeoutMs = Math.min(config.stallTimeoutMs, 30000);
     const timer = setTimeout(() => {
       const current = sessions.get(sessionId);
@@ -77,7 +76,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function getBusyCount(): number {
     let count = 0;
-    for (const [, s] of sessions) {
+    for (const [_, s] of sessions) {
       if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
         count++;
       }
@@ -112,7 +111,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
    * When busyCount drops from >1 to 1, a subagent may have finished
    * but the parent is still stuck as busy.
    * 
-   * Orphan check: Also detect single busy sessions that have been stuck for too long.
+   * FIX 2: Also detect single busy sessions that have been stuck for too long.
    */
   function checkOrphanParents(): void {
     if (isDisposed()) return;
@@ -137,8 +136,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               recover(id);
             } else {
               // Schedule another check after the wait period
-              const timer = setTimeout(() => {
-                pendingTimers.delete(timer);
+              setTimeout(() => {
                 if (!isDisposed()) {
                   const session = sessions.get(id);
                   if (session && (session.lastKnownStatus === 'busy' || session.lastKnownStatus === 'retry' || session.aborting || session.compacting)) {
@@ -151,8 +149,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                   }
                 }
               }, config.subagentWaitMs - timeSinceProgress + 1000);
-              (timer as any).unref?.();
-              pendingTimers.add(timer);
             }
           }
           break;
@@ -160,15 +156,15 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       }
     }
 
-    // Orphan check: Also check for single busy sessions stuck for too long
+    // FIX 2: Also check for single busy sessions stuck for too long
     // (catches orphans even without parent-child tracking, and single-session stalls)
-    // Orphan wait: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
+    // FIX 5: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
     if (currentBusyCount >= 1) {
       for (const [id, s] of sessions) {
         if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
           const timeSinceProgress = Date.now() - s.lastProgressAt;
           const stuckThreshold = config.stallTimeoutMs;
-          if (timeSinceProgress > stuckThreshold && !s.userCancelled && !s.aborting && !s.planning && !s.compacting) {
+          if (timeSinceProgress > stuckThreshold) {
             log('[SessionMonitor] single busy session stuck for too long:', id, 'stuck for', timeSinceProgress, 'ms');
             orphanRecoveryCount++;
             recover(id);
@@ -223,7 +219,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           const state = createSession();
           state.actionStartedAt = Date.now();
 
-          // Busy threshold: Only arm recovery on busy/retry status, skip on null/unknown
+          // FIX 10: Only arm recovery on busy/retry status, skip on null/unknown
           if (statusType === "busy" || statusType === "retry") {
             scheduleDiscoveredRecovery(id, state);
           } else if (statusType === null) {
@@ -279,7 +275,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     for (const id of toDelete) {
       const s = sessions.get(id);
       if (s) {
-        // Orphan check: Clear dangling timers before deleting session
+        // FIX 2: Clear dangling timers before deleting session
         if (s.timer) {
           clearTimeout(s.timer);
           s.timer = null;
@@ -305,7 +301,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     const s = sessions.get(sessionId);
     if (s) {
       s.lastProgressAt = Date.now();
-      s.lastOutputAt = Date.now();
     }
   }
 
@@ -365,10 +360,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       clearInterval(cleanupTimer);
       cleanupTimer = null;
     }
-    for (const timer of pendingTimers) {
-      clearTimeout(timer);
-    }
-    pendingTimers.clear();
     log('[SessionMonitor] stopped');
   }
 

@@ -12,7 +12,7 @@ export interface RecoveryDeps {
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
-  scheduleRecovery: (sessionId: string, delayMs: number) => void; // Unify recovery timer scheduling with generation counter
+  scheduleRecovery: (sessionId: string, delayMs: number) => void; // FIX 1: Unified scheduling
   aiAdvisor?: AIAdvisor;
   sendContinue?: (sessionId: string) => Promise<void>;
 }
@@ -97,7 +97,7 @@ function isHallucinationLoop(s: SessionState): boolean {
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge, scheduleRecovery } = deps;
 
-  // scheduleRecovery injected from index.ts with generation tracking
+  // FIX 1: scheduleRecovery is now passed in from index.ts (unified implementation with generation counter)
 
   async function isSessionIdle(sessionId: string): Promise<boolean> {
     try {
@@ -117,8 +117,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     if (s.aborting) return;
     if (s.userCancelled) return;
-    // Force recovery when planning exceeds timeout
-    const wasPlanning = s.planning;
+    // FIX 3/11: Allow recovery if planning has been going on too long
     if (s.planning && Date.now() - s.planningStartedAt < config.planningTimeoutMs) {
       log('session is planning, skipping recovery (planning timeout not reached):', sessionId);
       return;
@@ -129,7 +128,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
-      if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
+        if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
         try {
           const context = await deps.aiAdvisor.extractContext(sessionId, s);
           const advice = await deps.aiAdvisor.getAdvice(context);
@@ -290,7 +289,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
       if (s.autoSubmitCount >= config.maxAutoSubmits) {
         log('loop protection: max auto-submits reached:', s.autoSubmitCount);
-        // Notify user when hallucination loop protection triggers
+        // FIX 14: Show toast when loop protection activates
         try {
           await input.client.tui.showToast({
             query: { directory: input.directory || "" },
@@ -330,7 +329,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         // Use AI-generated custom prompt if available
         messageText = s.lastAdvisoryAdvice.customPrompt;
         log('using AI-generated custom prompt:', messageText);
-      } else if (wasPlanning) {
+      } else if (s.planning) {
         messageText = config.continueWithPlanMessage;
         log('using plan-aware continue message');
       } else if (config.includeTodoContext) {
@@ -415,7 +414,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } catch (e) {
       log('recovery failed:', e);
-      // Avoid double-counting recovery attempts
+      // FIX 3: Only increment recoveryFailed here - attempts was already incremented in try block (line 379)
       s.recoveryFailed++;
       
       if (s.attempts >= config.maxRecoveries) {

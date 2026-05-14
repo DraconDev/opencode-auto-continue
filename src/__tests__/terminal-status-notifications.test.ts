@@ -817,7 +817,7 @@ describe("compaction state behavior", () => {
     vi.useRealTimers();
   });
 
-  it("should clear compacting flag on session.compacted", async () => {
+  it("should clear compacting flag on session.status busy", async () => {
     vi.useFakeTimers();
     const mockStatus = mockClient.session.status as any;
     mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
@@ -840,8 +840,8 @@ describe("compaction state behavior", () => {
       delta: ""
     } } });
 
-    // Clear flag by session.compacted (not by session.status busy)
-    await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+    // Clear flag by busy status
+    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
     // Now stall timer should work
     await vi.advanceTimersByTimeAsync(2000);

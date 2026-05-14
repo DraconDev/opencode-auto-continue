@@ -288,7 +288,7 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
       return {
         action: "continue",
         confidence: 0.75,
-        reasoning: `Has pending todos but stalled — needs nudge to continue`,
+        reasoning: `Has ${context.hasOpenTodos} pending todos but stalled — needs nudge to continue`,
         stallPattern: "todo-stalled",
         customPrompt: "You have pending todos that need attention. Please continue working on the next incomplete task.",
         contextSummary: "Model has pending todos but stalled, needs encouragement to continue",
@@ -381,8 +381,8 @@ export function createAIAdvisor(deps: AIAdvisorDeps) {
   }
 
   // Read provider config from opencode.json
-  // Prefer matching provider by model name over first available
-  // Cache parsed opencode.json to avoid repeated disk reads
+  // FIX 9: Match provider by model name if specified
+  // FIX 10: Add caching to avoid re-reading opencode.json on every advisory call
   function readProviderConfig(targetModel?: string): { baseURL: string; apiKey?: string; headers?: Record<string, string> } | null {
     try {
       const configPath = join(

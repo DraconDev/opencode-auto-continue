@@ -15,8 +15,8 @@ importers:
         specifier: ^20.11.0
         version: 20.19.41
       typescript:
-        specifier: 5.8.2
-        version: 5.8.2
+        specifier: ^5.4.0
+        version: 5.9.3
       vitest:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.41)
@@ -585,8 +585,8 @@ packages:
     resolution: {integrity: sha512-EBJnVBr3dTXdA89WVFoAIPUqkBjxPMwRqsfuo1r240tKFHXv3zgca4+NJib/h6TyvGF7vOawz0jGuryJCdNHrw==}
     engines: {node: '>=20'}
 
-  typescript@5.8.2:
-    resolution: {integrity: sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ==}
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -1127,7 +1127,7 @@ snapshots:
 
   toml@4.1.1: {}
 
-  typescript@5.8.2: {}
+  typescript@5.9.3: {}
 
   undici-types@5.26.5:
     optional: true
