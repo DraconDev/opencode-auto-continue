@@ -256,6 +256,8 @@ export async function sendCustomPrompt(
 }
 
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
+  const REAL_TOKEN_REFRESH_INTERVAL_MS = 10000;
+
   let config: PluginConfig = {
     ...DEFAULT_CONFIG,
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
@@ -275,10 +277,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   function refreshRealTokens(id: string): number {
     const s = getSession(id);
-    // Throttle: only read from DB every 10 seconds
     const now = Date.now();
-    const COMPACTED_TOKEN_REFRESH_BACKOFF_MS = 10000;
-    if (s.realTokens > 0 && now - s.lastRealTokenRefreshAt < COMPACTED_TOKEN_REFRESH_BACKOFF_MS) {
+    if (s.realTokens > 0 && now - s.lastRealTokenRefreshAt < REAL_TOKEN_REFRESH_INTERVAL_MS) {
+      return getTokenCount(s);
+    }
+    if (s.realTokens === 0 && s.lastCompactionAt > 0 && now - s.lastCompactionAt < REAL_TOKEN_REFRESH_INTERVAL_MS) {
       return getTokenCount(s);
     }
     if (s.realTokens === 0 && s.lastCompactionAt > 0 && now - s.lastCompactionAt < COMPACTED_TOKEN_REFRESH_BACKOFF_MS) {
@@ -1117,8 +1120,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.lastCompactionAt = Date.now();
         s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
         // Invalidate realTokens — DB may still have pre-compaction values.
-        // Force getTokenCount() to use the reduced estimatedTokens until the next
-        // refreshRealTokens() call reads updated DB values (throttled to 10s).
+        // Force getTokenCount() to use the reduced estimatedTokens.
+        // refreshRealTokens skips DB read while realTokens=0 and lastCompactionAt
+        // is within REAL_TOKEN_REFRESH_INTERVAL_MS.
         s.realTokens = 0;
         s.lastRealTokenRefreshAt = Date.now();
         // Reset recovery counters since we just freed context space
