@@ -46,14 +46,23 @@ export function createReviewModule(deps: ReviewDeps) {
       }
 
       // Run tests before review to inject test output
+      // Only include test output if there are real (non-skipped) results.
+      // If all commands were skipped by gates, the AI must be entirely unaware
+      // that a test loop exists — no mention of tests in the prompt at all.
       let testOutput = "";
+      let hasRealTests = false;
       if (deps.testRunner && s && !s.testRunInProgress) {
         s.testRunInProgress = true;
         try {
           const results = await deps.testRunner.runTests();
           s.lastTestRunAt = Date.now();
-          testOutput = deps.testRunner.formatResults(results);
-          log('test results for review:', testOutput ? 'output captured' : 'no output');
+          hasRealTests = deps.testRunner.hasRealResults(results);
+          if (hasRealTests) {
+            testOutput = deps.testRunner.formatResults(results);
+            log('test results for review:', testOutput ? 'output captured' : 'all passing');
+          } else {
+            log('no real test results (all skipped), review will not mention tests, session:', sessionId);
+          }
         } catch (e) {
           log('test runner error during review (non-fatal):', e);
         } finally {
@@ -61,8 +70,13 @@ export function createReviewModule(deps: ReviewDeps) {
         }
       }
 
-      // Build review message with test output
-      const messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)" });
+      // Build review message — only include test section if real results exist
+      let messageText: string;
+      if (hasRealTests) {
+        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)" });
+      } else {
+        messageText = config.reviewWithoutTestsMessage;
+      }
 
       // Prompt guard: prevent duplicate review prompts
       const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
