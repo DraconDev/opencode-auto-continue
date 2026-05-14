@@ -931,6 +931,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         
         // Handle review on completion
         if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
+          // Opportunistic compaction after review completion
+          if (config.opportunisticCompactAfterReview && s.estimatedTokens >= config.opportunisticCompactAtTokens) {
+            compaction.maybeOpportunisticCompact(sid, 'post-review').catch((e: unknown) => log('opportunistic compact post-review failed:', e));
+          }
           if (s.reviewDebounceTimer) {
             clearTimeout(s.reviewDebounceTimer);
           }
