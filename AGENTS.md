@@ -52,6 +52,7 @@
   "sessionMonitorEnabled": true,
   "nudgeEnabled": true,
   "autoCompact": true,
+  "testCommands": ["cargo test", "cargo build"],
   "debug": true
 }]
 ```
