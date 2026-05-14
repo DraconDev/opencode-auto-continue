@@ -397,6 +397,7 @@ These fields are tracked during `message.part.updated` events and injected as `#
 16. **Hard compaction gate** — recovery/nudge/continue all `await maybeHardCompact()` when tokens exceed `hardCompactAtTokens`
 17. **Compaction safety timeout** — `compactionSafetyTimeoutMs` force-clears stuck `compacting` flag if `session.summarize()` hangs
 18. **Emergency failure recovery** — emergency compaction failure schedules recovery with backoff instead of abandoning session
+19. **Double compact prevention (grace period)** — all 3 layers skip if `lastCompactionAt` is within `compactionGracePeriodMs` (10s), even when `hardCompactBypassCooldown: true`. `session.compacted` sets `realTokens=0` so `getTokenCount()` falls back to reduced `estimatedTokens` until DB refreshes.
 
 ## Nudge Architecture
 
