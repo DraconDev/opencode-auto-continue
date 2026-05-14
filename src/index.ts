@@ -891,10 +891,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
+        compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact check failed:', e));
         return;
-      }
-
-      if (event?.type === "todo.updated") {
         const todos = e?.properties?.todos;
         if (!Array.isArray(todos)) return;
         
