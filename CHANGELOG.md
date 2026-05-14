@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.1841] - 2026-05-14
+
+### Changed
+
+- **Raised compaction thresholds**: opportunistic 40k→60k, proactive 60k→80k, hard 80k→100k. Compaction fires less frequently (20k higher on all layers).
+- **`autoAnswerQuestions` default**: Changed from `true` to `false`. Users must explicitly opt in to auto-answer AI questions.
+
+### Added
+
+- **OpenCode question blocking**: Added `"permission": { "question": "deny" }` to opencode.json to disable OpenCode's question-asking feature entirely. Questions were blocking autonomous flow — this stops them at the source.
+
 ## [7.8.331] - 2026-05-12
 
 ### Fixed
