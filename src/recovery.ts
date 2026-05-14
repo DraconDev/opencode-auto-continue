@@ -12,9 +12,10 @@ export interface RecoveryDeps {
   isDisposed: () => boolean;
   writeStatusFile: (sessionId: string) => void;
   cancelNudge: (sessionId: string) => void;
-  scheduleRecovery: (sessionId: string, delayMs: number) => void; // FIX 1: Unified scheduling
+  scheduleRecovery: (sessionId: string, delayMs: number) => void;
   aiAdvisor?: AIAdvisor;
   sendContinue?: (sessionId: string) => Promise<void>;
+  maybeHardCompact?: (sessionId: string) => Promise<boolean>;
 }
 
 // Tool-text detection patterns (XML tool calls embedded in text/reasoning)
@@ -126,6 +127,19 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.planning = false; // Clear planning flag to allow recovery
     }
     if (s.compacting) return;
+    if (s.hardCompactionInProgress) return;
+
+    if (deps.maybeHardCompact) {
+      try {
+        const compacted = await deps.maybeHardCompact(sessionId);
+        if (compacted) {
+          log('hard compaction succeeded before recovery, tokens now below threshold:', sessionId);
+        }
+      } catch (e) {
+        log('hard compaction before recovery failed (proceeding anyway):', e);
+      }
+    }
+
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
       if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {

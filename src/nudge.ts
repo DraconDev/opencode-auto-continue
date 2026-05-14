@@ -12,6 +12,7 @@ export interface NudgeDeps {
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
   input: TypedPluginInput;
+  maybeHardCompact?: (sessionId: string) => Promise<boolean>;
 }
 
 export function createNudgeModule(deps: NudgeDeps) {
