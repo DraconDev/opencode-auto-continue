@@ -94,6 +94,9 @@ export interface SessionState {
 
   // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
+
+  // === Stop Conditions (stop-conditions) ===
+  stoppedByCondition: string | null;
 }
 
 export function createSession(): SessionState {
@@ -169,6 +172,8 @@ export function createSession(): SessionState {
     lastPlanItemDescription: '',
 
     statusHistory: [],
+
+    stoppedByCondition: null,
   };
 }
 
