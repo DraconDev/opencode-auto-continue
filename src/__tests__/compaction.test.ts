@@ -67,7 +67,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   compactionVerifyWaitMs: 10000,
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
-  compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
   opportunisticCompactAtTokens: 50000,
   opportunisticCompactAfterRecovery: true,
