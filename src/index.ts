@@ -364,6 +364,25 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover });
   sessionMonitor.start();
 
+  const eventHandlers = new EventHandlers(
+    input,
+    config,
+    sessions,
+    getSession,
+    clearTimer,
+    scheduleRecovery,
+    writeStatusFile,
+    updateProgress,
+    terminal,
+    nudge,
+    review,
+    compaction,
+    aiAdvisor,
+    sessionMonitor,
+    recover,
+    resetSession,
+    log,
+  );
 
   return {
     event: async ({ event }: { event: any }) => {
