@@ -156,6 +156,7 @@ describe("recovery module unit tests", () => {
   let mockToast: ReturnType<typeof vi.fn>;
   let mockScheduleRecovery: ReturnType<typeof vi.fn>;
   let mockSendContinue: ReturnType<typeof vi.fn>;
+  let mockForceCompact: ReturnType<typeof vi.fn>;
   let isDisposed: () => boolean;
   let writeStatusFile: ReturnType<typeof vi.fn>;
   let cancelNudge: ReturnType<typeof vi.fn>;
@@ -173,6 +174,7 @@ describe("recovery module unit tests", () => {
     mockToast = vi.fn();
     mockScheduleRecovery = vi.fn();
     mockSendContinue = vi.fn().mockResolvedValue(undefined);
+    mockForceCompact = vi.fn().mockResolvedValue(true);
     isDisposed = () => false;
     writeStatusFile = vi.fn();
     cancelNudge = vi.fn();
@@ -205,6 +207,7 @@ describe("recovery module unit tests", () => {
       cancelNudge,
       scheduleRecovery: mockScheduleRecovery,
       sendContinue: mockSendContinue,
+      forceCompact: mockForceCompact,
     });
   }
 
@@ -646,13 +649,12 @@ describe("recovery module unit tests", () => {
   });
 
   describe("auto-compaction during recovery", () => {
-    it("calls summarize when autoCompact is enabled and session idle", async () => {
+    it("calls forceCompact when autoCompact is enabled and session idle", async () => {
       const now = Date.now();
       mockStatus
         .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
         .mockResolvedValue({ data: { test: { type: "idle" } } });
       mockAbort.mockResolvedValue({});
-      mockSummarize.mockResolvedValue({});
       createSession("test", {
         lastProgressAt: now - 30000,
         lastOutputAt: now - 200000,
@@ -662,7 +664,7 @@ describe("recovery module unit tests", () => {
       const promise = module.recover("test");
       await settleTimers();
       await promise;
-      expect(mockSummarize).toHaveBeenCalled();
+      expect(mockForceCompact).toHaveBeenCalled();
     });
   });
 

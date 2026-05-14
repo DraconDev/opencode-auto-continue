@@ -715,7 +715,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.forceCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      await simulateCompacted(sessions, "test");
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.5 });
 
       await promise;
       expect(s.estimatedTokens).toBe(50000);
