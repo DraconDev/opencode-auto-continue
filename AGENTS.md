@@ -710,6 +710,38 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 
 ## Bug Fixes History
 
+### v7.8.306+ (30 Code Review Fixes)
+
+**CRITICAL (3):**
+1. **resetSession dead code removal** - Removed 50+ field resets before `sessions.delete()` — unreachable work
+2. **Orphan check bypass** - Added `!s.userCancelled && !s.aborting && !s.planning` guards to prevent dual recovery path
+3. **busy-but-dead guard** - Added `!s.aborting` check to prevent repeated recovery calls during ongoing recovery
+
+**HIGH (5):**
+1. **wasPlanning capture** - Recovery captures `wasPlanning` before clearing flag; planning timeout now uses plan-aware message
+2. **Compacting flag race** - Removed premature clear on `session.status(busy)`; only cleared by `session.compacted` or compaction part
+3. **hasOpenTodos boolean** - Fixed string interpolation from `"Has true pending todos"` to descriptive
+4. **Orphan timer leak** - Orphan setTimeout stored in `pendingTimers` Set with `unref()`, cleared on `stop()`
+5. **H2 (reverted)** - Tried accepting `retry` as busy state; test failure reverted
+
+**MEDIUM (8):**
+1. **FIX comments removed** - All 45 stale `FIX N` comments replaced with descriptive explanations (0 remaining)
+2. **updateProgress dedup** - Removed duplicate from `shared.ts`; canonical implementation in `session-state.js`
+3. **Token accumulation** - Changed `+=` to `Math.max()` to prevent double-counting tokens
+4. **staleTypes array** - Replaced with direct `if (type === "session.ended" || type === "session.deleted")` comparison
+5. **forceCompact guard** - Added `if (s.compacting) return false` to prevent concurrent compaction
+6. **touchSession consistency** - Now updates both `lastProgressAt` and `lastOutputAt`
+7. **idle block consolidation** - Four separate `if (status?.type === "idle")` blocks merged into one
+8. **WeakMap cache multi-session** - Changed `WeakMap<any, {data, ts, sid}>` to `WeakMap<any, Map<sid, {data, ts}>>`
+
+**LOW (6):**
+1. **autonomy-types re-export removed** - Removed 960-line unused re-export from `types.ts`
+2. **Dead re-exports removed** - Removed `DEFAULT_CONFIG`, `validateConfig`, `createSession` re-exports from `shared.ts`
+3. **registerStatusLineHook removed** - Dead code in `terminal.ts` (never called successfully)
+4. **Nudge timer unref** - Added `unref()` to prevent keeping Node.js event loop alive
+5. **Config validation logging** - Now logs requested vs default values for overridden fields
+6. **Plan fuzzy matching tightened** - Requires 10+ chars for substring matching to prevent false positives
+
 ### v7.8 (Current) - 34 Total Fixes
 
 #### Initial Audit (9 Fixes)
