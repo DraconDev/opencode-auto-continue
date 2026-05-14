@@ -607,6 +607,7 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | Last-known todos cache | Eliminates double-fetch in nudge.ts | Only updated on todo.updated events |
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
 | safeHook fail-open wrapper | Prevents plugin errors from crashing the host | Errors are logged but never propagated |
+| Question auto-answer via `_client` SDK internals | No public API for question reply in v1 SDK | Breaks silently if OpenCode renames internal `_client` property |
 
 | Tool-text recovery | Catches XML-in-reasoning stalls | 18 regex patterns may have false positives |
 | Hallucination loop break | Prevents infinite loops | 3-in-10min threshold may catch legitimate rapid continues |
