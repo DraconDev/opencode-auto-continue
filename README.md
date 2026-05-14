@@ -739,6 +739,16 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 
 When enabled, the plugin intercepts `question.asked` events and replies with the first option automatically. This prevents sessions from stalling when the AI asks follow-up questions. Uses OpenCode SDK internal `_client` property — no public API available in v1.
 
+### Test-Driven Quality Gate
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `testOnIdle` | `true` | Auto-run `testCommands` when session goes idle; inject failures into nudge |
+| `testCommands` | `["cargo test"]` | Shell commands to run for test verification (sequentially) |
+| `testCommandTimeoutMs` | `300000` | Per-command timeout in ms (5 minutes) |
+
+When enabled, the plugin runs tests automatically before each nudge. If tests fail, the nudge message becomes `"Tests are failing. Fix these before continuing..."`. At review time, test output is injected via `{testOutput}` template variable. Continue/nudge messages include TDD instructions.
+
 ### Other Options
 
 | Option | Default | Description |

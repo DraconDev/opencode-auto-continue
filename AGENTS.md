@@ -9,6 +9,10 @@
 
 ### v7.8.1839 Changes
 - **Raised compaction thresholds**: opportunistic 40k→60k, proactive 60k→80k, hard 80k→100k. Compaction now fires less frequently (20k higher on all layers).
+- **Test-Driven Quality Gate (TDQG)**: New `test-runner.ts` module runs configured test commands (default: `cargo test`) automatically:
+  - **Test-on-idle**: Runs tests before every nudge. If tests fail, nudge message becomes "fix these tests" directive.
+  - **Test-on-review**: Runs tests before review prompt. Results injected via `{testOutput}` template variable.
+  - **TDD enforcement**: Continue/nudge messages now instruct AI to "write test first, then implement."
 - **`simulateCompacted()` test helper**: Extracted from 10+ repeated patterns in compaction tests — reduces boilerplate.
 - **`autoAnswerQuestions` config validation**: Added guard against non-boolean values.
 - **`_client` dependency documented**: Question auto-answer uses OpenCode SDK internal `_client` property — documented in Key Trade-offs.
@@ -104,6 +108,14 @@ All config options are set in `opencode.json` under the plugin entry:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `autoAnswerQuestions` | boolean | `false` | Auto-answer AI multiple-choice questions with first (recommended) option |
+
+### Test-Driven Quality Gate
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `testOnIdle` | boolean | `true` | Auto-run `testCommands` when session goes idle; inject failures into nudge |
+| `testCommands` | string[] | `["cargo test"]` | Shell commands to run for test verification (sequentially) |
+| `testCommandTimeoutMs` | number | `300000` | Per-command timeout in ms (5 minutes) |
 
 ### Nudge
 
