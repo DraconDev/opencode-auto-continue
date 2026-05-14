@@ -33,16 +33,15 @@ export function createCompactionModule(deps: CompactionDeps) {
       }
       s.compacting = true;
       s.compactionTimedOut = false;
-        if (config.compactionSafetyTimeoutMs > 0) {
-          s.compactionSafetyTimer = setTimeout(() => {
-            if (s.compacting) {
-              log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', signaling timeout after', config.compactionSafetyTimeoutMs, 'ms');
-              s.compactionTimedOut = true;
-              s.hardCompactionInProgress = false;
-            }
-          }, config.compactionSafetyTimeoutMs);
-          if (s.compactionSafetyTimer.unref) s.compactionSafetyTimer.unref();
-        }
+      if (config.compactionSafetyTimeoutMs > 0) {
+        s.compactionSafetyTimer = setTimeout(() => {
+          if (s.compacting) {
+            log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', signaling timeout after', config.compactionSafetyTimeoutMs, 'ms');
+            s.compactionTimedOut = true;
+            s.hardCompactionInProgress = false;
+          }
+        }, config.compactionSafetyTimeoutMs);
+        if (s.compactionSafetyTimer.unref) s.compactionSafetyTimer.unref();
       }
 
       await input.client.session.summarize({
