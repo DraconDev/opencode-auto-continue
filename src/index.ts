@@ -277,7 +277,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     const s = getSession(id);
     // Throttle: only read from DB every 10 seconds
     const now = Date.now();
-    if (now - s.lastRealTokenRefreshAt < 10000 && s.realTokens > 0) {
+    if (now - s.lastRealTokenRefreshAt < 10000) {
       return getTokenCount(s);
     }
     s.lastRealTokenRefreshAt = now;
@@ -1111,7 +1111,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         s.lastCompactionAt = Date.now();
         s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
-        refreshRealTokens(sid);
+        // Invalidate realTokens — DB may still have pre-compaction values.
+        // Force getTokenCount() to use the reduced estimatedTokens until the next
+        // refreshRealTokens() call reads updated DB values (throttled to 10s).
+        s.realTokens = 0;
+        s.lastRealTokenRefreshAt = Date.now();
         // Reset recovery counters since we just freed context space
         s.attempts = 0;
         s.backoffAttempts = 0;
