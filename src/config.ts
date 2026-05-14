@@ -112,7 +112,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   maxAutoSubmits: 3,
   shortContinueMessage: "Continue. Create todos for any untracked work before starting it.",
   continueWithPlanMessage: "You were creating a plan. Finish the plan, **create todos for each planned item**, then start executing the first one. Do not stop to ask for confirmation.",
-  continueMessage: "Continue from where you left off. Do not ask for permission — just proceed with the next step.",
+  continueMessage: "Continue from where you left off. Do not ask for permission — just proceed with the next step. If you discover new work, create a todo for it before starting.",
   continueWithTodosMessage: "Continue from where you left off. You have {pending} open task(s): {todoList}. Work through these tasks. **You must create todos for any new work you discover before starting it** — do not do untracked work. Do not ask for permission or confirmation.",
   maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
   includeTodoContext: true,
