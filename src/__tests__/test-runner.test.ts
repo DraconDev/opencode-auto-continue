@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestRunner, findGateFile, isEnvError } from "../test-runner.js";
 import type { PluginConfig } from "../config.js";
 
-const DEFAULT_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCommandTimeoutMs" | "testCommandGates"> = {
+const NO_GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCommandTimeoutMs" | "testCommandGates"> = {
+  testOnIdle: true,
+  testCommands: ["cargo test"],
+  testCommandTimeoutMs: 5000,
+  testCommandGates: {},
+};
+
+const GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCommandTimeoutMs" | "testCommandGates"> = {
   testOnIdle: true,
   testCommands: ["cargo test"],
   testCommandTimeoutMs: 5000,
@@ -38,7 +45,7 @@ beforeEach(() => {
 describe("createTestRunner", () => {
   it("should return empty results when testOnIdle is false", async () => {
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testOnIdle: false },
+      config: { ...NO_GATE_CONFIG, testOnIdle: false },
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -49,7 +56,7 @@ describe("createTestRunner", () => {
 
   it("should return empty results when testCommands is empty", async () => {
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommands: [] },
+      config: { ...NO_GATE_CONFIG, testCommands: [] },
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -60,7 +67,7 @@ describe("createTestRunner", () => {
 
   it("should return empty results when input.$ is not a function", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: {} as any,
     });
@@ -72,7 +79,7 @@ describe("createTestRunner", () => {
   it("should return success result when command exits with 0", async () => {
     const mockShell = makeSuccessShell("test passed", 0);
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -88,7 +95,7 @@ describe("createTestRunner", () => {
   it("should return failure result when command exits with non-zero", async () => {
     const mockShell = makeFailureShell("test failed", 1);
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -103,7 +110,7 @@ describe("createTestRunner", () => {
   it("should truncate output to MAX_OUTPUT_PER_COMMAND", async () => {
     const mockShell = makeSuccessShell("x".repeat(10000), 0);
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -115,7 +122,7 @@ describe("createTestRunner", () => {
   it("should run multiple commands sequentially", async () => {
     const mockShell = makeSuccessShell("", 0);
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommands: ["cargo test", "cargo build"] },
+      config: { ...NO_GATE_CONFIG, testCommands: ["cargo test", "cargo build"] },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -130,7 +137,7 @@ describe("createTestRunner", () => {
     const err = new Error("command not found");
     const mockShell = vi.fn(() => { throw err; });
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -145,7 +152,7 @@ describe("createTestRunner", () => {
 
   it("formatResults should format test results", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -162,7 +169,7 @@ describe("createTestRunner", () => {
 
   it("formatResults should return placeholder for empty array", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -172,7 +179,7 @@ describe("createTestRunner", () => {
 
   it("formatFailures should only show failed non-skipped results", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -190,7 +197,7 @@ describe("createTestRunner", () => {
 
   it("formatFailures should return empty string when all pass", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -204,7 +211,7 @@ describe("createTestRunner", () => {
 
   it("formatFailures should return empty string when all failures are skipped", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -218,7 +225,7 @@ describe("createTestRunner", () => {
 
   it("formatResults should show SKIP label for skipped results", async () => {
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
@@ -332,7 +339,7 @@ describe("gate-based skipping", () => {
   it("should skip cargo test when Cargo.toml not found", async () => {
     const mockShell = makeSuccessShell("should not run", 0);
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
     });
@@ -347,25 +354,21 @@ describe("gate-based skipping", () => {
   it("should run cargo test when Cargo.toml exists", async () => {
     const mockShell = makeSuccessShell("test passed", 0);
     const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
+      config: GATE_CONFIG,
       log: MOCK_LOG,
-      // Use actual project dir which has Cargo.toml (or at least package.json)
-      input: { $: mockShell as any, directory: "/tmp" } as any,
+      input: { $: mockShell as any, directory: "/home/dracon/Dev/opencode-auto-continue" } as any,
     });
 
     const results = await runner.runTests();
     expect(results).toHaveLength(1);
-    // May or may not be skipped depending on whether /tmp has Cargo.toml
-    // but the shell should be called since we're testing the gate logic
-    if (!results[0].skipped) {
-      expect(mockShell).toHaveBeenCalled();
-    }
+    expect(results[0].skipped).toBe(false);
+    expect(mockShell).toHaveBeenCalled();
   });
 
   it("should skip pnpm test when package.json not found", async () => {
     const mockShell = makeSuccessShell("should not run", 0);
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommands: ["pnpm test"] },
+      config: { ...GATE_CONFIG, testCommands: ["pnpm test"] },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
     });
@@ -379,7 +382,7 @@ describe("gate-based skipping", () => {
   it("should always run commands with no matching gate", async () => {
     const mockShell = makeSuccessShell("output", 0);
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommands: ["./run-tests.sh"] },
+      config: { ...NO_GATE_CONFIG, testCommands: ["./run-tests.sh"] },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
     });
@@ -394,7 +397,7 @@ describe("gate-based skipping", () => {
     const mockShell = makeFailureShell("error: could not find Cargo.toml in /tmp or any parent directory", 1);
     const runner = createTestRunner({
       // Use "make test" which has Makefile gate, but we set no gate for this test
-      config: { ...DEFAULT_CONFIG, testCommands: ["./run-tests.sh"] },
+      config: { ...NO_GATE_CONFIG, testCommands: ["./run-tests.sh"] },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -408,7 +411,7 @@ describe("gate-based skipping", () => {
     const mockShell = makeFailureShell("bash: cargo: command not found", 127);
     const runner = createTestRunner({
       // No gate so it runs, but exit 127 causes skip
-      config: { ...DEFAULT_CONFIG, testCommands: ["./custom-test"], testCommandGates: {} },
+      config: { ...NO_GATE_CONFIG, testCommands: ["./custom-test"], testCommandGates: {} },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
@@ -421,7 +424,7 @@ describe("gate-based skipping", () => {
   it("should handle mixed commands — some skipped, some run", async () => {
     const mockShell = makeSuccessShell("ok", 0);
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommands: ["cargo test", "pnpm test", "./custom.sh"] },
+      config: { ...GATE_CONFIG, testCommands: ["cargo test", "pnpm test", "./custom.sh"] },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp/nonexistent-dir-for-test" } as any,
     });
@@ -439,7 +442,7 @@ describe("gate-based skipping", () => {
     const mockShell = makeSuccessShell("ok", 0);
     const runner = createTestRunner({
       config: {
-        ...DEFAULT_CONFIG,
+        ...NO_GATE_CONFIG,
         testCommands: ["pytest"],
         testCommandGates: { pytest: "pyproject.toml" },
       },
@@ -455,7 +458,7 @@ describe("gate-based skipping", () => {
   it("should NOT skip on legitimate test failure output", async () => {
     const mockShell = makeFailureShell("test foo::bar::test_something ... FAILED\n1 test failed", 1);
     const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommandGates: {} }, // No gate → always runs
+      config: { ...NO_GATE_CONFIG, testCommandGates: {} }, // No gate → always runs
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/tmp" } as any,
     });
