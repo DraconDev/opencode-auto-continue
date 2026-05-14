@@ -161,5 +161,5 @@ export function createCompactionModule(deps: CompactionDeps) {
     return false;
   }
 
-  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact };
+  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact };
 }
