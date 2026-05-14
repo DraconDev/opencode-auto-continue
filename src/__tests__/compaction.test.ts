@@ -383,6 +383,81 @@ describe("compaction module unit tests", () => {
     });
   });
 
+  describe("maybeOpportunisticCompact", () => {
+    it("returns false if session does not exist", async () => {
+      module = createModule();
+      const result = await module.maybeOpportunisticCompact("nonexistent", "test");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if session is already compacting", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 60000, compacting: true }));
+      module = createModule();
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if session is planning", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 60000, planning: true }));
+      module = createModule();
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if session is stopped by condition", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 60000, stoppedByCondition: "maxRuntime" }));
+      module = createModule();
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if cooldown has not elapsed", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 60000, lastCompactionAt: Date.now() - 10000 }));
+      module = createModule({ compactCooldownMs: 60000 });
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if tokens are below threshold", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 10000 }));
+      module = createModule({ opportunisticCompactAtTokens: 50000 });
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+    });
+
+    it("calls forceCompact when tokens exceed threshold", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 60000 }));
+      module = createModule({ opportunisticCompactAtTokens: 50000 });
+
+      const promise = module.maybeOpportunisticCompact("test", "post-recovery");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+
+    it("logs reason string when triggered", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 60000 }));
+      module = createModule({ opportunisticCompactAtTokens: 50000 });
+
+      const promise = module.maybeOpportunisticCompact("test", "on-idle");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      await promise;
+
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("OPPORTUNISTIC TRIGGER"), expect.anything());
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("on-idle"), expect.anything());
+    });
+  });
+
   describe("edge cases", () => {
     it("handles error object with no message property", () => {
       module = createModule();
