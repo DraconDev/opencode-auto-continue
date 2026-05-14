@@ -134,6 +134,13 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
             const timeSinceProgress = Date.now() - s.lastProgressAt;
             if (timeSinceProgress > config.subagentWaitMs) {
               log('[SessionMonitor] orphan parent detected:', id, 'stuck for', timeSinceProgress, 'ms after subagent completion');
+              if (deps.checkStopConditions) {
+                const stop = deps.checkStopConditions(id);
+                if (stop.shouldStop) {
+                  log('[SessionMonitor] session stopped, skipping orphan recovery:', stop.reason);
+                  break;
+                }
+              }
               orphanRecoveryCount++;
               recover(id);
             } else {
@@ -145,6 +152,13 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                     const elapsed = Date.now() - session.lastProgressAt;
                     if (elapsed > config.subagentWaitMs) {
                       log('[SessionMonitor] orphan parent confirmed:', id, 'after delayed check');
+                      if (deps.checkStopConditions) {
+                        const stop = deps.checkStopConditions(id);
+                        if (stop.shouldStop) {
+                          log('[SessionMonitor] session stopped, skipping delayed orphan recovery:', stop.reason);
+                          return;
+                        }
+                      }
                       orphanRecoveryCount++;
                       recover(id);
                     }
@@ -168,6 +182,13 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           const stuckThreshold = config.stallTimeoutMs;
           if (timeSinceProgress > stuckThreshold) {
             log('[SessionMonitor] single busy session stuck for too long:', id, 'stuck for', timeSinceProgress, 'ms');
+            if (deps.checkStopConditions) {
+              const stop = deps.checkStopConditions(id);
+              if (stop.shouldStop) {
+                log('[SessionMonitor] session stopped, skipping stuck session recovery:', stop.reason);
+                continue;
+              }
+            }
             orphanRecoveryCount++;
             recover(id);
           }
