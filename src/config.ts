@@ -131,7 +131,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   statusFileEnabled: true,
   autoCompact: true,
   maxSessionAgeMs: 7200000,
-  proactiveCompactAtTokens: 60000,
+  proactiveCompactAtTokens: 80000,
   proactiveCompactAtPercent: 50,
   compactRetryDelayMs: 3000,
   compactMaxRetries: 3,
@@ -148,7 +148,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   tokenEstimateMultiplier: 1.0,
 
   // Opportunistic compaction
-  opportunisticCompactAtTokens: 40000,
+  opportunisticCompactAtTokens: 60000,
   opportunisticCompactAfterRecovery: true,
   opportunisticCompactOnIdle: true,
   opportunisticCompactBeforeNudge: true,
@@ -156,7 +156,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   nudgeCompactThreshold: 80000,
 
   // Hard compaction (blocking gate)
-  hardCompactAtTokens: 80000,
+  hardCompactAtTokens: 100000,
   hardCompactMaxWaitMs: 30000,
   hardCompactBypassCooldown: true,
 
