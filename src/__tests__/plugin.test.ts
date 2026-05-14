@@ -1319,6 +1319,7 @@ describe("opencode-auto-continue", () => {
           terminalTitleEnabled: false,
           terminalProgressEnabled: false,
           statusFilePath: "",
+          hardCompactAtTokens: 999999, // Prevent hard compact from firing again in sendContinue
         });
 
         await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
