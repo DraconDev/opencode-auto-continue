@@ -1,10 +1,11 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
-import { shouldBlockPrompt } from "./shared.js";
+import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
+import type { TestRunner } from "./test-runner.js";
 
 export interface ReviewDeps {
-  config: Pick<PluginConfig, "reviewMessage" | "showToasts" | "shortContinueMessage">;
+  config: Pick<PluginConfig, "reviewMessage" | "showToasts" | "shortContinueMessage" | "testOnIdle" | "testCommands" | "testCommandTimeoutMs">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -14,6 +15,7 @@ export interface ReviewDeps {
   forceCompact: (sessionId: string) => Promise<boolean>;
   maybeHardCompact?: (sessionId: string) => Promise<boolean>;
   scheduleRecovery?: (sessionId: string, delayMs: number) => void;
+  testRunner?: TestRunner;
 }
 
 export function createReviewModule(deps: ReviewDeps) {

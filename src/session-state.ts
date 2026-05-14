@@ -125,6 +125,10 @@ export function createSession(): SessionState {
     lastOutputAt: now,
     lastOutputLength: 0,
 
+    // Test-Driven Quality Gate
+    lastTestRunAt: 0,
+    testRunInProgress: false,
+
     attempts: 0,
     lastRecoveryTime: 0,
     backoffAttempts: 0,

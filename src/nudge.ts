@@ -2,17 +2,19 @@ import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
 import { formatMessage, shouldBlockPrompt } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
+import type { TestRunner } from "./test-runner.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts">;
+    "showToasts" | "testOnIdle" | "testCommands" | "testCommandTimeoutMs">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
   input: TypedPluginInput;
   maybeHardCompact?: (sessionId: string) => Promise<boolean>;
+  testRunner?: TestRunner;
 }
 
 export function createNudgeModule(deps: NudgeDeps) {
@@ -213,6 +215,26 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
+    // Run tests before nudge (test-on-idle quality gate)
+    let testFailureOutput = "";
+    if (config.testOnIdle && deps.testRunner && s && !s.testRunInProgress) {
+      s.testRunInProgress = true;
+      try {
+        const results = await deps.testRunner.runTests();
+        s.lastTestRunAt = Date.now();
+        testFailureOutput = deps.testRunner.formatFailures(results);
+        if (testFailureOutput) {
+          log("test failures detected before nudge, session:", sessionId);
+        } else if (results.length > 0) {
+          log("all tests passing before nudge, session:", sessionId);
+        }
+      } catch (e) {
+        log("test runner error before nudge (non-fatal):", e);
+      } finally {
+        s.testRunInProgress = false;
+      }
+    }
+
     // Build the reminder message
     let messageText: string;
     const templateVars: Record<string, string> = {
@@ -231,6 +253,11 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
 
       messageText = formatMessage(config.nudgeMessage, templateVars);
+
+    // If tests failed, override nudge message with fix directive
+    if (testFailureOutput) {
+      messageText = `Tests are failing. Fix these before continuing with other tasks:\n\n${testFailureOutput}\n\n**Create fix-todos for each failure before attempting fixes.** Do not continue to other tasks until these tests pass.`;
+    }
 
     // Prompt guard: prevent duplicate injections
     const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log as any);
