@@ -173,6 +173,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Compaction safety timeout
   compactionSafetyTimeoutMs: 15000,
 
+  // Compaction grace period — all layers skip if lastCompactionAt is within this window
+  compactionGracePeriodMs: 10000,
+
   // Stop conditions
   stopFilePath: "",
   maxRuntimeMs: 0,
@@ -294,6 +297,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.hardCompactAtTokens < 0) addError('hardCompactAtTokens', `hardCompactAtTokens must be >= 0, got ${normalized.hardCompactAtTokens}`);
   if (normalized.hardCompactMaxWaitMs < 0) addError('hardCompactMaxWaitMs', `hardCompactMaxWaitMs must be >= 0, got ${normalized.hardCompactMaxWaitMs}`);
   if (normalized.compactionSafetyTimeoutMs < 0) addError('compactionSafetyTimeoutMs', `compactionSafetyTimeoutMs must be >= 0, got ${normalized.compactionSafetyTimeoutMs}`);
+  if (normalized.compactionGracePeriodMs < 0) addError('compactionGracePeriodMs', `compactionGracePeriodMs must be >= 0, got ${normalized.compactionGracePeriodMs}`);
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);

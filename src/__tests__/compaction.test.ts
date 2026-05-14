@@ -79,6 +79,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   hardCompactMaxWaitMs: 30000,
   hardCompactBypassCooldown: true,
   compactionSafetyTimeoutMs: 15000,
+  compactionGracePeriodMs: 10000,
   stopFilePath: "",
   maxRuntimeMs: 0,
   untilMarker: "",
