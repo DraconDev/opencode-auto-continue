@@ -510,9 +510,13 @@ Token accumulation:
 
 **Configurable multiplier**: Set `tokenEstimateMultiplier` in config (default 1.0). Previously hardcoded at 2.0, which caused massive overestimation.
 
-## Context Compaction (Emergency Only)
+## Context Compaction
 
-**Proactive compaction is delegated to DCP** (`@tarquinen/opencode-dcp`). This plugin only handles **emergency compaction** on token limit errors.
+This plugin handles both **proactive compaction** (before hitting token limits) and **emergency compaction** (on token limit errors).
+
+### Proactive Compaction
+
+When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 100k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
 
 ### When Emergency Compaction Fires
 
@@ -520,15 +524,20 @@ Token accumulation:
 - Retries up to `compactMaxRetries` (default: 3)
 - Only when session is idle (busy sessions cannot be summarized)
 
-### Why No Proactive Compaction?
+### Compaction Flow
 
-DCP's `compress` tool is superior:
-- Soft thresholds (50k-100k range) vs hard 100k limit
-- Message deduplication
-- Error pruning
-- Protected context (tools, user messages, file patterns)
+```
+estimatedTokens >= proactiveCompactAtTokens?
+  ├── YES ──► session.summarize() (proactive)
+  │              ├── success ──► reset estimates, continue
+  │              └── failure ──► retry up to compactMaxRetries
+  └── NO  ──► monitor continues
 
-Our emergency compaction is a safety net for edge cases DCP doesn't catch.
+session.error (token limit)?
+  └── YES ──► forceCompact(sid) (emergency)
+                 ├── idle? ──► session.summarize()
+                 └── busy? ──► wait for idle, then compact
+```
 
 ## Toast Notifications (v7.8.235+)
 

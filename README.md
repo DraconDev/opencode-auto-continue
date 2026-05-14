@@ -592,7 +592,6 @@ Add the plugin to your `~/.config/opencode/opencode.json`:
 {
   "plugin": [
     "@mohak34/opencode-notifier@latest",
-    "@tarquinen/opencode-dcp@latest",
     ["opencode-auto-continue", {
       "stallTimeoutMs": 45000,
       "maxRecoveries": 3,
@@ -727,9 +726,9 @@ Minimal configuration with sensible defaults:
 
 ### Context Window
 
-For proactive context pruning, install DCP (see below). Our plugin only handles **emergency compaction** when token limits are hit.
+The plugin handles **proactive compaction** at 100k tokens and **emergency compaction** when token limits are hit.
 
-If you frequently hit token limits with large pastes (HTML, JSON, etc.), consider lowering your model's context window or using DCP for smart pruning.
+If you frequently hit token limits with large pastes (HTML, JSON, etc.), consider lowering your model's context window.
 
 ### Terminal Options
 
