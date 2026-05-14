@@ -24,22 +24,27 @@ export function createCompactionModule(deps: CompactionDeps) {
     try {
       log('attempting compaction for session:', sessionId);
 
-      // Record pre-compaction state
       const s = sessions.get(sessionId);
       const preTokens = s?.estimatedTokens || 0;
       if (s) {
         s.compacting = true;
+        if (config.compactionSafetyTimeoutMs > 0) {
+          s.compactionSafetyTimer = setTimeout(() => {
+            if (s.compacting) {
+              log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', force-clearing after', config.compactionSafetyTimeoutMs, 'ms');
+              s.compacting = false;
+              s.hardCompactionInProgress = false;
+            }
+          }, config.compactionSafetyTimeoutMs);
+          if (s.compactionSafetyTimer.unref) s.compactionSafetyTimer.unref();
+        }
       }
 
-      // Call summarize directly — if the session is busy, it will fail and be caught below.
-      // This avoids the TOCTOU race of checking status then calling summarize separately.
       await input.client.session.summarize({
         path: { id: sessionId },
         query: { directory: input.directory || "" }
       });
 
-      // Wait for compaction with progressive checks
-      // Compaction can take several seconds for large contexts
       const maxWait = config.compactionVerifyWaitMs;
       const waitTimes = [2000, 3000, 5000].filter(t => t <= maxWait);
       if (waitTimes.length === 0) waitTimes.push(maxWait);
@@ -47,7 +52,6 @@ export function createCompactionModule(deps: CompactionDeps) {
       for (const waitMs of waitTimes) {
         await new Promise(r => setTimeout(r, waitMs));
 
-        // Check if session is still busy
         const status = await input.client.session.status({});
         const data = status.data as Record<string, { type: string }>;
         const isBusy = data[sessionId]?.type === "busy";
@@ -57,8 +61,8 @@ export function createCompactionModule(deps: CompactionDeps) {
           if (s) {
             s.lastCompactionAt = Date.now();
             s.compacting = false;
-            // Reset estimated tokens since context was compacted
-            const reduction = Math.floor(preTokens * config.compactReductionFactor); // Configurable reduction factor
+            if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
+            const reduction = Math.floor(preTokens * config.compactReductionFactor);
             s.estimatedTokens = Math.max(s.estimatedTokens - reduction, Math.floor(preTokens * (1 - config.compactReductionFactor)));
             log('compaction reduced tokens from ~', preTokens, 'to ~', s.estimatedTokens);
           }
@@ -71,6 +75,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       log('compaction did not complete within expected time for session:', sessionId);
       if (s) {
         s.compacting = false;
+        if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       }
       return false;
     } catch (e: any) {
@@ -78,6 +83,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       const s = sessions.get(sessionId);
       if (s) {
         s.compacting = false;
+        if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       }
       return false;
     }
@@ -161,5 +167,55 @@ export function createCompactionModule(deps: CompactionDeps) {
     return false;
   }
 
-  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact };
+  async function maybeHardCompact(sessionId: string): Promise<boolean> {
+    const s = sessions.get(sessionId);
+    if (!s) return false;
+    if (s.hardCompactionInProgress) return false;
+    if (s.compacting) return false;
+    if (s.planning) return false;
+    if (s.stoppedByCondition) return false;
+
+    const threshold = config.hardCompactAtTokens;
+    if (threshold <= 0) return false;
+    if (s.estimatedTokens < threshold) return false;
+
+    s.hardCompactionInProgress = true;
+    log(`[Compaction] HARD TRIGGER — session ${sessionId} has ${s.estimatedTokens} tokens (hard threshold: ${threshold}), blocking until compaction completes`);
+
+    const bypassCooldown = config.hardCompactBypassCooldown;
+    const cooldownOk = bypassCooldown || s.lastCompactionAt === 0 || Date.now() - s.lastCompactionAt >= config.compactCooldownMs;
+
+    if (cooldownOk) {
+      const maxWait = config.hardCompactMaxWaitMs;
+      const deadline = Date.now() + maxWait;
+
+      let success = false;
+      for (let attempt = 0; attempt < config.compactMaxRetries; attempt++) {
+        if (Date.now() > deadline) {
+          log(`[Compaction] HARD TIMEOUT — exceeded max wait ${maxWait}ms for session ${sessionId}`);
+          break;
+        }
+        if (attempt > 0) {
+          const delay = Math.min(config.compactRetryDelayMs * attempt, deadline - Date.now());
+          if (delay > 0) await new Promise(r => setTimeout(r, delay));
+        }
+        success = await attemptCompact(sessionId);
+        if (success) break;
+      }
+
+      if (success) {
+        log(`[Compaction] HARD SUCCESS — session ${sessionId} compacted via hard compactor`);
+        s.lastHardCompactionAt = Date.now();
+      } else {
+        log(`[Compaction] HARD FAILED — session ${sessionId} hard compaction did not succeed within ${maxWait}ms`);
+      }
+    } else {
+      log(`[Compaction] HARD SKIP — cooldown active and bypass disabled for session ${sessionId}`);
+    }
+
+    s.hardCompactionInProgress = false;
+    return s.estimatedTokens < threshold;
+  }
+
+  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact, maybeHardCompact };
 }
