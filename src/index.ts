@@ -384,19 +384,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const terminal = createTerminalModule({ config, sessions, log, input });
   const aiAdvisor = createAIAdvisor({ config, log, input });
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input });
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, maybeHardCompact: compaction.maybeHardCompact });
 
   const { writeStatusFile, clearPendingWrites } = createStatusFileModule({ config, sessions, log });
 
   const compaction = createCompactionModule({ config, sessions, log, input });
 
-  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact });
+  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery });
 
   function scheduleRecovery(sessionId: string, delayMs: number): void {
     scheduleRecoveryWithGeneration(sessions, sessionId, delayMs, (id) => recover(id), log);
   }
 
-  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, aiAdvisor, sendContinue: review.sendContinue });
+  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, aiAdvisor, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact });
 
   const stopConditions = createStopConditionsModule({ config, sessions, log });
   const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover, checkStopConditions: stopConditions.checkStopConditions });
