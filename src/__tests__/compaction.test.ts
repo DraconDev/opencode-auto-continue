@@ -589,21 +589,40 @@ describe("compaction module unit tests", () => {
 
     it("times out if compaction exceeds hardCompactMaxWaitMs", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      // Session stays busy forever — we need to simulate that status stays busy
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
-      module = createModule({ hardCompactAtTokens: 100000, hardCompactMaxWaitMs: 5000, compactRetryDelayMs: 100 });
+      module = createModule({ hardCompactAtTokens: 100000, hardCompactMaxWaitMs: 5000, compactionVerifyWaitMs: 1000, compactRetryDelayMs: 100 });
 
       const promise = module.maybeHardCompact("test");
-      // Advance past the first attempt (2000ms wait) and a retry (100ms delay)
-      await vi.advanceTimersByTimeAsync(3000);
+      // Advance enough to get through one attempt (1000ms verify wait) + one retry (100ms)
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      // Let the timeout check happen
+      await vi.advanceTimersByTimeAsync(5000);
       await flushPromises();
 
       const result = await promise;
       expect(result).toBe(false);
       expect(sessions.get("test")!.hardCompactionInProgress).toBe(false);
     });
+
+    it("logs reason string when triggered", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 100000 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      await promise;
+
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("HARD TRIGGER");
+    });
+  });
 
     it("logs reason string when triggered", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
