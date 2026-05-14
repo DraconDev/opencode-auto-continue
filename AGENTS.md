@@ -152,6 +152,7 @@ All config options are set in `opencode.json` under the plugin entry:
 | `compactionVerifyWaitMs` | number | `30000` | Max wait for compaction verification |
 | `compactReductionFactor` | number | `0.7` | Expected context reduction ratio |
 | `compactionSafetyTimeoutMs` | number | `15000` | Safety timeout to clear stuck `compacting` flag |
+| `compactionGracePeriodMs` | number | `10000` | Grace period after compaction — all layers skip while DB updates |
 
 ### Terminal & Status
 
