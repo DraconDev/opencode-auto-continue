@@ -326,6 +326,10 @@ describe("gate file detection", () => {
     expect(findGateFile("make test", defaultGates)).toBe("Makefile");
   });
 
+  it("should find gate file for bun test", () => {
+    expect(findGateFile("bun test", defaultGates)).toBe("package.json");
+  });
+
   it("should return null for unknown command prefix", () => {
     expect(findGateFile("python -m pytest", defaultGates)).toBe(null);
   });
