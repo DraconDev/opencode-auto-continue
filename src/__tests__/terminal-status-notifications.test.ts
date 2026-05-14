@@ -840,8 +840,8 @@ describe("compaction state behavior", () => {
       delta: ""
     } } });
 
-    // Clear flag by busy status
-    await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+    // Clear compacting flag via session.compacted event (the proper way)
+    await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
 
     // Now stall timer should work
     await vi.advanceTimersByTimeAsync(2000);

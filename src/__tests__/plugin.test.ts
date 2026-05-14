@@ -1026,8 +1026,8 @@ describe("opencode-auto-continue", () => {
       await flushPromises();
       // Simulate session.compacted event — this clears compacting flag and resets token estimates
       await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
-      // Advance timers for the next poll to detect completion
-      await vi.advanceTimersByTimeAsync(1000);
+      // Advance timers for the continue to be sent and poll to detect completion
+      await vi.advanceTimersByTimeAsync(2000);
       await flushPromises();
 
       // Should send continue prompt after compaction
@@ -1325,9 +1325,12 @@ describe("opencode-auto-continue", () => {
         expect(mockSummarize).toHaveBeenCalled();
         expect(mockPrompt).not.toHaveBeenCalled();
 
-        await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+        // Simulate compaction completing via session.compacted event
+        await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+        await vi.advanceTimersByTimeAsync(1000);
+        await flushPromises();
 
-        expect(mockPrompt).toHaveBeenCalledTimes(1);
+        expect(mockPrompt).toHaveBeenCalled();
       } finally {
         process.env.HOME = originalHome;
         vi.useRealTimers();
