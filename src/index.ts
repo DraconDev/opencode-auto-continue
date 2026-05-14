@@ -682,6 +682,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (s.compacting) {
             log('session busy, clearing compacting flag (compaction likely finished)');
             s.compacting = false;
+            s.hardCompactionInProgress = false;
+            if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
           }
           // Update terminal title and progress
           terminal.updateTerminalTitle(sid);
