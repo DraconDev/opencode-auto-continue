@@ -1035,8 +1035,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      // question.asked: AI is asking a question with multiple-choice options.
-      // Auto-reply with the first (recommended) option to prevent the session from stalling.
       if (event?.type === "question.asked") {
         const props = e?.properties;
         const requestID = props?.id;
@@ -1051,11 +1049,17 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           });
 
           try {
-            await input.client.question.reply({
-              path: { requestID },
-              body: { answers },
-            });
-            log('auto-replied to question:', requestID);
+            const httpClient = (input.client as any)._client;
+            if (httpClient) {
+              await httpClient.post({
+                url: `/question/${requestID}/reply`,
+                headers: { "Content-Type": "application/json" },
+                body: { answers },
+              });
+              log('auto-replied to question:', requestID);
+            } else {
+              log('no HTTP client available for question reply');
+            }
 
             const s = getSession(sid);
             s.lastOutputAt = Date.now();
@@ -1063,8 +1067,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             nudge.cancelNudge(sid);
           } catch (err) {
             log('question auto-reply FAILED:', err);
-            const s = getSession(sid);
-            s.nudgePaused = false;
           }
         }
 
