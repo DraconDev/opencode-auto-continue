@@ -1,10 +1,42 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.306)
+## Current State (v7.8.306+)
 
-**Status:** Released & Dogfooding  
-**Tests:** 389/389 passing  
+**Status:** Released & Dogfooding
+**Tests:** 414/414 passing
 **GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.306
+
+### v7.8.306+ Changes (30 Code Review Fixes)
+
+**CRITICAL (3):**
+- **resetSession simplification**: Removed 50+ dead field resets before `sessions.delete()` — reset is unreachable work
+- **Orphan check guards**: Added `!s.userCancelled && !s.aborting && !s.planning` to session monitor orphan recovery path
+- **busy-but-dead guard**: Added `!s.aborting` check to prevent recovery firing during ongoing recovery
+
+**HIGH (4 + 1 reverted):**
+- **wasPlanning capture**: Recovery now captures `wasPlanning` before clearing flag, ensuring planning timeout uses plan-aware continue message
+- **Compacting flag fix**: Removed premature clear on `session.status(busy)` — now only cleared by `session.compacted` or `message.part.updated` compaction event
+- **hasOpenTodos interpolation**: Fixed `"Has true pending todos"` → `"Has pending todos but stalled"` in AI advisor reasoning
+- **Orphan timer tracking**: Orphan setTimeout now stored in `pendingTimers` Set with `unref()` and cleared on `stop()`
+- **H2 (reverted)**: Attempted to accept `retry` as busy state — reverted per test expectations
+
+**MEDIUM (8):**
+- **M1: FIX comments removed**: All 45 stale `FIX N` comments replaced with descriptive explanations (0 remaining)
+- **M2: updateProgress deduplicated**: Removed duplicate from `shared.ts`, now imports from `session-state.js`
+- **M3: Token accumulation fixed**: Changed `+=` to `Math.max()` to prevent double-counting tokens across messages
+- **M4: staleTypes replaced**: Array removed, inline `if (type === "session.ended" || type === "session.deleted")` comparison
+- **M5: Compacting guard**: Added `if (s.compacting) return false` to `forceCompact()` preventing concurrent compaction
+- **M6: touchSession consistency**: Now updates both `lastProgressAt` and `lastOutputAt`
+- **M7: idle consolidation**: Four separate `if (status?.type === "idle")` blocks consolidated into one
+- **M8: WeakMap cache**: Changed to `Map<sid, data>` per client to support multiple sessions
+
+**LOW (6):**
+- **L1**: Removed unused 960-line `autonomy-types.ts` re-export from `types.ts`
+- **L2**: Removed dead re-exports from `shared.ts` (no production consumers)
+- **L3**: Removed dead `registerStatusLineHook` function from `terminal.ts`
+- **L4**: Added `unref()` to nudge timer
+- **L5**: Config validation now logs requested vs default values for overridden fields
+- **L6**: Tightened plan fuzzy matching — requires 10+ chars for substring matching
 
 ### v7.8.306 Changes
 - **Busy-But-Dead Detection**: Distinguishes status pings from real output using `lastOutputAt`/`lastOutputLength` tracking
