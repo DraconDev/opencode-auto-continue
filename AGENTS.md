@@ -1,10 +1,19 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1836)
+## Current State (v7.8.1839)
 
-**Status:** Released & Dogfooding  
-**Tests:** 452/452 passing  
-**npm:** `@dracondev/opencode-auto-continue@7.8.1836`
+**Status:** Released & Dogfooding (local dev mode)
+**Tests:** 452/452 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1839`
+**Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1839 Changes
+- **`simulateCompacted()` test helper**: Extracted from 10+ repeated patterns in compaction tests — reduces boilerplate.
+- **`autoAnswerQuestions` config validation**: Added guard against non-boolean values.
+- **`_client` dependency documented**: Question auto-answer uses OpenCode SDK internal `_client` property — documented in Key Trade-offs.
+- **Compaction poll fix** (from v7.8.1836): polls `s.compacting` flag instead of `session.status()` for idle. Session stays busy during compaction — status-polling was causing 100% compaction failure rate. Now waits for `session.compacted` event to clear flag.
+- **Token reduction on compaction success**: `attemptCompact()` reduces `estimatedTokens` by `compactReductionFactor` after success.
+- **Compaction verify wait 30s**: was 10s — large contexts need >10s to compact.
 
 ### v7.8.1836 Changes
 - **Compaction Poll Fix**: Rewrote `attemptCompact()` — polls `s.compacting` flag instead of `session.status()` for idle. Session stays busy during compaction, so status-polling was causing 100% compaction failure rate. Now waits for `session.compacted` event to clear flag.
@@ -32,7 +41,7 @@
 
 ### Dogfood Config
 ```json
-["@dracondev/opencode-auto-continue", {
+["file:///home/dracon/Dev/opencode-auto-continue/dist/index.js", {
   "stallTimeoutMs": 45000,
   "maxRecoveries": 3,
   "sessionMonitorEnabled": true,
