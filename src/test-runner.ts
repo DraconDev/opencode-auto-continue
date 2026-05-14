@@ -192,10 +192,10 @@ export function createTestRunner(deps: TestRunnerDeps) {
       .join("\n\n");
   }
 
-  return { runTests, formatResults, formatFailures };
+  return { runTests, formatResults, formatFailures, hasRealResults };
 }
 
 export type TestRunner = ReturnType<typeof createTestRunner>;
 
 // Export for testing
-export { findGateFile, isEnvError };
+export { findGateFile, isEnvError, hasRealResults };
