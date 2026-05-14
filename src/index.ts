@@ -273,6 +273,17 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     return sessions.get(id)!;
   }
 
+  function refreshRealTokens(id: string): number {
+    const s = getSession(id);
+    try {
+      const tokens = getSessionTokens(id);
+      if (tokens.total > 0) {
+        s.realTokens = tokens.total;
+      }
+    } catch {}
+    return getTokenCount(s);
+  }
+
   function clearTimer(id: string) {
     const s = sessions.get(id);
     if (!s) return;
@@ -674,7 +685,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
             s.lastContinueAt = 0; // Reset to avoid duplicate toasts
             // Opportunistic compaction after recovery
-            if (config.opportunisticCompactAfterRecovery && s.estimatedTokens >= config.opportunisticCompactAtTokens) {
+            if (config.opportunisticCompactAfterRecovery && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
               compaction.maybeOpportunisticCompact(sid, 'post-recovery').catch((e: unknown) => log('opportunistic compact post-recovery failed:', e));
             }
           }
@@ -716,7 +727,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             nudge.cancelNudge(sid);
           } else {
             // Opportunistic compaction on idle
-            if (config.opportunisticCompactOnIdle && s.estimatedTokens >= config.opportunisticCompactAtTokens) {
+            if (config.opportunisticCompactOnIdle && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
               compaction.maybeOpportunisticCompact(sid, 'idle').catch((e: unknown) => log('opportunistic compact on idle failed:', e));
             }
             nudge.scheduleNudge(sid);
@@ -964,7 +975,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Handle review on completion
         if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
           // Opportunistic compaction after review completion
-          if (config.opportunisticCompactAfterReview && s.estimatedTokens >= config.opportunisticCompactAtTokens) {
+          if (config.opportunisticCompactAfterReview && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
             compaction.maybeOpportunisticCompact(sid, 'post-review').catch((e: unknown) => log('opportunistic compact post-review failed:', e));
           }
           if (s.reviewDebounceTimer) {
@@ -1011,7 +1022,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
          const stopCheck = stopConditions.checkStopConditions(sid);
          if (!stopCheck.shouldStop) {
-           if (config.opportunisticCompactBeforeNudge && s.estimatedTokens >= config.nudgeCompactThreshold) {
+            if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
              compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
            }
            nudge.scheduleNudge(sid);
@@ -1030,6 +1041,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         s.lastCompactionAt = Date.now();
         s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
+        refreshRealTokens(sid);
         // Reset recovery counters since we just freed context space
         s.attempts = 0;
         s.backoffAttempts = 0;
@@ -1091,9 +1103,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         }
         
         // Add token context
-        if (s.estimatedTokens > 0) {
+        if (getTokenCount(s) > 0) {
           contextLines.push(`## Token Context`);
-          contextLines.push(`Estimated tokens: ~${s.estimatedTokens}`);
+          contextLines.push(s.realTokens > 0 ? `Tokens: ${s.realTokens.toLocaleString()} (actual)` : `Estimated tokens: ~${s.estimatedTokens}`);
           if (s.tokenLimitHits > 0) {
             contextLines.push(`Token limit hits: ${s.tokenLimitHits}`);
           }
