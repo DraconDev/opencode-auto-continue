@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.1842] - 2026-05-14
+
+### Changed
+
+- **Review routed to plan agent**: Review prompts now use `agent: "plan"` instead of default. The smarter "plan" agent reviews completed work instead of the execution-focused "build" agent — engineer vs construction worker analogy.
+
 ## [7.8.1841] - 2026-05-14
 
 ### Changed
