@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.1852] - 2026-05-14
+
+### Added
+
+- **Test-Driven Quality Gate (TDQG)**: New `test-runner.ts` module automatically runs configured test commands (`cargo test` by default) before nudges and review.
+  - **Test-on-idle**: Runs tests before every nudge. If tests fail, the nudge message becomes "fix these failures" — blocking other work until tests pass.
+  - **Test-on-review**: Runs tests before the review prompt. Output injected via `{testOutput}` template variable so the plan agent can analyze failures.
+  - **TDD enforcement**: Continue/nudge/review messages now instruct the AI to "write a test first, then implement."
+
+### Changed
+
+- **Review routed to plan agent**: Review prompts now use `agent: "plan"` instead of default — engineer vs construction worker analogy.
+- **Default messages updated**: `continueMessage`, `continueWithTodosMessage`, and `reviewMessage` include TDD instructions and `{testOutput}` template.
+
 ## [7.8.1842] - 2026-05-14
 
 ### Changed
