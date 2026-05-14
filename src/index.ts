@@ -1000,8 +1000,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             await review.sendContinue(sid);
          }
          writeStatusFile(sid);
-        compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact check failed:', e));
-         return;
+         compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
+           if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
+         }).catch((e: unknown) => log('proactive compact check failed:', e));
+          return;
         }
          const stopCheck = stopConditions.checkStopConditions(sid);
          if (!stopCheck.shouldStop) {
