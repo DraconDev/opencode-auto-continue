@@ -290,43 +290,41 @@ describe("compaction module unit tests", () => {
       expect(result).toBe(false);
     });
 
-    it("waits for session to become idle after summarize", async () => {
-      // Session stays busy for first poll, then idle
+    it("waits for session.compacted event to clear compacting flag", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus
-        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
-        .mockResolvedValueOnce({ data: { test: { type: "idle" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
       module = createModule({ compactionVerifyWaitMs: 10000 });
 
       const promise = module.attemptCompact("test");
-      // First poll at 2000ms → busy
-      await vi.advanceTimersByTimeAsync(2000);
+      // First poll at 1000ms → still compacting
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
-      // Second poll at 3000ms → idle
-      await vi.advanceTimersByTimeAsync(3000);
+      // Simulate session.compacted event
+      const s = sessions.get("test")!;
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
+      // Next poll at 2000ms → detects completion
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
       const result = await promise;
       expect(result).toBe(true);
-      expect(mockStatus).toHaveBeenCalledTimes(2);
     });
 
-    it("returns false if session stays busy past all wait intervals", async () => {
+    it("returns false if compacting flag never clears (timeout)", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
-      module = createModule({ compactionVerifyWaitMs: 10000 });
+      module = createModule({ compactionVerifyWaitMs: 3000 });
 
       const promise = module.attemptCompact("test");
-      // Advance through all wait intervals: 2000 + 3000 + 5000 = 10000ms
-      await vi.advanceTimersByTimeAsync(2000);
+      // Advance through all wait time without clearing compacting flag
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
       const result = await promise;
@@ -379,13 +377,15 @@ describe("compaction module unit tests", () => {
 
     it("calls forceCompact when tokens exceed threshold", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
       module = createModule({ proactiveCompactAtTokens: 100000 });
 
       const promise = module.maybeProactiveCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      const s = sessions.get("test")!;
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
       await flushPromises();
 
       const result = await promise;
@@ -439,13 +439,15 @@ describe("compaction module unit tests", () => {
 
     it("calls forceCompact when tokens exceed threshold", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 60000 }));
       module = createModule({ opportunisticCompactAtTokens: 50000 });
 
       const promise = module.maybeOpportunisticCompact("test", "post-recovery");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      const s = sessions.get("test")!;
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
       await flushPromises();
 
       const result = await promise;
@@ -455,13 +457,15 @@ describe("compaction module unit tests", () => {
 
     it("logs reason string when triggered", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 60000 }));
       module = createModule({ opportunisticCompactAtTokens: 50000 });
 
       const promise = module.maybeOpportunisticCompact("test", "on-idle");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      const s = sessions.get("test")!;
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
       await flushPromises();
       await promise;
 
