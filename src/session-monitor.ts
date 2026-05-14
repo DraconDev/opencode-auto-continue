@@ -76,7 +76,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function getBusyCount(): number {
     let count = 0;
-    for (const [_, s] of sessions) {
+    for (const [, s] of sessions) {
       if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
         count++;
       }
