@@ -971,8 +971,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact check failed:', e));
          return;
         }
-        nudge.scheduleNudge(sid);
-        writeStatusFile(sid);
+         const stopCheck = stopConditions.checkStopConditions(sid);
+         if (!stopCheck.shouldStop) {
+           if (config.opportunisticCompactBeforeNudge && s.estimatedTokens >= config.nudgeCompactThreshold) {
+             compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
+           }
+           nudge.scheduleNudge(sid);
+         }
+         writeStatusFile(sid);
         return;
       }
 
