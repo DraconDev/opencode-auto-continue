@@ -23,7 +23,6 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Terminal Progress Bar** | Nothing — unique feature | OSC 9;4 progress in terminal tabs (iTerm2, WezTerm, etc.) |
 
 **Delegated to other plugins:**
-- 🔄 **Proactive context pruning** → [`@tarquinen/opencode-dcp`](https://github.com/tarquinen/opencode-dcp)
 - 🔄 **Toast notifications** → [`@mohak34/opencode-notifier`](https://github.com/mohak34/opencode-notifier) or similar |
 
 > 📊 **Want to understand the internals?** See the [Flow Chart](docs/FLOW-CHART.md) for a detailed breakdown of every state transition, guard check, and decision point.
@@ -540,29 +539,7 @@ Check: enableAdvisory && shouldUseAI()?
 - **Recovery**: Before final abort attempt, advisor analyzes stall pattern. May suggest wait instead of abort.
 - **Nudge**: Advisor analyzes if nudging is appropriate. Skips nudge if advice is `wait` (≥0.7 confidence) or `abort` (≥0.6 confidence).
 
-For **significantly better context management**, install DCP alongside this plugin:
-
-```bash
-opencode plugin @tarquinen/opencode-dcp@latest --global
-```
-
-**Why?** DCP handles context optimization far better than our emergency-only approach:
-
-| Feature | Our Plugin Only | With DCP |
-|---------|----------------|----------|
-| Proactive pruning | ❌ None (emergency only) | ✅ `compress` tool called by model |
-| Message dedup | ❌ None | ✅ Removes repeated tool calls |
-| Error purge | ❌ None | ✅ Prunes errored tool inputs |
-| Soft thresholds | ❌ None | ✅ 50k-100k range with nudges |
-| Context preservation | ❌ None | ✅ Protected tools, user messages, file patterns |
-| Emergency compaction | ✅ Token limit errors | ✅ Plus DCP's proactive pruning |
-
-**When DCP is detected**, our plugin automatically:
-- Disables proactive compaction (DCP handles it)
-- Keeps emergency compaction on token limit errors (belt-and-suspenders)
-- Injects session state (todos, planning status) into compaction hooks
-
-**Architecture**: We focus on session continuity (stall recovery, nudging, review). DCP focuses on context optimization. Together they cover both concerns without overlap.
+The plugin handles both **proactive compaction** (at 100k tokens) and **emergency compaction** (on token limit errors), providing comprehensive context management without requiring external plugins.
 
 ## Installation
 
