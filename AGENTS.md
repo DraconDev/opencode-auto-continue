@@ -1,12 +1,12 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.306)
+## Current State (v7.8.344)
 
 **Status:** Released & Dogfooding  
 **Tests:** 389/389 passing  
-**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.306
+**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.344
 
-### v7.8.306 Changes
+### v7.8.344 Changes
 - **Busy-But-Dead Detection**: Distinguishes status pings from real output using `lastOutputAt`/`lastOutputLength` tracking
 - **Toast Notifications**: Session Resumed, Recovery Successful, Nudge Failed, Token Limit, Compaction Failed
 - **Runtime Validation**: Added validation for `planningTimeoutMs`, `tokenEstimateMultiplier`, `busyStallTimeoutMs`

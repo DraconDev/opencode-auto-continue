@@ -598,7 +598,7 @@ cp -r dist/* ~/.config/opencode/plugins/opencode-auto-continue/
 cat > ~/.config/opencode/plugins/opencode-auto-continue/package.json << 'EOF'
 {
   "name": "opencode-auto-continue",
-  "version": "7.8.235",
+  "version": "7.8.344",
   "main": "./index.js",
   "types": "./index.d.ts"
 }
