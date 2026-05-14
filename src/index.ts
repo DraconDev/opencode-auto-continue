@@ -443,7 +443,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             return;
           }
         }
-      }),
+      });
     },
     "experimental.session.compacting": async (_input, output) => {
       // Inject session state into compaction to preserve important context
