@@ -351,10 +351,10 @@ describe("gate-based skipping", () => {
     expect(mockShell).not.toHaveBeenCalled();
   });
 
-  it("should run cargo test when Cargo.toml exists", async () => {
+  it("should run pnpm test when package.json exists", async () => {
     const mockShell = makeSuccessShell("test passed", 0);
     const runner = createTestRunner({
-      config: GATE_CONFIG,
+      config: { ...GATE_CONFIG, testCommands: ["pnpm test"] },
       log: MOCK_LOG,
       input: { $: mockShell as any, directory: "/home/dracon/Dev/opencode-auto-continue" } as any,
     });
