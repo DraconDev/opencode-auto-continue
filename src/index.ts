@@ -479,6 +479,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 await review.sendContinue(sid);
               } else {
                 log('emergency compaction failed for session:', sid);
+                // Schedule recovery with backoff instead of abandoning session
+                currentSession.backoffAttempts++;
+                const backoffDelay = Math.min(
+                  config.stallTimeoutMs * Math.pow(2, currentSession.backoffAttempts),
+                  config.maxBackoffMs
+                );
+                log('scheduling recovery after emergency compaction failure, backoff:', backoffDelay, 'ms');
+                scheduleRecovery(sid, backoffDelay);
                 // Show compaction failure toast
                 if (config.showToasts) {
                   try {
@@ -486,7 +494,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                       query: { directory: input.directory || "" },
                       body: {
                         title: "Compaction Failed",
-                        message: "Could not free up tokens. Session may be stuck.",
+                        message: `Could not free up tokens. Will retry recovery in ${Math.round(backoffDelay / 1000)}s.`,
                         variant: "error",
                       },
                     }).catch(() => {});

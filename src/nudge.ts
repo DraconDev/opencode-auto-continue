@@ -94,9 +94,20 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    if (s.planning || s.compacting) {
-      log("nudge skipped - planning or compacting", sessionId);
+    if (s.planning || s.compacting || s.hardCompactionInProgress) {
+      log("nudge skipped - planning, compacting, or hard compaction in progress", sessionId);
       return;
+    }
+
+    if (deps.maybeHardCompact) {
+      try {
+        const compacted = await deps.maybeHardCompact(sessionId);
+        if (compacted) {
+          log('hard compaction succeeded before nudge:', sessionId);
+        }
+      } catch (e) {
+        log('hard compaction before nudge failed (proceeding anyway):', e);
+      }
     }
 
     // FIX 8: Check failure backoff before proceeding

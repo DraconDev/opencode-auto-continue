@@ -12,6 +12,8 @@ export interface ReviewDeps {
   writeStatusFile: (sessionId: string) => void;
   isTokenLimitError: (error: any) => boolean;
   forceCompact: (sessionId: string) => Promise<boolean>;
+  maybeHardCompact?: (sessionId: string) => Promise<boolean>;
+  scheduleRecovery?: (sessionId: string, delayMs: number) => void;
 }
 
 export function createReviewModule(deps: ReviewDeps) {
@@ -95,11 +97,13 @@ export function createReviewModule(deps: ReviewDeps) {
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;
       if (s.continueRetryCount >= MAX_CONTINUE_RETRIES) {
-        log('continue retry limit reached, giving up:', sessionId, 'retries:', s.continueRetryCount);
-        s.needsContinue = false;
-        s.continueMessageText = '';
+        log('continue retry limit reached, rescheduling recovery instead of giving up:', sessionId, 'retries:', s.continueRetryCount);
+        s.needsContinue = true;
         s.continueRetryCount = 0;
         s.continueInProgress = false;
+        if (deps.scheduleRecovery) {
+          deps.scheduleRecovery(sessionId, config.shortContinueMessage ? 10000 : 30000);
+        }
         writeStatusFile(sessionId);
         return;
       }
@@ -121,6 +125,17 @@ export function createReviewModule(deps: ReviewDeps) {
       }
 
       log('sending continue prompt from event handler (retry:', s.continueRetryCount, ')');
+
+      if (deps.maybeHardCompact) {
+        try {
+          const compacted = await deps.maybeHardCompact(sessionId);
+          if (compacted) {
+            log('hard compaction succeeded before continue:', sessionId);
+          }
+        } catch (e) {
+          log('hard compaction before continue failed (proceeding anyway):', e);
+        }
+      }
 
       s.messageCount++;
       await input.client.session.prompt({
