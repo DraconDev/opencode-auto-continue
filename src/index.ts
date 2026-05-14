@@ -346,6 +346,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.messageCount = 0;
       s.estimatedTokens = 0;
       s.realTokens = 0;
+      s.lastRealTokenRefreshAt = 0;
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
       s.lastHardCompactionAt = 0;
