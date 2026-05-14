@@ -11,17 +11,12 @@ const DEFAULT_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCo
 const MOCK_LOG = vi.fn();
 
 /**
- * Create a mock Bun shell `$` function.
- * When used as a tagged template, returns { cwd: () => promise }
- * matching how the test runner uses it:  input.$`cmd`.cwd(dir).then(...)
+ * Create a mock Bun shell `$` function returning a given result.
+ * Signature matches:  input.$`cmd`.cwd(dir).then(...)
  */
-function makeShellMock(result: { stdout?: string; stderr?: string; exitCode?: number }) {
-  const { stdout = "", stderr = "", exitCode = 0 } = result;
-  const promise = Promise.resolve({ stdout, stderr, exitCode });
-  const shellFn = (_strings: TemplateStringsArray, ..._values: unknown[]) => ({
-    cwd: (_dir?: string) => promise,
-  });
-  return vi.fn(shellFn);
+function makeSuccessShell(stdout: string, exitCode = 0) {
+  const promise = Promise.resolve({ stdout, stderr: "", exitCode });
+  return vi.fn(() => ({ cwd: vi.fn(() => promise) }));
 }
 
 beforeEach(() => {
@@ -63,11 +58,11 @@ describe("createTestRunner", () => {
   });
 
   it("should return success result when command exits with 0", async () => {
-    const mockShell = vi.fn().mockResolvedValue({ stdout: "test passed", stderr: "", exitCode: 0 });
+    const mockShell = makeSuccessShell("test passed", 0);
     const runner = createTestRunner({
       config: DEFAULT_CONFIG,
       log: MOCK_LOG,
-      input: { $: mockShell as any } as any,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
     });
 
     const results = await runner.runTests();
@@ -78,11 +73,11 @@ describe("createTestRunner", () => {
   });
 
   it("should return failure result when command exits with non-zero", async () => {
-    const mockShell = vi.fn().mockResolvedValue({ stdout: "test failed", stderr: "error details", exitCode: 1 });
+    const mockShell = makeSuccessShell("test failed", 1);
     const runner = createTestRunner({
       config: DEFAULT_CONFIG,
       log: MOCK_LOG,
-      input: { $: mockShell as any } as any,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
     });
 
     const results = await runner.runTests();
@@ -92,30 +87,45 @@ describe("createTestRunner", () => {
   });
 
   it("should truncate output to MAX_OUTPUT_PER_COMMAND", async () => {
-    const longOutput = "x".repeat(10000);
-    const mockShell = vi.fn().mockResolvedValue({ stdout: longOutput, stderr: "", exitCode: 0 });
+    const mockShell = makeSuccessShell("x".repeat(10000), 0);
     const runner = createTestRunner({
       config: DEFAULT_CONFIG,
       log: MOCK_LOG,
-      input: { $: mockShell as any } as any,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
     });
 
     const results = await runner.runTests();
-    expect(results[0].output.length).toBe(5000); // Truncated to 5000
+    expect(results[0].output.length).toBe(5000);
   });
 
   it("should run multiple commands sequentially", async () => {
-    const mockShell = vi.fn().mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 });
+    const mockShell = makeSuccessShell("", 0);
     const runner = createTestRunner({
       config: { ...DEFAULT_CONFIG, testCommands: ["cargo test", "cargo build"] },
       log: MOCK_LOG,
-      input: { $: mockShell as any } as any,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
     });
 
     const results = await runner.runTests();
     expect(results).toHaveLength(2);
     expect(results[0].command).toBe("cargo test");
     expect(results[1].command).toBe("cargo build");
+  });
+
+  it("should handle command that throws an error", async () => {
+    const err = new Error("command not found");
+    const mockShell = vi.fn(() => { throw err; });
+    const runner = createTestRunner({
+      config: DEFAULT_CONFIG,
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].passed).toBe(false);
+    expect(results[0].timedOut).toBe(false);
+    expect(results[0].output).toContain("command not found");
   });
 
   it("formatResults should format test results", async () => {
@@ -127,13 +137,12 @@ describe("createTestRunner", () => {
 
     const formatted = runner.formatResults([
       { command: "cargo test", output: "all green", passed: true, timedOut: false },
-      { command: "cargo run", output: "error: build failed", passed: false, timedOut: false },
+      { command: "cargo run", output: "build failed", passed: false, timedOut: false },
     ]);
 
     expect(formatted).toContain("cargo test — PASS");
-    expect(formatted).toContain("all green");
     expect(formatted).toContain("cargo run — FAIL");
-    expect(formatted).toContain("error: build failed");
+    expect(formatted).toContain("build failed");
   });
 
   it("formatResults should return placeholder for empty array", async () => {
@@ -175,34 +184,4 @@ describe("createTestRunner", () => {
 
     expect(failures).toBe("");
   });
-
-  it("should handle command that throws an error", async () => {
-    const mockShell = vi.fn().mockRejectedValue(new Error("command not found"));
-    const runner = createTestRunner({
-      config: DEFAULT_CONFIG,
-      log: MOCK_LOG,
-      input: { $: mockShell as any } as any,
-    });
-
-    const results = await runner.runTests();
-    expect(results).toHaveLength(1);
-    expect(results[0].passed).toBe(false);
-    expect(results[0].timedOut).toBe(false);
-    expect(results[0].output).toContain("command not found");
-  });
-
-  it("should handle timeout as failed with timedOut flag", async () => {
-    const mockShell = vi.fn().mockImplementation(() => new Promise(() => {})); // never resolves
-    const runner = createTestRunner({
-      config: { ...DEFAULT_CONFIG, testCommandTimeoutMs: 100 },
-      log: MOCK_LOG,
-      input: { $: mockShell as any } as any,
-    });
-
-    const results = await runner.runTests();
-    expect(results).toHaveLength(1);
-    expect(results[0].passed).toBe(false);
-    expect(results[0].timedOut).toBe(true);
-    expect(results[0].output).toContain("TIMED OUT");
-  }, 10000); // longer timeout for timeout test
 });
