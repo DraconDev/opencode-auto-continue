@@ -104,6 +104,7 @@ export interface PluginConfig {
   testCommands: string[];
   testCommandTimeoutMs: number;
   testCommandGates: Record<string, string>;
+  reviewWithoutTestsMessage: string;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -124,6 +125,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   includeTodoContext: true,
   reviewOnComplete: true,
   reviewMessage: "All tracked tasks are marked complete. Running final verification:\n\n{testOutput}\n\n## Review Instructions\nAnalyze the test output above:\n- **If tests failed**: Create fix-todos for EACH failure (one per test name) before fixing.\n- **If tests passed**: Verify the scope is correct — did we only change what was asked? Are there new functions without corresponding tests?\n- **Check for warnings**: Build warnings, unused imports, dead code.\n\n**Create fix-todos for any bugs or failures before fixing them.** Keep working until all tests are green. Do not stop until everything passes.",
+  reviewWithoutTestsMessage: "All tracked tasks are marked complete. Review the changes for correctness and completeness. Verify the scope is correct — did we only change what was asked? Are there new functions without corresponding tests? Check for warnings, unused imports, and dead code.",
   reviewDebounceMs: 500,
   showToasts: true,
   nudgeEnabled: true,
