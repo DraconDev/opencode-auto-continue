@@ -99,6 +99,11 @@ export interface PluginConfig {
 
   // Question auto-answer
   autoAnswerQuestions: boolean;
+
+  // Test-Driven Quality Gate
+  testOnIdle: boolean;
+  testCommands: string[];
+  testCommandTimeoutMs: number;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -195,6 +200,11 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Question auto-answer
   autoAnswerQuestions: false,
+
+  // Test-Driven Quality Gate
+  testOnIdle: true,
+  testCommands: ["cargo test"],
+  testCommandTimeoutMs: 300000,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
@@ -262,6 +272,10 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);
+
+  if (typeof normalized.testOnIdle !== 'boolean') addError('testOnIdle', `testOnIdle must be a boolean, got ${typeof normalized.testOnIdle}`);
+  if (!Array.isArray(normalized.testCommands) || normalized.testCommands.length === 0 || !normalized.testCommands.every((c: unknown) => typeof c === 'string')) addError('testCommands', `testCommands must be a non-empty array of strings`);
+  if (normalized.testCommandTimeoutMs <= 0) addError('testCommandTimeoutMs', `testCommandTimeoutMs must be > 0, got ${normalized.testCommandTimeoutMs}`);
 
   if (errors.length > 0) {
     console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);

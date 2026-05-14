@@ -22,6 +22,10 @@ export interface SessionState {
   lastOutputAt: number;      // Last actual output (text/tool/file), not status ping
   lastOutputLength: number;  // Total content length to detect even small changes
 
+  // === Test-Driven Quality Gate (test-runner.ts) ===
+  lastTestRunAt: number;
+  testRunInProgress: boolean;
+
   // === Recovery (recovery.ts) ===
   attempts: number;
   lastRecoveryTime: number;
