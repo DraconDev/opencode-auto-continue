@@ -125,6 +125,8 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,
+    proactiveCompactCount: 0,
+    hardCompactCount: 0,
     ...overrides,
   };
 }
@@ -387,6 +389,7 @@ describe("compaction module unit tests", () => {
       const result = await promise;
       expect(result).toBe(true);
       expect(mockSummarize).toHaveBeenCalled();
+      expect(sessions.get("test")!.proactiveCompactCount).toBe(1);
     });
   });
 
@@ -621,6 +624,21 @@ describe("compaction module unit tests", () => {
 
       const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(allLogs).toContain("HARD TRIGGER");
+    });
+
+    it("increments hardCompactCount on trigger", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 100000 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      await promise;
+
+      expect(sessions.get("test")!.hardCompactCount).toBe(1);
     });
   });
 
