@@ -77,7 +77,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function getBusyCount(): number {
     let count = 0;
-    for (const [_, s] of sessions) {
+    for (const [, s] of sessions) {
       if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
         count++;
       }
@@ -168,7 +168,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
         if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
           const timeSinceProgress = Date.now() - s.lastProgressAt;
           const stuckThreshold = config.stallTimeoutMs;
-          if (timeSinceProgress > stuckThreshold && !s.userCancelled && !s.aborting && !s.planning) {
+          if (timeSinceProgress > stuckThreshold && !s.userCancelled && !s.aborting && !s.planning && !s.compacting) {
             log('[SessionMonitor] single busy session stuck for too long:', id, 'stuck for', timeSinceProgress, 'ms');
             orphanRecoveryCount++;
             recover(id);

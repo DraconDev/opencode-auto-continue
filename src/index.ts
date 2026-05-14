@@ -610,7 +610,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
         }
-    if (status?.type === "idle") {
+    } else if (status?.type === "idle") {
       s.actionStartedAt = 0;
       clearTimer(sid);
       
