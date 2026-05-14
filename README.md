@@ -718,11 +718,17 @@ Minimal configuration with sensible defaults:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `autoCompact` | `true` | Enable emergency compaction on token limit errors |
+| `autoCompact` | `true` | Enable proactive and opportunistic compaction |
+| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction |
+| `opportunisticCompactAtTokens` | `50000` | Token threshold for opportunistic compaction |
+| `hardCompactAtTokens` | `100000` | Token threshold for mandatory blocking compaction |
+| `hardCompactMaxWaitMs` | `30000` | Max wait for hard compaction before proceeding anyway |
+| `hardCompactBypassCooldown` | `true` | Hard compaction ignores cooldown |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
 | `compactionVerifyWaitMs` | `10000` | Max wait for compaction verification |
 | `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
+| `compactionSafetyTimeoutMs` | `15000` | Safety timeout to clear stuck compacting flag |
 
 ### Context Window
 
