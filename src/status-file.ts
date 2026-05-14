@@ -117,10 +117,7 @@ export function createStatusFileModule(deps: StatusFileDeps) {
       const data = {
         version: getPluginVersion(),
         timestamp: new Date().toISOString(),
-        dcp: {
-          detected: config.dcpDetected,
-          version: config.dcpVersion || null,
-        },
+
         sessions: {
           [sessionId]: {
             elapsed: formatDuration(elapsed),

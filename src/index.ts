@@ -13,14 +13,11 @@ import {
   updateProgress,
   formatMessage,
   safeHook,
-  detectDCP,
-  getDCPVersion,
   shouldBlockPrompt,
   scheduleRecoveryWithGeneration,
   getMessageText,
   clearMessagesCache,
   invalidateModelLimitCache,
-  invalidateDCPCache,
 } from "./shared.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
@@ -262,17 +259,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
   };
   
-  // Detect DCP and auto-adjust compaction settings
-  const hasDCP = detectDCP();
-  if (hasDCP) {
-    config.dcpDetected = true;
-    config.dcpVersion = getDCPVersion();
-    if (config.autoCompact) {
-      config.autoCompact = false;
-      // We'll log this after log function is defined
-    }
-  }
-  
   config = validateConfig(config);
 
   const sessions = new Map<string, SessionState>();
@@ -388,11 +374,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   }
   
-  // Log DCP detection after log function is available
-  if (config.dcpDetected) {
-    log('DCP (Dynamic Context Pruning) detected — proactive compaction disabled, DCP handles context optimization');
-  }
-
   const customPromptRuntime = registerCustomPromptRuntime({
     input,
     config,
@@ -1060,7 +1041,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       clearPendingWrites();
       clearMessagesCache();
       invalidateModelLimitCache();
-      invalidateDCPCache();
       unregisterCustomPromptRuntime(customPromptRuntime);
       customPromptRuntimes.clear();
       latestCustomPromptRuntime = null;

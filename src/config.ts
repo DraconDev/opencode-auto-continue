@@ -51,8 +51,7 @@ export interface PluginConfig {
   compactReductionFactor: number;
   compactAtMessageCount: number;
   tokenEstimateMultiplier: number;
-  dcpDetected: boolean;
-  dcpVersion: string | null;
+
 
   // Planning timeout
   planningTimeoutMs: number;
@@ -126,8 +125,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
-  dcpDetected: false,
-  dcpVersion: null,
+
 
   // Planning timeout (default 5 minutes)
   planningTimeoutMs: 300000,
