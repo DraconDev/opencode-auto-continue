@@ -789,4 +789,61 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 - Debug mode OFF by default — file logging can cause TUI crashes
 - No `console.log`/`console.error` in production paths
 
+## Session State Architecture
+
+### Current Structure
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `src/index.ts` | 1022 | Plugin entry point, module wiring, hooks registration |
+| `src/event-handlers.ts` | 552 | 12 event handler methods (extracted from index.ts inline handlers) |
+| `src/session-state.ts` | 177 | SessionState interface + createSession + updateProgress |
+| `src/recovery.ts` | 442 | Recovery logic with abort+continue flow |
+| `src/nudge.ts` | ~450 | Nudge scheduling and injection |
+| `src/compaction.ts` | ~200 | Emergency compaction on token limit |
+| `src/review.ts` | ~250 | Todo review after completion |
+| `src/ai-advisor.ts` | 512 | Hybrid AI/heuristic advisory module |
+| `src/session-monitor.ts` | ~150 | Orphan detection and session discovery |
+| `src/terminal.ts` | ~300 | Terminal title/progress updates |
+| `src/status-file.ts` | ~200 | Status file writes |
+| `src/plan.ts` | ~300 | Plan detection and handling |
+| `src/shared.ts` | 436 | Shared utilities (safeHook, scheduleRecoveryWithGeneration, etc.) |
+
+### Event Flow
+
+```
+event.type → eventHandlers.{handler}(e)
+  handleSessionError() — token limit, user cancelled
+  handleSessionCreated/Updated/Diff() — session lifecycle
+  handleMessageUpdated() — token tracking, user message detection
+  handleSessionStatus() — busy/retry/idle handling, toast notifications
+  handleMessagePartUpdated() — progress tracking, plan detection
+  handleMessageCreatedOrPartAdded() — activity events, token estimation
+  handleTodoUpdated() — todo state tracking
+  handleSessionIdle() — nudge scheduling
+  handleSessionCompacted() — post-compaction continuation
+  handleStaleEvent() — session.ended/session.deleted cleanup
+```
+
+### Deferred Improvements
+
+1. **A4: SessionState encapsulation** — Wrap SessionState fields with accessor methods to reduce direct `s.field = x` mutations across 10+ modules. Would improve maintainability but requires ~30 new methods. Deferred: too complex for single session.
+
+2. **T1: ai-advisor.test.ts edge cases** — Add tests for:
+   - AI advisory timeout (config.advisoryTimeoutMs exceeded)
+   - Malformed AI responses (non-parseable format)
+   - Boundary heuristics: exact 80% token threshold, exact 30s elapsed, exact 60s planning
+
+3. **H2: retry as busy state** — Re-attempt accepting `retry` as a valid busy state. Was reverted because test expected no abort on retry. Need to understand the test's intent before retrying.
+
+## Key Trade-offs (Design Decisions)
+
+| Decision | Rationale | Trade-off |
+|----------|-----------|-----------|
+| Event handlers in class | Better organization, easier to test | Extra indirection layer |
+| SessionState as plain object | Simple, no encapsulation overhead | Direct mutations across modules |
+| Heuristic-first advisory | Instant decisions, no AI latency | Can't handle novel edge cases |
+| Async compaction | Non-blocking token limit handling | Race conditions require guards |
+| Synthetic message flag | Semantic clarity for AI | No behavioral difference from plain text |
+
 
