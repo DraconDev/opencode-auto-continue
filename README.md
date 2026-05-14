@@ -900,11 +900,32 @@ When `statusFileRotate > 0`, old status files are kept:
 
 ## How Compaction Works
 
-The plugin handles both **proactive compaction** (at 100k tokens) and **emergency compaction** (when token limits are hit).
+The plugin manages context with **four compaction layers**, each with different triggers and urgency:
+
+| Layer | Threshold | Style | When It Fires |
+|-------|-----------|-------|---------------|
+| **Opportunistic** | 50k tokens | Fire-and-forget | Post-recovery, on-idle, pre-nudge, post-review |
+| **Proactive** | 100k tokens | Fire-and-forget | Token updates, session create, pre-continue |
+| **Hard** | 100k tokens | **Blocking gate** | Before recovery, nudge, or continue |
+| **Emergency** | Token limit error | Retry 3x | On `session.error` with limit message |
+
+### Opportunistic Compaction
+
+At `opportunisticCompactAtTokens` (default: 50k), the plugin cleans up context during idle moments before the next operation pushes tokens higher. This is low-priority "housekeeping" compaction.
+
+**Triggers**: After recovery success, session idle, before nudge, after review.
 
 ### Proactive Compaction
 
 When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 100k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
+
+### Hard Compaction (Blocking Gate)
+
+When tokens exceed `hardCompactAtTokens` (default: 100k), the hard compactor **blocks** until compaction succeeds or times out. Recovery, nudge, and continue all `await` it before proceeding.
+
+- Always fires (ignores `autoCompact` flag)
+- Bypasses cooldown by default (`hardCompactBypassCooldown: true`)
+- Respects `hardCompactMaxWaitMs` (default 30s) — returns false if exceeded but doesn't strand the session
 
 ### Emergency Compaction (Token Limit Errors)
 
@@ -914,7 +935,7 @@ When a token limit error is detected:
 3. Wait 2s → check if session idled
 4. Wait 3s → check again
 5. Wait 5s → check again
-6. If still busy → proceed with abort+continue
+6. If compaction fails → schedule recovery with backoff instead of abandoning session
 
 **Post-compaction token reset**:
 After compaction completes, estimated tokens are recalculated using `compactReductionFactor`:
@@ -925,9 +946,12 @@ With default factor 0.7: `estimatedTokens = estimatedTokens * 0.3` (30% remain)
 
 This matches the actual reduction — compaction removes ~70% of context, so the remaining tokens should be ~30% of pre-compaction count.
 
-### Why Both Proactive and Emergency?
+### Why Four Layers?
 
-Proactive compaction at 100k tokens prevents most token limit errors before they happen. Emergency compaction is a safety net for edge cases that slip through — unexpected context spikes, model-specific limits, or scenarios where the estimate undercounted.
+- **Opportunistic** (50k): Gentle cleanup during idle moments
+- **Proactive** (100k): Pre-emptive before limits hit
+- **Hard** (100k): Mandatory gate — blocks operations until compacted
+- **Emergency**: Safety net for edge cases that slip through
 
 ### Token Estimation
 
