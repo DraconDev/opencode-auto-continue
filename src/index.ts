@@ -29,6 +29,7 @@ import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
 import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
+import { EventHandlers } from "./event-handlers.js";
 
 import type { Todo } from "./session-state.js";
 
