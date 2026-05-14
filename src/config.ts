@@ -66,6 +66,10 @@ export interface PluginConfig {
   // Compaction safety timeout
   compactionSafetyTimeoutMs: number;
 
+  // Compaction grace period — prevents re-compaction immediately after session.compacted
+  // while DB token counts may still be stale. All layers respect this, including hard.
+  compactionGracePeriodMs: number;
+
   // Stop conditions
   stopFilePath: string;
   maxRuntimeMs: number;

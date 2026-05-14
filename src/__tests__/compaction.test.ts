@@ -721,4 +721,121 @@ describe("compaction module unit tests", () => {
       expect(s.estimatedTokens).toBe(50000);
     });
   });
+
+  describe("double compact prevention (grace period)", () => {
+    it("maybeProactiveCompact skips when lastCompactionAt is very recent", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 2000,
+      }));
+      module = createModule({ proactiveCompactAtTokens: 100000, compactionGracePeriodMs: 10000 });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("maybeHardCompact skips when lastCompactionAt is very recent (even with bypassCooldown)", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 2000,
+      }));
+      module = createModule({
+        hardCompactAtTokens: 100000,
+        hardCompactBypassCooldown: true,
+        compactionGracePeriodMs: 10000,
+      });
+
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("maybeOpportunisticCompact skips when lastCompactionAt is very recent", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 2000,
+      }));
+      module = createModule({ opportunisticCompactAtTokens: 50000, compactionGracePeriodMs: 10000 });
+
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("proactive compact proceeds after grace period expires", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 15000,
+      }));
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionGracePeriodMs: 10000,
+        compactCooldownMs: 60000,
+      });
+
+      const promise = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+
+    it("hard compact proceeds after grace period expires", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 15000,
+      }));
+      module = createModule({
+        hardCompactAtTokens: 100000,
+        compactionGracePeriodMs: 10000,
+        compactReductionFactor: 0.4,
+      });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+
+    it("grace period defaults to 10 seconds", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 5000,
+      }));
+      module = createModule({ hardCompactAtTokens: 100000 });
+
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("forceCompact is not blocked by grace period (emergency compaction)", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 2000,
+      });
+      sessions.set("test", s);
+      module = createModule({ compactionGracePeriodMs: 10000 });
+
+      const promise = module.forceCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+  });
 });
