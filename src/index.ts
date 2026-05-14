@@ -699,17 +699,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               compaction.maybeOpportunisticCompact(sid, 'post-recovery').catch((e: unknown) => log('opportunistic compact post-recovery failed:', e));
             }
           }
-          // NOTE: s.planning is NOT cleared here — session.status(busy) fires
-          // during plan generation too (the session IS busy). Clearing it would
-          // cause plan-aware continue messages to use the generic message instead.
-          // Instead, s.planning is cleared by message.part.updated when non-plan
-          // progress parts (tool, file, subtask, step-start, step-finish) arrive.
-          if (s.compacting) {
-            log('session busy, clearing compacting flag (compaction likely finished)');
-            s.compacting = false;
-            s.hardCompactionInProgress = false;
-            if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
-          }
+          // NOTE: s.planning and s.compacting are NOT cleared here.
+          // session.status(busy) fires during compaction/plan generation too.
+          // Clearing these flags prematurely would break:
+          //   - compacting: attemptCompact() polls s.compacting to detect completion
+          //   - planning: plan-aware continue messages need the flag
+          // These flags are cleared by their respective event handlers:
+          //   - s.compacting → session.compacted event or safety timeout
+          //   - s.planning → message.part.updated (non-plan progress parts)
           // Update terminal title and progress
           terminal.updateTerminalTitle(sid);
           terminal.updateTerminalProgress(sid);
@@ -1116,7 +1113,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         s.hardCompactionInProgress = false;
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         s.lastCompactionAt = Date.now();
-        s.estimatedTokens = Math.floor(s.estimatedTokens * (1 - config.compactReductionFactor));
+        s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
         refreshRealTokens(sid);
         // Reset recovery counters since we just freed context space
         s.attempts = 0;
@@ -1128,9 +1125,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
         // FIX 3: Queue and send continue after compaction to resume work
-        s.needsContinue = true;
-        s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
-        review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
+        if (!s.userCancelled && !isDisposed && !s.aborting) {
+          s.needsContinue = true;
+          s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
+          review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
+        }
         writeStatusFile(sid);
         return;
       }
