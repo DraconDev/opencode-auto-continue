@@ -519,31 +519,75 @@ Token accumulation:
 
 ## Context Compaction
 
-This plugin handles both **proactive compaction** (before hitting token limits) and **emergency compaction** (on token limit errors).
+The plugin manages context with **four compaction layers**, each with different triggers, thresholds, and urgency:
+
+| Layer | Threshold | Style | Behavior |
+|-------|-----------|-------|----------|
+| **Opportunistic** | 50k tokens | Fire-and-forget | Low-priority cleanup on idle/recovery/review/nudge |
+| **Proactive** | 100k tokens | Fire-and-forget | Pre-emptive before limits hit |
+| **Hard (NEW)** | 100k tokens | **Blocking gate** | Must succeed before recovery/nudge/continue proceed |
+| **Emergency** | Token limit error | Retry 3x | Last resort on hard limit hit |
+
+### Opportunistic Compaction
+
+Fires at `opportunisticCompactAtTokens` (default: 50,000) at lifecycle points where the session is about to send a prompt but isn't actively generating. This cleans up context before the next operation pushes tokens higher.
+
+**Trigger points** (all gated by their own config toggle):
+- **Post-recovery** (`opportunisticCompactAfterRecovery`): After recovery success toast
+- **On idle** (`opportunisticCompactOnIdle`): When session goes idle
+- **Pre-nudge** (`opportunisticCompactBeforeNudge`): Before nudge fires (uses `nudgeCompactThreshold` = 80k)
+- **Post-review** (`opportunisticCompactAfterReview`): After review completes
+
+**Guards**: Not compacting, not planning, not stoppedByCondition, cooldown elapsed.
 
 ### Proactive Compaction
 
 When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 100k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
 
-### When Emergency Compaction Fires
+**Called from**: Token-update events (`message.part.updated`, `session.created`, `session.idle`)
+
+### Hard Compaction (NEW)
+
+When tokens exceed `hardCompactAtTokens` (default: 100k), the hard compactor **blocks** until compaction succeeds or times out. This is a mandatory gate — recovery, nudge, and continue all `await` it before proceeding.
+
+**Key differences from proactive**:
+- Ignores `autoCompact` flag — always fires when threshold is exceeded
+- Bypasses `compactCooldownMs` by default (`hardCompactBypassCooldown: true`)
+- Sets `hardCompactionInProgress` flag to prevent concurrent hard compactions
+- Respects `hardCompactMaxWaitMs` (default 30s) — returns false if exceeded but doesn't strand the session
+- Called as gate in: `recover()`, `sendNudge()`, `sendContinue()`
+
+### Emergency Compaction
 
 - `session.error` with token limit message → `forceCompact(sid)`
 - Retries up to `compactMaxRetries` (default: 3)
-- Only when session is idle (busy sessions cannot be summarized)
+- **On failure**: Schedules recovery with exponential backoff instead of abandoning session
+
+### Compaction Safety Timeout (NEW)
+
+If `session.summarize()` hangs or fails without emitting `session.compacted`, the `compacting` flag could stay `true` forever, blocking all monitoring. The safety timeout (`compactionSafetyTimeoutMs`, default 15s) force-clears the flag.
 
 ### Compaction Flow
 
 ```
-estimatedTokens >= proactiveCompactAtTokens?
-  ├── YES ──► session.summarize() (proactive)
-  │              ├── success ──► reset estimates, continue
-  │              └── failure ──► retry up to compactMaxRetries
-  └── NO  ──► monitor continues
+Opportunistic (50k)?
+  ├── YES ──► maybeOpportunisticCompact() (fire-and-forget)
+  └── NO  ──► continue
 
-session.error (token limit)?
-  └── YES ──► forceCompact(sid) (emergency)
-                 ├── idle? ──► session.summarize()
-                 └── busy? ──► wait for idle, then compact
+Proactive (100k)?
+  ├── YES ──► maybeProactiveCompact() (fire-and-forget)
+  └── NO  ──► continue
+
+Hard (100k)?
+  ├── YES ──► maybeHardCompact() (blocking gate)
+  │              ├── success ──► proceed with recovery/nudge/continue
+  │              └── timeout ──► proceed anyway (soft fail-open)
+  └── NO  ──► proceed
+
+Emergency (token limit error)?
+  └── YES ──► forceCompact(sid)
+                 ├── success ──► queue continue, resume
+                 └── failure ──► schedule recovery with backoff
 ```
 
 ## Toast Notifications (v7.8.235+)
