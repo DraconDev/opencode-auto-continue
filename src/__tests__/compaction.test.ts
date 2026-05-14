@@ -453,8 +453,9 @@ describe("compaction module unit tests", () => {
       await flushPromises();
       await promise;
 
-      expect(log).toHaveBeenCalledWith(expect.stringContaining("OPPORTUNISTIC TRIGGER"), expect.anything());
-      expect(log).toHaveBeenCalledWith(expect.stringContaining("on-idle"), expect.anything());
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("OPPORTUNISTIC TRIGGER");
+      expect(allLogs).toContain("on-idle");
     });
   });
 
