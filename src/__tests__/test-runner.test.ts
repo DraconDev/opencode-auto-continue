@@ -302,11 +302,18 @@ describe("gate file detection", () => {
     npm: "package.json",
     yarn: "package.json",
     npx: "package.json",
+    pnpx: "package.json",
+    bun: "package.json",
+    deno: "deno.json",
     make: "Makefile",
+    just: "justfile",
     go: "go.mod",
     pip: "pyproject.toml",
+    pip3: "pyproject.toml",
     pytest: "pyproject.toml",
-    bun: "package.json",
+    python: "setup.py",
+    gradle: "build.gradle",
+    mvn: "pom.xml",
   };
 
   it("should find gate file for cargo test", () => {
