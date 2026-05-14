@@ -138,7 +138,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   recoveryHistogramEnabled: true,
   stallPatternDetection: true,
   terminalProgressEnabled: true,
-  compactionVerifyWaitMs: 10000,
+  compactionVerifyWaitMs: 30000,
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
   compactAtMessageCount: 50,

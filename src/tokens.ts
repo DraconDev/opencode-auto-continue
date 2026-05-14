@@ -4,6 +4,14 @@ interface DatabaseSync {
 }
 
 declare function require(module: "node:sqlite"): { DatabaseSync: new (path: string, options?: { open?: boolean; readonly?: boolean }) => DatabaseSync };
+
+// Bun's SQLite API (different from node:sqlite)
+interface BunSqliteDb {
+  prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
+  close(): void;
+}
+
+declare function require(module: "bun:sqlite"): { Database: new (path: string, options?: { readonly?: boolean }) => BunSqliteDb };
 declare function require(module: "node:fs"): typeof import("node:fs");
 
 export interface SessionTokens {
@@ -64,8 +72,29 @@ export function getSessionTokens(sessionId: string): SessionTokens {
       return NO_TOKENS;
     }
 
-    const { DatabaseSync } = require("node:sqlite");
-    const db = new DatabaseSync(path, { open: true });
+    // Try Bun's SQLite first (OpenCode runs on Bun, not Node.js)
+    // Then fall back to node:sqlite (available in Node 22.5+)
+    let db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void } | null = null;
+    let usingBun = false;
+
+    try {
+      const bunSqlite = require("bun:sqlite");
+      db = new bunSqlite.Database(path, { readonly: true });
+      usingBun = true;
+    } catch {
+      try {
+        const { DatabaseSync } = require("node:sqlite");
+        db = new DatabaseSync(path, { open: true }) as any;
+      } catch {
+        dbLastError = `No SQLite module available (tried bun:sqlite and node:sqlite)`;
+        return NO_TOKENS;
+      }
+    }
+
+    if (!db) {
+      dbLastError = `Failed to open SQLite database`;
+      return NO_TOKENS;
+    }
 
     try {
       const row = db
@@ -116,8 +145,21 @@ export function getLatestMessageTokens(
     const fs = require("node:fs");
     if (!fs.existsSync(path)) return null;
 
-    const { DatabaseSync } = require("node:sqlite");
-    const db = new DatabaseSync(path, { open: true });
+    let db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void } | null = null;
+
+    try {
+      const bunSqlite = require("bun:sqlite");
+      db = new bunSqlite.Database(path, { readonly: true });
+    } catch {
+      try {
+        const { DatabaseSync } = require("node:sqlite");
+        db = new DatabaseSync(path, { open: true }) as any;
+      } catch {
+        return null;
+      }
+    }
+
+    if (!db) return null;
 
     try {
       const row = db

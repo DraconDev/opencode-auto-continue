@@ -46,34 +46,35 @@ export function createCompactionModule(deps: CompactionDeps) {
         query: { directory: input.directory || "" }
       });
 
+      // Wait for the session.compacted event to clear s.compacting, instead of
+      // polling for idle status. Compaction happens while the session is busy —
+      // the session stays busy during summarization, then emits session.compacted
+      // when done. Polling for idle was unreliable because:
+      //   1. Session stays busy during compaction (often >10s for large contexts)
+      //   2. The old 2s/3s/5s poll would give up before compaction finished
       const maxWait = config.compactionVerifyWaitMs;
-      const waitTimes = [2000, 3000, 5000].filter(t => t <= maxWait);
-      if (waitTimes.length === 0) waitTimes.push(maxWait);
+      const pollInterval = 1000;
+      const deadline = Date.now() + maxWait;
 
-      for (const waitMs of waitTimes) {
-        await new Promise(r => setTimeout(r, waitMs));
-
-        const status = await input.client.session.status({});
-        const data = status.data as Record<string, { type: string }>;
-        const isBusy = data[sessionId]?.type === "busy";
-
-        if (!isBusy) {
-          log('compaction successful for session:', sessionId, 'after', waitMs, 'ms wait');
-          if (s) {
-            s.lastCompactionAt = Date.now();
-            s.compacting = false;
-            if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
-            const reduction = Math.floor(preTokens * config.compactReductionFactor);
-            s.estimatedTokens = Math.max(s.estimatedTokens - reduction, Math.floor(preTokens * (1 - config.compactReductionFactor)));
-            log('compaction reduced tokens from ~', preTokens, 'to ~', s.estimatedTokens);
-          }
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, pollInterval));
+        const current = sessions.get(sessionId);
+        if (!current) {
+          log('session deleted during compaction wait');
+          return false;
+        }
+        // session.compacted event handler clears s.compacting and sets lastCompactionAt
+        if (!current.compacting && current.lastCompactionAt > 0) {
+          log('compaction completed (detected via compacting flag cleared) for session:', sessionId);
           return true;
         }
-
-        log('compaction still in progress after', waitMs, 'ms, session still busy');
+        if (!current.compacting) {
+          log('compacting flag cleared without lastCompactionAt set — compaction likely failed for session:', sessionId);
+          return false;
+        }
       }
 
-      log('compaction did not complete within expected time for session:', sessionId);
+      log('compaction timed out after', maxWait, 'ms, session still compacting:', sessionId);
       if (s) {
         s.compacting = false;
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
