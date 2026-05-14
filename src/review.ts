@@ -62,6 +62,7 @@ export function createReviewModule(deps: ReviewDeps) {
             synthetic: true,
           }],
         },
+        agent: "plan",
       });
 
       // FIX 9: Only mark as fired after successful send
