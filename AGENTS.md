@@ -91,11 +91,18 @@ All config options are set in `opencode.json` under the plugin entry:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `autoCompact` | boolean | `true` | Enable proactive compaction |
-| `proactiveCompactAtTokens` | number | `100000` | Token threshold for auto-compaction |
-| `compactCooldownMs` | number | `60000` | Min time between compactions |
+| `autoCompact` | boolean | `true` | Enable proactive and opportunistic compaction |
+| `proactiveCompactAtTokens` | number | `100000` | Token threshold for proactive auto-compaction |
+| `opportunisticCompactAtTokens` | number | `50000` | Token threshold for opportunistic compaction |
+| `hardCompactAtTokens` | number | `100000` | Token threshold for mandatory blocking compaction |
+| `hardCompactMaxWaitMs` | number | `30000` | Max wait for hard compaction before proceeding anyway |
+| `hardCompactBypassCooldown` | boolean | `true` | Hard compaction ignores `compactCooldownMs` |
+| `compactCooldownMs` | number | `60000` | Min time between compactions (soft layers) |
 | `compactMaxRetries` | number | `3` | Max compaction retry attempts |
+| `compactRetryDelayMs` | number | `3000` | Delay between compaction retries |
+| `compactionVerifyWaitMs` | number | `10000` | Max wait for compaction verification |
 | `compactReductionFactor` | number | `0.7` | Expected context reduction ratio |
+| `compactionSafetyTimeoutMs` | number | `15000` | Safety timeout to clear stuck `compacting` flag |
 
 ### AI Advisory
 
