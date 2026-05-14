@@ -299,6 +299,7 @@ describe("gate file detection", () => {
     go: "go.mod",
     pip: "pyproject.toml",
     pytest: "pyproject.toml",
+    bun: "package.json",
   };
 
   it("should find gate file for cargo test", () => {
