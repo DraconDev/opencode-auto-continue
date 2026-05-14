@@ -261,6 +261,8 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.compactionSafetyTimeoutMs < 0) addError('compactionSafetyTimeoutMs', `compactionSafetyTimeoutMs must be >= 0, got ${normalized.compactionSafetyTimeoutMs}`);
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
+  if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);
+
   if (errors.length > 0) {
     console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);
     const result = { ...DEFAULT_CONFIG };

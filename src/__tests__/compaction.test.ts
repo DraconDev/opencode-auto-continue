@@ -575,8 +575,8 @@ describe("compaction module unit tests", () => {
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
       const s = sessions.get("test")!;
-      await simulateCompacted(sessions, "test");
       s.estimatedTokens = 40000;
+      await simulateCompacted(sessions, "test");
 
       const result = await promise;
       expect(result).toBe(true);
@@ -622,12 +622,10 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
+      const logPromise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
-      await promise;
+      await simulateCompacted(sessions, "test");
+      await logPromise;
 
       const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(allLogs).toContain("HARD TRIGGER");
@@ -641,11 +639,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
       await promise;
 
       expect(sessions.get("test")!.hardCompactCount).toBe(1);
@@ -712,10 +706,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.forceCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       await promise;
       expect(s.estimatedTokens).toBe(50000);
