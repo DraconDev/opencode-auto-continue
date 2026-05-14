@@ -344,8 +344,32 @@ describe("gate file detection", () => {
     expect(findGateFile("bun test", defaultGates)).toBe("package.json");
   });
 
+  it("should find gate file for deno test", () => {
+    expect(findGateFile("deno test", defaultGates)).toBe("deno.json");
+  });
+
+  it("should find gate file for just test", () => {
+    expect(findGateFile("just test", defaultGates)).toBe("justfile");
+  });
+
+  it("should find gate file for gradle test", () => {
+    expect(findGateFile("gradle test", defaultGates)).toBe("build.gradle");
+  });
+
+  it("should find gate file for mvn test", () => {
+    expect(findGateFile("mvn test", defaultGates)).toBe("pom.xml");
+  });
+
+  it("should find gate file for python -m pytest", () => {
+    expect(findGateFile("python -m pytest", defaultGates)).toBe("setup.py");
+  });
+
+  it("should find gate file for pip3 install", () => {
+    expect(findGateFile("pip3 install", defaultGates)).toBe("pyproject.toml");
+  });
+
   it("should return null for unknown command prefix", () => {
-    expect(findGateFile("python -m pytest", defaultGates)).toBe(null);
+    expect(findGateFile("ruby -e 'puts 1'", defaultGates)).toBe(null);
   });
 
   it("should return null for empty command", () => {
