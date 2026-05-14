@@ -611,6 +611,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               }
             }
             recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
+            }
           }
           
           // Show "Session Resumed" toast if progress detected after recent nudge
