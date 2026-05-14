@@ -216,14 +216,16 @@ describe("compaction module unit tests", () => {
 
     it("calls summarize and returns true on success", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       const s = createSessionState({ estimatedTokens: 50000 });
       sessions.set("test", s);
       module = createModule();
 
       const promise = module.forceCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
+      // Simulate session.compacted event clearing compacting and setting lastCompactionAt
+      await vi.advanceTimersByTimeAsync(1000);
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
       await flushPromises();
 
       expect(mockSummarize).toHaveBeenCalledWith({
@@ -256,14 +258,15 @@ describe("compaction module unit tests", () => {
 
     it("clears tokenLimitHits on success", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
 
       const s = createSessionState({ estimatedTokens: 50000, tokenLimitHits: 3 });
       sessions.set("test", s);
       module = createModule();
 
       const promise = module.forceCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      s.compacting = false;
+      s.lastCompactionAt = Date.now();
       await flushPromises();
 
       await promise;
