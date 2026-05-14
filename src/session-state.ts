@@ -50,6 +50,7 @@ export interface SessionState {
 
   // === Compaction (compaction.ts) ===
   estimatedTokens: number;
+  realTokens: number;
   lastCompactionAt: number;
   tokenLimitHits: number;
   hardCompactionInProgress: boolean;
@@ -140,6 +141,7 @@ export function createSession(): SessionState {
     lastKnownStatus: 'unknown',
 
     estimatedTokens: 0,
+    realTokens: 0,
     lastCompactionAt: 0,
     tokenLimitHits: 0,
     hardCompactionInProgress: false,
@@ -189,4 +191,8 @@ export function createSession(): SessionState {
 
 export function updateProgress(s: SessionState) {
   s.lastProgressAt = Date.now();
+}
+
+export function getTokenCount(s: SessionState): number {
+  return s.realTokens > 0 ? s.realTokens : s.estimatedTokens;
 }

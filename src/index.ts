@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import type { TypedPluginInput } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
-import { type SessionState, createSession } from "./session-state.js";
+import { type SessionState, createSession, getTokenCount } from "./session-state.js";
 import {
   PLAN_PATTERNS,
   isPlanContent,
