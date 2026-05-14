@@ -900,7 +900,11 @@ When `statusFileRotate > 0`, old status files are kept:
 
 ## How Compaction Works
 
-The plugin only handles **emergency compaction** when token limits are hit. For proactive context pruning, install DCP (see below).
+The plugin handles both **proactive compaction** (at 100k tokens) and **emergency compaction** (when token limits are hit).
+
+### Proactive Compaction
+
+When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` (default: 100k), the plugin triggers `session.summarize()` to reduce context before hitting hard limits.
 
 ### Emergency Compaction (Token Limit Errors)
 
@@ -921,15 +925,9 @@ With default factor 0.7: `estimatedTokens = estimatedTokens * 0.3` (30% remain)
 
 This matches the actual reduction — compaction removes ~70% of context, so the remaining tokens should be ~30% of pre-compaction count.
 
-### Why Only Emergency?
+### Why Both Proactive and Emergency?
 
-Proactive compaction is delegated to DCP, which does it better:
-- Soft thresholds (50k-100k range) instead of hard limits
-- Message deduplication
-- Error pruning
-- Smart context preservation
-
-Our emergency compaction is a safety net for when DCP misses something or isn't installed.
+Proactive compaction at 100k tokens prevents most token limit errors before they happen. Emergency compaction is a safety net for edge cases that slip through — unexpected context spikes, model-specific limits, or scenarios where the estimate undercounted.
 
 ### Token Estimation
 
