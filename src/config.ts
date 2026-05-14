@@ -52,6 +52,18 @@ export interface PluginConfig {
   compactAtMessageCount: number;
   tokenEstimateMultiplier: number;
 
+  // Opportunistic compaction
+  opportunisticCompactAtTokens: number;
+  opportunisticCompactAfterRecovery: boolean;
+  opportunisticCompactOnIdle: boolean;
+  opportunisticCompactBeforeNudge: boolean;
+  opportunisticCompactAfterReview: boolean;
+  nudgeCompactThreshold: number;
+
+  // Stop conditions
+  stopFilePath: string;
+  maxRuntimeMs: number;
+  untilMarker: string;
 
   // Planning timeout
   planningTimeoutMs: number;
