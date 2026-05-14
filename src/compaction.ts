@@ -178,14 +178,18 @@ export function createCompactionModule(deps: CompactionDeps) {
   async function maybeHardCompact(sessionId: string): Promise<boolean> {
     const s = sessions.get(sessionId);
     if (!s) return false;
-    if (s.hardCompactionInProgress) return false;
-    if (s.compacting) return false;
-    if (s.planning) return false;
-    if (s.stoppedByCondition) return false;
+    if (s.hardCompactionInProgress) { log('[Compaction] HARD SKIP — already in progress'); return false; }
+    if (s.compacting) { log('[Compaction] HARD SKIP — already compacting'); return false; }
+    if (s.planning) { log('[Compaction] HARD SKIP — planning'); return false; }
+    if (s.stoppedByCondition) { log('[Compaction] HARD SKIP — stopped by condition'); return false; }
 
     const threshold = config.hardCompactAtTokens;
     if (threshold <= 0) return false;
-    if (getTokenCount(s) < threshold) return false;
+    const tokenCount = getTokenCount(s);
+    if (tokenCount < threshold) {
+      log(`[Compaction] HARD SKIP — tokens ${tokenCount} < threshold ${threshold}, session ${sessionId}`);
+      return false;
+    }
 
     s.hardCompactionInProgress = true;
     s.hardCompactCount++;
