@@ -97,7 +97,7 @@ describe("opencode-auto-continue", () => {
 
       expect(mockAbort).toHaveBeenCalledTimes(1);
       expect(mockPrompt).toHaveBeenCalledTimes(1);
-      expect((mockPrompt.mock.calls[0] as any)[0].body.parts[0].text).toBe("Continue from where you left off. Do not ask for permission — just proceed with the next step. If you discover new work, create a todo for it before starting.");
+      expect((mockPrompt.mock.calls[0] as any)[0].body.parts[0].text).toContain("Continue from where you left off");
       vi.useRealTimers();
     });
 

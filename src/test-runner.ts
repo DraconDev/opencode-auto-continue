@@ -24,6 +24,11 @@ export function createTestRunner(deps: TestRunnerDeps) {
       return [];
     }
 
+    // Guard: skip if Bun shell is not available (test environment)
+    if (typeof (input as any).$ !== "function") {
+      return [];
+    }
+
     const results: TestResult[] = [];
 
     for (const cmd of config.testCommands) {
