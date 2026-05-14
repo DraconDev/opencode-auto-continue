@@ -674,7 +674,17 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // Nudge is always scheduled on idle — injectNudge fetches todos from API
         // and decides whether to send based on actual pending count
         if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
-          nudge.scheduleNudge(sid);
+          const stop = stopConditions.checkStopConditions(sid);
+          if (stop.shouldStop) {
+            log('[StopConditions] session stopped, skipping nudge:', stop.reason);
+            nudge.cancelNudge(sid);
+          } else {
+            // Opportunistic compaction on idle
+            if (config.opportunisticCompactOnIdle && s.estimatedTokens >= config.opportunisticCompactAtTokens) {
+              compaction.maybeOpportunisticCompact(sid, 'idle').catch((e: unknown) => log('opportunistic compact on idle failed:', e));
+            }
+            nudge.scheduleNudge(sid);
+          }
         }
         // Clear terminal title/progress when session becomes idle
         if (status?.type === "idle") {
