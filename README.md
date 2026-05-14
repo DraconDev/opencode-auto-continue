@@ -54,7 +54,6 @@ createStatusFileModule({ config, sessions, log })
 createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })
 createCompactionModule({ config, sessions, log, input })
 createReviewModule({ config, sessions, log, input, isDisposed, writeStatusFile, isTokenLimitError, forceCompact })
-createAIAdvisor({ config, sessions, log })
 ```
 
 ### Core Principles
@@ -540,7 +539,7 @@ Check: enableAdvisory && shouldUseAI()?
 - **Recovery**: Before final abort attempt, advisor analyzes stall pattern. May suggest wait instead of abort.
 - **Nudge**: Advisor analyzes if nudging is appropriate. Skips nudge if advice is `wait` (≥0.7 confidence) or `abort` (≥0.6 confidence).
 
-The plugin handles both **proactive compaction** (at 100k tokens) and **emergency compaction** (on token limit errors), providing comprehensive context management without requiring external plugins.
+The plugin handles **proactive compaction** at 60k tokens, **opportunistic** at 40k, **hard** at 80k, and **emergency compaction** on token limit errors, providing comprehensive context management without requiring external plugins.
 
 ## Installation
 
@@ -720,20 +719,20 @@ Minimal configuration with sensible defaults:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `autoCompact` | `true` | Enable proactive and opportunistic compaction |
-| `proactiveCompactAtTokens` | `100000` | Token threshold for proactive compaction |
-| `opportunisticCompactAtTokens` | `50000` | Token threshold for opportunistic compaction |
-| `hardCompactAtTokens` | `100000` | Token threshold for mandatory blocking compaction |
+| `proactiveCompactAtTokens` | `60000` | Token threshold for proactive compaction |
+| `opportunisticCompactAtTokens` | `40000` | Token threshold for opportunistic compaction |
+| `hardCompactAtTokens` | `80000` | Token threshold for mandatory blocking compaction |
 | `hardCompactMaxWaitMs` | `30000` | Max wait for hard compaction before proceeding anyway |
 | `hardCompactBypassCooldown` | `true` | Hard compaction ignores cooldown |
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
-| `compactionVerifyWaitMs` | `10000` | Max wait for compaction verification |
+| `compactionVerifyWaitMs` | `30000` | Max wait for compaction verification |
 | `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
 | `compactionSafetyTimeoutMs` | `15000` | Safety timeout to clear stuck compacting flag |
 
 ### Context Window
 
-The plugin handles **proactive compaction** at 100k tokens and **emergency compaction** when token limits are hit.
+The plugin handles **4-layer compaction**: opportunistic at 40k, proactive at 60k, hard at 80k, and emergency on token limit errors.
 
 If you frequently hit token limits with large pastes (HTML, JSON, etc.), consider lowering your model's context window.
 
