@@ -2568,4 +2568,141 @@ describe("test-fix loop", () => {
 
     vi.useRealTimers();
   });
+
+  describe("question.asked auto-answer", () => {
+    it("should auto-answer with first option when autoAnswerQuestions is true", async () => {
+      vi.useFakeTimers();
+      const mockPost = vi.fn().mockResolvedValue({ data: {} });
+      const mockHttpClient = { post: mockPost };
+      const mockInput = {
+        client: {
+          session: {
+            abort: mockAbort,
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+            summarize: mockSummarize,
+          },
+          tui: { showToast: mockShowToast },
+          _client: mockHttpClient,
+        },
+      };
+
+      const plugin = await createPlugin(mockInput as any, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        autoAnswerQuestions: true,
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "question.asked", properties: {
+        id: "req-123",
+        sessionID: "test",
+        questions: [{
+          question: "Which approach?",
+          header: "Approach",
+          options: [{ label: "Option A" }, { label: "Option B" }],
+          multiple: false,
+          custom: true,
+        }],
+      } } });
+
+      expect(mockPost).toHaveBeenCalledWith({
+        url: "/question/req-123/reply",
+        headers: { "Content-Type": "application/json" },
+        body: { answers: [["Option A"]] },
+      });
+      vi.useRealTimers();
+    });
+
+    it("should NOT auto-answer when autoAnswerQuestions is false", async () => {
+      vi.useFakeTimers();
+      const mockPost = vi.fn().mockResolvedValue({ data: {} });
+      const mockHttpClient = { post: mockPost };
+      const mockInput = {
+        client: {
+          session: {
+            abort: mockAbort,
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+            summarize: mockSummarize,
+          },
+          tui: { showToast: mockShowToast },
+          _client: mockHttpClient,
+        },
+      };
+
+      const plugin = await createPlugin(mockInput as any, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        autoAnswerQuestions: false,
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "question.asked", properties: {
+        id: "req-456",
+        sessionID: "test",
+        questions: [{
+          question: "Which approach?",
+          header: "Approach",
+          options: [{ label: "Option A" }, { label: "Option B" }],
+        }],
+      } } });
+
+      expect(mockPost).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should handle multiple questions in one event", async () => {
+      vi.useFakeTimers();
+      const mockPost = vi.fn().mockResolvedValue({ data: {} });
+      const mockHttpClient = { post: mockPost };
+      const mockInput = {
+        client: {
+          session: {
+            abort: mockAbort,
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+            summarize: mockSummarize,
+          },
+          tui: { showToast: mockShowToast },
+          _client: mockHttpClient,
+        },
+      };
+
+      const plugin = await createPlugin(mockInput as any, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        autoAnswerQuestions: true,
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "question.asked", properties: {
+        id: "req-789",
+        sessionID: "test",
+        questions: [
+          { question: "Q1?", header: "H1", options: [{ label: "A1" }, { label: "A2" }] },
+          { question: "Q2?", header: "H2", options: [{ label: "B1" }] },
+        ],
+      } } });
+
+      expect(mockPost).toHaveBeenCalledWith({
+        url: "/question/req-789/reply",
+        headers: { "Content-Type": "application/json" },
+        body: { answers: [["A1"], ["B1"]] },
+      });
+      vi.useRealTimers();
+    });
+  });
 });

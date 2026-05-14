@@ -78,6 +78,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   orphanParentDetection: true,
   sessionDiscovery: true,
   idleCleanup: true,
+  autoAnswerQuestions: true,
   tokenLimitPatterns: [
     "context length",
     "maximum context length",

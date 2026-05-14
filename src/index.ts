@@ -1035,7 +1035,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
 
-      if (event?.type === "question.asked") {
+      if (event?.type === "question.asked" && config.autoAnswerQuestions) {
         const props = e?.properties;
         const requestID = props?.id;
         const questions = props?.questions || [];

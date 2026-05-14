@@ -96,6 +96,9 @@ export interface PluginConfig {
   orphanParentDetection: boolean;
   sessionDiscovery: boolean;
   idleCleanup: boolean;
+
+  // Question auto-answer
+  autoAnswerQuestions: boolean;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -189,6 +192,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
   orphanParentDetection: true,
   sessionDiscovery: true,
   idleCleanup: true,
+
+  // Question auto-answer
+  autoAnswerQuestions: true,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {
