@@ -859,8 +859,8 @@ describe("opencode-auto-continue", () => {
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", messageID: "msg1", part: { id: "part1", type: "compaction", auto: true }, delta: "" } } });
       
-      // Compaction ends (user sends message)
-      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: {} } } });
+      // Compaction ends via session.compacted event (the only way compacting flag is cleared)
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
       
       // Now wait for stall - should abort because compacting was cleared
       await vi.advanceTimersByTimeAsync(1000);

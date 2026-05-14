@@ -179,9 +179,12 @@ describe("stop conditions module", () => {
       expect(result.shouldStop).toBe(false);
     });
 
-    it("stops when untilMarker found in lastTodoSnapshot", () => {
+    it("stops when untilMarker found in todo content", () => {
       const s = createSession();
-      s.lastTodoSnapshot = "todo1:completed,todo2:pending,ALL_DONE:completed";
+      s.lastKnownTodos = [
+        { id: "todo1", status: "completed", content: "Do something" },
+        { id: "todo2", status: "completed", content: "ALL_DONE marker" },
+      ];
       sessions.set("test", s);
       const module = createModule({ untilMarker: "ALL_DONE" });
       const result = module.checkStopConditions("test");
@@ -189,9 +192,12 @@ describe("stop conditions module", () => {
       expect(result.reason).toContain("untilMarker");
     });
 
-    it("does not stop when untilMarker not in snapshot", () => {
+    it("does not stop when untilMarker not in todo content", () => {
       const s = createSession();
-      s.lastTodoSnapshot = "todo1:completed,todo2:pending";
+      s.lastKnownTodos = [
+        { id: "todo1", status: "completed", content: "Do something" },
+        { id: "todo2", status: "pending", content: "Keep working" },
+      ];
       sessions.set("test", s);
       const module = createModule({ untilMarker: "ALL_DONE" });
       const result = module.checkStopConditions("test");
