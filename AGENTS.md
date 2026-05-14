@@ -518,7 +518,7 @@ The plugin manages context with **four compaction layers**, each with different 
 
 ### Opportunistic Compaction
 
-Fires at `opportunisticCompactAtTokens` (default: 40,000) at lifecycle points where the session is about to send a prompt but isn't actively generating. This cleans up context before the next operation pushes tokens higher.
+Fires at `opportunisticCompactAtTokens` (default: 60,000) at lifecycle points where the session is about to send a prompt but isn't actively generating. This cleans up context before the next operation pushes tokens higher.
 
 **Trigger points** (all gated by their own config toggle):
 - **Post-recovery** (`opportunisticCompactAfterRecovery`): After recovery success toast
