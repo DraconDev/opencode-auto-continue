@@ -17,9 +17,20 @@ function makeMockShell(result: { stdout?: string; stderr?: string; exitCode?: nu
     stderr,
     exitCode,
   });
-  return vi.fn(() => ({
-    cwd: vi.fn(() => promise),
-  }));
+  const cwdFn = () => promise;
+  return () => ({
+    cwd: cwdFn,
+  });
+}
+
+function makeRejectedShell(error: Error) {
+  const promise = Promise.reject(error);
+  // Prevent unhandled rejection
+  promise.catch(() => {});
+  const cwdFn = () => promise;
+  return () => ({
+    cwd: cwdFn,
+  });
 }
 
 beforeEach(() => {
