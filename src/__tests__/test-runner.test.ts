@@ -19,11 +19,18 @@ const GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testComma
     npm: "package.json",
     yarn: "package.json",
     npx: "package.json",
+    pnpx: "package.json",
     bun: "package.json",
+    deno: "deno.json",
     make: "Makefile",
+    just: "justfile",
     go: "go.mod",
     pip: "pyproject.toml",
+    pip3: "pyproject.toml",
     pytest: "pyproject.toml",
+    python: "setup.py",
+    gradle: "build.gradle",
+    mvn: "pom.xml",
   },
 };
 
