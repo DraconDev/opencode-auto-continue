@@ -288,6 +288,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       clearTimeout(s.reviewDebounceTimer);
       s.reviewDebounceTimer = null;
     }
+    if (s.compactionSafetyTimer) {
+      clearTimeout(s.compactionSafetyTimer);
+      s.compactionSafetyTimer = null;
+    }
   }
 
   function resetSession(id: string) {
@@ -297,6 +301,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.planBuffer = '';
       s.planning = false;
       s.compacting = false;
+      s.hardCompactionInProgress = false;
+      if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       s.backoffAttempts = 0;
       s.autoSubmitCount = 0;
       s.lastUserMessageId = '';
@@ -326,6 +332,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.estimatedTokens = 0;
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
+      s.hardCompactionInProgress = false;
+      s.lastHardCompactionAt = 0;
+      if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       s.actionStartedAt = 0;
       s.stallDetections = 0;
       s.recoverySuccessful = 0;
