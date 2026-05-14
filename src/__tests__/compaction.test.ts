@@ -4,6 +4,20 @@ import { createCompactionModule } from '../compaction.js';
 import type { PluginConfig } from '../config.js';
 import type { SessionState } from '../session-state.js';
 
+/**
+ * Simulate a session.compacted event between poll intervals.
+ * Sets compacting=false and lastCompactionAt, then advances timers
+ * for the next poll to detect completion.
+ */
+async function simulateCompacted(sessions: Map<string, SessionState>, sid: string): Promise<void> {
+  const s = sessions.get(sid);
+  if (!s) return;
+  s.compacting = false;
+  s.lastCompactionAt = Date.now();
+  await vi.advanceTimersByTimeAsync(1000);
+  await flushPromises();
+}
+
 const DEFAULT_CONFIG: PluginConfig = {
   stallTimeoutMs: 45000,
   waitAfterAbortMs: 5000,
@@ -226,11 +240,7 @@ describe("compaction module unit tests", () => {
       // First poll: summarize resolves, enters while loop, first setTimeout fires
       await vi.advanceTimersByTimeAsync(1000);
       // Simulate session.compacted event between polls
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      // Second poll: detects compacting=false and returns true
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       expect(mockSummarize).toHaveBeenCalledWith({
         path: { id: "test" },
@@ -269,10 +279,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.forceCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       await promise;
       expect(s.tokenLimitHits).toBe(0);
@@ -388,11 +395,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeProactiveCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       const result = await promise;
       expect(result).toBe(true);
@@ -451,11 +454,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeOpportunisticCompact("test", "post-recovery");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       const result = await promise;
       expect(result).toBe(true);
@@ -470,11 +469,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeOpportunisticCompact("test", "on-idle");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
       await promise;
 
       const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
@@ -540,11 +535,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       const result = await promise;
       expect(result).toBe(true);
@@ -559,11 +550,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
+      await simulateCompacted(sessions, "test");
 
       const result = await promise;
       expect(result).toBe(true);
@@ -588,11 +575,8 @@ describe("compaction module unit tests", () => {
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
       const s = sessions.get("test")!;
-      s.compacting = false;
-      s.lastCompactionAt = Date.now();
+      await simulateCompacted(sessions, "test");
       s.estimatedTokens = 40000;
-      await vi.advanceTimersByTimeAsync(1000);
-      await flushPromises();
 
       const result = await promise;
       expect(result).toBe(true);
