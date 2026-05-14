@@ -653,13 +653,10 @@ describe("compaction module unit tests", () => {
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
 
       sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
-      module = createModule({ compactionSafetyTimeoutMs: 5000, compactionVerifyWaitMs: 20000 });
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactionVerifyWaitMs: 1000 });
 
       const promise = module.forceCompact("test");
-      // After 2000ms + 3000ms = 5000ms, the safety timeout should fire
-      await vi.advanceTimersByTimeAsync(2000);
-      await flushPromises();
-      // Wait for safety timeout
+      // After 1000ms verify wait + 2000ms safety timeout = 3000ms
       await vi.advanceTimersByTimeAsync(3000);
       await flushPromises();
 
@@ -667,7 +664,7 @@ describe("compaction module unit tests", () => {
       expect(s.compacting).toBe(false);
 
       // Finish the promise
-      await vi.advanceTimersByTimeAsync(15000);
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
       await promise;
     });
