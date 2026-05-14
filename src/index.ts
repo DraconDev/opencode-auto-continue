@@ -1045,6 +1045,34 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.attempts > 0) {
           contextLines.push(`## Recovery Context`);
           contextLines.push(`Recovery attempts: ${s.attempts}`);
+          if (s.recoveryTimes.length > 0) {
+            contextLines.push(`Recent recovery durations: ${s.recoveryTimes.slice(-3).map(t => Math.round(t/1000)+'s').join(', ')}`);
+          }
+        }
+        
+        // Add token context
+        if (s.estimatedTokens > 0) {
+          contextLines.push(`## Token Context`);
+          contextLines.push(`Estimated tokens: ~${s.estimatedTokens}`);
+          if (s.tokenLimitHits > 0) {
+            contextLines.push(`Token limit hits: ${s.tokenLimitHits}`);
+          }
+        }
+        
+        // Add stall pattern context
+        if (s.stallDetections > 0) {
+          contextLines.push(`## Stall Context`);
+          contextLines.push(`Stall detections: ${s.stallDetections}`);
+          const patterns = Object.entries(s.stallPatterns);
+          if (patterns.length > 0) {
+            contextLines.push(`Stall patterns: ${patterns.slice(0, 5).map(([k,v]) => `${k}: ${v}`).join(', ')}`);
+          }
+        }
+        
+        // Add nudge context
+        if (s.nudgeCount > 0) {
+          contextLines.push(`## Nudge Context`);
+          contextLines.push(`Nudges sent: ${s.nudgeCount}`);
         }
         
         if (contextLines.length > 0) {
