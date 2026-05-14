@@ -357,6 +357,7 @@ session.deleted / session.ended → cleanup
 | `idle` | Agent stopped generating. Nudge fires if `hasOpenTodos && nudgeEnabled` |
 | `planning` | Plan content detected — all monitoring pauses |
 | `compacting` | Context compaction in progress — monitoring pauses |
+| `hardCompacting` | Hard compaction blocking gate in progress — recovery/nudge/continue await |
 | `userCancelled` | User pressed ESC / aborted — recovery disabled |
 
 ### Output Tracking Fields (v7.8.254+)
