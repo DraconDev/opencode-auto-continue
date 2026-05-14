@@ -466,6 +466,162 @@ describe("compaction module unit tests", () => {
     });
   });
 
+  describe("maybeHardCompact", () => {
+    it("returns false if session does not exist", async () => {
+      module = createModule();
+      const result = await module.maybeHardCompact("nonexistent");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if hardCompactionAtTokens is 0 (disabled)", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 0 });
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if tokens are below hard threshold", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 50000 }));
+      module = createModule({ hardCompactAtTokens: 100000 });
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if session is already compacting", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 200000, compacting: true }));
+      module = createModule();
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if session is planning", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 200000, planning: true }));
+      module = createModule();
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if session is stopped by condition", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 200000, stoppedByCondition: "maxRuntime" }));
+      module = createModule();
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("returns false if hard compaction already in progress", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 200000, hardCompactionInProgress: true }));
+      module = createModule();
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("fires regardless of autoCompact flag", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ autoCompact: false, hardCompactAtTokens: 100000 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+
+    it("bypasses cooldown when hardCompactBypassCooldown is true", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000, lastCompactionAt: Date.now() - 10000 }));
+      module = createModule({ hardCompactAtTokens: 100000, compactCooldownMs: 60000, hardCompactBypassCooldown: true });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+
+    it("respects cooldown when hardCompactBypassCooldown is false", async () => {
+      sessions.set("test", createSessionState({ estimatedTokens: 200000, lastCompactionAt: Date.now() - 10000 }));
+      module = createModule({ hardCompactAtTokens: 100000, compactCooldownMs: 60000, hardCompactBypassCooldown: false });
+
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("returns true when compaction succeeds and tokens drop below threshold", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 100000 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(sessions.get("test")!.hardCompactionInProgress).toBe(false);
+      expect(sessions.get("test")!.lastHardCompactionAt).toBeGreaterThan(0);
+    });
+
+    it("returns false but clears flag on compaction failure", async () => {
+      mockSummarize.mockRejectedValue(new Error("fail"));
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 100000, compactMaxRetries: 1, compactRetryDelayMs: 100 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(sessions.get("test")!.hardCompactionInProgress).toBe(false);
+    });
+
+    it("times out if compaction exceeds hardCompactMaxWaitMs", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      // Session stays busy forever — we need to simulate that status stays busy
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 100000, hardCompactMaxWaitMs: 5000, compactRetryDelayMs: 100 });
+
+      const promise = module.maybeHardCompact("test");
+      // Advance past the first attempt (2000ms wait) and a retry (100ms delay)
+      await vi.advanceTimersByTimeAsync(3000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(sessions.get("test")!.hardCompactionInProgress).toBe(false);
+    });
+
+    it("logs reason string when triggered", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
+
+      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
+      module = createModule({ hardCompactAtTokens: 100000 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      await promise;
+
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("HARD TRIGGER");
+    });
+  });
+
   describe("edge cases", () => {
     it("handles error object with no message property", () => {
       module = createModule();
