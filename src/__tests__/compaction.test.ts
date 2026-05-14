@@ -632,22 +632,27 @@ describe("compaction module unit tests", () => {
     });
 
     it("safety timeout clears stuck compacting flag", async () => {
-      mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      // Simulate summarize hanging forever — never resolves
+      let summarizeResolve: (() => void) | null = null;
+      mockSummarize.mockImplementation(() => new Promise<void>((resolve) => {
+        summarizeResolve = resolve;
+      }));
 
       sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
-      module = createModule({ compactionSafetyTimeoutMs: 2000, compactionVerifyWaitMs: 1000 });
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
 
       const promise = module.forceCompact("test");
-      // After 1000ms verify wait + 2000ms safety timeout = 3000ms
-      await vi.advanceTimersByTimeAsync(3000);
+      // At this point, attemptCompact is stuck waiting for summarize
+      expect(sessions.get("test")!.compacting).toBe(true);
+
+      // Advance past safety timeout (2000ms)
+      await vi.advanceTimersByTimeAsync(2000);
       await flushPromises();
 
-      const s = sessions.get("test")!;
-      expect(s.compacting).toBe(false);
+      expect(sessions.get("test")!.compacting).toBe(false);
 
-      // Finish the promise
-      await vi.advanceTimersByTimeAsync(1000);
+      // Let summarize resolve to unblock the promise
+      if (summarizeResolve) summarizeResolve();
       await flushPromises();
       await promise;
     });
