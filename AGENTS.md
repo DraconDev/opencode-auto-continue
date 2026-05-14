@@ -62,6 +62,22 @@
 }]
 ```
 
+### Test Suite
+
+| File | Tests | Description |
+|------|-------|-------------|
+| plugin.test.ts | 104 | Core plugin integration tests |
+| compaction-recovery.test.ts | 43 | Compaction and recovery integration tests |
+| recovery.test.ts | 32 | Unit tests for recovery module |
+| compaction.test.ts | 24 | Unit tests for compaction module |
+| shared-utility.test.ts | 75 | Shared utilities and helpers |
+| nudge.test.ts | 33 | Nudge module tests |
+| terminal-status-notifications.test.ts | 33 | Terminal and toast notification tests |
+| session-monitor.test.ts | 12 | Session monitor tests |
+| ai-advisor.test.ts | 18 | AI advisory heuristic tests |
+| integration.test.ts | 12 | Full integration tests |
+| plan.test.ts | 28 | Plan detection and handling tests |
+
 ## Overview
 
 `opencode-auto-continue` is an OpenCode plugin that:
