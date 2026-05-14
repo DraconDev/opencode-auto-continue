@@ -113,6 +113,10 @@ export function createCompactionModule(deps: CompactionDeps) {
         s.tokenLimitHits = 0;
         return true;
       }
+      if (s.compactionTimedOut) {
+        log('compaction aborted due to safety timeout, not retrying for session:', sessionId);
+        break;
+      }
     }
 
     log('compaction failed after all retries for session:', sessionId);
@@ -220,6 +224,10 @@ export function createCompactionModule(deps: CompactionDeps) {
         }
         success = await attemptCompact(sessionId);
         if (success) break;
+        if (s.compactionTimedOut) {
+          log(`[Compaction] HARD ABORT — safety timeout, not retrying for session ${sessionId}`);
+          break;
+        }
       }
 
       if (success) {
