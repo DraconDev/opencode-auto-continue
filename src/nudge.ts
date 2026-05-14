@@ -198,7 +198,7 @@ export function createNudgeModule(deps: NudgeDeps) {
 
     // Build the reminder message
     let messageText: string;
-      const templateVars: Record<string, string> = {
+    const templateVars: Record<string, string> = {
         total: String(todos.length),
         completed: String(completed.length),
         pending: String(pending.length),

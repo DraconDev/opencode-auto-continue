@@ -4,7 +4,7 @@ import { join } from "path";
 
 export type TypedPluginInput = PluginInput;
 
-// Import canonical types/values for local use, then re-export for downstream.
+// Import canonical types/values for local use.
 // Canonical definitions live in config.ts and session-state.ts.
 import type { PluginConfig } from "./config.js";
 import { DEFAULT_CONFIG, validateConfig } from "./config.js";

@@ -648,15 +648,14 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         log('progress event:', event?.type, sid);
         const s = getSession(sid);
 
-        if (event?.type === "message.part.updated") {
-          const part = e?.properties?.part;
-          const partType = part?.type;
-          
-          // CRITICAL: Ignore synthetic messages to prevent infinite loops
-          if (part?.synthetic === true) {
-            log('ignoring synthetic message part');
-            return;
-          }
+        const part = e?.properties?.part;
+        const partType = part?.type;
+
+        // CRITICAL: Ignore synthetic messages to prevent infinite loops
+        if (part?.synthetic === true) {
+          log('ignoring synthetic message part');
+          return;
+        }
           
           const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
           log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');

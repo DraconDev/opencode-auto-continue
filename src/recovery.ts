@@ -129,7 +129,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.compacting) return;
     if (s.attempts >= config.maxRecoveries) {
       // Before giving up, check if AI has advice
-        if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
+      if (deps.aiAdvisor && deps.aiAdvisor.shouldUseAI(s)) {
         try {
           const context = await deps.aiAdvisor.extractContext(sessionId, s);
           const advice = await deps.aiAdvisor.getAdvice(context);
