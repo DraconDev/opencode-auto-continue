@@ -295,6 +295,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
     }
   }
   if (normalized.testCommandTimeoutMs <= 0) addError('testCommandTimeoutMs', `testCommandTimeoutMs must be > 0, got ${normalized.testCommandTimeoutMs}`);
+  if (normalized.testCommandGates && typeof normalized.testCommandGates !== 'object') addError('testCommandGates', `testCommandGates must be an object, got ${typeof normalized.testCommandGates}`);
 
   if (errors.length > 0) {
     console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);
