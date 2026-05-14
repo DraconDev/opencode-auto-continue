@@ -669,7 +669,6 @@ describe("compaction module unit tests", () => {
       module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
 
       const promise = module.forceCompact("test");
-      // At this point, attemptCompact is stuck waiting for summarize
       expect(sessions.get("test")!.compacting).toBe(true);
 
       // Advance past safety timeout (2000ms)
@@ -677,6 +676,7 @@ describe("compaction module unit tests", () => {
       await flushPromises();
 
       expect(sessions.get("test")!.compacting).toBe(false);
+      expect(sessions.get("test")!.compactionTimedOut).toBe(true);
       // Promise will never resolve, don't await it
     });
 
