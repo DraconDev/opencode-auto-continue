@@ -284,9 +284,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.realTokens === 0 && s.lastCompactionAt > 0 && now - s.lastCompactionAt < REAL_TOKEN_REFRESH_INTERVAL_MS) {
       return getTokenCount(s);
     }
-    if (s.realTokens === 0 && s.lastCompactionAt > 0 && now - s.lastCompactionAt < COMPACTED_TOKEN_REFRESH_BACKOFF_MS) {
-      return getTokenCount(s);
-    }
     s.lastRealTokenRefreshAt = now;
     try {
       const tokens = getSessionTokens(id);

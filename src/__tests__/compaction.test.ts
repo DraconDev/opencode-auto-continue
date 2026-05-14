@@ -838,5 +838,27 @@ describe("compaction module unit tests", () => {
       expect(result).toBe(true);
       expect(mockSummarize).toHaveBeenCalled();
     });
+
+    it("boundary: grace period does NOT block when lastCompactionAt is exactly compactionGracePeriodMs ago", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionAt: Date.now() - 10000,
+      }));
+      module = createModule({
+        hardCompactAtTokens: 100000,
+        compactionGracePeriodMs: 10000,
+        compactReductionFactor: 0.4,
+      });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
   });
 });
