@@ -43,6 +43,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   includeTodoContext: true,
   reviewOnComplete: true,
   reviewMessage: "Review.",
+  reviewWithoutTestsMessage: "Review without tests.",
   reviewDebounceMs: 500,
   showToasts: false,
   nudgeEnabled: true,
