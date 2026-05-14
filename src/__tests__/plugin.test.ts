@@ -10,6 +10,7 @@ interface MockClient {
     status: ReturnType<typeof vi.fn>;
     todo: ReturnType<typeof vi.fn>;
     summarize: ReturnType<typeof vi.fn>;
+    messages?: ReturnType<typeof vi.fn>;
   };
   tui: {
     showToast: ReturnType<typeof vi.fn>;
