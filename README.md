@@ -10,7 +10,8 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Todo Context** | `opencode-todo-reminder` | Fetches open todos, includes them in recovery messages |
 | **Review on Completion** | `opencode-auto-review-completed-todos` | Sends review prompt when all todos are done |
 | **Nudger** | Nothing — unique feature | Gentle reminders for idle sessions with open todos |
-| **Emergency Compaction** | Nothing — unique feature | Compacts on token limit errors (belt-and-suspenders) |
+| **4-Layer Compaction** | Nothing — unique feature | Opportunistic/Proactive/Hard/Emergency — all with token reduction |
+| **Question Auto-Answer** | Nothing — unique feature | Auto-replies to AI multi-choice questions with recommended option |
 | **Plan-Aware Continue** | Nothing — unique feature | Detects planning phase and uses `continueWithPlanMessage` when recovering |
 | **Tool-Text Recovery** | Nothing — unique feature | Detects XML tool calls in reasoning, sends recovery prompt |
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
@@ -39,9 +40,8 @@ index.ts              Main plugin — event routing, module wiring
 ├── nudge.ts          Idle nudges with loop protection
 ├── status-file.ts    Atomic status file writes
 ├── recovery.ts       Stall recovery (abort + continue)
-├── compaction.ts     Emergency compaction (token limit errors only)
+├── compaction.ts     4-layer compaction (opportunistic/proactive/hard/emergency)
 ├── review.ts         Review + continue prompt delivery
-├── ai-advisor.ts     AI-driven session analysis + heuristic patterns
 └── shared.ts         Types, config, utilities
 ```
 
@@ -94,6 +94,7 @@ The plugin uses a factory pattern with focused modules:
 createStatusFileModule({ config, sessions, log })   // Atomic status file writes
 createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })  // Stall recovery
 createNudgeModule({ config, sessions, log, isDisposed, input })  // Idle nudges with loop protection
+createCompactionModule({ config, sessions, log, input })  // 4-layer compaction
 createTerminalModule({ config, sessions, log, input })  // Terminal title/progress/hook
 ```
 
