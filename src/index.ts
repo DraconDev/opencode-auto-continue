@@ -819,6 +819,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
           }
 
+          refreshRealTokens(sid);
           compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
             if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
           }).catch((e: unknown) => log('proactive compact check failed:', e));
