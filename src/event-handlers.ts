@@ -8,21 +8,31 @@
 import type { TypedPluginInput } from "./types.js";
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
-import type { TerminalModule } from "./terminal.js";
-import type { NudgeModule } from "./nudge.js";
-import type { ReviewModule } from "./review.js";
-import type { CompactionModule } from "./compaction.js";
-import type { AIAdvisorModule } from "./ai-advisor.js";
-import type { SessionMonitorModule } from "./session-monitor.js";
-import type { RecoveryModule } from "./recovery.js";
 import {
   isPlanContent,
   estimateTokens,
   parseTokensFromError,
   scheduleRecoveryWithGeneration,
-  isSyntheticMessageEvent,
   getMessageText,
 } from "./shared.js";
+
+function isSyntheticMessageEvent(e: any): boolean {
+  const props = e?.properties || {};
+  const info = props.info || {};
+  const part = props.part || {};
+
+  if (props.synthetic === true || info.synthetic === true || part.synthetic === true) {
+    return true;
+  }
+
+  const parts = [
+    ...(Array.isArray(props.parts) ? props.parts : []),
+    ...(Array.isArray(info.parts) ? info.parts : []),
+    ...(Array.isArray(props.message?.parts) ? props.message.parts : []),
+  ];
+
+  return parts.some((p: any) => p?.synthetic === true);
+}
 
 export class EventHandlers {
   constructor(
@@ -31,16 +41,16 @@ export class EventHandlers {
     private sessions: Map<string, SessionState>,
     private getSession: (sid: string) => SessionState,
     private clearTimer: (sid: string) => void,
-    private scheduleRecovery: (sid: string, timeoutMs: number) => void,
+    private scheduleRecoveryFn: (sid: string, timeoutMs: number) => void,
     private writeStatusFile: (sid: string) => void,
     private updateProgress: (s: SessionState) => void,
-    private terminal: TerminalModule,
-    private nudge: NudgeModule,
-    private review: ReviewModule,
-    private compaction: CompactionModule,
-    private aiAdvisor: AIAdvisorModule,
-    private sessionMonitor: SessionMonitorModule,
-    private recover: RecoveryModule["recover"],
+    private terminal: ReturnType<typeof import("./terminal.js").createTerminalModule>,
+    private nudge: ReturnType<typeof import("./nudge.js").createNudgeModule>,
+    private review: ReturnType<typeof import("./review.js").createReviewModule>,
+    private compaction: ReturnType<typeof import("./compaction.js").createCompactionModule>,
+    private aiAdvisor: ReturnType<typeof import("./ai-advisor.js").createAIAdvisor>,
+    private sessionMonitor: ReturnType<typeof import("./session-monitor.js").createSessionMonitor>,
+    private recover: (sid: string) => Promise<void>,
     private resetSession: (sid: string) => void,
     private log: (...args: unknown[]) => void,
   ) {}
@@ -87,7 +97,7 @@ export class EventHandlers {
             },
           }).catch(() => {});
         }
-        this.compaction.forceCompact(sid).then(async (compacted) => {
+        this.compaction.forceCompact(sid).then(async (compacted: boolean) => {
           if (!this.sessions.has(sid)) {
             this.log("session deleted during emergency compaction, skipping continue:", sid);
             return;
@@ -111,7 +121,7 @@ export class EventHandlers {
               }).catch(() => {});
             }
           }
-        }).catch((e) => {
+        }).catch((e: unknown) => {
           this.log("emergency compaction error:", e);
         });
       }
@@ -187,7 +197,7 @@ export class EventHandlers {
         s.actionStartedAt = Date.now();
       }
       if (!s.planning && !s.compacting) {
-        this.scheduleRecovery(sid, this.config.stallTimeoutMs);
+        this.scheduleRecoveryFn(sid, this.config.stallTimeoutMs);
       }
       const timeSinceOutput = Date.now() - s.lastOutputAt;
       if (timeSinceOutput > this.config.busyStallTimeoutMs && !s.aborting) {
@@ -322,14 +332,14 @@ export class EventHandlers {
         s.planning = true;
         s.planningStartedAt = Date.now();
         this.clearTimer(sid);
-        this.scheduleRecovery(sid, this.config.planningTimeoutMs);
+        this.scheduleRecoveryFn(sid, this.config.planningTimeoutMs);
       }
     }
 
     if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
       this.log("non-plan progress detected, clearing plan flag");
       s.planning = false;
-      this.scheduleRecovery(sid, this.config.stallTimeoutMs);
+      this.scheduleRecoveryFn(sid, this.config.stallTimeoutMs);
     }
 
     const deltaText = e?.properties?.delta as string | undefined;
@@ -341,15 +351,15 @@ export class EventHandlers {
         s.planningStartedAt = Date.now();
         s.planBuffer = "";
         this.clearTimer(sid);
-        this.scheduleRecovery(sid, this.config.planningTimeoutMs);
+        this.scheduleRecoveryFn(sid, this.config.planningTimeoutMs);
       }
     }
 
     if (!s.planning && !s.compacting) {
       this.clearTimer(sid);
-      this.scheduleRecovery(sid, this.config.stallTimeoutMs);
+      this.scheduleRecoveryFn(sid, this.config.stallTimeoutMs);
     } else if (s.planning && !s.timer) {
-      this.scheduleRecovery(sid, this.config.planningTimeoutMs);
+      this.scheduleRecoveryFn(sid, this.config.planningTimeoutMs);
     }
     this.writeStatusFile(sid);
   }
@@ -415,7 +425,7 @@ export class EventHandlers {
     }
     this.clearTimer(sid);
     if (!s.planning && !s.compacting) {
-      this.scheduleRecovery(sid, this.config.stallTimeoutMs);
+      this.scheduleRecoveryFn(sid, this.config.stallTimeoutMs);
     }
     this.writeStatusFile(sid);
   }
@@ -482,7 +492,7 @@ export class EventHandlers {
     s.backoffAttempts = 0;
     this.clearTimer(sid);
     if (!s.planning && !s.compacting) {
-      this.scheduleRecovery(sid, this.config.stallTimeoutMs);
+      this.scheduleRecoveryFn(sid, this.config.stallTimeoutMs);
     }
     s.needsContinue = true;
     s.continueMessageText = s.planning ? this.config.continueWithPlanMessage : this.config.shortContinueMessage;
