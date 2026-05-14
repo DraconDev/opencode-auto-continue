@@ -633,10 +633,7 @@ describe("compaction module unit tests", () => {
 
     it("safety timeout clears stuck compacting flag", async () => {
       // Simulate summarize hanging forever — never resolves
-      let summarizeResolve: (() => void) | null = null;
-      mockSummarize.mockImplementation(() => new Promise<void>((resolve) => {
-        summarizeResolve = resolve;
-      }));
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
 
       sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
       module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
@@ -650,11 +647,7 @@ describe("compaction module unit tests", () => {
       await flushPromises();
 
       expect(sessions.get("test")!.compacting).toBe(false);
-
-      // Let summarize resolve to unblock the promise
-      if (summarizeResolve) summarizeResolve();
-      await flushPromises();
-      await promise;
+      // Promise will never resolve, don't await it
     });
 
     it("does not compact if forceCompact called with no session", async () => {
