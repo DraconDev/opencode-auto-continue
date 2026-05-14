@@ -55,6 +55,7 @@ export interface SessionState {
   // === Compaction (compaction.ts) ===
   estimatedTokens: number;
   realTokens: number;
+  lastRealTokenRefreshAt: number; // Throttle DB reads — only refresh every 10s
   lastCompactionAt: number;
   tokenLimitHits: number;
   hardCompactionInProgress: boolean;

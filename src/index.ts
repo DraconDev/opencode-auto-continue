@@ -319,20 +319,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.planning = false;
       s.compacting = false;
       s.hardCompactionInProgress = false;
-      if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       s.backoffAttempts = 0;
       s.autoSubmitCount = 0;
       s.lastUserMessageId = '';
       s.sentMessageAt = 0;
       s.reviewFired = false;
-      if (s.reviewDebounceTimer) {
-        clearTimeout(s.reviewDebounceTimer);
-        s.reviewDebounceTimer = null;
-      }
-      if (s.nudgeTimer) {
-        clearTimeout(s.nudgeTimer);
-        s.nudgeTimer = null;
-      }
       s.lastNudgeAt = 0;
       s.nudgeCount = 0;
       s.nudgePaused = false;
@@ -350,11 +341,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.realTokens = 0;
       s.lastCompactionAt = 0;
       s.tokenLimitHits = 0;
-      s.hardCompactionInProgress = false;
       s.lastHardCompactionAt = 0;
       s.proactiveCompactCount = 0;
       s.hardCompactCount = 0;
-      if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       s.actionStartedAt = 0;
       s.stallDetections = 0;
       s.recoverySuccessful = 0;
@@ -365,7 +354,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.recoveryTimes = [];
       s.lastStallPartType = '';
       s.continueTimestamps = [];
-      s.lastAdvisoryAdvice = null;
       s.stallPatterns = {};
       s.lastPlanItemDescription = "";
       s.lastFileEdited = "";
@@ -431,7 +419,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery, testRunner });
 
-  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact });
+  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact, forceCompact: compaction.forceCompact });
   recoverFn = recover;
 
   const stopConditions = createStopConditionsModule({ config, sessions, log });
@@ -976,10 +964,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.planning = false;
         }
         if (s.compacting) {
-          log('activity after compaction, clearing compacting flag');
-          s.compacting = false;
-          s.hardCompactionInProgress = false;
-          if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
+          // NOTE: Do NOT clear s.compacting here. Compaction produces message events,
+          // but the flag must stay true until session.compacted fires or safety timeout.
+          // Clearing it prematurely breaks attemptCompact()'s flag-based polling.
+          log('activity after compaction (not clearing flag — session.compacted event will clear it)');
         }
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
@@ -1077,6 +1065,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // session.idle fires when the model stops generating and goes idle
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
+        if (isDisposed) return;
         const s = getSession(sid);
         clearTimer(sid);
         if (s.needsContinue) {

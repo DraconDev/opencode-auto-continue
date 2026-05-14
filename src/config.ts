@@ -275,6 +275,15 @@ export function validateConfig(config: PluginConfig): PluginConfig {
 
   if (typeof normalized.testOnIdle !== 'boolean') addError('testOnIdle', `testOnIdle must be a boolean, got ${typeof normalized.testOnIdle}`);
   if (!Array.isArray(normalized.testCommands) || normalized.testCommands.length === 0 || !normalized.testCommands.every((c: unknown) => typeof c === 'string')) addError('testCommands', `testCommands must be a non-empty array of strings`);
+  // Warn about shell injection risk in testCommands
+  const SHELL_META_RE = /[;&|`$]/;
+  if (Array.isArray(normalized.testCommands)) {
+    for (const cmd of normalized.testCommands) {
+      if (typeof cmd === 'string' && SHELL_META_RE.test(cmd)) {
+        console.warn(`[opencode-auto-continue] WARNING: testCommand "${cmd}" contains shell metacharacters (;&|$\`). This runs via shell — ensure commands are from a trusted config.`);
+      }
+    }
+  }
   if (normalized.testCommandTimeoutMs <= 0) addError('testCommandTimeoutMs', `testCommandTimeoutMs must be > 0, got ${normalized.testCommandTimeoutMs}`);
 
   if (errors.length > 0) {

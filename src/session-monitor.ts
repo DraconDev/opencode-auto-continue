@@ -178,6 +178,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     if (currentBusyCount >= 1) {
       for (const [id, s] of sessions) {
         if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
+          // Skip if recovery is already in progress
+          if (s.aborting) continue;
           const timeSinceProgress = Date.now() - s.lastProgressAt;
           const stuckThreshold = config.stallTimeoutMs;
           if (timeSinceProgress > stuckThreshold) {

@@ -14,6 +14,7 @@ export interface RecoveryDeps {
   scheduleRecovery: (sessionId: string, delayMs: number) => void;
   sendContinue?: (sessionId: string) => Promise<void>;
   maybeHardCompact?: (sessionId: string) => Promise<boolean>;
+  forceCompact?: (sessionId: string) => Promise<boolean>;
 }
 
 // Tool-text detection patterns (XML tool calls embedded in text/reasoning)
@@ -244,18 +245,20 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         }
       }
 
-      // Now that session is idle, try compaction
-      if (config.autoCompact && !hasToolText && isIdle) {
+      // Now that session is idle, try compaction via the compaction module
+      // (uses proper flag management, safety timers, and retry logic)
+      if (config.autoCompact && !hasToolText && isIdle && deps.forceCompact) {
         try {
-          log('attempting auto-compaction for session:', sessionId);
-          await input.client.session.summarize({
-            path: { id: sessionId },
-            query: { directory: input.directory || "" }
-          });
-          log('auto-compaction successful, waiting for session to resume');
-          await new Promise(r => setTimeout(r, 3000));
+          log('attempting auto-compaction via compaction module for session:', sessionId);
+          const compacted = await deps.forceCompact(sessionId);
+          if (compacted) {
+            log('auto-compaction successful after recovery abort');
+            // forceCompact handles flag cleanup and session.compacted event will fire
+          } else {
+            log('auto-compaction did not succeed after recovery abort');
+          }
         } catch (e: any) {
-          log('auto-compaction failed:', e?.message || e?.name || String(e), 'status:', e?.status, 'response:', JSON.stringify(e?.response || {}), 'data:', JSON.stringify(e?.data || {}));
+          log('auto-compaction failed:', e?.message || e?.name || String(e));
         }
       }
 
