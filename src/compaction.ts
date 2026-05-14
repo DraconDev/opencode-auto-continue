@@ -13,6 +13,16 @@ export interface CompactionDeps {
 export function createCompactionModule(deps: CompactionDeps) {
   const { config, sessions, log, input } = deps;
 
+  function inGracePeriod(s: SessionState): boolean {
+    if (config.compactionGracePeriodMs <= 0 || s.lastCompactionAt <= 0) return false;
+    const elapsed = Date.now() - s.lastCompactionAt;
+    if (elapsed < config.compactionGracePeriodMs) {
+      log(`[Compaction] GRACE PERIOD — ${Math.round((config.compactionGracePeriodMs - elapsed) / 1000)}s remaining since last compaction`);
+      return true;
+    }
+    return false;
+  }
+
   function isTokenLimitError(error: any): boolean {
     if (!error) return false;
     const message = error.message || String(error);
@@ -130,6 +140,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (s.compacting) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — already compacting`); return false; }
     if (s.planning) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — planning`); return false; }
     if (s.stoppedByCondition) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — stopped by condition`); return false; }
+    if (inGracePeriod(s)) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — grace period`); return false; }
 
     const now = Date.now();
     if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
@@ -159,6 +170,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (!s) return false;
     if (s.compacting) { log('[Compaction] PROACTIVE SKIP — already compacting'); return false; }
     if (s.planning) { log('[Compaction] PROACTIVE SKIP — planning'); return false; }
+    if (inGracePeriod(s)) { log('[Compaction] PROACTIVE SKIP — grace period'); return false; }
     
     const now = Date.now();
     if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
@@ -191,6 +203,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (s.compacting) { log('[Compaction] HARD SKIP — already compacting'); return false; }
     if (s.planning) { log('[Compaction] HARD SKIP — planning'); return false; }
     if (s.stoppedByCondition) { log('[Compaction] HARD SKIP — stopped by condition'); return false; }
+    if (inGracePeriod(s)) { log('[Compaction] HARD SKIP — grace period'); return false; }
 
     const threshold = config.hardCompactAtTokens;
     if (threshold <= 0) return false;
@@ -244,5 +257,5 @@ export function createCompactionModule(deps: CompactionDeps) {
     return getTokenCount(s) < threshold;
   }
 
-  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact, maybeHardCompact };
+  return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact, maybeHardCompact, inGracePeriod };
 }
