@@ -10,27 +10,18 @@ const DEFAULT_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCo
 
 const MOCK_LOG = vi.fn();
 
-function makeMockShell(result: { stdout?: string; stderr?: string; exitCode?: number }) {
+/**
+ * Create a mock Bun shell `$` function.
+ * When used as a tagged template, returns { cwd: () => promise }
+ * matching how the test runner uses it:  input.$`cmd`.cwd(dir).then(...)
+ */
+function makeShellMock(result: { stdout?: string; stderr?: string; exitCode?: number }) {
   const { stdout = "", stderr = "", exitCode = 0 } = result;
-  const promise = Promise.resolve({
-    stdout,
-    stderr,
-    exitCode,
+  const promise = Promise.resolve({ stdout, stderr, exitCode });
+  const shellFn = (_strings: TemplateStringsArray, ..._values: unknown[]) => ({
+    cwd: (_dir?: string) => promise,
   });
-  const cwdFn = () => promise;
-  return () => ({
-    cwd: cwdFn,
-  });
-}
-
-function makeRejectedShell(error: Error) {
-  const promise = Promise.reject(error);
-  // Prevent unhandled rejection
-  promise.catch(() => {});
-  const cwdFn = () => promise;
-  return () => ({
-    cwd: cwdFn,
-  });
+  return vi.fn(shellFn);
 }
 
 beforeEach(() => {
