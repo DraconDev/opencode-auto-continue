@@ -1,10 +1,19 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1828)
+## Current State (v7.8.1836)
 
 **Status:** Released & Dogfooding  
-**Tests:** 449/449 passing  
-**npm:** `@dracondev/opencode-auto-continue@7.8.1828`
+**Tests:** 452/452 passing  
+**npm:** `@dracondev/opencode-auto-continue@7.8.1836`
+
+### v7.8.1836 Changes
+- **Compaction Poll Fix**: Rewrote `attemptCompact()` — polls `s.compacting` flag instead of `session.status()` for idle. Session stays busy during compaction, so status-polling was causing 100% compaction failure rate. Now waits for `session.compacted` event to clear flag.
+- **Bun SQLite Support**: `src/tokens.ts` tries `bun:sqlite` first, then `node:sqlite`. OpenCode runs on Bun where `node:sqlite` throws "No such built-in module".
+- **Token Reduction on Compaction Success**: `attemptCompact()` now reduces `estimatedTokens` by `compactReductionFactor` when compaction succeeds. Previously, `maybeHardCompact` would return false even after successful compaction because tokens were still above threshold.
+- **`autoAnswerQuestions` Config Toggle**: New config option (default: `true`) to enable/disable question auto-answer. Previously hardcoded.
+- **Compaction Verify Wait**: `compactionVerifyWaitMs` increased to 30000 (large contexts need >10s to compact).
+- **Test Fixes**: 11 compaction tests fixed — flag-based polling requires setting `s.compacting=false` between poll intervals then advancing timers again. Added 3 new question.asked tests.
+- **Removed `mockStatus` from compaction tests**: Tests no longer mock `session.status()` — they simulate `session.compacted` event by setting `s.compacting=false` + `s.lastCompactionAt`.
 
 ### v7.8.1828 Changes
 - **Question Auto-Answer**: Handles `question.asked` events — auto-replies with the first (recommended) option via `POST /question/{requestID}/reply`. Prevents sessions from stalling when AI asks multiple-choice questions.
@@ -79,6 +88,12 @@ All config options are set in `opencode.json` under the plugin entry:
 | `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
 | `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
 | `maxSessions` | number | `50` | Max sessions to keep in memory |
+
+### Question Auto-Answer
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `autoAnswerQuestions` | boolean | `true` | Auto-answer AI multiple-choice questions with first (recommended) option |
 
 ### Nudge
 
@@ -322,7 +337,7 @@ These fields are tracked during `message.part.updated` events and injected as `#
 | `message.part.updated` (tool/file/subtask/step-start/step-finish) | **Clear `s.planning = false`** — model has moved past planning into execution |
 | `todo.updated` (all done) | Trigger review after debounce |
 | `todo.updated` (has pending) | Set `hasOpenTodos = true`, start nudge timer |
-| `question.asked` | Auto-reply with first option via `POST /question/{requestID}/reply`. Reset `lastOutputAt`/`lastProgressAt`, cancel nudge. Prevents session from stalling on AI questions. |
+| `question.asked` | Auto-reply with first option via `POST /question/{requestID}/reply` (gated by `autoAnswerQuestions`). Reset `lastOutputAt`/`lastProgressAt`, cancel nudge. Prevents session from stalling on AI questions. |
 | `session.error` (MessageAbortedError) | Set `userCancelled = true`, clear timer |
 | `session.error` (token limit) | Parse tokens, increment `tokenLimitHits`, trigger emergency compaction |
 | `session.error` (other) | Clear timer, monitoring pauses |
