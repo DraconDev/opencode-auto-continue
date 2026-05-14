@@ -486,14 +486,14 @@ The plugin manages context with **four compaction layers**, each with different 
 
 | Layer | Threshold | Style | Behavior |
 |-------|-----------|-------|----------|
-| **Opportunistic** | 50k tokens | Fire-and-forget | Low-priority cleanup on idle/recovery/review/nudge |
-| **Proactive** | 100k tokens | Fire-and-forget | Pre-emptive before limits hit |
-| **Hard (NEW)** | 100k tokens | **Blocking gate** | Must succeed before recovery/nudge/continue proceed |
+| **Opportunistic** | 40k tokens | Fire-and-forget | Low-priority cleanup on idle/recovery/review/nudge |
+| **Proactive** | 60k tokens | Fire-and-forget | Pre-emptive before limits hit |
+| **Hard** | 80k tokens | **Blocking gate** | Must succeed before recovery/nudge/continue proceed |
 | **Emergency** | Token limit error | Retry 3x | Last resort on hard limit hit |
 
 ### Opportunistic Compaction
 
-Fires at `opportunisticCompactAtTokens` (default: 50,000) at lifecycle points where the session is about to send a prompt but isn't actively generating. This cleans up context before the next operation pushes tokens higher.
+Fires at `opportunisticCompactAtTokens` (default: 40,000) at lifecycle points where the session is about to send a prompt but isn't actively generating. This cleans up context before the next operation pushes tokens higher.
 
 **Trigger points** (all gated by their own config toggle):
 - **Post-recovery** (`opportunisticCompactAfterRecovery`): After recovery success toast
