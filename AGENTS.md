@@ -1,10 +1,18 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1602)
+## Current State (v7.8.1828)
 
 **Status:** Released & Dogfooding  
 **Tests:** 449/449 passing  
-**GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.344
+**npm:** `@dracondev/opencode-auto-continue@7.8.1828`
+
+### v7.8.1828 Changes
+- **Question Auto-Answer**: Handles `question.asked` events — auto-replies with the first (recommended) option via `POST /question/{requestID}/reply`. Prevents sessions from stalling when AI asks multiple-choice questions.
+- **Reduced Compaction Thresholds**: `proactiveCompactAtTokens: 100k→60k`, `hardCompactAtTokens: 100k→80k`, `opportunisticCompactAtTokens: 50k→40k`. Old thresholds fired too late — sessions hit 200k+ before compaction triggered.
+- **Token Estimation Debug Logging**: `refreshRealTokens()` no longer silently swallows SQLite errors. Logs DB errors via `getDbLastError()`, real vs estimated counts, and threshold comparisons at every compaction check.
+- **Compaction Decision Logging**: All three compaction layers (opportunistic, proactive, hard) now log skip reasons with actual token values — threshold not met, cooldown, planning, compacting, etc.
+- **Nudge Skip-Reason Logging**: Nudge logs why it's skipping (disabled, paused, continue pending, planning/compacting flags, no todo data vs no open todos, cooldown).
+- **npm Package Resolution Fix**: Config changed from `"opencode-auto-continue"` (resolved to someone else's npm `0.1.1`) to `"@dracondev/opencode-auto-continue"` (our scoped package). Old cached packages deleted from `~/.cache/opencode/packages/`. Local symlink removed to prevent dual-load.
 
 ### v7.8.1602 Changes
 - **SQLite Token Reader**: Compaction decisions now use real token counts from `~/.local/share/opencode/opencode.db` via `src/tokens.ts`. Fallback to event-based estimation when DB unavailable.
@@ -12,17 +20,16 @@
 - **Recovery Intent Preservation**: Tracks `lastFileEdited`/`lastToolCall`/`lastToolSummary` and injects `## Recovery Context` into continue messages.
 - **Removed AI Advisor Module**: 270 lines of disabled-by-default dead code deleted.
 - **Removed maxAutoSubmits**: Redundant with `maxRecoveries` — loop protection now uses `s.attempts >= config.maxRecoveries`.
-- **maxAutoSubmits REMOVED**: Replaced by `maxRecoveries` loop protection.
 
 ### Dogfood Config
 ```json
-["opencode-auto-continue", {
+["@dracondev/opencode-auto-continue", {
   "stallTimeoutMs": 45000,
   "maxRecoveries": 3,
   "sessionMonitorEnabled": true,
   "nudgeEnabled": true,
   "autoCompact": true,
-  "debug": false
+  "debug": true
 }]
 ```
 
@@ -89,9 +96,9 @@ All config options are set in `opencode.json` under the plugin entry:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `autoCompact` | boolean | `true` | Enable proactive and opportunistic compaction |
-| `proactiveCompactAtTokens` | number | `100000` | Token threshold for proactive auto-compaction |
-| `opportunisticCompactAtTokens` | number | `50000` | Token threshold for opportunistic compaction |
-| `hardCompactAtTokens` | number | `100000` | Token threshold for mandatory blocking compaction |
+| `proactiveCompactAtTokens` | number | `60000` | Token threshold for proactive auto-compaction |
+| `opportunisticCompactAtTokens` | number | `40000` | Token threshold for opportunistic compaction |
+| `hardCompactAtTokens` | number | `80000` | Token threshold for mandatory blocking compaction |
 | `hardCompactMaxWaitMs` | number | `30000` | Max wait for hard compaction before proceeding anyway |
 | `hardCompactBypassCooldown` | boolean | `true` | Hard compaction ignores `compactCooldownMs` |
 | `compactCooldownMs` | number | `60000` | Min time between compactions (soft layers) |
@@ -315,6 +322,7 @@ These fields are tracked during `message.part.updated` events and injected as `#
 | `message.part.updated` (tool/file/subtask/step-start/step-finish) | **Clear `s.planning = false`** — model has moved past planning into execution |
 | `todo.updated` (all done) | Trigger review after debounce |
 | `todo.updated` (has pending) | Set `hasOpenTodos = true`, start nudge timer |
+| `question.asked` | Auto-reply with first option via `POST /question/{requestID}/reply`. Reset `lastOutputAt`/`lastProgressAt`, cancel nudge. Prevents session from stalling on AI questions. |
 | `session.error` (MessageAbortedError) | Set `userCancelled = true`, clear timer |
 | `session.error` (token limit) | Parse tokens, increment `tokenLimitHits`, trigger emergency compaction |
 | `session.error` (other) | Clear timer, monitoring pauses |
