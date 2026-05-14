@@ -779,11 +779,13 @@ Plugin Init
 
 ### When Does Compaction Fire?
 
-| Condition | Compact? | Notes |
-|-----------|----------|-------|
-| Token limit error | ✅ Yes | Emergency only |
-| Proactive (token threshold) | ❌ No | Delegated to DCP |
-| Manual trigger | ❌ No | Not exposed |
+| Condition | Compact? | Style | Notes |
+|-----------|----------|-------|-------|
+| Token limit error | ✅ Yes | Emergency | Retry up to 3x, schedule recovery on failure |
+| Proactive (>= 100k tokens) | ✅ Yes | Fire-and-forget | `autoCompact: true`, cooldown respected |
+| Opportunistic (>= 50k tokens) | ✅ Yes | Fire-and-forget | On idle/recovery/review/nudge lifecycle points |
+| Hard (>= 100k tokens) | ✅ Yes | **Blocking gate** | Awaits compaction before recovery/nudge/continue |
+| Manual trigger | ❌ No | — | Not exposed |
 
 ---
 
