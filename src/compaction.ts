@@ -66,10 +66,17 @@ export function createCompactionModule(deps: CompactionDeps) {
         // session.compacted event handler clears s.compacting and sets lastCompactionAt
         if (!current.compacting && current.lastCompactionAt > 0) {
           log('compaction completed (detected via compacting flag cleared) for session:', sessionId);
+          if (s && s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
+          const reduced = Math.floor(current.estimatedTokens * config.compactReductionFactor);
+          if (reduced < current.estimatedTokens) {
+            log('compaction reduced estimated tokens:', current.estimatedTokens, '->', reduced, 'for session:', sessionId);
+            current.estimatedTokens = reduced;
+          }
           return true;
         }
         if (!current.compacting) {
           log('compacting flag cleared without lastCompactionAt set — compaction likely failed for session:', sessionId);
+          if (s && s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
           return false;
         }
       }

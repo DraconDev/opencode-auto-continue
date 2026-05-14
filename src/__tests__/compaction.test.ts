@@ -535,7 +535,7 @@ describe("compaction module unit tests", () => {
       mockSummarize.mockResolvedValue({ data: {} });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
-      module = createModule({ autoCompact: false, hardCompactAtTokens: 100000 });
+      module = createModule({ autoCompact: false, hardCompactAtTokens: 100000, compactReductionFactor: 0.4 });
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
@@ -554,7 +554,7 @@ describe("compaction module unit tests", () => {
       mockSummarize.mockResolvedValue({ data: {} });
 
       sessions.set("test", createSessionState({ estimatedTokens: 200000, lastCompactionAt: Date.now() - 10000 }));
-      module = createModule({ hardCompactAtTokens: 100000, compactCooldownMs: 60000, hardCompactBypassCooldown: true });
+      module = createModule({ hardCompactAtTokens: 100000, compactCooldownMs: 60000, hardCompactBypassCooldown: true, compactReductionFactor: 0.4 });
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);

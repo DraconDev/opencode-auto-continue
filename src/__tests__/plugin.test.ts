@@ -1018,20 +1018,15 @@ describe("opencode-auto-continue", () => {
       // Create session with busy status
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Fire token limit error
+      // Fire token limit error → triggers emergency compaction
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Requested token count exceeds the model's maximum context length of 262144 tokens" } } } });
 
-      // First poll: summarize resolves, enters while loop
+      // Advance timers to let summarize resolve and enter the while loop
       await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
-      // Simulate session.compacted event
-      const sessions = (plugin as any).sessions as Map<string, any>;
-      const s = sessions.get("test");
-      if (s) {
-        s.compacting = false;
-        s.lastCompactionAt = Date.now();
-      }
-      // Second poll: detects compacting=false, compaction succeeds, sends continue
+      // Simulate session.compacted event — this clears compacting flag and resets token estimates
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+      // Advance timers for the next poll to detect completion
       await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
