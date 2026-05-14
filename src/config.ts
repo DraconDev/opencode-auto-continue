@@ -48,7 +48,6 @@ export interface PluginConfig {
   compactionVerifyWaitMs: number;
   compactCooldownMs: number;
   compactReductionFactor: number;
-  compactAtMessageCount: number;
   tokenEstimateMultiplier: number;
 
   // Opportunistic compaction
@@ -149,7 +148,6 @@ export const DEFAULT_CONFIG: PluginConfig = {
   compactionVerifyWaitMs: 30000,
   compactCooldownMs: 60000,
   compactReductionFactor: 0.7,
-  compactAtMessageCount: 50,
   tokenEstimateMultiplier: 1.0,
 
   // Opportunistic compaction

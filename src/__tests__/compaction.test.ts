@@ -136,6 +136,8 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastKnownStatus: "idle",
     lastKnownTodos: [],
     stoppedByCondition: null,
+    realTokens: 0,
+    lastRealTokenRefreshAt: 0,
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs";
 import type { PluginConfig } from "./config.js";
-import type { SessionState } from "./session-state.js";
+import type { SessionState, Todo } from "./session-state.js";
 
 export interface StopConditionResult {
   shouldStop: boolean;
@@ -42,11 +42,19 @@ export function createStopConditionsModule(deps: StopConditionsDeps) {
 
     if (config.untilMarker) {
       const marker = config.untilMarker;
-      if (s.lastTodoSnapshot && s.lastTodoSnapshot.includes(marker)) {
-        const reason = `untilMarker: "${marker}" found in todo snapshot`;
-        log('[StopConditions] STOP —', reason);
-        s.stoppedByCondition = reason;
-        return { shouldStop: true, reason };
+      // Search todo content/title, not the id:status snapshot format
+      const todos = s.lastKnownTodos as Todo[] | undefined;
+      if (todos && todos.length > 0) {
+        const found = todos.some(t =>
+          (t.content && t.content.includes(marker)) ||
+          (t.title && t.title.includes(marker))
+        );
+        if (found) {
+          const reason = `untilMarker: "${marker}" found in todo content`;
+          log('[StopConditions] STOP —', reason);
+          s.stoppedByCondition = reason;
+          return { shouldStop: true, reason };
+        }
       }
     }
 

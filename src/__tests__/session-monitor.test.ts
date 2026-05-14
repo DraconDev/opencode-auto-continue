@@ -120,8 +120,8 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     continueHistory: [],
     reviewFired: false,
     reviewDebounceTimer: null,
-    lastAdvisoryAdvice: null,
     lastKnownStatus: 'unknown',
+    lastRealTokenRefreshAt: 0,
     stoppedByCondition: null,
     ...partial,
   };

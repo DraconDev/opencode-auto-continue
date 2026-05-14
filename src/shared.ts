@@ -177,7 +177,16 @@ export function updateProgress(s: SessionState) {
 }
 
 export function formatMessage(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
+  const unresolved: string[] = [];
+  const result = template.replace(/\{(\w+)\}/g, (_, key) => {
+    if (key in vars) return vars[key];
+    unresolved.push(key);
+    return `{${key}}`;
+  });
+  if (unresolved.length > 0) {
+    console.warn(`[opencode-auto-continue] formatMessage: unresolved template variables: ${unresolved.join(', ')}`);
+  }
+  return result;
 }
 
 function getMessageTimestamp(message: any): number | null {
