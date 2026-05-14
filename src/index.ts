@@ -334,6 +334,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.tokenLimitHits = 0;
       s.hardCompactionInProgress = false;
       s.lastHardCompactionAt = 0;
+      s.proactiveCompactCount = 0;
+      s.hardCompactCount = 0;
       if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       s.actionStartedAt = 0;
       s.stallDetections = 0;
