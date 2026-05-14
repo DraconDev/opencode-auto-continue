@@ -26,14 +26,18 @@ export function createCompactionModule(deps: CompactionDeps) {
       log('attempting compaction for session:', sessionId);
 
       const s = sessions.get(sessionId);
-      const preTokens = s ? getTokenCount(s) : 0;
-      if (s) {
-        s.compacting = true;
+      if (!s) return false;
+      if (s.compacting && !s.compactionTimedOut) {
+        log('already compacting and not timed out — skipping for session:', sessionId);
+        return false;
+      }
+      s.compacting = true;
+      s.compactionTimedOut = false;
         if (config.compactionSafetyTimeoutMs > 0) {
           s.compactionSafetyTimer = setTimeout(() => {
             if (s.compacting) {
-              log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', force-clearing after', config.compactionSafetyTimeoutMs, 'ms');
-              s.compacting = false;
+              log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', signaling timeout after', config.compactionSafetyTimeoutMs, 'ms');
+              s.compactionTimedOut = true;
               s.hardCompactionInProgress = false;
             }
           }, config.compactionSafetyTimeoutMs);
@@ -46,12 +50,6 @@ export function createCompactionModule(deps: CompactionDeps) {
         query: { directory: input.directory || "" }
       });
 
-      // Wait for the session.compacted event to clear s.compacting, instead of
-      // polling for idle status. Compaction happens while the session is busy —
-      // the session stays busy during summarization, then emits session.compacted
-      // when done. Polling for idle was unreliable because:
-      //   1. Session stays busy during compaction (often >10s for large contexts)
-      //   2. The old 2s/3s/5s poll would give up before compaction finished
       const maxWait = config.compactionVerifyWaitMs;
       const pollInterval = 1000;
       const deadline = Date.now() + maxWait;
@@ -63,24 +61,28 @@ export function createCompactionModule(deps: CompactionDeps) {
           log('session deleted during compaction wait');
           return false;
         }
-        // session.compacted event handler clears s.compacting and sets lastCompactionAt
+        if (current.compactionTimedOut) {
+          log('compaction aborted — safety timeout fired for session:', sessionId);
+          current.compacting = false;
+          if (current.compactionSafetyTimer) { clearTimeout(current.compactionSafetyTimer); current.compactionSafetyTimer = null; }
+          return false;
+        }
         if (!current.compacting && current.lastCompactionAt > 0) {
           log('compaction completed (detected via compacting flag cleared) for session:', sessionId);
           if (s && s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
-          // Token reduction is handled by the session.compacted event handler in index.ts
-          // to avoid double-reduction (attemptCompact + session.compacted both reducing).
           return true;
         }
         if (!current.compacting) {
-          log('compacting flag cleared without lastCompactionAt set — compaction likely failed for session:', sessionId);
+          log('compacting flag cleared without lastCompactionAt — session.compacted may have fired before we started polling for session:', sessionId);
           if (s && s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
-          return false;
+          return current.lastCompactionAt > 0;
         }
       }
 
       log('compaction timed out after', maxWait, 'ms, session still compacting:', sessionId);
       if (s) {
         s.compacting = false;
+        s.compactionTimedOut = true;
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       }
       return false;
@@ -99,13 +101,11 @@ export function createCompactionModule(deps: CompactionDeps) {
     const s = sessions.get(sessionId);
     if (!s) return false;
 
-    s.compacting = true;
-
-    // Try compaction with retries
     for (let attempt = 0; attempt < config.compactMaxRetries; attempt++) {
       if (attempt > 0) {
         log(`compaction retry ${attempt + 1}/${config.compactMaxRetries} for session:`, sessionId);
         await new Promise(r => setTimeout(r, config.compactRetryDelayMs * attempt));
+        s.compactionTimedOut = false;
       }
 
       const success = await attemptCompact(sessionId);
@@ -216,6 +216,7 @@ export function createCompactionModule(deps: CompactionDeps) {
         if (attempt > 0) {
           const delay = Math.min(config.compactRetryDelayMs * attempt, deadline - Date.now());
           if (delay > 0) await new Promise(r => setTimeout(r, delay));
+          s.compactionTimedOut = false;
         }
         success = await attemptCompact(sessionId);
         if (success) break;

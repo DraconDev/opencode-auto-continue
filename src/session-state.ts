@@ -61,6 +61,7 @@ export interface SessionState {
   hardCompactionInProgress: boolean;
   lastHardCompactionAt: number;
   compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
+  compactionTimedOut: boolean;
   proactiveCompactCount: number;
   hardCompactCount: number;
 
@@ -159,6 +160,7 @@ export function createSession(): SessionState {
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,
+    compactionTimedOut: false,
     proactiveCompactCount: 0,
     hardCompactCount: 0,
 

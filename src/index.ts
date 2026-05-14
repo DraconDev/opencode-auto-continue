@@ -324,6 +324,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.planBuffer = '';
       s.planning = false;
       s.compacting = false;
+      s.compactionTimedOut = false;
       s.hardCompactionInProgress = false;
       s.backoffAttempts = 0;
       s.autoSubmitCount = 0;
@@ -1105,6 +1106,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const s = getSession(sid);
         log('session compacted, clearing compacting flag:', sid);
         s.compacting = false;
+        s.compactionTimedOut = false;
         s.hardCompactionInProgress = false;
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         s.lastCompactionAt = Date.now();
