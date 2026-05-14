@@ -210,6 +210,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
     npm: "package.json",
     yarn: "package.json",
     npx: "package.json",
+    bun: "package.json",
     make: "Makefile",
     go: "go.mod",
     pip: "pyproject.toml",

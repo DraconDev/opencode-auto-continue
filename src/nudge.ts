@@ -223,11 +223,15 @@ export function createNudgeModule(deps: NudgeDeps) {
       try {
         const results = await deps.testRunner.runTests();
         s.lastTestRunAt = Date.now();
-        testFailureOutput = deps.testRunner.formatFailures(results);
-        if (testFailureOutput) {
-          log("test failures detected before nudge, session:", sessionId);
-        } else if (results.length > 0) {
-          log("all tests passing before nudge, session:", sessionId);
+        if (deps.testRunner.hasRealResults(results)) {
+          testFailureOutput = deps.testRunner.formatFailures(results);
+          if (testFailureOutput) {
+            log("test failures detected before nudge, session:", sessionId);
+          } else {
+            log("all tests passing before nudge, session:", sessionId);
+          }
+        } else {
+          log("no real test results (all skipped), AI will not be prompted about tests, session:", sessionId);
         }
       } catch (e) {
         log("test runner error before nudge (non-fatal):", e);
