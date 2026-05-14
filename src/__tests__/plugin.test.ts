@@ -1012,7 +1012,8 @@ describe("opencode-auto-continue", () => {
         terminalProgressEnabled: false,
         statusFilePath: "",
         shortContinueMessage: "Continue.",
-        compactionVerifyWaitMs: 5000
+        compactionVerifyWaitMs: 1000,
+        hardCompactAtTokens: 999999, // Prevent hard compact from firing again in sendContinue
       });
 
       // Create session with busy status
@@ -1026,9 +1027,11 @@ describe("opencode-auto-continue", () => {
       await flushPromises();
       // Simulate session.compacted event — this clears compacting flag and resets token estimates
       await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
-      // Advance timers for the continue to be sent and poll to detect completion
-      await vi.advanceTimersByTimeAsync(2000);
-      await flushPromises();
+      // Advance timers and flush multiple times for the async continue chain
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(500);
+        await flushPromises();
+      }
 
       // Should send continue prompt after compaction
       expect(mockPrompt).toHaveBeenCalled();
@@ -1327,8 +1330,11 @@ describe("opencode-auto-continue", () => {
 
         // Simulate compaction completing via session.compacted event
         await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
-        await vi.advanceTimersByTimeAsync(1000);
-        await flushPromises();
+        // Advance timers and flush multiple times for the async continue chain
+        for (let i = 0; i < 5; i++) {
+          await vi.advanceTimersByTimeAsync(500);
+          await flushPromises();
+        }
 
         expect(mockPrompt).toHaveBeenCalled();
       } finally {
