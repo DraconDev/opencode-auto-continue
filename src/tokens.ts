@@ -1,4 +1,10 @@
-import type { PluginConfig } from "./config.js";
+interface DatabaseSync {
+  prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
+  close(): void;
+}
+
+declare function require(module: "node:sqlite"): { DatabaseSync: new (path: string, options?: { open?: boolean; readonly?: boolean }) => DatabaseSync };
+declare function require(module: "node:fs"): typeof import("node:fs");
 
 export interface SessionTokens {
   input: number;
@@ -52,13 +58,13 @@ export function getSessionTokens(sessionId: string): SessionTokens {
   try {
     const path = getDbPath();
 
-    const fs = require("node:fs") as typeof import("node:fs");
+    const fs = require("node:fs");
     if (!fs.existsSync(path)) {
       dbLastError = `DB not found: ${path}`;
       return NO_TOKENS;
     }
 
-    const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
+    const { DatabaseSync } = require("node:sqlite");
     const db = new DatabaseSync(path, { open: true });
 
     try {
@@ -89,7 +95,7 @@ export function getSessionTokens(sessionId: string): SessionTokens {
         output: row.tokens_output,
         reasoning: row.tokens_reasoning,
         cacheRead: row.tokens_cache_read,
-        cacheWrite: row.tokens_write ?? row.tokens_cache_write,
+        cacheWrite: row.tokens_cache_write,
         total,
       };
     } finally {
@@ -107,10 +113,10 @@ export function getLatestMessageTokens(
   try {
     const path = getDbPath();
 
-    const fs = require("node:fs") as typeof import("node:fs");
+    const fs = require("node:fs");
     if (!fs.existsSync(path)) return null;
 
-    const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
+    const { DatabaseSync } = require("node:sqlite");
     const db = new DatabaseSync(path, { open: true });
 
     try {

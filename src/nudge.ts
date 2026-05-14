@@ -110,6 +110,12 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
     }
 
+    // Early exit: skip nudge entirely if no open todos (based on cached state)
+    if (!s.hasOpenTodos && s.lastKnownTodos.length > 0) {
+      log("no open todos (cached), skipping nudge", { sessionId });
+      return;
+    }
+
     // FIX 8: Check failure backoff before proceeding
     const NUDGE_FAILURE_BACKOFF_MS = 5000;
     if (s.nudgeFailureCount > 0 && Date.now() - s.lastNudgeFailureAt < NUDGE_FAILURE_BACKOFF_MS) {
@@ -129,25 +135,24 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    // Fetch todos from API if not provided
+    // Use cached todos from todo.updated events as primary source.
+    // The session.todo() API is unreliable — often returns empty/stale data.
+    // Only fall back to API when cache is empty.
     let todos: Array<{ id: string; status: string; content?: string; title?: string }>;
-    if (knownTodos) {
+    if (s.lastKnownTodos && s.lastKnownTodos.length > 0) {
+      todos = s.lastKnownTodos;
+      log("using cached todos for nudge", { count: todos.length });
+    } else if (knownTodos && knownTodos.length > 0) {
       todos = knownTodos;
       log("using provided todos for nudge", { count: knownTodos.length });
     } else {
       try {
-        const resp = await input.client.session.todo({ path: { id: sessionId } });
+        const resp = await input.client.session.todo({ path: { id: sessionId }, query: { directory: input.directory || "" } });
         todos = Array.isArray(resp.data) ? resp.data : [];
+        log("fetched todos from API for nudge", { count: todos.length });
       } catch (e) {
-        log("error fetching todos for nudge, falling back to cached", String(e));
-        // FIX 6: Fallback to cached todos instead of abandoning
-        if (s.hasOpenTodos && s.lastKnownTodos.length > 0) {
-          todos = s.lastKnownTodos;
-          log("using cached todos for nudge fallback", { count: todos.length });
-        } else {
-          log("no cached todos available, abandoning nudge");
-          return;
-        }
+        log("error fetching todos for nudge", String(e));
+        todos = [];
       }
     }
 

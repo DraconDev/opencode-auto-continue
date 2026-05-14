@@ -729,8 +729,8 @@ describe("nudge integration with plugin events", () => {
     });
   });
 
-  describe("nudge aggressive mode (always fetch from API)", () => {
-    it("should fetch todos from API on every session.idle", async () => {
+  describe("nudge uses cached todos from todo.updated events", () => {
+    it("should use cached todos from todo.updated events instead of API", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
@@ -751,16 +751,18 @@ describe("nudge integration with plugin events", () => {
         { id: "t1", content: "Task from event", status: "in_progress" }
       ] } } });
 
-      // Nudge always fetches from API regardless of event cache
+      // Nudge should use cached todos, NOT call the API
       mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "Task from mock", status: "in_progress" }], error: undefined });
 
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       await vi.advanceTimersByTimeAsync(100);
 
-      expect(mockTodo).toHaveBeenCalled();
+      // Should NOT call todo API since cached todos are available
+      expect(mockTodo).not.toHaveBeenCalled();
       expect(mockPrompt).toHaveBeenCalled();
       const callArgs = (mockPrompt.mock.calls[0] as any)[0];
-      expect(callArgs.body.parts[0].text).toContain("Task from mock");
+      // Should contain the CACHED todo content, not the API mock
+      expect(callArgs.body.parts[0].text).toContain("Task from event");
 
       vi.useRealTimers();
     });

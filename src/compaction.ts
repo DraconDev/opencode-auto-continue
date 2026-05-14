@@ -1,5 +1,6 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
+import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface CompactionDeps {
@@ -25,7 +26,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       log('attempting compaction for session:', sessionId);
 
       const s = sessions.get(sessionId);
-      const preTokens = s?.estimatedTokens || 0;
+      const preTokens = s ? getTokenCount(s) : 0;
       if (s) {
         s.compacting = true;
         if (config.compactionSafetyTimeoutMs > 0) {
@@ -127,8 +128,8 @@ export function createCompactionModule(deps: CompactionDeps) {
     }
 
     const threshold = config.opportunisticCompactAtTokens;
-    if (s.estimatedTokens >= threshold) {
-      log(`[Compaction] OPPORTUNISTIC TRIGGER (${reason}) — session ${sessionId} has ${s.estimatedTokens} tokens (threshold: ${threshold})`);
+    if (getTokenCount(s) >= threshold) {
+      log(`[Compaction] OPPORTUNISTIC TRIGGER (${reason}) — session ${sessionId} has ${getTokenCount(s)} tokens (threshold: ${threshold})`);
       const success = await forceCompact(sessionId);
       if (success) {
         log(`[Compaction] OPPORTUNISTIC SUCCESS (${reason}) — session ${sessionId}`);
@@ -153,8 +154,8 @@ export function createCompactionModule(deps: CompactionDeps) {
     }
     
     const threshold = config.proactiveCompactAtTokens;
-    if (s.estimatedTokens >= threshold) {
-      log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${s.estimatedTokens} tokens (threshold: ${threshold}), attempting compaction`);
+    if (getTokenCount(s) >= threshold) {
+      log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${getTokenCount(s)} tokens (threshold: ${threshold}), attempting compaction`);
       s.proactiveCompactCount++;
       const success = await forceCompact(sessionId);
       if (success) {
@@ -178,11 +179,11 @@ export function createCompactionModule(deps: CompactionDeps) {
 
     const threshold = config.hardCompactAtTokens;
     if (threshold <= 0) return false;
-    if (s.estimatedTokens < threshold) return false;
+    if (getTokenCount(s) < threshold) return false;
 
     s.hardCompactionInProgress = true;
     s.hardCompactCount++;
-    log(`[Compaction] HARD TRIGGER — session ${sessionId} has ${s.estimatedTokens} tokens (hard threshold: ${threshold}), blocking until compaction completes`);
+    log(`[Compaction] HARD TRIGGER — session ${sessionId} has ${getTokenCount(s)} tokens (hard threshold: ${threshold}), blocking until compaction completes`);
 
     const bypassCooldown = config.hardCompactBypassCooldown;
     const cooldownOk = bypassCooldown || s.lastCompactionAt === 0 || Date.now() - s.lastCompactionAt >= config.compactCooldownMs;
@@ -216,7 +217,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     }
 
     s.hardCompactionInProgress = false;
-    return s.estimatedTokens < threshold;
+    return getTokenCount(s) < threshold;
   }
 
   return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact, maybeHardCompact };

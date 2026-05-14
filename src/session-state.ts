@@ -98,6 +98,11 @@ export interface SessionState {
   // === Plan-Driven Continue (plan.ts) ===
   lastPlanItemDescription: string;
 
+  // === Recovery Intent (recovery.ts) ===
+  lastFileEdited: string;  // Last file URL edited before stall
+  lastToolCall: string;    // Last tool call name before stall
+  lastToolSummary: string; // Brief description of last action
+
   // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
 
@@ -182,6 +187,10 @@ export function createSession(): SessionState {
     lastAdvisoryAdvice: null,
 
     lastPlanItemDescription: '',
+
+    lastFileEdited: '',
+    lastToolCall: '',
+    lastToolSummary: '',
 
     statusHistory: [],
 

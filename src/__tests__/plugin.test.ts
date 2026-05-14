@@ -489,13 +489,13 @@ describe("opencode-auto-continue", () => {
         { id: "t2", content: "Second task", status: "pending" }
       ] } } });
 
-      // Fire session.idle - nudge always fetches todos from API (aggressive mode)
+      // Fire session.idle - nudge uses cached todos from todo.updated events
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(100);
 
-      // Nudge always fetches from API on idle
-      expect(mockTodo).toHaveBeenCalled();
-      // Verify prompt was called with todo context
+      // Nudge should use cached todos, NOT call the API
+      expect(mockTodo).not.toHaveBeenCalled();
+      // Verify prompt was called with todo context from cached todos
       expect(mockPrompt).toHaveBeenCalled();
 
       vi.useRealTimers();

@@ -1,22 +1,18 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.344)
+## Current State (v7.8.1602)
 
 **Status:** Released & Dogfooding  
-**Tests:** 389/389 passing  
+**Tests:** 449/449 passing  
 **GitHub:** https://github.com/DraconDev/opencode-auto-continue/releases/tag/v7.8.344
 
-### v7.8.344 Changes
-- **Busy-But-Dead Detection**: Distinguishes status pings from real output using `lastOutputAt`/`lastOutputLength` tracking
-- **Toast Notifications**: Session Resumed, Recovery Successful, Nudge Failed, Token Limit, Compaction Failed
-- **Runtime Validation**: Added validation for `planningTimeoutMs`, `tokenEstimateMultiplier`, `busyStallTimeoutMs`
-- **Memory Leak Fix**: Clear `customPromptRuntimes` Set on plugin dispose
-- **Config Safety**: All new config options validated at runtime
-
-### v7.8.212 Changes
-- **Directive Messages**: All recovery/nudge/review messages use imperative tone with anti-loop guards ("Do not ask for permission — just proceed")
-- **Planned Work Tracking**: Messages now prompt AI to create todos for planned work that isn't tracked yet
-- **34 Bug Fixes**: Timer races, state corruption, recovery loops, token counting, nudge reliability
+### v7.8.1602 Changes
+- **SQLite Token Reader**: Compaction decisions now use real token counts from `~/.local/share/opencode/opencode.db` via `src/tokens.ts`. Fallback to event-based estimation when DB unavailable.
+- **Nudge Fix**: Three root-cause bugs fixed — cancel-schedule-cancel race, 500ms delay causing stale todos, `session.todo()` API returning empty. Now uses cached `todo.updated` events.
+- **Recovery Intent Preservation**: Tracks `lastFileEdited`/`lastToolCall`/`lastToolSummary` and injects `## Recovery Context` into continue messages.
+- **Removed AI Advisor Module**: 270 lines of disabled-by-default dead code deleted.
+- **Removed maxAutoSubmits**: Redundant with `maxRecoveries` — loop protection now uses `s.attempts >= config.maxRecoveries`.
+- **maxAutoSubmits REMOVED**: Replaced by `maxRecoveries` loop protection.
 
 ### Dogfood Config
 ```json
@@ -82,8 +78,9 @@ All config options are set in `opencode.json` under the plugin entry:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `nudgeEnabled` | boolean | `true` | Enable idle nudging |
-| `nudgeCooldownMs` | number | `300000` | Min time between nudges (5min) |
-| `nudgeIdleDelayMs` | number | `5000` | Delay before nudging after idle |
+| `nudgeCooldownMs` | number | `30000` | Min time between nudges (30s) |
+| `nudgeIdleDelayMs` | number | `0` | Delay before nudging after idle |
+| `nudgeMaxSubmits` | number | `10` | Max nudges before loop protection |
 | `includeTodoContext` | boolean | `true` | Include pending todos in nudge message |
 | `continueWithTodosMessage` | string | `"..."` | Nudge message template with todo context |
 
@@ -103,16 +100,6 @@ All config options are set in `opencode.json` under the plugin entry:
 | `compactionVerifyWaitMs` | number | `10000` | Max wait for compaction verification |
 | `compactReductionFactor` | number | `0.7` | Expected context reduction ratio |
 | `compactionSafetyTimeoutMs` | number | `15000` | Safety timeout to clear stuck `compacting` flag |
-
-### AI Advisory
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enableAdvisory` | boolean | `false` | Enable AI/heuristic session analysis |
-| `advisoryModel` | string | `""` | AI model for advisory calls |
-| `advisoryTimeoutMs` | number | `5000` | Max wait for AI advisory response |
-| `advisoryMaxTokens` | number | `500` | Max tokens in AI advisory response |
-| `advisoryTemperature` | number | `0.1` | Temperature for AI calls |
 
 ### Terminal & Status
 
@@ -179,75 +166,6 @@ await sendCustomPrompt(sessionId, {
 - If a similar prompt was sent within last 30 seconds → **blocks duplicate**
 - Prevents duplicate injections from multiple plugin instances or race conditions
 - Fail-open: allows prompt if check fails
-
-## AI Advisory Module (`src/ai-advisor.ts`)
-
-The plugin includes a hybrid advisory system (270 lines) that analyzes session state before making recovery/nudge decisions. **AI advises, hardcoded rules decide** — simple/obvious decisions stay fast (hardcoded), edge cases get AI or heuristic analysis.
-
-### Architecture
-
-```
-[Decision needed: abort? nudge? wait?]
-        │
-        ▼
-shouldUseAI() checks config + session age
-        │
-        ├──YES──► extractContext() → 3 recent messages + stall info + todos + tokens
-        │            │
-        │            ├── AI configured (advisoryModel set)? → callModel(session, prompt)
-        │            │      │
-        │            │      └── Parse response for @{action}:{confidence}
-        │            │            e.g. "@wait:0.85" or "@abort:0.70"
-        │            │
-        │            └── AI fails/times out? → fall back to heuristic patterns
-        │
-        └──NO──► Use fallback: heuristic analysis (always available)
-                      │
-                      └── 7 heuristic patterns → advice
-```
-
-### 7 Heuristic Patterns
-
-| # | Pattern | Condition | Advice | Rationale |
-|---|---------|-----------|--------|-----------|
-| 1 | New session | `elapsedMs < 30000` | `wait` | Session just started, give it time |
-| 2 | Repeated stall | `lastPartType === lastStallPartType` | `abort` | Stuck in same pattern, need fresh context |
-| 3 | Mixed patterns | Different part types before stall | `wait` | Making progress across different activities |
-| 4 | Long planning | `planningDurationMs > 60000` | `abort` | Stuck planning, need to start executing |
-| 5 | High tokens + todos | tokens > 80% limit + open todos | `continue` | Context is full but work remains |
-| 6 | High tokens, no todos | tokens > 80% limit + all done | `compact` | Clean up context, wrap up |
-| 7 | Stalled with todos | session stalled + open todos | `continue` | Keep pushing toward completion |
-
-### Integration Points
-
-- **Recovery** (`recovery.ts`): Before the final abort attempt in `recover()`, calls `shouldUseAI()` then `getAdvice()`. If advice is `wait` with ≥0.7 confidence, skips abort entirely. Logs all advice regardless.
-
-### Config
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enableAdvisory` | boolean | `false` | Enable AI/heuristic session analysis |
-| `advisoryModel` | string | `""` | AI model for advisory calls (e.g. `"gemma-4-31b-it"`) |
-| `advisoryTimeoutMs` | number | `5000` | Max wait for AI advisory response (ms) |
-| `advisoryMaxTokens` | number | `500` | Max tokens in AI advisory response |
-| `advisoryTemperature` | number | `0.1` | Temperature for AI calls (low = deterministic) |
-
-### AI Provider Call
-
-When `enableAdvisory: true` and `advisoryModel` is set, the advisor:
-1. Extracts session context: last 3 messages, stall time, stall count, open todos, token estimate, recovery attempts, part type
-2. Calls OpenAI-compatible chat completions endpoint using `baseURL` and `apiKey` from the model config found in `opencode.json`
-3. Expects response format: `@{action}:{confidence}` where action is `wait`, `abort`, `continue`, or `compact`
-4. Falls back to heuristics on failure/timeout
-
-### Trade-offs
-
-| Decision | Rationale | Trade-off |
-|----------|-----------|-----------|
-| AI advises, rules decide | Hardcoded rules are instant; AI adds latency | Edge cases get smarter handling |
-| No AI for simple stalls | New sessions (<30s) clearly don't need abort | Heuristic covers 7 common patterns |
-| Fallback chain | AI → heuristic → hardcoded | Graceful degradation |
-| Read-only advice | Advisor never aborts/continues directly | Session module retains control |
 
 ## Session Monitor (`src/session-monitor.ts`)
 
@@ -370,12 +288,22 @@ session.deleted / session.ended → cleanup
 
 These fields distinguish real progress from `session.status(busy)` pings. Recovery uses `lastOutputAt` for stall detection; `lastProgressAt` is maintained for backward compatibility.
 
+### Recovery Intent Fields (v7.8.1602+)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `lastFileEdited` | `string` | URL of last file the AI edited before stall |
+| `lastToolCall` | `string` | Name of last tool the AI ran before stall |
+| `lastToolSummary` | `string` | Human-readable summary: "edited tokens.ts", "ran npm test" |
+
+These fields are tracked during `message.part.updated` events and injected as `## Recovery Context` into recovery continue messages.
+
 ### Event → State Transitions
 
 | Event | Effect |
 |-------|--------|
 | `session.status (busy)` | Start stall timer. **Does NOT call `updateProgress()`** — status pings are not real output. Checks `busyStallTimeoutMs` for stuck sessions. **Does NOT clear `s.planning`** — session.status(busy) fires during plan generation too and must not destroy the plan flag |
-| `session.status (idle)` | If `needsContinue` → send queued continue. If `hasOpenTodos` → send nudge. |
+| `session.status (idle)` | If `needsContinue` → send queued continue. Opportunistic compaction check only — nudge is handled by `session.idle`.
 | `session.status (retry)` | Treat as busy (valid progress) |
 | `message.updated` (assistant tokens) | Update `estimatedTokens` for status tracking |
 | `message.updated` (user) | Reset counters, cancel nudge, reset `lastNudgeAt` |
@@ -400,7 +328,8 @@ These fields distinguish real progress from `session.status(busy)` pings. Recove
 2. **`session.compacted` is NOT terminal** — it preserves session state, clears compacting flag, resets token estimates
 3. **Synthetic messages are filtered** — `part.synthetic === true` is ignored in `message.part.updated`
 4. **Token estimation from three sources** — error messages, step-finish tokens, AssistantMessage tokens (see above)
-5. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
+5. **SQLite real tokens preferred** — compaction decisions use real token counts from `session` table, fallback to event-based estimation
+6. **Recovery queue** — `needsContinue` flag set by `recover()`, consumed by `session.status` handler when idle
 6. **Plan/compaction pause** — stall timer and nudge timer both pause during these states
 7. **Busy-but-dead detection** — `session.status(busy)` does not count as progress; only actual output updates `lastOutputAt`
 8. **Tool-text recovery** — recovery uses specialized prompt when XML tool calls detected in reasoning
@@ -417,12 +346,13 @@ These fields distinguish real progress from `session.status(busy)` pings. Recove
 
 ## Nudge Architecture
 
-### Dual Trigger Paths
+### Single Trigger Path
 
-1. **`session.idle` handler** (primary) — fires immediately when model goes idle with pending todos
-2. **`session.status (idle)` in busy→idle transition** (secondary backup) — fires once per transition
+Nudge is scheduled **only** from `session.idle` event to avoid cancel-schedule-cancel race with `session.status(idle)`. The `session.status(idle)` handler schedules opportunistic compaction only — nudge is left to `session.idle`.
 
-Both paths check `nudgeCooldownMs` before sending.
+### Cached Todos (Primary Source)
+
+The nudge uses `s.lastKnownTodos` from `todo.updated` events as its primary data source. The `session.todo()` API is unreliable — it returns empty arrays even when todos exist. Only falls back to API when cache is empty.
 
 ### sendNudge() Guard Checks (in order)
 
@@ -479,6 +409,7 @@ stall timer fires → recover(sid)
   ├─ Poll session.status() until idle
   ├─ Wait waitAfterAbortMs (5000ms default)
   ├─ Check hallucination loop (3+ continues in 10min → abort+resume)
+  ├─ Inject recovery context (last file/tool/plan before abort)
   ├─ session.promptAsync() with continue message
   └─ Set needsContinue = false, record recovery stats
 ```
@@ -507,9 +438,21 @@ stall timer fires → recover(sid)
 - 3rd: 60s cooldown
 - Beyond maxRecoveries: exponential backoff up to `maxBackoffMs: 1800000` (30min)
 
-## Token Estimation
+## Token Estimation (v7.8.1602+)
 
-Three actual data sources (in order of accuracy):
+### Primary: SQLite Real Token Counts
+
+The plugin reads actual token counts from OpenCode's SQLite database via `src/tokens.ts`:
+
+- `getSessionTokens(sessionId)` queries `session` table: `tokens_input`, `tokens_output`, `tokens_reasoning`
+- `getTokenCount(s)` helper: prefers `realTokens` > `estimatedTokens` (graceful fallback)
+- `refreshRealTokens(sid)` called before every compaction decision
+- Platform-aware path: `~/.local/share/opencode/opencode.db` (Linux), `~/Library/Application Support/opencode/opencode.db` (Mac)
+- Uses `node:sqlite` (built-in, zero dependencies)
+
+### Fallback: Event-Based Estimation (When DB Unavailable)
+
+Three data sources (in order of accuracy):
 
 1. **Error messages** (`session.error`) — exact counts from "You requested a total of 264230 tokens: 232230 input, 32000 output"
 2. **step-finish parts** (`message.part.updated`) — `{ input, output, reasoning, cache }` per completion
@@ -645,9 +588,6 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | Tool-text recovery | Catches XML-in-reasoning stalls | 18 regex patterns may have false positives |
 | Hallucination loop break | Prevents infinite loops | 3-in-10min threshold may catch legitimate rapid continues |
 | Prompt guard | Prevents duplicate injections | Extra API call per prompt (~50-200ms) |
-| AI advisory hybrid | AI advises, rules decide — edge cases get smart analysis | Heuristic covers 7 patterns; full AI adds latency/cost |
-| Advisory fallback chain | AI → heuristic → hardcoded | Graceful degradation at cost of complexity |
-| Read-only advisor | Never aborts or continues directly | Session module retains full control |
 
 ## OpenCode Hooks
 
@@ -722,7 +662,6 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 3. Check `lastNudgeAt` — may be in cooldown
 4. Check `lastUserMessageId` — user engaged recently
 5. Check session status — plugin skips if session is busy/retry
-6. **Check advisory** — if `enableAdvisory: true`, advisor may have recommended skipping the nudge. Check logs for advisory advice.
 
 ### Recovery not triggering
 1. Check `maxRecoveries > 0`

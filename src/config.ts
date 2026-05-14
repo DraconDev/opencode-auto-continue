@@ -15,7 +15,6 @@ export interface PluginConfig {
   abortPollMaxFailures: number;
   debug: boolean;
   maxBackoffMs: number;
-  maxAutoSubmits: number;
   continueMessage: string;
   continueWithTodosMessage: string;
   maxAttemptsMessage: string;
@@ -109,7 +108,6 @@ export const DEFAULT_CONFIG: PluginConfig = {
   abortPollMaxFailures: 3,
   debug: false,
   maxBackoffMs: 1800000,
-  maxAutoSubmits: 3,
   shortContinueMessage: "Continue. Create todos for any untracked work before starting it.",
   continueWithPlanMessage: "You were creating a plan. Finish the plan, **create todos for each planned item**, then start executing the first one. Do not stop to ask for confirmation.",
   continueMessage: "Continue from where you left off. Do not ask for permission — just proceed with the next step. If you discover new work, create a todo for it before starting.",
@@ -121,10 +119,10 @@ export const DEFAULT_CONFIG: PluginConfig = {
   reviewDebounceMs: 500,
   showToasts: true,
   nudgeEnabled: true,
-  nudgeIdleDelayMs: 500,
-  nudgeMaxSubmits: 3,
-  nudgeMessage: "Continue working on the pending tasks and mark them as completed when done. **You must create todos for any new work you discover before starting it** — including planned work from earlier that isn't tracked yet. Do not ask for permission — act autonomously and keep making progress. Pending tasks: {todoList}.",
-  nudgeCooldownMs: 60000,
+  nudgeIdleDelayMs: 0,
+  nudgeMaxSubmits: 10,
+  nudgeMessage: "You have {pending} unfinished task(s): {todoList}. Continue working on them and mark each as completed when done. **You must create todos for any new work you discover before starting it** — do not do untracked work. Do not ask for permission — act autonomously.",
+  nudgeCooldownMs: 30000,
   tokenLimitPatterns: ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],
   terminalTitleEnabled: true,
   statusFileEnabled: true,
@@ -225,7 +223,6 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.abortPollMaxTimeMs < 0) addError('abortPollMaxTimeMs', `abortPollMaxTimeMs must be >= 0, got ${normalized.abortPollMaxTimeMs}`);
   if (normalized.abortPollMaxFailures <= 0) addError('abortPollMaxFailures', `abortPollMaxFailures must be > 0, got ${normalized.abortPollMaxFailures}`);
   if (normalized.maxBackoffMs < normalized.stallTimeoutMs) addError('maxBackoffMs', `maxBackoffMs (${normalized.maxBackoffMs}) must be >= stallTimeoutMs (${normalized.stallTimeoutMs})`);
-  if (normalized.maxAutoSubmits < 0) addError('maxAutoSubmits', `maxAutoSubmits must be >= 0, got ${normalized.maxAutoSubmits}`);
   if (!normalized.continueMessage || typeof normalized.continueMessage !== 'string') addError('continueMessage', `continueMessage must be a non-empty string`);
   if (!normalized.reviewMessage || typeof normalized.reviewMessage !== 'string') addError('reviewMessage', `reviewMessage must be a non-empty string`);
   if (normalized.reviewDebounceMs < 0) addError('reviewDebounceMs', `reviewDebounceMs must be >= 0, got ${normalized.reviewDebounceMs}`);

@@ -3,7 +3,6 @@ import { flushPromises } from './helpers.js';
 import { createRecoveryModule } from '../recovery.js';
 import type { PluginConfig } from '../config.js';
 import type { SessionState } from '../session-state.js';
-import type { AIAdvisor } from '../ai-advisor.js';
 
 const DEFAULT_CONFIG: PluginConfig = {
   stallTimeoutMs: 5000,
@@ -16,7 +15,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollMaxFailures: 3,
   debug: false,
   maxBackoffMs: 1800000,
-  maxAutoSubmits: 3,
   shortContinueMessage: "Continue.",
   continueWithPlanMessage: "Finish your plan.",
   continueMessage: "Continue working.",
@@ -184,7 +182,7 @@ describe("recovery module unit tests", () => {
     vi.useRealTimers();
   });
 
-  function createModule(config?: Partial<PluginConfig>, aiAdvisor?: AIAdvisor) {
+  function createModule(config?: Partial<PluginConfig>) {
     return createRecoveryModule({
       config: { ...DEFAULT_CONFIG, ...config },
       sessions,
@@ -206,7 +204,6 @@ describe("recovery module unit tests", () => {
       writeStatusFile,
       cancelNudge,
       scheduleRecovery: mockScheduleRecovery,
-      aiAdvisor,
       sendContinue: mockSendContinue,
     });
   }
@@ -486,16 +483,16 @@ describe("recovery module unit tests", () => {
       expect(mockScheduleRecovery).toHaveBeenCalled();
     });
 
-    it("stops when maxAutoSubmits reached", async () => {
+    it("stops when maxRecoveries reached", async () => {
       const now = Date.now();
       mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockResolvedValue({});
       const s = createSession("test", {
         lastProgressAt: now - 30000,
         lastOutputAt: now - 200000,
-        autoSubmitCount: 3,
+        attempts: 3,
       });
-      module = createModule({ maxAutoSubmits: 3, autoCompact: false });
+      module = createModule({ maxRecoveries: 3, autoCompact: false });
       const promise = module.recover("test");
       await settleTimers();
       await promise;

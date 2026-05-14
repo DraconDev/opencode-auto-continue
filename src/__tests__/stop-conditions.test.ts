@@ -14,7 +14,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   abortPollMaxFailures: 3,
   debug: false,
   maxBackoffMs: 1800000,
-  maxAutoSubmits: 3,
   shortContinueMessage: "Continue.",
   continueWithPlanMessage: "Finish plan.",
   continueMessage: "Continue.",

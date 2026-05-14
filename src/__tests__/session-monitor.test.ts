@@ -18,7 +18,6 @@ const mockConfig: PluginConfig = {
   abortPollMaxFailures: 3,
   debug: false,
   maxBackoffMs: 1800000,
-  maxAutoSubmits: 3,
   shortContinueMessage: "Continue.",
   continueWithPlanMessage: "Continue with plan.",
   continueMessage: "Please continue.",

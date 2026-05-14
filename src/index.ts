@@ -25,7 +25,6 @@ import { createStatusFileModule } from "./status-file.js";
 import { createRecoveryModule } from "./recovery.js";
 import { createCompactionModule } from "./compaction.js";
 import { createReviewModule } from "./review.js";
-import { createAIAdvisor } from "./ai-advisor.js";
 import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
 import { getSessionTokens } from "./tokens.js";
@@ -363,6 +362,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastAdvisoryAdvice = null;
       s.stallPatterns = {};
       s.lastPlanItemDescription = "";
+      s.lastFileEdited = "";
+      s.lastToolCall = "";
+      s.lastToolSummary = "";
       s.nudgeFailureCount = 0;
       s.lastNudgeFailureAt = 0;
       s.continueInProgress = false;
@@ -407,7 +409,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   });
 
   const terminal = createTerminalModule({ config, sessions, log, input });
-  const aiAdvisor = createAIAdvisor({ config, log, input });
   const { writeStatusFile, clearPendingWrites } = createStatusFileModule({ config, sessions, log });
 
   const compaction = createCompactionModule({ config, sessions, log, input });
@@ -422,7 +423,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery });
 
-  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, aiAdvisor, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact });
+  const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact });
   recoverFn = recover;
 
   const stopConditions = createStopConditionsModule({ config, sessions, log });
@@ -543,6 +544,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (event?.type === "session.created") {
         log('session.created:', sid);
         getSession(sid);
+        refreshRealTokens(sid);
         sessionMonitor.touchSession(sid);
         writeStatusFile(sid);
         return;
@@ -718,19 +720,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
         }
         // Auto-continue when transitioning busy→idle with pending todos
-        // Nudge is always scheduled on idle — injectNudge fetches todos from API
-        // and decides whether to send based on actual pending count
-        if (status?.type === "idle" && !s.needsContinue && config.nudgeEnabled) {
-          const stop = stopConditions.checkStopConditions(sid);
-          if (stop.shouldStop) {
-            log('[StopConditions] session stopped, skipping nudge:', stop.reason);
-            nudge.cancelNudge(sid);
-          } else {
-            // Opportunistic compaction on idle
-            if (config.opportunisticCompactOnIdle && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
-              compaction.maybeOpportunisticCompact(sid, 'idle').catch((e: unknown) => log('opportunistic compact on idle failed:', e));
-            }
-            nudge.scheduleNudge(sid);
+        // Nudge scheduling is handled ONLY by session.idle event to avoid
+        // cancel-schedule-cancel race with session.status(idle).
+        if (status?.type === "idle" && !s.needsContinue) {
+          // Opportunistic compaction on idle
+          if (config.opportunisticCompactOnIdle && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
+            compaction.maybeOpportunisticCompact(sid, 'idle').catch((e: unknown) => log('opportunistic compact on idle failed:', e));
           }
         }
         // Clear terminal title/progress when session becomes idle
@@ -784,6 +779,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
               // Non-text output also counts
               s.lastOutputLength++;
+              // Reset nudge count on real progress — AI is responding to nudge
+              if (s.nudgeCount > 0) {
+                log('resetting nudge count after real progress:', partType, 'was:', s.nudgeCount);
+                s.nudgeCount = 0;
+              }
               log('output tracked:', partType, 'session:', sid);
             }
             
@@ -805,6 +805,31 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               // FIX 5: Use configurable multiplier instead of hardcoded ×2
               const estimatedTokens = estimateTokens(partText, config.tokenEstimateMultiplier);
               s.estimatedTokens += estimatedTokens;
+            }
+            
+            // Track recovery intent — what was the AI doing before it stalled?
+            if (partType === "tool") {
+              const toolName = part?.name || part?.toolName || "";
+              if (toolName) {
+                s.lastToolCall = toolName;
+                s.lastToolSummary = `ran ${toolName}`;
+              }
+            } else if (partType === "file") {
+              const fileUrl = part?.url || "";
+              if (fileUrl) {
+                s.lastFileEdited = fileUrl;
+                s.lastToolSummary = `edited ${fileUrl.split("/").pop()}`;
+              }
+            } else if (partType === "subtask") {
+              const subtaskName = part?.name || part?.description || part?.prompt || "";
+              if (subtaskName) {
+                s.lastToolSummary = `working on subtask: ${subtaskName.slice(0, 80)}`;
+              }
+            } else if (partType === "step-start") {
+              const stepName = part?.name || "";
+              if (stepName) {
+                s.lastToolSummary = `step: ${stepName.slice(0, 80)}`;
+              }
             }
             // Extract actual tokens from step-finish parts (most accurate source)
             if (partType === "step-finish" && part?.tokens) {
@@ -955,6 +980,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
+        refreshRealTokens(sid);
         compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
           if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
         }).catch((e: unknown) => log('proactive compact check failed:', e));
@@ -1016,6 +1042,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             await review.sendContinue(sid);
          }
          writeStatusFile(sid);
+         refreshRealTokens(sid);
          compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
            if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
          }).catch((e: unknown) => log('proactive compact check failed:', e));

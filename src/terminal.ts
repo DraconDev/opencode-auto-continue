@@ -1,5 +1,5 @@
 import { type PluginConfig } from "./config.js";
-import { type SessionState } from "./session-state.js";
+import { type SessionState, getTokenCount } from "./session-state.js";
 import { formatDuration } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
@@ -32,9 +32,10 @@ export function createTerminalModule(deps: TerminalDeps) {
     let title = `⏱️ ${formatDuration(actionDuration)} | Last: ${formatDuration(progressAgo)} ago`;
 
     const threshold = config.hardCompactAtTokens || config.proactiveCompactAtTokens;
-    if (threshold > 0 && s.estimatedTokens >= threshold * 0.5) {
-      const tok = formatTokenCount(s.estimatedTokens);
-      title = s.estimatedTokens >= threshold
+    const tokenCount = getTokenCount(s);
+    if (threshold > 0 && tokenCount >= threshold * 0.5) {
+      const tok = formatTokenCount(tokenCount);
+      title = tokenCount >= threshold
         ? `⏱️ ${formatDuration(actionDuration)} | ${tok}⚠️ | Last: ${formatDuration(progressAgo)} ago`
         : `⏱️ ${formatDuration(actionDuration)} | ${tok} | Last: ${formatDuration(progressAgo)} ago`;
     }
@@ -115,8 +116,9 @@ export function createTerminalModule(deps: TerminalDeps) {
               result.variables[`afr_progress_${shortSid}`] = formatDuration(progressAgo);
               const threshold = config.hardCompactAtTokens || config.proactiveCompactAtTokens;
               if (threshold > 0) {
-                const pressure = s.estimatedTokens >= threshold ? "high" : s.estimatedTokens >= threshold * 0.5 ? "med" : "low";
-                result.variables[`afr_tokens_${shortSid}`] = `${formatTokenCount(s.estimatedTokens)}/${formatTokenCount(threshold)} ${pressure}`;
+                const tokenCount = getTokenCount(s);
+                const pressure = tokenCount >= threshold ? "high" : tokenCount >= threshold * 0.5 ? "med" : "low";
+                result.variables[`afr_tokens_${shortSid}`] = `${formatTokenCount(tokenCount)}/${formatTokenCount(threshold)} ${pressure}`;
               }
             }
           });

@@ -2,6 +2,7 @@ import { existsSync, writeFileSync, renameSync, mkdirSync, readFileSync } from "
 import { join } from "path";
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
+import { getTokenCount } from "./session-state.js";
 import { formatDuration, getCompactionThreshold } from "./shared.js";
 
 export interface StatusFileDeps {
@@ -149,9 +150,11 @@ export function createStatusFileModule(deps: StatusFileDeps) {
               lastCompactAt: s.lastCompactionAt > 0 ? new Date(s.lastCompactionAt).toISOString() : null,
               lastHardCompactAt: s.lastHardCompactionAt > 0 ? new Date(s.lastHardCompactionAt).toISOString() : null,
               estimatedTokens: s.estimatedTokens,
+              realTokens: s.realTokens,
+              effectiveTokens: getTokenCount(s),
               threshold: getCompactionThreshold(config),
               tokenPressure: config.hardCompactAtTokens > 0
-                ? (s.estimatedTokens >= config.hardCompactAtTokens ? "high" : s.estimatedTokens >= config.hardCompactAtTokens * 0.5 ? "med" : "low")
+                ? (getTokenCount(s) >= config.hardCompactAtTokens ? "high" : getTokenCount(s) >= config.hardCompactAtTokens * 0.5 ? "med" : "low")
                 : "unknown",
             },
             timer: {
