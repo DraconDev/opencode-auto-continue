@@ -194,7 +194,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   idleCleanup: true,
 
   // Question auto-answer
-  autoAnswerQuestions: true,
+  autoAnswerQuestions: false,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {

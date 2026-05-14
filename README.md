@@ -626,7 +626,7 @@ Minimal configuration with sensible defaults:
       "nudgeMaxSubmits": 10,
       "nudgeCooldownMs": 30000,
       "autoCompact": true,
-      "autoAnswerQuestions": true,
+      "autoAnswerQuestions": false,
       "maxSessionAgeMs": 7200000,
       "proactiveCompactAtTokens": 60000,
       "opportunisticCompactAtTokens": 40000,
@@ -735,7 +735,7 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `autoAnswerQuestions` | `true` | Auto-answer AI multiple-choice questions with first (recommended) option |
+| `autoAnswerQuestions` | `false` | Auto-answer AI multiple-choice questions with first (recommended) option |
 
 When enabled, the plugin intercepts `question.asked` events and replies with the first option automatically. This prevents sessions from stalling when the AI asks follow-up questions. Uses OpenCode SDK internal `_client` property — no public API available in v1.
 

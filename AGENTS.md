@@ -103,7 +103,7 @@ All config options are set in `opencode.json` under the plugin entry:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `autoAnswerQuestions` | boolean | `true` | Auto-answer AI multiple-choice questions with first (recommended) option |
+| `autoAnswerQuestions` | boolean | `false` | Auto-answer AI multiple-choice questions with first (recommended) option |
 
 ### Nudge
 
