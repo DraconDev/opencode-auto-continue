@@ -9,11 +9,18 @@ import type { SessionState } from '../session-state.js';
  * Sets compacting=false and lastCompactionAt, then advances timers
  * for the next poll to detect completion.
  */
-async function simulateCompacted(sessions: Map<string, SessionState>, sid: string): Promise<void> {
+async function simulateCompacted(sessions: Map<string, SessionState>, sid: string, config?: { compactReductionFactor?: number }): Promise<void> {
   const s = sessions.get(sid);
   if (!s) return;
+  // Simulate what session.compacted event handler does:
+  // 1. Clear compacting flag
   s.compacting = false;
+  // 2. Set lastCompactionAt
   s.lastCompactionAt = Date.now();
+  // 3. Reduce estimated tokens by compactReductionFactor
+  if (config?.compactReductionFactor && s.estimatedTokens > 0) {
+    s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
+  }
   await vi.advanceTimersByTimeAsync(1000);
   await flushPromises();
 }
@@ -537,7 +544,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      await simulateCompacted(sessions, "test");
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
 
       const result = await promise;
       expect(result).toBe(true);
@@ -552,7 +559,7 @@ describe("compaction module unit tests", () => {
 
       const promise = module.maybeHardCompact("test");
       await vi.advanceTimersByTimeAsync(1000);
-      await simulateCompacted(sessions, "test");
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
 
       const result = await promise;
       expect(result).toBe(true);
