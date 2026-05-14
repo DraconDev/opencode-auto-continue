@@ -224,7 +224,7 @@ describe("createTestRunner", () => {
     expect(failures).toBe("");
   });
 
-  it("formatResults should show SKIP label for skipped results", async () => {
+  it("formatResults should exclude skipped results entirely", async () => {
     const runner = createTestRunner({
       config: NO_GATE_CONFIG,
       log: MOCK_LOG,
@@ -235,7 +235,56 @@ describe("createTestRunner", () => {
       { command: "cargo test", output: "(Cargo.toml not found in project)", passed: false, timedOut: false, skipped: true },
     ]);
 
-    expect(formatted).toContain("cargo test — SKIP");
+    expect(formatted).toBe("");
+  });
+
+  it("formatResults should exclude skipped but keep real results", async () => {
+    const runner = createTestRunner({
+      config: NO_GATE_CONFIG,
+      log: MOCK_LOG,
+      input: { $: vi.fn() } as any,
+    });
+
+    const formatted = runner.formatResults([
+      { command: "cargo test", output: "(Cargo.toml not found in project)", passed: false, timedOut: false, skipped: true },
+      { command: "pnpm test", output: "all green", passed: true, timedOut: false, skipped: false },
+    ]);
+
+    expect(formatted).toContain("pnpm test — PASS");
+    expect(formatted).not.toContain("cargo test");
+    expect(formatted).not.toContain("SKIP");
+  });
+});
+
+describe("hasRealResults", () => {
+  it("should return false for empty results", () => {
+    expect(hasRealResults([])).toBe(false);
+  });
+
+  it("should return false when all results are skipped", () => {
+    expect(hasRealResults([
+      { command: "cargo test", output: "", passed: false, timedOut: false, skipped: true },
+      { command: "cargo build", output: "", passed: false, timedOut: false, skipped: true },
+    ])).toBe(false);
+  });
+
+  it("should return true when at least one result is not skipped", () => {
+    expect(hasRealResults([
+      { command: "cargo test", output: "", passed: false, timedOut: false, skipped: true },
+      { command: "pnpm test", output: "ok", passed: true, timedOut: false, skipped: false },
+    ])).toBe(true);
+  });
+
+  it("should return true when all results are real", () => {
+    expect(hasRealResults([
+      { command: "pnpm test", output: "ok", passed: true, timedOut: false, skipped: false },
+    ])).toBe(true);
+  });
+
+  it("should return true for real failures", () => {
+    expect(hasRealResults([
+      { command: "pnpm test", output: "fail", passed: false, timedOut: false, skipped: false },
+    ])).toBe(true);
   });
 });
 
