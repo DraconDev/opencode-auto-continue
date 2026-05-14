@@ -60,6 +60,14 @@ export interface PluginConfig {
   opportunisticCompactAfterReview: boolean;
   nudgeCompactThreshold: number;
 
+  // Hard compaction (blocking gate)
+  hardCompactAtTokens: number;
+  hardCompactMaxWaitMs: number;
+  hardCompactBypassCooldown: boolean;
+
+  // Compaction safety timeout
+  compactionSafetyTimeoutMs: number;
+
   // Stop conditions
   stopFilePath: string;
   maxRuntimeMs: number;
@@ -145,6 +153,14 @@ export const DEFAULT_CONFIG: PluginConfig = {
   opportunisticCompactBeforeNudge: true,
   opportunisticCompactAfterReview: true,
   nudgeCompactThreshold: 80000,
+
+  // Hard compaction (blocking gate)
+  hardCompactAtTokens: 100000,
+  hardCompactMaxWaitMs: 30000,
+  hardCompactBypassCooldown: true,
+
+  // Compaction safety timeout
+  compactionSafetyTimeoutMs: 15000,
 
   // Stop conditions
   stopFilePath: "",
@@ -237,6 +253,9 @@ export function validateConfig(config: PluginConfig): PluginConfig {
 
   if (normalized.opportunisticCompactAtTokens < 0) addError('opportunisticCompactAtTokens', `opportunisticCompactAtTokens must be >= 0, got ${normalized.opportunisticCompactAtTokens}`);
   if (normalized.nudgeCompactThreshold < 0) addError('nudgeCompactThreshold', `nudgeCompactThreshold must be >= 0, got ${normalized.nudgeCompactThreshold}`);
+  if (normalized.hardCompactAtTokens < 0) addError('hardCompactAtTokens', `hardCompactAtTokens must be >= 0, got ${normalized.hardCompactAtTokens}`);
+  if (normalized.hardCompactMaxWaitMs < 0) addError('hardCompactMaxWaitMs', `hardCompactMaxWaitMs must be >= 0, got ${normalized.hardCompactMaxWaitMs}`);
+  if (normalized.compactionSafetyTimeoutMs < 0) addError('compactionSafetyTimeoutMs', `compactionSafetyTimeoutMs must be >= 0, got ${normalized.compactionSafetyTimeoutMs}`);
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (errors.length > 0) {
