@@ -411,6 +411,9 @@ These fields distinguish real progress from `session.status(busy)` pings. Recove
 13. **Continue retry limit** — max 3 retries with 5s backoff prevents infinite idle-event loops
 14. **Nudge failure backoff** — exponential backoff prevents tight nudge loops on API errors
 15. **Review reset** — `reviewFired` resets when new pending todos appear, enabling test-fix loops
+16. **Hard compaction gate** — recovery/nudge/continue all `await maybeHardCompact()` when tokens exceed `hardCompactAtTokens`
+17. **Compaction safety timeout** — `compactionSafetyTimeoutMs` force-clears stuck `compacting` flag if `session.summarize()` hangs
+18. **Emergency failure recovery** — emergency compaction failure schedules recovery with backoff instead of abandoning session
 
 ## Nudge Architecture
 
