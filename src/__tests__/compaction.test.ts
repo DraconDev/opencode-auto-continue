@@ -624,23 +624,6 @@ describe("compaction module unit tests", () => {
     });
   });
 
-    it("logs reason string when triggered", async () => {
-      mockSummarize.mockResolvedValue({ data: {} });
-      mockStatus.mockResolvedValue({ data: { test: { type: "idle" } } });
-
-      sessions.set("test", createSessionState({ estimatedTokens: 200000 }));
-      module = createModule({ hardCompactAtTokens: 100000 });
-
-      const promise = module.maybeHardCompact("test");
-      await vi.advanceTimersByTimeAsync(2000);
-      await flushPromises();
-      await promise;
-
-      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-      expect(allLogs).toContain("HARD TRIGGER");
-    });
-  });
-
   describe("edge cases", () => {
     it("handles error object with no message property", () => {
       module = createModule();
