@@ -488,58 +488,34 @@ Plugin init → sessionMonitor.start()
 | `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
 | `maxSessions` | number | `50` | Max sessions to keep in memory |
 
-### AI Advisory System
+### Session Monitor
 
-The plugin includes an optional advisory layer that analyzes session state before making decisions. **AI advises, hardcoded rules decide** — simple/obvious decisions stay fast, edge cases get analysis.
+A passive monitoring layer that watches for session lifecycle issues the event system might miss.
 
 ```
-[Session event triggers recovery/nudge]
-        │
-        ▼
-Check: enableAdvisory && shouldUseAI()?
-        │
-        ├──YES──► AI advisor analyzes session context
-        │            │
-        │            ├── AI available? ──► Call real AI (OpenAI-compatible)
-        │            │                        │
-        │            │                        └── Analyze prompt response
-        │            │
-        │            └── AI unavailable? ──► Run heuristic pattern analysis
-        │                                      │
-        │                                      ├── New session (<30s) ──► wait
-        │                                      ├── Repeated same-type stall ──► abort
-        │                                      ├── Mixed patterns ──► wait
-        │                                      ├── Long planning (>60s) ──► abort
-        │                                      ├── High tokens + todos ──► continue
-        │                                      ├── High tokens, no todos ──► compact
-        │                                      └── Stalled with pending todos ──► continue
-        │
-        └──NO──► Use hardcoded rules (fast path)
+[All sessions tracked in sessions Map]
+         │
+         ├── 5s timer ──► checkOrphanParents()
+         │                    │
+         │                    └── busyCount >1 → 1? ──► Wait 15s ──► recover parent
+         │
+         ├── 60s timer ──► discoverSessions()
+         │                    │
+         │                    └── session.list() shows unknown busy session? ──► create minimal state
+         │
+         └── 30s timer ──► cleanupIdleSessions()
+                              │
+                              └── idle > 10min OR count > 50? ──► remove oldest idle
+
+[Integration]
+• touchSession() called on: session.created, session.status(busy/retry), message.part.updated(real progress)
+• Orphan detection calls recovery.ts when parent stuck
+• State shares the same sessions Map with all other modules
 ```
 
-**7 Heuristic Patterns** (no AI call needed):
+**Why timers instead of events?** Orphan detection requires watching busyCount _over time_ — a single event can't detect "was >1 now =1". Session discovery catches sessions the event system missed (plugin loaded mid-session, events dropped). Idle cleanup prevents memory leaks in long-running instances.
 
-| Pattern | Condition | Advice |
-|---------|-----------|--------|
-| New session | Elapsed time < 30s | `wait` — give it time |
-| Repeated stall | Same part type as last stall | `abort` — stuck in loop |
-| Mixed patterns | Different part types before stall | `wait` — making progress |
-| Long planning | Planning > 60s | `abort` — stuck planning |
-| High tokens + todos | Tokens > 80% of limit + pending todos | `continue` — push forward |
-| High tokens, no todos | Tokens > 80% of limit, all done | `compact` — wrap up cleanup |
-| Stalled with todos | Session stalled + open todos | `continue` — keep working |
-
-**AI Call** (when configured):
-1. Extract context: last 3 messages, stall time, todos, token estimate, recovery attempts
-2. Send to configured AI model via OpenAI-compatible API
-3. Parse response for `@{action}:confidence` format
-4. Fall back to heuristics if AI fails or times out
-
-**Integration points:**
-- **Recovery**: Before final abort attempt, advisor analyzes stall pattern. May suggest wait instead of abort.
-- **Nudge**: Advisor analyzes if nudging is appropriate. Skips nudge if advice is `wait` (≥0.7 confidence) or `abort` (≥0.6 confidence).
-
-The plugin handles **proactive compaction** at 60k tokens, **opportunistic** at 40k, **hard** at 80k, and **emergency compaction** on token limit errors, providing comprehensive context management without requiring external plugins.
+The plugin handles **4-layer compaction**: opportunistic at 40k, proactive at 60k, hard at 80k, and emergency on token limit errors, providing comprehensive context management without requiring external plugins.
 
 ## Installation
 
@@ -709,10 +685,10 @@ Minimal configuration with sensible defaults:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `nudgeEnabled` | `true` | Send continue prompts for incomplete todos |
-| `nudgeIdleDelayMs` | `500` | Delay after session.idle before sending nudge |
-| `nudgeMessage` | `"The session has {pending}..."` | Nudge message telling agent to continue |
-| `nudgeCooldownMs` | `60000` | Min time between nudges (1 min) |
-| `nudgeMaxSubmits` | `3` | Max nudges before loop protection pauses |
+| `nudgeIdleDelayMs` | `0` | Delay after session.idle before sending nudge |
+| `nudgeMessage` | `"..."` | Nudge message telling agent to continue |
+| `nudgeCooldownMs` | `30000` | Min time between nudges (30s) |
+| `nudgeMaxSubmits` | `10` | Max nudges before loop protection pauses |
 
 ### Compaction Options
 
@@ -754,19 +730,13 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 | `recoveryHistogramEnabled` | `true` | Track recovery time histogram (min/max/median) |
 | `stallPatternDetection` | `true` | Track which part types cause stalls |
 
-### AI Advisory Options
+### Question Auto-Answer Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `enableAdvisory` | `false` | Enable AI/heuristic session analysis |
-| `advisoryModel` | `""` | AI model for advisory calls (e.g. `"gemma-4-31b-it"`) |
-| `advisoryTimeoutMs` | `5000` | Max wait for AI advisory response |
-| `advisoryMaxTokens` | `500` | Max tokens in AI advisory response |
-| `advisoryTemperature` | `0.1` | Temperature for AI advisory calls (low = deterministic) |
+| `autoAnswerQuestions` | `true` | Auto-answer AI multiple-choice questions with first (recommended) option |
 
-**AI provider**: Reads `baseURL` and `apiKey` from your model config in `opencode.json`. Uses OpenAI-compatible chat completions endpoint.
-
-**When AI is not configured** (`enableAdvisory: false` or `advisoryModel: ""`), the advisor still runs heuristic pattern analysis. Setting `enableAdvisory: true` with a valid `advisoryModel` enables real AI calls as the primary advisor, with heuristics as fallback.
+When enabled, the plugin intercepts `question.asked` events and replies with the first option automatically. This prevents sessions from stalling when the AI asks follow-up questions. Uses OpenCode SDK internal `_client` property — no public API available in v1.
 
 ### Other Options
 
