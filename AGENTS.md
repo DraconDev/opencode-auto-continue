@@ -439,7 +439,15 @@ if (!s.hasOpenTodos) return;       // No pending todos
 
 ### Nudge Message
 
-Default: `"The session has {pending} open task(s) that still need to be completed: {todoList}. Please continue working on these tasks."`
+Default: `"Continue working on the pending tasks and mark them as completed when done. **You must create todos for any new work you discover before starting it** — including planned work from earlier that isn't tracked yet. Do not ask for permission — act autonomously and keep making progress. Pending tasks: {todoList}."`
+
+**All directive messages** (continue, continueWithTodos, review, nudge, continueWithPlan, shortContinue) now use imperative tone with explicit todo-creation mandates:
+- `continueMessage`: "If you discover new work, create a todo for it before starting."
+- `continueWithTodosMessage`: "**You must create todos for any new work you discover before starting it** — do not do untracked work."
+- `reviewMessage`: "**Create fix todos for any bugs or failures you find before attempting fixes.** If you have planned work that isn't tracked yet, **create todos for it now** and then work through them."
+- `nudgeMessage`: "**You must create todos for any new work you discover before starting it**"
+- `continueWithPlanMessage`: "**create todos for each planned item**, then start executing"
+- `shortContinueMessage`: "Create todos for any untracked work before starting it."
 
 Template variables:
 - `{pending}` — count of in_progress + pending todos
