@@ -168,14 +168,14 @@ describe("createTestRunner", () => {
     expect(formatted).toContain("build failed");
   });
 
-  it("formatResults should return placeholder for empty array", async () => {
+  it("formatResults should return empty string for empty array", async () => {
     const runner = createTestRunner({
       config: NO_GATE_CONFIG,
       log: MOCK_LOG,
       input: { $: vi.fn() } as any,
     });
 
-    expect(runner.formatResults([])).toBe("(no test output)");
+    expect(runner.formatResults([])).toBe("");
   });
 
   it("formatFailures should only show failed non-skipped results", async () => {
