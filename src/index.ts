@@ -929,6 +929,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.compacting) {
           log('activity after compaction, clearing compacting flag');
           s.compacting = false;
+          s.hardCompactionInProgress = false;
+          if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         }
         clearTimer(sid);
         if (!s.planning && !s.compacting) {
