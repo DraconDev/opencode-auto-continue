@@ -1,6 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 import { existsSync, readFileSync, statSync } from "fs";
-import { join } from "path";
 
 export type TypedPluginInput = PluginInput;
 

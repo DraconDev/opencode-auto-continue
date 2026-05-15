@@ -5,10 +5,8 @@ import type { TypedPluginInput } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
 import { type SessionState, createSession, getTokenCount } from "./session-state.js";
 import {
-  PLAN_PATTERNS,
   isPlanContent,
   estimateTokens,
-  formatDuration,
   parseTokensFromError,
   updateProgress,
   formatMessage,

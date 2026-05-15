@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import type { PluginConfig } from "./config.js";
 import type { SessionState, Todo } from "./session-state.js";
 
