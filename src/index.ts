@@ -6,6 +6,7 @@ import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
 import { type SessionState, createSession, getTokenCount } from "./session-state.js";
 import {
   isPlanContent,
+  containsToolCallAsText,
   estimateTokens,
   parseTokensFromError,
   updateProgress,
@@ -378,6 +379,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastContinueAt = 0;
       s.lastOutputAt = Date.now();
       s.lastOutputLength = 0;
+      s.lastToolExecutionAt = Date.now();
+      s.toolRepeatCount = 0;
+      s.lastToolName = '';
       s.statusHistory = [];
     }
     sessions.delete(id);
@@ -767,15 +771,31 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           const isRealProgress = partType === "text" || partType === "step-finish" || partType === "reasoning" || partType === "tool" || partType === "step-start" || partType === "subtask" || partType === "file";
           log('message.part.updated:', partType, isRealProgress ? '(progress)' : '(ignored)');
           if (isRealProgress) {
-            updateProgress(s);
-            sessionMonitor.touchSession(sid);
-            s.attempts = 0;
-            s.userCancelled = false;
+            // Detect tool-call-as-text: if text/reasoning contains XML tool call patterns,
+            // do NOT reset progress tracking — this is stuck toolcalling, not real progress.
+            let isToolCallAsText = false;
+            if (partType === "text" || partType === "reasoning") {
+              const partText = e?.properties?.part?.text || "";
+              if (containsToolCallAsText(partText)) {
+                isToolCallAsText = true;
+                log('tool-call-as-text detected in', partType, 'part — NOT resetting progress, session:', sid);
+              }
+            }
+
+            if (!isToolCallAsText) {
+              updateProgress(s);
+              sessionMonitor.touchSession(sid);
+              s.attempts = 0;
+              s.userCancelled = false;
+            }
             // Track part type for stall pattern detection
             s.lastStallPartType = partType || "unknown";
             
             // Track actual output for busy-but-dead detection
-            s.lastOutputAt = Date.now();
+            // Tool-call-as-text does NOT count as real output — session is stuck
+            if (!isToolCallAsText) {
+              s.lastOutputAt = Date.now();
+            }
             
             // Track text content length to detect even small changes
             if (partType === "text" || partType === "reasoning") {
@@ -787,6 +807,24 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             } else if (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish") {
               // Non-text output also counts
               s.lastOutputLength++;
+              s.lastToolExecutionAt = Date.now();
+              // Track tool loop: if same tool called repeatedly, increment counter
+              if (partType === "tool") {
+                const toolName = part?.name || part?.toolName || "";
+                if (toolName === s.lastToolName && toolName) {
+                  s.toolRepeatCount++;
+                  if (s.toolRepeatCount >= config.toolLoopMaxRepeats) {
+                    log('tool loop detected:', toolName, 'called', s.toolRepeatCount, 'times, session:', sid);
+                  }
+                } else {
+                  s.toolRepeatCount = 1;
+                  s.lastToolName = toolName;
+                }
+              } else {
+                // Non-tool progress resets tool loop counter
+                s.toolRepeatCount = 0;
+                s.lastToolName = '';
+              }
               // Reset nudge count on real progress — AI is responding to nudge
               if (s.nudgeCount > 0) {
                 log('resetting nudge count after real progress:', partType, 'was:', s.nudgeCount);

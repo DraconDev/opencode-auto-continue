@@ -305,6 +305,9 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   // New config options validation
   if (normalized.planningTimeoutMs < 0) addError('planningTimeoutMs', `planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
   if (normalized.busyStallTimeoutMs < 0) addError('busyStallTimeoutMs', `busyStallTimeoutMs must be >= 0, got ${normalized.busyStallTimeoutMs}`);
+  if (normalized.textOnlyStallTimeoutMs < 0) addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs must be >= 0, got ${normalized.textOnlyStallTimeoutMs}`);
+  if (normalized.toolLoopMaxRepeats < 2) addError('toolLoopMaxRepeats', `toolLoopMaxRepeats must be >= 2, got ${normalized.toolLoopMaxRepeats}`);
+  if (normalized.toolLoopWindowMs < 0) addError('toolLoopWindowMs', `toolLoopWindowMs must be >= 0, got ${normalized.toolLoopWindowMs}`);
   if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) addError('tokenEstimateMultiplier', `tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);
   if (normalized.nudgeIdleDelayMs < 0) addError('nudgeIdleDelayMs', `nudgeIdleDelayMs must be >= 0, got ${normalized.nudgeIdleDelayMs}`);
   if (normalized.nudgeMaxSubmits < 0) addError('nudgeMaxSubmits', `nudgeMaxSubmits must be >= 0, got ${normalized.nudgeMaxSubmits}`);
