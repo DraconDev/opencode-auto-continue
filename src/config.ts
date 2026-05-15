@@ -103,6 +103,9 @@ export interface PluginConfig {
   // Question auto-answer
   autoAnswerQuestions: boolean;
 
+  // Todo polling (workaround for missing todo.updated events in plugin API)
+  todoPollIntervalMs: number;
+
   // Test-Driven Quality Gate
   testOnIdle: boolean;
   testCommands: string[];

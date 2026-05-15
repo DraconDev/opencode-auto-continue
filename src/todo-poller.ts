@@ -1,5 +1,6 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState, Todo } from "./session-state.js";
+import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface TodoPollerDeps {
@@ -28,7 +29,6 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     const allCompleted = todos.length > 0 && todos.every((t) => t.status === "completed" || t.status === "cancelled");
 
     const prevHasOpenTodos = s.hasOpenTodos;
-    const prevLastKnownTodos = s.lastKnownTodos;
 
     s.hasOpenTodos = hasPending;
     s.lastKnownTodos = todos;
@@ -44,7 +44,6 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
       log("todo poll detected all completed, triggering review:", sessionId);
       if (config.opportunisticCompactAfterReview && deps.maybeOpportunisticCompact) {
-        const { getTokenCount } = require("./session-state.js");
         if (getTokenCount(s) >= config.opportunisticCompactAtTokens) {
           deps.maybeOpportunisticCompact(sessionId, "post-review").catch((e: unknown) => log("opportunistic compact post-review failed:", e));
         }
