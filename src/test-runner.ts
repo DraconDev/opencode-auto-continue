@@ -226,4 +226,4 @@ export function createTestRunner(deps: TestRunnerDeps) {
 export type TestRunner = ReturnType<typeof createTestRunner>;
 
 // Export for testing
-export { findGateFile, isEnvError, hasRealResults };
+export { findGateFile, isEnvError, isLockContention, hasRealResults };

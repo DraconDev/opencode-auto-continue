@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTestRunner, findGateFile, isEnvError, hasRealResults } from "../test-runner.js";
+import { createTestRunner, findGateFile, isEnvError, isLockContention, hasRealResults } from "../test-runner.js";
 import type { PluginConfig } from "../config.js";
 
 const NO_GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCommandTimeoutMs" | "testCommandGates"> = {
@@ -602,5 +602,109 @@ describe("gate-based skipping", () => {
     expect(results).toHaveLength(1);
     expect(results[0].skipped).toBe(false);
     expect(results[0].passed).toBe(false);
+  });
+});
+
+describe("lock contention detection", () => {
+  it("should detect 'Blocking waiting for file lock on package cache'", () => {
+    expect(isLockContention("Blocking waiting for file lock on package cache")).toBe(true);
+  });
+
+  it("should detect 'blocking waiting for file lock' (case insensitive)", () => {
+    expect(isLockContention("blocking waiting for file lock on package cache")).toBe(true);
+  });
+
+  it("should detect 'unable to acquire lock'", () => {
+    expect(isLockContention("error: unable to acquire lock on /home/user/.cargo/...")).toBe(true);
+  });
+
+  it("should detect 'lock file already locked'", () => {
+    expect(isLockContention("error: lock file already locked: /path/to/lockfile")).toBe(true);
+  });
+
+  it("should detect 'another process holds the lock'", () => {
+    expect(isLockContention("fatal: another process holds the lock")).toBe(true);
+  });
+
+  it("should NOT detect normal test output as lock contention", () => {
+    expect(isLockContention("test foo::bar ... ok")).toBe(false);
+  });
+
+  it("should NOT detect build errors as lock contention", () => {
+    expect(isLockContention("error[E0277]: the trait bound is not satisfied")).toBe(false);
+  });
+
+  it("should retroactively skip on lock contention output", async () => {
+    const mockShell = makeFailureShell("Blocking waiting for file lock on package cache\nerror: could not acquire lock", 1);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommandGates: {} },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(true);
+    expect(results[0].passed).toBe(false);
+    expect(results[0].output).toContain("lock contention");
+  });
+
+  it("should skip on lock contention in catch block", async () => {
+    const mockShell = vi.fn(() => {
+      throw Object.assign(new Error("Blocking waiting for file lock on package cache"), {
+        stdout: "",
+        stderr: "Blocking waiting for file lock on package cache",
+      });
+    });
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommandGates: {} },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(true);
+    expect(results[0].output).toContain("lock contention");
+  });
+
+  it("should not skip on real cargo test failure even with cargo in output", async () => {
+    const mockShell = makeFailureShell("test foo::bar ... FAILED\nfailures:\n  foo::bar", 1);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommandGates: {} },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(false);
+    expect(results[0].passed).toBe(false);
+  });
+
+  it("lock contention results should be excluded from formatResults (zero test noise)", async () => {
+    const runner = createTestRunner({
+      config: NO_GATE_CONFIG,
+      log: MOCK_LOG,
+      input: { $: vi.fn() } as any,
+    });
+
+    const formatted = runner.formatResults([
+      { command: "cargo test", output: "(lock contention — another process holds the build lock)", passed: false, timedOut: false, skipped: true },
+    ]);
+    expect(formatted).toBe("");
+  });
+
+  it("lock contention results should be excluded from formatFailures", async () => {
+    const runner = createTestRunner({
+      config: NO_GATE_CONFIG,
+      log: MOCK_LOG,
+      input: { $: vi.fn() } as any,
+    });
+
+    const failures = runner.formatFailures([
+      { command: "cargo test", output: "(lock contention — another process holds the build lock)", passed: false, timedOut: false, skipped: true },
+    ]);
+    expect(failures).toBe("");
   });
 });
