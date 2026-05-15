@@ -1549,6 +1549,7 @@ describe("opencode-auto-continue", () => {
         terminalTitleEnabled: false,
         terminalProgressEnabled: false,
         statusFilePath: "",
+        dangerousCommandInjection: false,
       } as any);
       await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
 

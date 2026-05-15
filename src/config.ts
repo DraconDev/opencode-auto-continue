@@ -124,6 +124,10 @@ export interface PluginConfig {
   testCommandTimeoutMs: number;
   testCommandGates: Record<string, string>;
   reviewWithoutTestsMessage: string;
+
+  // Dangerous command blocking — Layer 1 (proactive injection) + Layer 2 (post-execution detection)
+  dangerousCommandBlocking: boolean;
+  dangerousCommandInjection: boolean;
 }
 
 export const DEFAULT_CONFIG: PluginConfig = {
@@ -267,6 +271,10 @@ export const DEFAULT_CONFIG: PluginConfig = {
     gradle: "build.gradle",
     mvn: "pom.xml",
   },
+
+  // Dangerous command blocking
+  dangerousCommandBlocking: true,
+  dangerousCommandInjection: true,
 };
 
 export function validateConfig(config: PluginConfig): PluginConfig {

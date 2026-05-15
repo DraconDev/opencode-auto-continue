@@ -29,6 +29,7 @@ import { createStopConditionsModule } from "./stop-conditions.js";
 import { createTestRunner } from "./test-runner.js";
 import { createTodoPoller } from "./todo-poller.js";
 import { getSessionTokens, getDbLastError } from "./tokens.js";
+import { containsDangerousCommand, formatDangerousBlocklist, DANGEROUS_COMMAND_WARNING } from "./dangerous-commands.js";
 
 import type { Todo } from "./session-state.js";
 
@@ -568,6 +569,22 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         getSession(sid);
         refreshRealTokens(sid);
         sessionMonitor.touchSession(sid);
+
+        // Layer 1: Proactive injection of dangerous command blocklist
+        if (config.dangerousCommandBlocking && config.dangerousCommandInjection) {
+          input.client.session.prompt({
+            path: { id: sid },
+            query: { directory: input.directory || "" },
+            body: {
+              parts: [{
+                type: "text",
+                text: `## ⚠️ Dangerous Commands Policy\n\nThe following commands are blocked by policy and must never be used:\n\n${formatDangerousBlocklist()}\n\nIf you need one of these for a legitimate reason, explain why and it can be approved manually.`,
+                synthetic: true,
+              }],
+            },
+          }).catch((e: any) => log('dangerous command injection failed:', e));
+        }
+
         writeStatusFile(sid);
         return;
       }
@@ -875,6 +892,29 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 } else {
                   s.toolRepeatCount = 1;
                   s.lastToolName = toolName;
+                }
+
+                // Layer 2: Dangerous command detection — fire-and-forget abort
+                if (config.dangerousCommandBlocking && (toolName === "bash" || toolName === "shell" || toolName === "execute")) {
+                  const cmdText = JSON.stringify(e?.properties?.part?.input || e?.properties?.part) || "";
+                  if (containsDangerousCommand(cmdText)) {
+                    log('DANGEROUS COMMAND BLOCKED — aborting session:', sid, 'tool:', toolName);
+                    input.client.session.abort({
+                      path: { id: sid },
+                      query: { directory: input.directory || "" },
+                    }).catch((ae: any) => log('dangerous command abort failed:', ae));
+                    input.client.session.prompt({
+                      path: { id: sid },
+                      query: { directory: input.directory || "" },
+                      body: {
+                        parts: [{
+                          type: "text",
+                          text: `The previous command was blocked by the dangerous command policy. Do not attempt to run it again.`,
+                          synthetic: true,
+                        }],
+                      },
+                    }).catch((pe: any) => log('dangerous command prompt failed:', pe));
+                  }
                 }
               } else {
                 // Non-tool progress resets tool loop counter
