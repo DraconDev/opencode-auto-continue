@@ -614,7 +614,7 @@ Fires at `opportunisticCompactAtTokens` (default: 60,000) at lifecycle points wh
 - **Pre-nudge** (`opportunisticCompactBeforeNudge`): Before nudge fires (uses `nudgeCompactThreshold` = 80k)
 - **Post-review** (`opportunisticCompactAfterReview`): After review completes
 
-**Guards**: Not compacting, not planning, not stoppedByCondition, cooldown elapsed.
+**Guards**: Not compacting, not planning, not stoppedByCondition, cooldown elapsed, failure backoff elapsed.
 
 ### Proactive Compaction
 
