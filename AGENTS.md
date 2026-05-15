@@ -272,46 +272,20 @@ When a subagent finishes but the parent session stays stuck as "busy" forever:
 - If parent still busy → triggers recovery (abort + continue)
 - Prevents the "stuck parent after subagent" failure mode
 
-#### 2. Session Discovery
-Event hooks can miss sessions in edge cases (plugin loaded mid-session, SDK events dropped):
-- Periodic `session.list()` polling every `sessionDiscoveryIntervalMs` (60s)
-- Creates minimal `SessionState` for any untracked busy sessions
-- Integrates seamlessly with existing recovery/nudge timers
-- Does not interfere with sessions already being tracked
-
-#### 3. Idle Session Cleanup
-Prevents memory leaks in long-running OpenCode instances:
-- Removes sessions idle > `idleCleanupMs` (10min default)
-- Enforces `maxSessions` limit (50 default) — removes oldest idle first
-- Timer-based, not event-driven (runs every 30s)
-- Safe: only cleans sessions with no pending timers or operations
-
 ### Architecture
 
 ```
 Plugin init → sessionMonitor.start()
                     │
-                    ├── 5s timer ──► checkOrphanParents()
-                    │                    │
-                    │                    └── busyCount drop?
-                    │                        ├── YES ──► wait 15s ──► recover parent
-                    │                        └── NO  ──► do nothing
-                    │
-                    ├── 60s timer ──► discoverSessions()
-                    │                    │
-                    │                    └── session.list()
-                    │                        ├── New session ──► create minimal state
-                    │                        └── Known session ──► skip
-                    │
-                    └── 30s timer ──► cleanupIdleSessions()
+                    └── 5s timer ──► checkOrphanParents()
                                          │
-                                         └── idle > 10min OR count > 50?
-                                             ├── YES ──► remove session
-                                             └── NO  ──► keep
+                                         └── busyCount drop?
+                                             ├── YES ──► wait 15s ──► recover parent
+                                             └── NO  ──► do nothing
 
 Events ──► sessionMonitor.touchSession(id)
               │
-              └── updates lastActivityAt
+              └── updates lastProgressAt
 ```
 
 ### Integration Points
@@ -326,27 +300,20 @@ Events ──► sessionMonitor.touchSession(id)
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
-| `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
-| `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
-| `maxSessions` | number | `50` | Max sessions to keep in memory |
 
 ### When It Fires
 
 | Scenario | Detection | Action |
 |----------|-----------|--------|
 | Subagent completes, parent stuck | busyCount >1 → 1 | Wait 15s, then recover parent |
-| Plugin loaded mid-session | session.list() shows unknown busy session | Create minimal SessionState |
-| Session idle for hours | cleanup timer | Remove from `sessions` Map |
-| Too many sessions tracked | >50 sessions | Remove oldest idle sessions |
 
 ### Trade-offs
 
 | Decision | Rationale | Trade-off |
 |----------|-----------|-----------|
-| Timer-based monitoring | Orphan detection requires watching busyCount over time | Adds ~3 timers (5s, 30s, 60s) |
-| Minimal session creation | Discovered sessions don't need full init | May miss config-dependent behaviors |
+| Timer-based monitoring | Orphan detection requires watching busyCount over time | Adds 1 timer (5s) |
 | Passive layer | Detects but delegates recovery | Keeps separation of concerns |
-| Shared sessions Map | All modules see same state | Must be careful with cleanup timing |
+| Shared sessions Map | All modules see same state | No cleanup — idle sessions stay in Map (harmless) |
 
 ## Session State Machine
 
