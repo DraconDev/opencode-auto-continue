@@ -243,6 +243,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
           // Create minimal session so recovery knows about it
           const state = createSession();
           state.actionStartedAt = Date.now();
+          state.reviewFired = true;
+          state.lastReviewAt = Date.now();
 
           // FIX 10: Only arm recovery on busy/retry status, skip on null/unknown
           if (statusType === "busy" || statusType === "retry") {
