@@ -1098,14 +1098,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
          }).catch((e: unknown) => log('proactive compact check failed:', e));
           return;
         }
-         const stopCheck = stopConditions.checkStopConditions(sid);
-         if (!stopCheck.shouldStop) {
-            if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
-             compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
-           }
-           nudge.scheduleNudge(sid);
-         }
-         writeStatusFile(sid);
+
+         // Poll todos before deciding nudge — plugin event stream may not
+         // have received todo.updated events (confirmed missing in v1.14.51).
+         await todoPoller.pollAndProcess(sid);
+
+          const stopCheck = stopConditions.checkStopConditions(sid);
+          if (!stopCheck.shouldStop) {
+             if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
+              compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
+            }
+            nudge.scheduleNudge(sid);
+          }
+          writeStatusFile(sid);
         return;
       }
 
