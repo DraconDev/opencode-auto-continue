@@ -681,8 +681,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                   input.client.tui.showToast({
                     query: { directory: input.directory || "" },
                     body: {
-                      title: "Session Stuck",
-                      message: `No tool execution for ${Math.round(timeSinceToolExecution / 1000)}s. Text-only stall detected.`,
+                      title: "Text-Only Stall",
+                      message: `No tool execution for ${Math.round(timeSinceToolExecution / 1000)}s — recovering session.`,
                       variant: "warning",
                     },
                   }).catch(() => {});
@@ -867,6 +867,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               if (s.nudgeCount > 0) {
                 log('resetting nudge count after real progress:', partType, 'was:', s.nudgeCount);
                 s.nudgeCount = 0;
+              }
+              // Resume nudging after recovery — if AI is executing tools again,
+              // it's safe to nudge on the next idle cycle
+              if (s.nudgePaused) {
+                log('resuming nudge after post-recovery progress:', partType, 'session:', sid);
+                s.nudgePaused = false;
               }
               log('output tracked:', partType, 'session:', sid);
             }
