@@ -399,7 +399,7 @@ These fields are tracked during `message.part.updated` events and injected as `#
 | `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
 | `message.part.updated` (text with plan) | Set `planning = true`, pause monitoring |
 | `message.part.updated` (tool/file/subtask/step-start/step-finish) | **Clear `s.planning = false`** — model has moved past planning into execution |
-| `todo.updated` (all done) | Trigger review after debounce |
+| `todo.updated` (all done) | Trigger review after debounce (if `reviewCooldownMs` elapsed) |
 | `todo.updated` (has pending) | Set `hasOpenTodos = true`, start nudge timer |
 | `question.asked` | Auto-reply with first option via `POST /question/{requestID}/reply` (gated by `autoAnswerQuestions`). Reset `lastOutputAt`/`lastProgressAt`, cancel nudge. Prevents session from stalling on AI questions. |
 | `session.error` (MessageAbortedError) | Set `userCancelled = true`, clear timer |
