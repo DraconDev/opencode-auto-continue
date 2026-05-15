@@ -60,7 +60,10 @@ export function createCompactionModule(deps: CompactionDeps) {
         query: { directory: input.directory || "" }
       });
 
-      const maxWait = config.compactionVerifyWaitMs;
+      const baseWait = config.compactionVerifyWaitMs;
+      const tokenCount = getTokenCount(sessions.get(sessionId) || s);
+      const scaledWait = tokenCount > 500000 ? baseWait * 3 : tokenCount > 200000 ? baseWait * 2 : baseWait;
+      const maxWait = scaledWait;
       const pollInterval = 1000;
       const deadline = Date.now() + maxWait;
 
@@ -89,7 +92,7 @@ export function createCompactionModule(deps: CompactionDeps) {
         }
       }
 
-      log('compaction timed out after', maxWait, 'ms, session still compacting:', sessionId);
+      log('compaction timed out after', maxWait, 'ms (scaled from', baseWait, 'for', tokenCount, 'tokens), session still compacting:', sessionId);
       if (s) {
         s.compacting = false;
         s.compactionTimedOut = true;
@@ -122,6 +125,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       const success = await attemptCompact(sessionId);
       if (success) {
         s.tokenLimitHits = 0;
+        s.lastCompactionFailedAt = 0;
         return true;
       }
       if (s.compactionTimedOut) {
@@ -270,8 +274,10 @@ export function createCompactionModule(deps: CompactionDeps) {
       if (success) {
         log(`[Compaction] HARD SUCCESS — session ${sessionId} compacted via hard compactor`);
         s.lastHardCompactionAt = Date.now();
+        s.lastCompactionFailedAt = 0;
       } else if (attempted) {
         log(`[Compaction] HARD FAILED — session ${sessionId} hard compaction did not succeed within ${maxWait}ms`);
+        s.lastCompactionFailedAt = Date.now();
       }
     } else {
       log(`[Compaction] HARD SKIP — cooldown active and bypass disabled for session ${sessionId}`);

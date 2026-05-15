@@ -154,6 +154,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,
+    lastCompactionFailedAt: 0,
     proactiveCompactCount: 0,
     hardCompactCount: 0,
     ...overrides,

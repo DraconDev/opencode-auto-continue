@@ -71,6 +71,10 @@ export interface PluginConfig {
   // while DB token counts may still be stale. All layers respect this, including hard.
   compactionGracePeriodMs: number;
 
+  // Compaction failure backoff — after compaction fails (timeout/error), don't retry
+  // for this period. Prevents spam of proactive+hard checks on every message.part.updated.
+  compactionFailBackoffMs: number;
+
   // Stop conditions
   stopFilePath: string;
   maxRuntimeMs: number;
@@ -187,6 +191,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Compaction grace period — all layers skip if lastCompactionAt is within this window
   compactionGracePeriodMs: 10000,
+
+  // Compaction failure backoff — don't retry after failure for 60s (default)
+  compactionFailBackoffMs: 60000,
 
   // Stop conditions
   stopFilePath: "",

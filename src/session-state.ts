@@ -65,6 +65,7 @@ export interface SessionState {
   lastHardCompactionAt: number;
   compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
   compactionTimedOut: boolean;
+  lastCompactionFailedAt: number; // Timestamp of last compaction failure — backoff period
   proactiveCompactCount: number;
   hardCompactCount: number;
 
@@ -171,6 +172,7 @@ export function createSession(): SessionState {
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,
     compactionTimedOut: false,
+    lastCompactionFailedAt: 0,
     proactiveCompactCount: 0,
     hardCompactCount: 0,
 
