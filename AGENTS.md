@@ -628,9 +628,10 @@ When tokens exceed `hardCompactAtTokens` (default: 100k), the hard compactor **b
 
 **Key differences from proactive**:
 - Ignores `autoCompact` flag — always fires when threshold is exceeded
+- **Fires even when session is planning** — at 100k+ tokens, the context danger outweighs any planning concern
 - Bypasses `compactCooldownMs` by default (`hardCompactBypassCooldown: true`)
 - Sets `hardCompactionInProgress` flag to prevent concurrent hard compactions
-- Respects `hardCompactMaxWaitMs` (default 30s) — returns false if exceeded but doesn't strand the session
+- Respects `hardCompactMaxWaitMs` (default 30s, scaled up for massive sessions) — returns false if exceeded but doesn't strand the session
 - Called as gate in: `recover()`, `sendNudge()`, `sendContinue()`
 
 ### Emergency Compaction
