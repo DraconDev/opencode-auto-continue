@@ -2479,6 +2479,7 @@ describe("test-fix loop", () => {
       stallTimeoutMs: 5000,
       reviewOnComplete: true,
       reviewDebounceMs: 300,
+      reviewCooldownMs: 300,
       showToasts: true,
       terminalTitleEnabled: false,
       statusFilePath: "",
@@ -2510,6 +2511,10 @@ describe("test-fix loop", () => {
     expect(reviewCall1[0].body.parts[0].text).toContain("complete");
 
     mockPrompt.mockClear();
+
+    // Advance past review cooldown so reviewFired can be reset
+    await vi.advanceTimersByTimeAsync(350);
+    await flushPromises();
 
     // Add new pending todos — should reset reviewFired, enabling test-fix loop
     await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
