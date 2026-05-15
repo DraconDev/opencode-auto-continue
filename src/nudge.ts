@@ -149,7 +149,8 @@ export function createNudgeModule(deps: NudgeDeps) {
 
     const statusType = await getSessionStatusType(sessionId);
     if (statusType === "busy" || statusType === "retry") {
-      log("nudge skipped - session is not idle", { sessionId, statusType });
+      log("nudge skipped - session is not idle, scheduling retry", { sessionId, statusType });
+      scheduleNudgeRetry(sessionId, knownTodos);
       return;
     }
 
