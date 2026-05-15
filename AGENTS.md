@@ -1,11 +1,16 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1921)
+## Current State (v7.8.1923)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 548/548 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1921`
+**Tests:** 549/549 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1923`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1923 Changes
+- **Shell quiet mode** (`src/test-runner.ts`): BunShell `.quiet()` added to test command execution chain. Previously, `cargo test`/`cargo build` stdout+stderr was piped directly to the TUI by default. Now suppressed — output is captured internally but never displayed.
+  - **Root cause**: BunShell `input.$` writes to process stdout/stderr by default. The `.quiet()` method configures it to only buffer output without echoing to the terminal.
+  - **1 new test**: Verifies `.quiet()` is called on the shell chain.
 
 ### v7.8.1921 Changes
 - **Lock contention skip detection** (`src/test-runner.ts`): Detects "Blocking waiting for file lock on package cache" and similar lock contention messages from Cargo/other build tools. Marks affected test results as **skipped** (not failures) so they don't corrupt AI prompts with false test failures.
