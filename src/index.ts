@@ -442,7 +442,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   recoverFn = recover;
 
   const stopConditions = createStopConditionsModule({ config, sessions, log });
-  const sessionMonitor = createSessionMonitor({ config, sessions, log, input, isDisposed: () => isDisposed, recover, checkStopConditions: stopConditions.checkStopConditions });
+  const sessionMonitor = createSessionMonitor({ config, sessions, log, isDisposed: () => isDisposed, recover, checkStopConditions: stopConditions.checkStopConditions });
   sessionMonitor.start();
 
   terminal.registerStatusLineHook();
