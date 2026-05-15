@@ -156,6 +156,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastHardCompactionAt: 0,
     compactionSafetyTimer: null,
     lastCompactionFailedAt: 0,
+    realTokensBaseline: 0,
     proactiveCompactCount: 0,
     hardCompactCount: 0,
     ...overrides,

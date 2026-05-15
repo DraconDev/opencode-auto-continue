@@ -131,5 +131,37 @@ describe("tokens module", () => {
       const s = createSession();
       expect(getTokenCount(s)).toBe(0);
     });
+
+    it("should subtract realTokensBaseline from realTokens after compaction", () => {
+      const s = createSession();
+      s.realTokens = 29500000;
+      s.realTokensBaseline = 29000000;
+      s.estimatedTokens = 70000;
+      expect(getTokenCount(s)).toBe(500000);
+    });
+
+    it("should fall back to estimatedTokens when baseline equals realTokens", () => {
+      const s = createSession();
+      s.realTokens = 29000000;
+      s.realTokensBaseline = 29000000;
+      s.estimatedTokens = 50000;
+      expect(getTokenCount(s)).toBe(50000);
+    });
+
+    it("should fall back to estimatedTokens when baseline exceeds realTokens", () => {
+      const s = createSession();
+      s.realTokens = 29000000;
+      s.realTokensBaseline = 29500000;
+      s.estimatedTokens = 50000;
+      expect(getTokenCount(s)).toBe(50000);
+    });
+
+    it("should ignore baseline when it is 0", () => {
+      const s = createSession();
+      s.realTokens = 75000;
+      s.realTokensBaseline = 0;
+      s.estimatedTokens = 50000;
+      expect(getTokenCount(s)).toBe(75000);
+    });
   });
 });
