@@ -212,6 +212,11 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Question auto-answer
   autoAnswerQuestions: false,
 
+  // Todo polling — polls session.todo() API because plugin event stream
+  // does not emit todo.updated events (confirmed in OpenCode v1.14.51).
+  // Set to 0 to disable periodic polling (on-idle polling still active).
+  todoPollIntervalMs: 30000,
+
   // Test-Driven Quality Gate
   testOnIdle: true,
   testCommands: ["cargo test"],
