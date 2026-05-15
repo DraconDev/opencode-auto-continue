@@ -3,9 +3,16 @@
 ## Current State (v7.8.1969)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 522/522 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1969`
+**Tests:** 525/525 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1973`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1973 Changes
+- **Nudge paused after recovery fix** (`src/index.ts`): `nudgePaused` is now cleared when the AI resumes tool execution after recovery. Previously, `nudgePaused` was set to `true` when a nudge prompt was aborted (during recovery), but was only cleared by user messages or session reset. This meant that after ANY recovery fired, nudging was permanently disabled for that session until the user manually sent a message.
+  - **Root cause**: `pauseNudge()` called on `MessageAbortedError` (recovery aborts in-flight prompts). `nudgePaused` only cleared in `resetNudge()` (user message) and `resetSession()` (session end). Recovery → abort → nudgePaused=true → AI resumes → goes idle → nudge skipped forever.
+  - **Fix**: In `message.part.updated` handler, when a tool/file/subtask/step part is detected and `s.nudgePaused` is true, clear it. This means the AI has resumed work after recovery and nudging is safe again.
+  - **1 new test**: `plugin.test.ts` — nudge fires after recovery + tool execution clears nudgePaused.
+- **Text-only stall toast improved**: Changed "Session Stuck: No tool execution for Xs. Text-only stall detected." to "Text-Only Stall: No tool execution for Xs — recovering session." Less alarming, more descriptive of what's happening.
 
 ### v7.8.1969 Changes
 - **Nudge retry mechanism** (`src/nudge.ts`, `src/session-state.ts`): When compaction or planning blocks `injectNudge()`, the nudge is now **rescheduled for retry** instead of silently dropped. Retries every 5s, up to 12 times (1 minute), before giving up.

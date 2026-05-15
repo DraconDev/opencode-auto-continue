@@ -1939,6 +1939,47 @@ describe("opencode-auto-continue", () => {
 
       vi.useRealTimers();
     });
+
+    it("should resume nudging after post-recovery tool execution", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockRejectedValueOnce({ name: "MessageAbortedError", message: "User cancelled" });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeCooldownMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "task", status: "in_progress" }] } } });
+
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      // First nudge fires but gets aborted — sets nudgePaused = true
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      // AI resumes work after recovery — tool execution clears nudgePaused
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "tool", name: "read", sessionID: "test", messageID: "msg1" },
+      } } });
+
+      // Session goes idle again — nudge should work because nudgePaused was cleared
+      mockPrompt.mockClear();
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(500);
+
+      expect(mockPrompt).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
   });
 
   describe("maxSessionAgeMs behavior", () => {
