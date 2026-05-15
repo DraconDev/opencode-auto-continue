@@ -1,11 +1,22 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1937)
+## Current State (v7.8.1969)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 549/549 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1937`
+**Tests:** 522/522 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1969`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1969 Changes
+- **Nudge retry mechanism** (`src/nudge.ts`, `src/session-state.ts`): When compaction or planning blocks `injectNudge()`, the nudge is now **rescheduled for retry** instead of silently dropped. Retries every 5s, up to 12 times (1 minute), before giving up.
+  - **Root cause**: `session.status(idle)` fires `opportunisticCompactOnIdle` (tokens ≥ 60k) which sets `s.compacting = true` synchronously. Then `session.idle` fires → schedules nudge → `injectNudge()` checks `s.compacting` → skips with no retry. Nudge is lost until next `session.idle`.
+  - **New SessionState fields**: `nudgeRetryTimer`, `nudgeRetryCount`
+  - **New function**: `scheduleNudgeRetry()` — retries injectNudge every 5s, max 12 retries
+  - **`cancelNudge()`**: Now also cancels `nudgeRetryTimer`
+  - **`resetNudge()`**: Now resets `nudgeRetryCount` to 0
+  - **Toast feedback**: When nudge is deferred due to compaction, shows "Compacting — nudge deferred" toast
+- **Toast feedback for test runner**: Added "Running cargo test..." toasts before `injectNudge()` and `triggerReview()` run tests. Only shown when test commands are actually configured (`testOnIdle && testCommands.length > 0`).
+- **Removed compacting guards from prompt sends**: Removed `if (s.compacting)` guard from `sendContinue()` and `sendReview()`. These guards were blocking prompts when compaction fired between `session.status(idle)` and `debounce timer`, causing up to 30-90s delays. The `session.compacted` event already re-queues continue/review, so the guard is unnecessary.
 
 ### v7.8.1937 Changes
 - **Removed session discovery and idle cleanup** (`src/session-monitor.ts`): Deleted `discoverSessions()` and `cleanupIdleSessions()` from the session monitor. These features created a cleanup→rediscover loop: idle cleanup deleted sessions, discovery recreated them with fresh `SessionState` (bypassing review cooldown), causing review spam and credit burn. OpenCode already tracks sessions in its own DB — our runtime Map only needs entries for sessions learned via events.
