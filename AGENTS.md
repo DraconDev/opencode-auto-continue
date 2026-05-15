@@ -1,13 +1,34 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1987)
+## Current State (v7.8.2000)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 531/531 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1973`
+**Tests:** 545/545 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.2000`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
 
-### v7.8.1987 Changes
+### v7.8.2000 Changes
+- **Compaction failure backoff** (`src/compaction.ts`): After compaction fails (timeout, safety timeout, or error), all 3 compaction layers (opportunistic/proactive/hard) now skip for `compactionFailBackoffMs` (default 60s). Previously, every `message.part.updated` would re-trigger proactive+hard compaction checks, causing spam.
+  - **New SessionState field**: `lastCompactionFailedAt` — timestamp of last compaction failure
+  - **New config**: `compactionFailBackoffMs` (default 60000ms)
+  - **New validation**: `compactionFailBackoffMs >= 0`
+  - **Cleared on success**: All 3 compaction success paths reset `lastCompactionFailedAt = 0`
+  - **Catch block fix**: `attemptCompact()` catch block now sets `lastCompactionFailedAt` (was missing — exception-thrown compactions didn't record failure)
+  - **7 new tests**: Backoff blocks hard/proactive/opportunistic, backoff clears on success, backoff elapsed allows retry
+- **Hard compaction ignores planning** (`src/compaction.ts:221`): Removed `if (s.planning) return false` from `maybeHardCompact()`. At 100k+ tokens, the context danger outweighs any planning concern. Hard compaction must fire to prevent OOM.
+  - **1 test updated**: Test now verifies compaction fires during planning (was verifying it blocks)
+- **Scaled verify wait for massive sessions** (`src/compaction.ts:63-66`): `compactionVerifyWaitMs` is scaled by token count:
+  - >500k tokens: 3× wait (e.g., 90s for default 30s config)
+  - 200k–500k: 2× wait (e.g., 60s)
+  - <200k: 1× (unchanged)
+  - **Root cause**: Session `ses_1dcce2f62ffeBywRa1y43bNjJG` had 29.5M "realTokens" from cumulative DB values, but compaction timed out at 30s because the session actually has ~70k tokens in context. The 30s verify wait was far too short for sessions with massive DB token counts (the actual context size was never the issue).
+  - **3 new tests**: 3× for >500k, 2× for 200k–500k, 1× for <200k
+- **`realTokensBaseline` token count fix** (`src/session-state.ts`, `src/index.ts`): DB `tokens_input`/`tokens_output`/`tokens_reasoning` are **lifetime cumulative totals**, not current context size. A session that ran for hours accumulated 29.5M tokens in the DB but only has ~70k in its current context window.
+  - **New SessionState field**: `realTokensBaseline` — set to `realTokens` at compaction time
+  - **Updated `getTokenCount()`**: When `realTokensBaseline > 0`, returns `estimatedTokens` (already reduced by `compactReductionFactor`) instead of the cumulative DB value
+  - **Updated `session.compacted` handler**: Sets `realTokensBaseline = realTokens` instead of invalidating `realTokens`
+  - **Updated `refreshRealTokens()`**: Removed post-compaction throttle path (now handled entirely by baseline check in `getTokenCount()`)
+  - **4 new tests**: Baseline ignores baseline=0, uses estimatedTokens when baseline > 0, baseline equals realTokens, baseline exceeds realTokens
 - **Remove `"default"` session ID fallback** (`src/index.ts:463`): Replaced `|| "default"` fallback with explicit skip when no valid sessionID is present in the event. The OpenCode SDK expects session IDs (format `ses_*`), not a literal `"default"` string. When events arrive without a sessionID property, the old fallback created phantom sessions with ID `"default"` that downstream API calls would reject with `"Expected 'id' to be a string"`.
   - **Root cause**: Three locations used `"default"` as fallback: main event handler (line 463), `experimental.session.compacting` hook (line 1230), and `experimental.compaction.autocontinue` hook (line 1303). All now return early when no sessionID is present.
 - **Add `<system-reminder>` detection** (`src/shared.ts:122`): Added `/<system[\s_-]reminder/i` to `TOOL_TEXT_PATTERNS`. When the model generates a `<system-reminder>` block as text output (e.g., `<system-reminder>Your operational mode has changed from plan to build</system-reminder>`), this is a role-confusion stall — the model is confused about its own operational mode, not actually doing work. Now suppressed from `lastOutputAt` reset, causing faster stall detection.
