@@ -4,7 +4,7 @@ import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface TodoPollerDeps {
-  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens">;
+  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;

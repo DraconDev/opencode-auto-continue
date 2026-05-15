@@ -135,6 +135,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   reviewMessage: "All tracked tasks are marked complete. Running final verification:\n\n{testOutput}\n\n## Review Instructions\nAnalyze the test output above:\n- **If tests failed**: Create fix-todos for EACH failure (one per test name) before fixing.\n- **If tests passed**: Verify the scope is correct — did we only change what was asked? Are there new functions without corresponding tests?\n- **Check for warnings**: Build warnings, unused imports, dead code.\n\n**Create fix-todos for any bugs or failures before fixing them.** Keep working until all tests are green. Do not stop until everything passes.",
   reviewWithoutTestsMessage: "All tracked tasks are marked complete. Review the changes for correctness and completeness. Verify the scope is correct — did we only change what was asked? Are there new functions without corresponding tests? Check for warnings, unused imports, and dead code.",
   reviewDebounceMs: 500,
+  reviewCooldownMs: 60000,
   showToasts: true,
   nudgeEnabled: true,
   nudgeIdleDelayMs: 0,
@@ -279,6 +280,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (!normalized.reviewMessage || typeof normalized.reviewMessage !== 'string') addError('reviewMessage', `reviewMessage must be a non-empty string`);
   if (!normalized.reviewWithoutTestsMessage || typeof normalized.reviewWithoutTestsMessage !== 'string') addError('reviewWithoutTestsMessage', `reviewWithoutTestsMessage must be a non-empty string`);
   if (normalized.reviewDebounceMs < 0) addError('reviewDebounceMs', `reviewDebounceMs must be >= 0, got ${normalized.reviewDebounceMs}`);
+  if (normalized.reviewCooldownMs < 0) addError('reviewCooldownMs', `reviewCooldownMs must be >= 0, got ${normalized.reviewCooldownMs}`);
   if (normalized.proactiveCompactAtTokens < 0) addError('proactiveCompactAtTokens', `proactiveCompactAtTokens must be >= 0, got ${normalized.proactiveCompactAtTokens}`);
   if (normalized.proactiveCompactAtPercent < 0 || normalized.proactiveCompactAtPercent > 100) addError('proactiveCompactAtPercent', `proactiveCompactAtPercent must be between 0 and 100, got ${normalized.proactiveCompactAtPercent}`);
   if (normalized.compactRetryDelayMs < 0) addError('compactRetryDelayMs', `compactRetryDelayMs must be >= 0, got ${normalized.compactRetryDelayMs}`);
