@@ -425,7 +425,7 @@ These fields are tracked during `message.part.updated` events and injected as `#
 12. **Planning timeout** — planning state blocked forever, recovery forced after `planningTimeoutMs`
 13. **Continue retry limit** — max 3 retries with 5s backoff prevents infinite idle-event loops
 14. **Nudge failure backoff** — exponential backoff prevents tight nudge loops on API errors
-15. **Review reset** — `reviewFired` resets when new pending todos appear, enabling test-fix loops
+15. **Review reset with cooldown** — `reviewFired` resets when new pending todos appear AND `reviewCooldownMs` has elapsed, enabling test-fix loops while preventing rapid-fire review
 16. **Hard compaction gate** — recovery/nudge/continue all `await maybeHardCompact()` when tokens exceed `hardCompactAtTokens`
 17. **Compaction safety timeout** — `compactionSafetyTimeoutMs` force-clears stuck `compacting` flag if `session.summarize()` hangs
 18. **Emergency failure recovery** — emergency compaction failure schedules recovery with backoff instead of abandoning session
