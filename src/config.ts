@@ -202,10 +202,10 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // recent tool execution, long subagents are correctly handled.
   busyStallTimeoutMs: 180000,
 
-  // Text-only stall detection (default 3 minutes — only text/reasoning, no tool execution)
-  // textOnlyStallTimeoutMs > busyStallTimeoutMs because it requires output to be recent
-  // (timeSinceOutput <= busyStallTimeoutMs in the condition), so it fires after busy-but-dead
-  // has a chance to reschedule for recent tool execution.
+  // Text-only stall detection (default 2 minutes — only text/reasoning, no tool execution)
+  // textOnlyStallTimeoutMs > busyStallTimeoutMs ensures text-only stall (reasoning without tools)
+  // fires after busy-but-dead has a chance to reschedule when tool execution is recent.
+  // If tools haven't run but text has been produced, text-only stall fires.
   textOnlyStallTimeoutMs: 180000,
 
   // Tool loop detection (same tool called repeatedly without progress)
@@ -312,6 +312,16 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.planningTimeoutMs < 0) addError('planningTimeoutMs', `planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
   if (normalized.busyStallTimeoutMs < 0) addError('busyStallTimeoutMs', `busyStallTimeoutMs must be >= 0, got ${normalized.busyStallTimeoutMs}`);
   if (normalized.textOnlyStallTimeoutMs < 0) addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs must be >= 0, got ${normalized.textOnlyStallTimeoutMs}`);
+  // Enforce logical relationships between stall timeouts
+  if (normalized.busyStallTimeoutMs > 0 && normalized.stallTimeoutMs > 0 && normalized.busyStallTimeoutMs > normalized.stallTimeoutMs) {
+    addError('busyStallTimeoutMs', `busyStallTimeoutMs (${normalized.busyStallTimeoutMs}) should be <= stallTimeoutMs (${normalized.stallTimeoutMs}) to prevent unreachable busy-but-dead detection`);
+  }
+  if (normalized.textOnlyStallTimeoutMs > 0 && normalized.busyStallTimeoutMs > 0 && normalized.textOnlyStallTimeoutMs < normalized.busyStallTimeoutMs) {
+    addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs (${normalized.textOnlyStallTimeoutMs}) should be >= busyStallTimeoutMs (${normalized.busyStallTimeoutMs}) to maintain detection hierarchy`);
+  }
+  if (normalized.textOnlyStallTimeoutMs > 0 && normalized.stallTimeoutMs > 0 && normalized.textOnlyStallTimeoutMs > normalized.stallTimeoutMs) {
+    addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs (${normalized.textOnlyStallTimeoutMs}) should be <= stallTimeoutMs (${normalized.stallTimeoutMs}) to prevent unreachable text-only detection`);
+  }
   if (normalized.toolLoopMaxRepeats < 2) addError('toolLoopMaxRepeats', `toolLoopMaxRepeats must be >= 2, got ${normalized.toolLoopMaxRepeats}`);
   if (normalized.toolLoopWindowMs < 0) addError('toolLoopWindowMs', `toolLoopWindowMs must be >= 0, got ${normalized.toolLoopWindowMs}`);
   if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) addError('tokenEstimateMultiplier', `tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);
