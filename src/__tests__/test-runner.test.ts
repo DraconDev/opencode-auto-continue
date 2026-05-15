@@ -38,12 +38,16 @@ const MOCK_LOG = vi.fn();
 
 function makeSuccessShell(stdout: string, exitCode = 0) {
   const promise = Promise.resolve({ stdout, stderr: "", exitCode });
-  return vi.fn(() => ({ cwd: vi.fn(() => promise) }));
+  const quiet = vi.fn(() => promise);
+  const cwd = vi.fn(() => ({ quiet }));
+  return vi.fn(() => ({ cwd }));
 }
 
 function makeFailureShell(stderr: string, exitCode = 1) {
   const promise = Promise.resolve({ stdout: "", stderr, exitCode });
-  return vi.fn(() => ({ cwd: vi.fn(() => promise) }));
+  const quiet = vi.fn(() => promise);
+  const cwd = vi.fn(() => ({ quiet }));
+  return vi.fn(() => ({ cwd }));
 }
 
 beforeEach(() => {
@@ -706,5 +710,22 @@ describe("lock contention detection", () => {
       { command: "cargo test", output: "(lock contention — another process holds the build lock)", passed: false, timedOut: false, skipped: true },
     ]);
     expect(failures).toBe("");
+  });
+});
+
+describe("shell quiet mode", () => {
+  it("should call .quiet() on shell to suppress TUI output", async () => {
+    const mockShell = makeSuccessShell("test passed", 0);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommandGates: {} },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results[0].passed).toBe(true);
+    const callResult = mockShell.mock.results[0].value;
+    const cwdResult = callResult.cwd.mock.results[0].value;
+    expect(cwdResult.quiet).toHaveBeenCalled();
   });
 });
