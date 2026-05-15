@@ -598,6 +598,27 @@ describe("recovery module unit tests", () => {
       expect(s.continueMessageText).toBe("Continue.");
     });
 
+    it("does NOT override tool-text prompt when tokenLimitHits > 0 and hasToolText is true", async () => {
+      const now = Date.now();
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockAbort.mockResolvedValue({});
+      mockMessages.mockResolvedValue({ data: [
+        { role: "assistant", parts: [{ type: "reasoning", text: "Let me call the read tool: <function=read>" }] }
+      ]});
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        lastToolExecutionAt: now - 30000,
+        tokenLimitHits: 2,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ includeTodoContext: false, autoCompact: false });
+      const promise = module.recover("test");
+      await settleTimers();
+      await promise;
+      expect(s.continueMessageText).toContain("proper tool calling mechanism");
+    });
+
     it("uses plan-aware message when session was planning", async () => {
       // When planning is active but not timed out, recovery returns early.
       // This test verifies that path by checking no abort occurs.
