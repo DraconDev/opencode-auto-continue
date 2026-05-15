@@ -92,14 +92,14 @@ export interface PluginConfig {
   // Session Monitor
   subagentWaitMs: number;
   orphanWaitMs?: number;
-  sessionDiscoveryIntervalMs: number;
-  idleSessionTimeoutMs: number;
-  idleCleanupMs?: number;
-  maxSessions: number;
+  sessionDiscoveryIntervalMs: number; // DEPRECATED — no longer used
+  idleSessionTimeoutMs: number;       // DEPRECATED — no longer used
+  idleCleanupMs?: number;             // DEPRECATED — no longer used
+  maxSessions: number;                // DEPRECATED — no longer used
   sessionMonitorEnabled?: boolean;
   orphanParentDetection: boolean;
-  sessionDiscovery: boolean;
-  idleCleanup: boolean;
+  sessionDiscovery: boolean;          // DEPRECATED — no longer used
+  idleCleanup: boolean;               // DEPRECATED — no longer used
 
   // Question auto-answer
   autoAnswerQuestions: boolean;
