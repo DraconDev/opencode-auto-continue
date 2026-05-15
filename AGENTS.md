@@ -1,18 +1,19 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1969)
+## Current State (v7.8.1983)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 525/525 passing
+**Tests:** 529/529 passing
 **npm:** `@dracondev/opencode-auto-continue@7.8.1973`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
 
-### v7.8.1973 Changes
-- **Nudge paused after recovery fix** (`src/index.ts`): `nudgePaused` is now cleared when the AI resumes tool execution after recovery. Previously, `nudgePaused` was set to `true` when a nudge prompt was aborted (during recovery), but was only cleared by user messages or session reset. This meant that after ANY recovery fired, nudging was permanently disabled for that session until the user manually sent a message.
-  - **Root cause**: `pauseNudge()` called on `MessageAbortedError` (recovery aborts in-flight prompts). `nudgePaused` only cleared in `resetNudge()` (user message) and `resetSession()` (session end). Recovery → abort → nudgePaused=true → AI resumes → goes idle → nudge skipped forever.
-  - **Fix**: In `message.part.updated` handler, when a tool/file/subtask/step part is detected and `s.nudgePaused` is true, clear it. This means the AI has resumed work after recovery and nudging is safe again.
-  - **1 new test**: `plugin.test.ts` — nudge fires after recovery + tool execution clears nudgePaused.
-- **Text-only stall toast improved**: Changed "Session Stuck: No tool execution for Xs. Text-only stall detected." to "Text-Only Stall: No tool execution for Xs — recovering session." Less alarming, more descriptive of what's happening.
+### v7.8.1983 Changes
+- **Config validation relationship checks removed** (`src/config.ts`): Removed 3 stall timeout relationship validations (`busyStallTimeoutMs <= stallTimeoutMs`, `textOnlyStallTimeoutMs >= busyStallTimeoutMs`, `textOnlyStallTimeoutMs <= stallTimeoutMs`). These were **conceptually wrong** and **rejected valid configs** including the dogfood config (`stallTimeoutMs:45000` with default `busyStallTimeoutMs:180000`).
+  - **Root cause**: The validation assumed busy-but-dead and text-only stall checks depend on the general stall timer. They don't — busy-but-dead runs on every `session.status(busy)` event (with `lastToolExecutionAt` reschedule protection), while the general stall timer (`scheduleRecovery`) is an independent fallback for when status events stop entirely. Having `busyStallTimeoutMs > stallTimeoutMs` is correct and common.
+  - **Fallback mechanism broken**: When validation rejected `busyStallTimeoutMs`, the fallback replaced it with `DEFAULT_CONFIG.busyStallTimeoutMs` — the same value (180000). The validation was self-contradictory for default values.
+  - **3 new tests**: `shared-utility.test.ts` — acceptance tests for `busyStallTimeoutMs > stallTimeoutMs`, `textOnlyStallTimeoutMs > stallTimeoutMs`, `textOnlyStallTimeoutMs < busyStallTimeoutMs`.
+- **Stale comment fixed** (`src/config.ts`): `textOnlyStallTimeoutMs` comment said "default 2 minutes" but value was 180000 (3 minutes). Updated to match.
+- **Comment clarity** (`src/config.ts`): Updated `busyStallTimeoutMs` and `textOnlyStallTimeoutMs` comments to explain independence of detection mechanisms.
 
 ### v7.8.1969 Changes
 - **Nudge retry mechanism** (`src/nudge.ts`, `src/session-state.ts`): When compaction or planning blocks `injectNudge()`, the nudge is now **rescheduled for retry** instead of silently dropped. Retries every 5s, up to 12 times (1 minute), before giving up.
