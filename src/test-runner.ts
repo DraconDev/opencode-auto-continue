@@ -120,7 +120,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
     const cwd = input.directory || undefined;
 
     try {
-      const outputPromise = input.$`${{ raw: cmd }}`.cwd(cwd ?? ".").then((p: any) => {
+      const outputPromise = input.$`${{ raw: cmd }}`.cwd(cwd ?? ".").quiet().then((p: any) => {
         const stdout = typeof p?.stdout === "string" ? p.stdout : "";
         const stderr = typeof p?.stderr === "string" ? p.stderr : "";
         const exitCode = p?.exitCode ?? 0;
