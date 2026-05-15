@@ -132,6 +132,9 @@ All config options are set in `opencode.json` under the plugin entry:
 |--------|------|---------|-------------|
 | `stallTimeoutMs` | number | `45000` | Time without real output before considering session stalled |
 | `busyStallTimeoutMs` | number | `180000` | Time without real output when session reports busy (3min) |
+| `textOnlyStallTimeoutMs` | number | `120000` | Time with only text/reasoning output (no tool execution) before stall (2min) |
+| `toolLoopMaxRepeats` | number | `5` | Max consecutive same-tool calls before tool loop detection |
+| `toolLoopWindowMs` | number | `120000` | Window for tool loop detection (2min) |
 | `maxRecoveries` | number | `3` | Max recovery attempts per session |
 | `cooldownMs` | number | `60000` | Min time between recovery attempts |
 | `waitAfterAbortMs` | number | `5000` | Wait after abort before sending continue |
@@ -340,11 +343,12 @@ session.deleted / session.ended → cleanup
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `lastOutputAt` | `number` | Timestamp of last real output (text, tool, file, subtask, step parts) |
+| `lastOutputAt` | `number` | Timestamp of last real output (text, tool, file, subtask, step parts). NOT updated when text contains tool-call-as-text patterns. |
 | `lastOutputLength` | `number` | Length of last text output content (detects even tiny progress) |
+| `lastToolExecutionAt` | `number` | Timestamp of last tool/file/subtask/step part (text-only stall detection) |
 | `lastProgressAt` | `number` | Timestamp of last status ping OR real output (legacy, prefer `lastOutputAt`) |
 
-These fields distinguish real progress from `session.status(busy)` pings. Recovery uses `lastOutputAt` for stall detection; `lastProgressAt` is maintained for backward compatibility.
+These fields distinguish real progress from `session.status(busy)` pings. Recovery uses `lastOutputAt` for stall detection; `lastToolExecutionAt` detects "stuck toolcalling" (text output but no tool execution). Text/reasoning parts containing XML tool-call patterns do NOT reset `lastOutputAt` or `lastProgressAt` — the session is stuck generating tool calls as text instead of executing them.
 
 ### Recovery Intent Fields (v7.8.1602+)
 
