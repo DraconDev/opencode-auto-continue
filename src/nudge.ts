@@ -132,10 +132,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
     }
 
-    if (!s.hasOpenTodos && s.lastKnownTodos.length > 0) {
-      log("no open todos (cached), skipping nudge", { sessionId, knownTodos: s.lastKnownTodos.length });
-      return;
-    }
+    
 
     // FIX 8: Check failure backoff before proceeding
     const NUDGE_FAILURE_BACKOFF_MS = 5000;
@@ -311,7 +308,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       const promptError = (promptResponse as any)?.data?.info?.error;
       if (promptError?.name === "MessageAbortedError") {
         log("nudge prompt aborted", sessionId);
-        pauseNudge(sessionId);
+        if (!s.aborting) pauseNudge(sessionId);
         return;
       }
 
@@ -335,7 +332,7 @@ export function createNudgeModule(deps: NudgeDeps) {
 
       if (isAborted) {
         log("nudge prompt aborted", sessionId);
-        pauseNudge(sessionId);
+        if (!s.aborting) pauseNudge(sessionId);
         return;
       }
 
@@ -343,7 +340,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       const responseError = (e as any)?.response?.data?.info?.error;
       if (responseError) {
         log("nudge response error", { sessionId, error: responseError });
-        if (responseError.name === "MessageAbortedError") {
+        if (responseError.name === "MessageAbortedError" && !s.aborting) {
           pauseNudge(sessionId);
           return;
         }
