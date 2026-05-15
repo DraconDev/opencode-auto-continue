@@ -1227,7 +1227,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     },
     "experimental.session.compacting": async (_input, output) => {
       // Inject session state into compaction to preserve important context
-      const sid = (_input as any)?.sessionID || "default";
+      const sid = (_input as any)?.sessionID;
+      if (!sid) {
+        log('experimental.session.compacting hook called without sessionID, skipping');
+        return;
+      }
       const s = sessions.get(sid);
       
       if (s) {
