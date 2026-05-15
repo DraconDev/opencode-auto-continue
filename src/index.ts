@@ -281,15 +281,13 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     if (s.realTokens > 0 && now - s.lastRealTokenRefreshAt < REAL_TOKEN_REFRESH_INTERVAL_MS) {
       return getTokenCount(s);
     }
-    if (s.realTokens === 0 && s.lastCompactionAt > 0 && now - s.lastCompactionAt < REAL_TOKEN_REFRESH_INTERVAL_MS) {
-      return getTokenCount(s);
-    }
     s.lastRealTokenRefreshAt = now;
     try {
       const tokens = getSessionTokens(id);
       if (tokens.total > 0) {
         s.realTokens = tokens.total;
-        log('refreshRealTokens:', id, 'realTokens=', s.realTokens, 'estimatedTokens=', s.estimatedTokens);
+        const adjusted = s.realTokensBaseline > 0 ? Math.max(0, s.realTokens - s.realTokensBaseline) : s.realTokens;
+        log('refreshRealTokens:', id, 'real=', s.realTokens, 'baseline=', s.realTokensBaseline, 'adjusted=', adjusted, 'estimated=', s.estimatedTokens);
       } else {
         log('refreshRealTokens: no real tokens for', id, '(dbErr:', getDbLastError() || 'session has 0 tokens', ')', 'falling back to estimated=', s.estimatedTokens);
       }
@@ -334,6 +332,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.compacting = false;
       s.compactionTimedOut = false;
       s.lastCompactionFailedAt = 0;
+      s.realTokensBaseline = 0;
       s.hardCompactionInProgress = false;
       s.backoffAttempts = 0;
       s.autoSubmitCount = 0;
@@ -1194,12 +1193,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
         s.lastCompactionAt = Date.now();
         s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
-        // Invalidate realTokens — DB may still have pre-compaction values.
-        // Force getTokenCount() to use the reduced estimatedTokens.
-        // refreshRealTokens skips DB read while realTokens=0 and lastCompactionAt
-        // is within REAL_TOKEN_REFRESH_INTERVAL_MS.
-        s.realTokens = 0;
-        s.lastRealTokenRefreshAt = Date.now();
+        s.realTokensBaseline = s.realTokens;
         // Reset recovery counters since we just freed context space
         s.attempts = 0;
         s.backoffAttempts = 0;
