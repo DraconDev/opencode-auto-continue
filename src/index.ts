@@ -286,8 +286,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const tokens = getSessionTokens(id);
       if (tokens.total > 0) {
         s.realTokens = tokens.total;
-        const adjusted = s.realTokensBaseline > 0 ? Math.max(0, s.realTokens - s.realTokensBaseline) : s.realTokens;
-        log('refreshRealTokens:', id, 'real=', s.realTokens, 'baseline=', s.realTokensBaseline, 'adjusted=', adjusted, 'estimated=', s.estimatedTokens);
+        log('refreshRealTokens:', id, 'real=', s.realTokens, 'baseline=', s.realTokensBaseline, 'estimated=', s.estimatedTokens, 'effective=', getTokenCount(s));
       } else {
         log('refreshRealTokens: no real tokens for', id, '(dbErr:', getDbLastError() || 'session has 0 tokens', ')', 'falling back to estimated=', s.estimatedTokens);
       }

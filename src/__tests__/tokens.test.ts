@@ -132,15 +132,15 @@ describe("tokens module", () => {
       expect(getTokenCount(s)).toBe(0);
     });
 
-    it("should subtract realTokensBaseline from realTokens after compaction", () => {
+    it("should use estimatedTokens when realTokensBaseline > 0 (post-compaction)", () => {
       const s = createSession();
       s.realTokens = 29500000;
       s.realTokensBaseline = 29000000;
       s.estimatedTokens = 70000;
-      expect(getTokenCount(s)).toBe(500000);
+      expect(getTokenCount(s)).toBe(70000);
     });
 
-    it("should fall back to estimatedTokens when baseline equals realTokens", () => {
+    it("should use estimatedTokens when baseline equals realTokens (post-compaction)", () => {
       const s = createSession();
       s.realTokens = 29000000;
       s.realTokensBaseline = 29000000;
@@ -148,7 +148,7 @@ describe("tokens module", () => {
       expect(getTokenCount(s)).toBe(50000);
     });
 
-    it("should fall back to estimatedTokens when baseline exceeds realTokens", () => {
+    it("should use estimatedTokens when baseline exceeds realTokens (post-compaction)", () => {
       const s = createSession();
       s.realTokens = 29000000;
       s.realTokensBaseline = 29500000;
@@ -156,7 +156,7 @@ describe("tokens module", () => {
       expect(getTokenCount(s)).toBe(50000);
     });
 
-    it("should ignore baseline when it is 0", () => {
+    it("should ignore baseline when it is 0 (no compaction)", () => {
       const s = createSession();
       s.realTokens = 75000;
       s.realTokensBaseline = 0;
