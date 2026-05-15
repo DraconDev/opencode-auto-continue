@@ -416,7 +416,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     log,
   });
 
-  const terminal = createTerminalModule({ config, sessions, log, input });
+  const terminal = createTerminalModule({ config, sessions, log });
   const { writeStatusFile, clearPendingWrites } = createStatusFileModule({ config, sessions, log });
 
   const compaction = createCompactionModule({ config, sessions, log, input });

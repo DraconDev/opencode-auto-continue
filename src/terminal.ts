@@ -1,17 +1,15 @@
 import { type PluginConfig } from "./config.js";
 import { type SessionState, getTokenCount } from "./session-state.js";
 import { formatDuration } from "./shared.js";
-import type { TypedPluginInput } from "./types.js";
 
 export interface TerminalDeps {
   config: Pick<PluginConfig, "terminalTitleEnabled" | "terminalProgressEnabled" | "stallTimeoutMs" | "hardCompactAtTokens" | "proactiveCompactAtTokens">;
   sessions: Map<string, SessionState>;
   log: (message: string, ...args: unknown[]) => void;
-  input: TypedPluginInput;
 }
 
 export function createTerminalModule(deps: TerminalDeps) {
-  const { config, sessions, log, input } = deps;
+  const { config, sessions, log } = deps;
 
   // ── Terminal Title (OSC sequences) ────────────────────────────────────
 
