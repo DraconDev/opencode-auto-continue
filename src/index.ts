@@ -1001,6 +1001,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         const todos = e?.properties?.todos;
         if (!Array.isArray(todos)) return;
         
+        todoPoller.markEventTodoReceived(sid);
+
         const s = getSession(sid);
         const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
         const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
