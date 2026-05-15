@@ -59,6 +59,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     if (!s) return;
     cancelNudge(sessionId);
     s.nudgeCount = 0;
+    s.nudgeRetryCount = 0;
     s.nudgePaused = false;
     s.nudgeFailureCount = 0;
     s.lastNudgeFailureAt = 0;
@@ -101,7 +102,22 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
 
     if (s.planning || s.compacting || s.hardCompactionInProgress) {
-      log("nudge skipped - planning:", s.planning, "compacting:", s.compacting, "hardCompaction:", s.hardCompactionInProgress, sessionId);
+      log("nudge deferred — session busy (planning:", s.planning, "compacting:", s.compacting, "hardCompaction:", s.hardCompactionInProgress, ") schedule retry, session:", sessionId);
+      if (config.showToasts) {
+        try {
+          await input.client.tui.showToast({
+            query: { directory: input.directory || "" },
+            body: {
+              title: "Compacting",
+              message: s.compacting ? "Context compaction in progress — nudge deferred." : "Session busy — nudge deferred.",
+              variant: "info",
+            },
+          });
+        } catch (e) {
+          log("nudge deferred toast error (ignored)", String(e));
+        }
+      }
+      scheduleNudgeRetry(sessionId, knownTodos);
       return;
     }
 
