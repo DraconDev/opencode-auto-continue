@@ -876,4 +876,190 @@ describe("compaction module unit tests", () => {
       expect(mockSummarize).toHaveBeenCalled();
     });
   });
+
+  describe("compaction failure backoff", () => {
+    it("maybeHardCompact skips when compaction recently failed", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 5000,
+      }));
+      module = createModule({ hardCompactAtTokens: 100000, compactionFailBackoffMs: 60000 });
+
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("recent failure backoff");
+    });
+
+    it("maybeHardCompact proceeds after backoff expires", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 70000,
+      }));
+      module = createModule({ hardCompactAtTokens: 100000, compactionFailBackoffMs: 60000, compactReductionFactor: 0.4 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
+    });
+
+    it("maybeProactiveCompact skips when compaction recently failed", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 5000,
+      }));
+      module = createModule({ proactiveCompactAtTokens: 100000, compactionFailBackoffMs: 60000 });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("maybeOpportunisticCompact skips when compaction recently failed", async () => {
+      sessions.set("test", createSessionState({
+        estimatedTokens: 60000,
+        lastCompactionFailedAt: Date.now() - 5000,
+      }));
+      module = createModule({ opportunisticCompactAtTokens: 50000, compactionFailBackoffMs: 60000 });
+
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+      expect(mockSummarize).not.toHaveBeenCalled();
+    });
+
+    it("lastCompactionFailedAt cleared on successful compaction", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 70000,
+      });
+      sessions.set("test", s);
+      module = createModule({ hardCompactAtTokens: 100000, compactionFailBackoffMs: 60000, compactReductionFactor: 0.4 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(s.lastCompactionFailedAt).toBe(0);
+    });
+
+    it("lastCompactionFailedAt set on compaction failure", async () => {
+      mockSummarize.mockRejectedValue(new Error("fail"));
+      const s = createSessionState({ estimatedTokens: 200000 });
+      sessions.set("test", s);
+      module = createModule({ hardCompactAtTokens: 100000, compactMaxRetries: 1, compactRetryDelayMs: 100 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      await promise;
+      expect(s.lastCompactionFailedAt).toBeGreaterThan(0);
+    });
+
+    it("lastCompactionFailedAt set on verify timeout", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({ estimatedTokens: 200000 });
+      sessions.set("test", s);
+      module = createModule({
+        hardCompactAtTokens: 100000,
+        hardCompactMaxWaitMs: 5000,
+        compactionVerifyWaitMs: 1000,
+        compactRetryDelayMs: 100,
+        compactMaxRetries: 1,
+      });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushPromises();
+
+      await promise;
+      expect(s.lastCompactionFailedAt).toBeGreaterThan(0);
+    });
+  });
+
+  describe("scaled verify wait for massive sessions", () => {
+    it("uses 3x verify wait for sessions over 500k tokens", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({ estimatedTokens: 600000 });
+      sessions.set("test", s);
+      module = createModule({
+        compactionVerifyWaitMs: 10000,
+        compactionSafetyTimeoutMs: 0,
+        compactMaxRetries: 1,
+      });
+
+      const promise = module.forceCompact("test");
+      // Advance 10s (original wait) — NOT enough for scaled wait (30s)
+      await vi.advanceTimersByTimeAsync(10000);
+      await flushPromises();
+      // Still compacting — scaled wait is 30s
+      expect(s.compacting).toBe(true);
+
+      // Advance 20s more (total 30s = 3x scaled)
+      await vi.advanceTimersByTimeAsync(20000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+
+    it("uses 2x verify wait for sessions over 200k tokens", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({ estimatedTokens: 300000 });
+      sessions.set("test", s);
+      module = createModule({
+        compactionVerifyWaitMs: 10000,
+        compactionSafetyTimeoutMs: 0,
+        compactMaxRetries: 1,
+      });
+
+      const promise = module.forceCompact("test");
+      // 10s = original wait, NOT enough for scaled (20s)
+      await vi.advanceTimersByTimeAsync(10000);
+      await flushPromises();
+      expect(s.compacting).toBe(true);
+
+      // 10s more = 20s total = 2x scaled
+      await vi.advanceTimersByTimeAsync(10000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+
+    it("uses 1x verify wait for sessions under 200k tokens", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({ estimatedTokens: 100000 });
+      sessions.set("test", s);
+      module = createModule({
+        compactionVerifyWaitMs: 5000,
+        compactionSafetyTimeoutMs: 0,
+        compactMaxRetries: 1,
+      });
+
+      const promise = module.forceCompact("test");
+      // 5s = original wait, should be enough for < 200k
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(s.compacting).toBe(false);
+    });
+  });
 });
