@@ -105,6 +105,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       const s = sessions.get(sessionId);
       if (s) {
         s.compacting = false;
+        s.lastCompactionFailedAt = Date.now();
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       }
       return false;
