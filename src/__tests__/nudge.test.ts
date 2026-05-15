@@ -769,7 +769,7 @@ describe("nudge integration with plugin events", () => {
   });
 
   describe("nudge retry when blocked by compaction/planning", () => {
-    it("should reschedule nudge retry when compacting blocks injectNudge", async () => {
+    it("should reschedule nudge when compacting blocks injectNudge", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
@@ -798,48 +798,10 @@ describe("nudge integration with plugin events", () => {
       // First nudge should succeed
       expect(mockPrompt).toHaveBeenCalledTimes(1);
 
-      // Simulate session becoming compacting (via compacting event - set session state directly)
-      // We simulate this by checking that when session becomes compacting, the nudge is deferred
-      // In the test environment, we can't easily set compacting=true, but we can test the guard path
-      // by using the existing mock behavior
-
       vi.useRealTimers();
     });
 
-    it("should show toast when nudge is deferred due to compaction", async () => {
-      vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
-      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
-      mockShowToast.mockResolvedValue({ data: {}, error: undefined });
-
-      const plugin = await createPlugin({ client: mockClient }, {
-        nudgeEnabled: true,
-        nudgeIdleDelayMs: 0,
-        nudgeCooldownMs: 0,
-        showToasts: true,
-        terminalTitleEnabled: false,
-        terminalProgressEnabled: false,
-        statusFilePath: ""
-      });
-
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
-        { id: "t1", content: "task", status: "in_progress" }
-      ] } } });
-
-      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
-
-      // Session goes idle - nudge fires
-      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-      await vi.advanceTimersByTimeAsync(100);
-
-      // Nudge should have been sent
-      expect(mockPrompt).toHaveBeenCalled();
-
-      vi.useRealTimers();
-    });
-
-    it("should not show toast when nudge is deferred but showToasts is false", async () => {
+    it("should not show toast when showToasts is false", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
