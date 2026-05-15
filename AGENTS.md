@@ -1,11 +1,19 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1931)
+## Current State (v7.8.1937)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 555/555 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1931`
+**Tests:** 549/549 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1937`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1937 Changes
+- **Removed session discovery and idle cleanup** (`src/session-monitor.ts`): Deleted `discoverSessions()` and `cleanupIdleSessions()` from the session monitor. These features created a cleanup→rediscover loop: idle cleanup deleted sessions, discovery recreated them with fresh `SessionState` (bypassing review cooldown), causing review spam and credit burn. OpenCode already tracks sessions in its own DB — our runtime Map only needs entries for sessions learned via events.
+  - **Removed**: `discoverSessions()`, `cleanupIdleSessions()`, `scheduleDiscoveredRecovery()`, `hasPendingWork()`, discovery/cleanup timers and related config fields
+  - **Kept**: Orphan parent detection, `touchSession()`, `trackParentChild()`, `getStats()`
+  - **Stats**: `discoveredSessions` and `cleanedUpSessions` removed from `SessionMonitorStats`
+  - **Config**: `sessionDiscoveryIntervalMs`, `idleSessionTimeoutMs`, `idleCleanupMs`, `maxSessions`, `sessionDiscovery`, `idleCleanup` — still in `PluginConfig` for backward compat but no longer used by the monitor
+  - **Root cause**: Session `ses_22aa046fcffeoin9otfWr6k8ZP` was cleaned up every ~2min, rediscovered ~1min later with fresh state, triggering review every ~3min. Each review consumed credits and returned "Unauthorized" from the provider.
 
 ### v7.8.1931 Changes
 - **Review loop credit burn fix** (`src/review.ts`, `src/todo-poller.ts`): Three-layer defense against rapid-fire review loop that burned AI credits by sending `agent: "plan"` prompts every ~2 minutes.
