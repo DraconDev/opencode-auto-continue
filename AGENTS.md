@@ -142,6 +142,7 @@ All config options are set in `opencode.json` under the plugin entry:
 | `nudgeMaxSubmits` | number | `10` | Max nudges before loop protection |
 | `includeTodoContext` | boolean | `true` | Include pending todos in nudge message |
 | `continueWithTodosMessage` | string | `"..."` | Nudge message template with todo context |
+| `todoPollIntervalMs` | number | `30000` | Periodic todo API poll interval (0=disable periodic, on-idle still active) |
 
 ### Compaction
 
