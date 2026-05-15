@@ -66,6 +66,7 @@ export interface SessionState {
   compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
   compactionTimedOut: boolean;
   lastCompactionFailedAt: number; // Timestamp of last compaction failure — backoff period
+  realTokensBaseline: number; // DB tokens_input at last compaction — subtract to get current context
   proactiveCompactCount: number;
   hardCompactCount: number;
 
@@ -173,6 +174,7 @@ export function createSession(): SessionState {
     compactionSafetyTimer: null,
     compactionTimedOut: false,
     lastCompactionFailedAt: 0,
+    realTokensBaseline: 0,
     proactiveCompactCount: 0,
     hardCompactCount: 0,
 
@@ -226,5 +228,12 @@ export function updateProgress(s: SessionState) {
 }
 
 export function getTokenCount(s: SessionState): number {
-  return s.realTokens > 0 ? s.realTokens : s.estimatedTokens;
+  if (s.realTokens > 0) {
+    if (s.realTokensBaseline > 0) {
+      const adjusted = Math.max(0, s.realTokens - s.realTokensBaseline);
+      return adjusted > 0 ? adjusted : s.estimatedTokens;
+    }
+    return s.realTokens;
+  }
+  return s.estimatedTokens;
 }
