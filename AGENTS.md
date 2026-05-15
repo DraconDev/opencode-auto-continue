@@ -146,9 +146,6 @@ All config options are set in `opencode.json` under the plugin entry:
 |--------|------|---------|-------------|
 | `sessionMonitorEnabled` | boolean | `true` | Enable session monitoring layer |
 | `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
-| `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
-| `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
-| `maxSessions` | number | `50` | Max sessions to keep in memory |
 
 ### Question Auto-Answer
 
