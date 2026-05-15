@@ -647,25 +647,33 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               log('[StopConditions] session stopped, skipping busy-but-dead recovery:', stop.reason);
               clearTimer(sid);
             } else {
-              log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
-            if (config.showToasts) {
-              try {
-                input.client.tui.showToast({
-                  query: { directory: input.directory || "" },
-                  body: {
-                    title: "Session Stuck",
-                    message: `Session busy but no output for ${Math.round(timeSinceOutput / 1000)}s. Forcing recovery...`,
-                    variant: "warning",
-                  },
-                }).catch(() => {});
-              } catch (e) {
-                // ignore toast errors
+              const timeSinceToolExecution = Date.now() - s.lastToolExecutionAt;
+              // If tool execution is recent, the session may be running long tools (e.g., subagents, long builds).
+              // Reschedule recovery instead of aborting — don't interrupt legitimate work.
+              if (timeSinceToolExecution < config.busyStallTimeoutMs) {
+                log('busy-but-dead rescheduling: no output for', timeSinceOutput, 'ms but tool execution recent (' + timeSinceToolExecution + 'ms), session may be running long tools');
+                scheduleRecovery(sid, config.stallTimeoutMs);
+              } else {
+                log('busy-but-dead detected: no output for', timeSinceOutput, 'ms, forcing recovery');
+                if (config.showToasts) {
+                  try {
+                    input.client.tui.showToast({
+                      query: { directory: input.directory || "" },
+                      body: {
+                        title: "Session Stuck",
+                        message: `Session busy but no output for ${Math.round(timeSinceOutput / 1000)}s. Forcing recovery...`,
+                        variant: "warning",
+                      },
+                    }).catch(() => {});
+                  } catch (e) {
+                    // ignore toast errors
+                  }
+                }
+                recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
               }
             }
-            recover(sid).catch((e: unknown) => log('busy-but-dead recovery failed:', e));
-            }
           }
-          
+
           // Check for text-only stall: session outputting text/reasoning but no tool execution
           // This catches the "stuck toolcalling" scenario where the model generates
           // tool calls as text/reasoning instead of actually executing them.
