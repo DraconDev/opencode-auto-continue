@@ -13,7 +13,7 @@ export const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   /\bsudo\b/i,
 
   // Destructive file removal (only rm -rf / or rm -rf ~, not rm in general)
-  /\brm\s+(-[a-z]*f[a-z]*\s+)?(?:\/|~|\$HOME|\/home)\b/i,
+  /\brm\s+(-[a-z]*f[a-z]*\s+)?(?:\/|~(?:\s|$|\/)|\$HOME(?:$|\s|\/)|\/home(?:\/|$|\s))/i,
 
   // Insecure permissions
   /\bchmod\s+(?:-R\s+)?777\b/i,
