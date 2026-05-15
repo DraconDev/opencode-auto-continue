@@ -196,11 +196,17 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Planning timeout (default 5 minutes)
   planningTimeoutMs: 300000,
 
-  // Busy-but-dead detection (default 1 minute — session busy but no real output)
-  busyStallTimeoutMs: 60000,
+  // Busy-but-dead detection (default 3 minutes — session busy but no real output)
+  // Note: busyStallTimeoutMs > stallTimeoutMs means the reschedule path (lastToolExecutionAt check)
+  // gets a chance to fire before busy-but-dead recovery. With lastToolExecutionAt checking
+  // recent tool execution, long subagents are correctly handled.
+  busyStallTimeoutMs: 180000,
 
-  // Text-only stall detection (default 2 minutes — only text/reasoning, no tool execution)
-  textOnlyStallTimeoutMs: 120000,
+  // Text-only stall detection (default 3 minutes — only text/reasoning, no tool execution)
+  // textOnlyStallTimeoutMs > busyStallTimeoutMs because it requires output to be recent
+  // (timeSinceOutput <= busyStallTimeoutMs in the condition), so it fires after busy-but-dead
+  // has a chance to reschedule for recent tool execution.
+  textOnlyStallTimeoutMs: 180000,
 
   // Tool loop detection (same tool called repeatedly without progress)
   toolLoopMaxRepeats: 5,
