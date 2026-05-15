@@ -93,6 +93,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       if (s) {
         s.compacting = false;
         s.compactionTimedOut = true;
+        s.lastCompactionFailedAt = Date.now();
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       }
       return false;
@@ -131,6 +132,7 @@ export function createCompactionModule(deps: CompactionDeps) {
 
     log('compaction failed after all retries for session:', sessionId);
     s.compacting = false;
+    s.lastCompactionFailedAt = Date.now();
     return false;
   }
 
@@ -201,9 +203,15 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (!s) return false;
     if (s.hardCompactionInProgress) { log('[Compaction] HARD SKIP — already in progress'); return false; }
     if (s.compacting) { log('[Compaction] HARD SKIP — already compacting'); return false; }
-    if (s.planning) { log('[Compaction] HARD SKIP — planning'); return false; }
     if (s.stoppedByCondition) { log('[Compaction] HARD SKIP — stopped by condition'); return false; }
     if (inGracePeriod(s)) { log('[Compaction] HARD SKIP — grace period'); return false; }
+    if (s.lastCompactionFailedAt > 0) {
+      const timeSinceFail = Date.now() - s.lastCompactionFailedAt;
+      if (timeSinceFail < config.compactionFailBackoffMs) {
+        log(`[Compaction] HARD SKIP — recent failure backoff (${Math.round((config.compactionFailBackoffMs - timeSinceFail) / 1000)}s remaining)`);
+        return false;
+      }
+    }
 
     const threshold = config.hardCompactAtTokens;
     if (threshold <= 0) return false;
