@@ -175,10 +175,11 @@ describe("todo-poller", () => {
       vi.useRealTimers();
     });
 
-    it("should reset reviewFired when new pending todos appear", async () => {
+    it("should reset reviewFired when new pending todos appear and cooldown elapsed", async () => {
       const deps = makeDeps();
       const s = createSession();
       s.reviewFired = true;
+      s.lastReviewAt = 0;
       deps.sessions.set("test", s);
       deps.mockTodo.mockResolvedValue({
         data: [{ id: "t2", content: "New bug", status: "in_progress" }],
@@ -190,6 +191,40 @@ describe("todo-poller", () => {
 
       expect(s.reviewFired).toBe(false);
       expect(s.hasOpenTodos).toBe(true);
+    });
+
+    it("should NOT reset reviewFired when cooldown is active", async () => {
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = Date.now() - 10000;
+      deps.sessions.set("test", s);
+      deps.mockTodo.mockResolvedValue({
+        data: [{ id: "t2", content: "New bug", status: "in_progress" }],
+        error: undefined,
+      });
+
+      const poller = createTodoPoller(deps);
+      await poller.pollAndProcess("test");
+
+      expect(s.reviewFired).toBe(true);
+    });
+
+    it("should reset reviewFired when cooldown has elapsed", async () => {
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = Date.now() - 70000;
+      deps.sessions.set("test", s);
+      deps.mockTodo.mockResolvedValue({
+        data: [{ id: "t2", content: "New bug", status: "in_progress" }],
+        error: undefined,
+      });
+
+      const poller = createTodoPoller(deps);
+      await poller.pollAndProcess("test");
+
+      expect(s.reviewFired).toBe(false);
     });
 
     it("should handle API errors gracefully", async () => {
@@ -343,6 +378,76 @@ describe("todo-poller", () => {
       expect(s.reviewDebounceTimer).toBeNull();
 
       vi.useRealTimers();
+    });
+
+    it("should NOT trigger review when cooldown is active (all completed)", () => {
+      vi.useFakeTimers();
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.lastReviewAt = Date.now() - 10000;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+      ]);
+
+      expect(s.reviewDebounceTimer).toBeNull();
+      expect(deps.triggerReview).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should trigger review when cooldown has elapsed (all completed)", () => {
+      vi.useFakeTimers();
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.lastReviewAt = Date.now() - 70000;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+      ]);
+
+      expect(s.reviewDebounceTimer).not.toBeNull();
+
+      vi.advanceTimersByTime(500);
+      expect(deps.triggerReview).toHaveBeenCalledWith("test");
+
+      vi.useRealTimers();
+    });
+
+    it("should NOT reset reviewFired during cooldown when new pending todos appear", () => {
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = Date.now() - 10000;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+        { id: "t2", content: "New bug", status: "in_progress" },
+      ]);
+
+      expect(s.reviewFired).toBe(true);
+    });
+
+    it("should reset reviewFired after cooldown when new pending todos appear", () => {
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = Date.now() - 70000;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+        { id: "t2", content: "New bug", status: "in_progress" },
+      ]);
+
+      expect(s.reviewFired).toBe(false);
     });
   });
 
