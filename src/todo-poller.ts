@@ -15,11 +15,17 @@ export interface TodoPollerDeps {
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;
+const TODO_EVENT_FRESH_MS = 10000;
 
 export function createTodoPoller(deps: TodoPollerDeps) {
   const { config, sessions, log, isDisposed, input } = deps;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let lastPollAt = 0;
+  const lastEventTodoAt = new Map<string, number>();
+
+  function markEventTodoReceived(sessionId: string): void {
+    lastEventTodoAt.set(sessionId, Date.now());
+  }
 
   function processTodos(sessionId: string, todos: Todo[]): void {
     const s = sessions.get(sessionId);
