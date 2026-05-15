@@ -21,6 +21,9 @@ export interface SessionState {
   // === Output Tracking (busy-but-dead detection) ===
   lastOutputAt: number;      // Last actual output (text/tool/file), not status ping
   lastOutputLength: number;  // Total content length to detect even small changes
+  lastToolExecutionAt: number; // Last time a tool/file/subtask/step part was seen (text-only stall detection)
+  toolRepeatCount: number;   // How many times the same tool was called consecutively
+  lastToolName: string;     // Name of last tool executed (for loop detection)
 
   // === Test-Driven Quality Gate (test-runner.ts) ===
   lastTestRunAt: number;
@@ -125,6 +128,9 @@ export function createSession(): SessionState {
     // Output Tracking (busy-but-dead detection)
     lastOutputAt: now,
     lastOutputLength: 0,
+    lastToolExecutionAt: now,
+    toolRepeatCount: 0,
+    lastToolName: '',
 
     // Test-Driven Quality Gate
     lastTestRunAt: 0,

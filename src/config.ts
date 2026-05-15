@@ -82,6 +82,13 @@ export interface PluginConfig {
   // Busy-but-dead detection (session busy but no actual output)
   busyStallTimeoutMs: number;
 
+  // Text-only stall detection (session outputting only text/reasoning, no tool execution)
+  textOnlyStallTimeoutMs: number;
+
+  // Tool loop detection (same tool called repeatedly without progress)
+  toolLoopMaxRepeats: number;
+  toolLoopWindowMs: number;
+
   // AI Advisory
   enableAdvisory: boolean;
   advisoryModel: string;

@@ -4,6 +4,21 @@ import { formatMessage, shouldBlockPrompt, containsToolCallAsText } from "./shar
 import type { TypedPluginInput } from "./types.js";
 
 export interface RecoveryDeps {
+  config: PluginConfig;
+  sessions: Map<string, SessionState>;
+  log: (...args: unknown[]) => void;
+  input: TypedPluginInput;
+  isDisposed: () => boolean;
+  writeStatusFile: (sessionId: string) => void;
+  cancelNudge: (sessionId: string) => void;
+  scheduleRecovery: (sessionId: string, delayMs: number) => void;
+  sendContinue?: (sessionId: string) => Promise<void>;
+  maybeHardCompact?: (sessionId: string) => Promise<boolean>;
+  forceCompact?: (sessionId: string) => Promise<boolean>;
+}
+
+const TOOL_TEXT_RECOVERY_PROMPT =
+  "I noticed you have a tool call generated in your thinking/reasoning. Please execute it using the proper tool calling mechanism instead of keeping it in reasoning.";
 
 async function checkToolTextInSession(sessionId: string, input: TypedPluginInput): Promise<boolean> {
   try {
