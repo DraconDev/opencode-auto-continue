@@ -913,8 +913,9 @@ When `autoCompact: true` and estimated tokens exceed `proactiveCompactAtTokens` 
 When tokens exceed `hardCompactAtTokens` (default: 100k), the hard compactor **blocks** until compaction succeeds or times out. Recovery, nudge, and continue all `await` it before proceeding.
 
 - Always fires (ignores `autoCompact` flag)
+- **Fires even when session is planning** — at 100k+ tokens, the context danger outweighs any planning concern
 - Bypasses cooldown by default (`hardCompactBypassCooldown: true`)
-- Respects `hardCompactMaxWaitMs` (default 30s) — returns false if exceeded but doesn't strand the session
+- Respects `hardCompactMaxWaitMs` (default 30s, scaled up for massive sessions) — returns false if exceeded but doesn't strand the session
 
 ### Emergency Compaction (Token Limit Errors)
 
@@ -944,20 +945,32 @@ This matches the actual reduction — compaction removes ~70% of context, so the
 
 ### Double Compact Prevention (v7.8.1904+)
 
-After `session.compacted` fires, the SQLite DB still holds pre-compaction token counts. Without intervention, the compaction check loop (`message.part.updated`) would see tokens still above threshold and trigger a second `session.summarize()` — causing double compaction.
+After `session.compacted` fires, the SQLite DB still holds pre-compaction token counts (they accumulate over the session's lifetime — `tokens_input` is a lifetime total, not current context). Without intervention, `getTokenCount()` would return values like 29M tokens from the DB instead of the actual ~70k context size.
 
 **Two-part fix**:
 
 1. **Grace period guard** (`compactionGracePeriodMs`, default 10s): All 3 compaction layers skip if `lastCompactionAt` is within this window, even if `hardCompactBypassCooldown: true`. Prevents triggering while DB values are stale.
 
-2. **`realTokens = 0` invalidation on `session.compacted`**: Sets `realTokens = 0` and `lastRealTokenRefreshAt = Date.now()` instead of calling `refreshRealTokens()`. Forces `getTokenCount()` to use the reduced `estimatedTokens` (already multiplied by `compactReductionFactor`) until the DB refreshes naturally (10s throttle).
+2. **`realTokensBaseline` tracking on `session.compacted`**: Sets `realTokensBaseline = realTokens` (the lifetime token total at compaction time). After this, `getTokenCount()` ignores the cumulative DB `realTokens` and returns `estimatedTokens` instead — which has already been reduced by `compactReductionFactor`. This prevents the massive token count discrepancy (29M DB vs 70k actual) from triggering false compaction.
 
-The `refreshRealTokens()` throttle has two paths:
-- Normal: `realTokens > 0 && now - lastRealTokenRefreshAt < 10s` → return cached
-- Post-compaction: `realTokens === 0 && lastCompactionAt > 0 && now - lastCompactionAt < 10s` → return reduced `estimatedTokens`
-- After either path expires: falls through to DB re-read
+The `refreshRealTokens()` throttle:
+- `realTokens > 0 && now - lastRealTokenRefreshAt < 10s` → return cached
+- `realTokensBaseline > 0` → return `estimatedTokens` (not the cumulative DB value)
+- After baseline is set: DB values are ignored until a new compaction resets the baseline
 
 `forceCompact()` (emergency) is NOT blocked by grace period — token limit errors require immediate action.
+
+### Scaled Verify Wait for Massive Sessions
+
+The verify wait (`compactionVerifyWaitMs`) is scaled by token count to accommodate very large sessions:
+
+| Token Count | Multiplier | Example (30s default) |
+|------------|------------|----------------------|
+| < 200k | 1× | 30s wait |
+| 200k–500k | 2× | 60s wait |
+| > 500k | 3× | 90s wait |
+
+Sessions with millions of tokens (e.g., 29M from cumulative DB counts) need significantly more time for `session.summarize()` to complete.
 
 ### Token Estimation
 
