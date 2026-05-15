@@ -1,12 +1,6 @@
-/**
- * Tests for SessionMonitor module
- */
-
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { flushPromises } from "./helpers.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createSessionMonitor } from "../session-monitor.js";
 import type { PluginConfig, SessionState } from "../shared.js";
-import type { TypedPluginInput } from "../types.js";
 
 const mockConfig: PluginConfig = {
   stallTimeoutMs: 180000,
@@ -66,7 +60,6 @@ const mockConfig: PluginConfig = {
   advisoryTimeoutMs: 5000,
   advisoryMaxTokens: 500,
   advisoryTemperature: 0.1,
-  // Session Monitor config
   subagentWaitMs: 15000,
   sessionDiscoveryIntervalMs: 60000,
   idleSessionTimeoutMs: 600000,
@@ -130,14 +123,6 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
 
 const mockLog = vi.fn();
 
-const mockInput = {
-  client: {
-    session: {
-      list: vi.fn().mockResolvedValue({ data: [] }),
-    },
-  },
-} as unknown as TypedPluginInput;
-
 describe("SessionMonitor", () => {
   let monitor: ReturnType<typeof createSessionMonitor>;
   let sessions: Map<string, SessionState>;
@@ -155,7 +140,6 @@ describe("SessionMonitor", () => {
       config: mockConfig,
       sessions,
       log: mockLog,
-      input: mockInput,
       isDisposed: () => isDisposed,
       recover: (id: string) => {
         recoverCalls.push(id);
@@ -179,10 +163,9 @@ describe("SessionMonitor", () => {
       const session = createMockSession();
       sessions.set("session-1", session);
       const oldTime = session.lastProgressAt;
-      
-      // Wait a tiny bit
+
       monitor.touchSession("session-1");
-      
+
       expect(session.lastProgressAt).toBeGreaterThanOrEqual(oldTime);
     });
 
@@ -199,7 +182,6 @@ describe("SessionMonitor", () => {
 
   describe("Orphan Parent Detection", () => {
     it("should detect orphan parent when busyCount drops", () => {
-      // Setup: parent with child, both busy
       const parent = createMockSession({ timer: setTimeout(() => {}, 1000), lastProgressAt: Date.now() - 20000 });
       const child = createMockSession({ timer: setTimeout(() => {}, 1000) });
       sessions.set("parent-1", parent);
@@ -208,15 +190,11 @@ describe("SessionMonitor", () => {
 
       monitor.start();
 
-      // Simulate child finishing (busyCount drops from 2 to 1)
       clearTimeout(child.timer as ReturnType<typeof setTimeout>);
       child.timer = null;
 
-      // Wait for orphan check interval (5s) - use fake timers
       vi.advanceTimersByTime(6000);
 
-      // Since parent is stuck > subagentWaitMs (15s), it should trigger recovery
-      // But we set lastProgressAt to 20s ago, so it should trigger
       monitor.stop();
     });
 
@@ -232,229 +210,8 @@ describe("SessionMonitor", () => {
       child.timer = null;
 
       vi.advanceTimersByTime(6000);
-      
+
       expect(recoverCalls).not.toContain("parent-1");
-      monitor.stop();
-    });
-  });
-
-  describe("Session Discovery", () => {
-    it("should discover missed sessions", async () => {
-      vi.useRealTimers(); // Use real timers for async test
-      
-      const mockList = vi.fn().mockResolvedValue({
-        data: [
-          { id: "session-1" },
-          { id: "session-2" },
-        ],
-      });
-
-      const customInput = {
-        client: {
-          session: {
-            list: mockList,
-          },
-        },
-      } as unknown as TypedPluginInput;
-
-      const customMonitor = createSessionMonitor({
-        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50 },
-        sessions,
-        log: mockLog,
-        input: customInput,
-        isDisposed: () => isDisposed,
-        recover: () => {},
-      });
-
-      customMonitor.start();
-      
-      // Wait for discovery interval
-      await new Promise(r => setTimeout(r, 100));
-      
-      expect(mockList).toHaveBeenCalled();
-      expect(sessions.has("session-1")).toBe(true);
-      expect(sessions.has("session-2")).toBe(true);
-      
-      customMonitor.stop();
-    });
-
-    it("should arm recovery timer for discovered busy sessions", async () => {
-      const mockList = vi.fn().mockResolvedValue({
-        data: [{ id: "busy-session" }],
-      });
-      const mockStatus = vi.fn().mockResolvedValue({
-        data: { "busy-session": { type: "busy" } },
-      });
-
-      const customInput = {
-        client: {
-          session: {
-            list: mockList,
-            status: mockStatus,
-          },
-        },
-      } as unknown as TypedPluginInput;
-
-      const customMonitor = createSessionMonitor({
-        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50, stallTimeoutMs: 100 },
-        sessions,
-        log: mockLog,
-        input: customInput,
-        isDisposed: () => isDisposed,
-        recover: (id: string) => {
-          recoverCalls.push(id);
-        },
-      });
-
-      customMonitor.start();
-      await vi.advanceTimersByTimeAsync(60);
-      await flushPromises();
-
-      expect(sessions.has("busy-session")).toBe(true);
-      expect(sessions.get("busy-session")?.timer).not.toBeNull();
-
-      await vi.advanceTimersByTimeAsync(100);
-
-      expect(recoverCalls).toContain("busy-session");
-      customMonitor.stop();
-    });
-
-    it("should NOT arm recovery timer for discovered sessions with unknown status", async () => {
-      const mockList = vi.fn().mockResolvedValue({
-        data: [{ id: "unknown-session" }],
-      });
-      const mockStatus = vi.fn().mockResolvedValue({ data: {} });
-
-      const customInput = {
-        client: {
-          session: {
-            list: mockList,
-            status: mockStatus,
-          },
-        },
-      } as unknown as TypedPluginInput;
-
-      const customMonitor = createSessionMonitor({
-        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50, stallTimeoutMs: 100 },
-        sessions,
-        log: mockLog,
-        input: customInput,
-        isDisposed: () => isDisposed,
-        recover: (id: string) => {
-          recoverCalls.push(id);
-        },
-      });
-
-      customMonitor.start();
-      await vi.advanceTimersByTimeAsync(60);
-      await flushPromises();
-
-      expect(sessions.has("unknown-session")).toBe(true);
-      // FIX 10: Unknown status sessions are tracked but NOT armed for recovery
-      expect(sessions.get("unknown-session")?.timer).toBeNull();
-
-      await vi.advanceTimersByTimeAsync(100);
-
-      expect(recoverCalls).not.toContain("unknown-session");
-      customMonitor.stop();
-    });
-
-    it("should mark discovered sessions with reviewFired=true to prevent review spam", async () => {
-      const mockList = vi.fn().mockResolvedValue({
-        data: [{ id: "discovered-session" }],
-      });
-      const mockStatus = vi.fn().mockResolvedValue({ data: {} });
-
-      const customInput = {
-        client: {
-          session: {
-            list: mockList,
-            status: mockStatus,
-          },
-        },
-      } as unknown as TypedPluginInput;
-
-      const customMonitor = createSessionMonitor({
-        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50, stallTimeoutMs: 100 },
-        sessions,
-        log: mockLog,
-        input: customInput,
-        isDisposed: () => isDisposed,
-        recover: (id: string) => {
-          recoverCalls.push(id);
-        },
-      });
-
-      customMonitor.start();
-      await vi.advanceTimersByTimeAsync(60);
-      await flushPromises();
-
-      const state = sessions.get("discovered-session");
-      expect(state).toBeDefined();
-      expect(state?.reviewFired).toBe(true);
-      expect(state?.lastReviewAt).toBeGreaterThan(0);
-
-      customMonitor.stop();
-    });
-  });
-
-  describe("Idle Session Cleanup", () => {
-    it("should clean up idle sessions", () => {
-      const oldSession = createMockSession({
-        timer: null,
-        lastProgressAt: Date.now() - 700000, // 700s ago > 600s timeout
-      });
-      sessions.set("old-session", oldSession);
-
-      monitor.start();
-      
-      // Wait for cleanup interval (30s) - but we can trigger it via stats
-      vi.advanceTimersByTime(35000);
-      
-      // Check if session was cleaned up
-      // Note: cleanup runs on interval, may not be immediate
-      monitor.stop();
-    });
-
-    it("should not clean up sessions with pending auto-continue work", () => {
-      const nudgeTimer = setTimeout(() => {}, 1000);
-      (nudgeTimer as any).unref?.();
-      const pendingContinue = createMockSession({
-        timer: null,
-        needsContinue: true,
-        lastProgressAt: Date.now() - 700000,
-      });
-      const pendingNudge = createMockSession({
-        timer: null,
-        nudgeTimer,
-        lastProgressAt: Date.now() - 700000,
-      });
-      sessions.set("pending-continue", pendingContinue);
-      sessions.set("pending-nudge", pendingNudge);
-
-      monitor.start();
-      vi.advanceTimersByTime(35000);
-
-      expect(sessions.has("pending-continue")).toBe(true);
-      expect(sessions.has("pending-nudge")).toBe(true);
-
-      monitor.stop();
-    });
-
-    it("should enforce max session limit", () => {
-      // Create more sessions than maxSessions
-      for (let i = 0; i < 55; i++) {
-        sessions.set(`session-${i}`, createMockSession({
-          timer: null,
-          lastProgressAt: Date.now() - i * 1000,
-        }));
-      }
-
-      monitor.start();
-      vi.advanceTimersByTime(35000);
-      
-      expect(sessions.size).toBeLessThanOrEqual(mockConfig.maxSessions);
-      
       monitor.stop();
     });
   });
@@ -466,10 +223,13 @@ describe("SessionMonitor", () => {
       sessions.set("idle-1", createMockSession({ timer: null, lastKnownStatus: 'idle' as const }));
 
       const stats = monitor.getStats();
-      
+
       expect(stats.totalSessions).toBe(3);
       expect(stats.busySessions).toBe(2);
       expect(stats.idleSessions).toBe(1);
+      expect(stats.orphanRecoveries).toBe(0);
+      expect(stats).not.toHaveProperty("discoveredSessions");
+      expect(stats).not.toHaveProperty("cleanedUpSessions");
     });
   });
 });
