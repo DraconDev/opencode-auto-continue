@@ -646,6 +646,7 @@ Config: `statusFileEnabled`, `statusFilePath`, `maxStatusHistory`, `statusFileRo
 | Status file atomic writes | Never partial read during `tail -f` | Extra `.tmp` file per write |
 | safeHook fail-open wrapper | Prevents plugin errors from crashing the host | Errors are logged but never propagated |
 | Question auto-answer via `_client` SDK internals | No public API for question reply in v1 SDK | Breaks silently if OpenCode renames internal `_client` property |
+| No session discovery/cleanup | Removed cleanup→rediscover loop that caused review spam and credit burn. OpenCode tracks sessions in its own DB; our Map only needs event-learned sessions. | Sessions that exist before plugin load won't be tracked until they emit events |
 
 | Tool-text recovery | Catches XML-in-reasoning stalls | 18 regex patterns may have false positives |
 | Hallucination loop break | Prevents infinite loops | 3-in-10min threshold may catch legitimate rapid continues |
