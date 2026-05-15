@@ -244,6 +244,7 @@ All config options are set in `opencode.json` under the plugin entry:
 | `compactReductionFactor` | number | `0.7` | Expected context reduction ratio |
 | `compactionSafetyTimeoutMs` | number | `15000` | Safety timeout to clear stuck `compacting` flag |
 | `compactionGracePeriodMs` | number | `10000` | Grace period after compaction — all layers skip while DB updates |
+| `compactionFailBackoffMs` | number | `60000` | After compaction fails, all layers skip for this period (prevents spam) |
 
 ### Terminal & Status
 
