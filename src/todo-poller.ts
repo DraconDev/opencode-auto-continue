@@ -143,6 +143,10 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     }, interval);
   }
 
+  function cleanupSession(sessionId: string): void {
+    lastEventTodoAt.delete(sessionId);
+  }
+
   function stopPeriodicPoll(): void {
     if (pollTimer) {
       clearTimeout(pollTimer);
@@ -155,6 +159,7 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     pollAllActive,
     processTodos,
     markEventTodoReceived,
+    cleanupSession,
     startPeriodicPoll,
     stopPeriodicPoll,
   };
