@@ -954,7 +954,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           }
 
           refreshRealTokens(sid);
-          log('[Compaction] token check:', sid, 'effective=', getTokenCount(s), 'real=', s.realTokens, 'estimated=', s.estimatedTokens, 'proactiveThreshold=', config.proactiveCompactAtTokens, 'hardThreshold=', config.hardCompactAtTokens);
+          log('[Compaction] token check:', sid, 'effective=', getTokenCount(s), 'real=', s.realTokens, 'baseline=', s.realTokensBaseline, 'estimated=', s.estimatedTokens, 'proactiveThreshold=', config.proactiveCompactAtTokens, 'hardThreshold=', config.hardCompactAtTokens);
           compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
             if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
           }).catch((e: unknown) => log('proactive compact check failed:', e));
