@@ -28,6 +28,14 @@ const ENV_ERROR_PATTERNS = [
   /not recognized as an internal or external command/i,
 ];
 
+const LOCK_CONTENTION_PATTERNS = [
+  /blocking waiting for file lock/i,
+  /waiting for file lock on package cache/i,
+  /unable to acquire lock/i,
+  /lock file.*already locked/i,
+  /another process holds the lock/i,
+];
+
 const EXIT_CODE_NOT_FOUND = 127;
 
 function findGateFile(command: string, gates: Record<string, string>): string | null {
@@ -48,6 +56,10 @@ function findGateFile(command: string, gates: Record<string, string>): string | 
 function isEnvError(output: string, exitCode: number): boolean {
   if (exitCode === EXIT_CODE_NOT_FOUND) return true;
   return ENV_ERROR_PATTERNS.some((pat) => pat.test(output));
+}
+
+function isLockContention(output: string): boolean {
+  return LOCK_CONTENTION_PATTERNS.some((pat) => pat.test(output));
 }
 
 function hasRealResults(results: TestResult[]): boolean {
