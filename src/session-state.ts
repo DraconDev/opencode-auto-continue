@@ -70,6 +70,8 @@ export interface SessionState {
 
   // === Nudge (nudge.ts) ===
   nudgeTimer: ReturnType<typeof setTimeout> | null;
+  nudgeRetryTimer: ReturnType<typeof setTimeout> | null; // Retries nudge when blocked by compaction/planning
+  nudgeRetryCount: number; // Count of nudge retries due to compaction blocking
   lastNudgeAt: number;
   nudgeCount: number;
   nudgeFailureCount: number; // FIX 8: Track nudge failures
@@ -173,6 +175,8 @@ export function createSession(): SessionState {
     hardCompactCount: 0,
 
     nudgeTimer: null,
+    nudgeRetryTimer: null,
+    nudgeRetryCount: 0,
     lastNudgeAt: 0,
     nudgeCount: 0,
     nudgeFailureCount: 0, // FIX 8
