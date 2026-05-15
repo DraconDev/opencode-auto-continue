@@ -3,20 +3,22 @@
  *
  * Handles:
  * 1. Orphan parent detection - when subagent finishes but parent stays busy
- * 2. Session discovery - periodic polling to find missed sessions
- * 3. Idle session cleanup - prevent memory leaks
+ *
+ * Session discovery and idle cleanup were removed — they created a
+ * cleanup→rediscover loop that spawned fresh SessionState entries,
+ * bypassing review cooldown and causing review spam / credit burn.
+ * OpenCode already tracks sessions in its DB; our runtime Map only
+ * needs entries for sessions we learned about via events.
  */
 
-import { createSession, type SessionState } from "./session-state.js";
+import type { SessionState } from "./session-state.js";
 import type { PluginConfig } from "./config.js";
-import type { TypedPluginInput } from "./types.js";
 import type { StopConditionResult } from "./stop-conditions.js";
 
 export interface SessionMonitorDeps {
   config: PluginConfig;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
-  input: TypedPluginInput;
   isDisposed: () => boolean;
   recover: (sessionId: string) => void;
   checkStopConditions?: (sessionId: string) => StopConditionResult;
@@ -35,46 +37,17 @@ export interface SessionMonitorStats {
   busySessions: number;
   idleSessions: number;
   orphanRecoveries: number;
-  discoveredSessions: number;
-  cleanedUpSessions: number;
 }
 
-/**
- * Create the session monitor module.
- */
 export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
-  const { config, sessions, log, input, isDisposed, recover } = deps;
+  const { config, sessions, log, isDisposed, recover } = deps;
 
-  let discoveryTimer: ReturnType<typeof setInterval> | null = null;
-  let cleanupTimer: ReturnType<typeof setInterval> | null = null;
   let orphanCheckTimer: ReturnType<typeof setInterval> | null = null;
   let previousBusyCount = 0;
   let orphanRecoveryCount = 0;
-  let discoveredCount = 0;
-  let cleanedUpCount = 0;
 
-  // Track parent-child relationships
   const parentChildMap = new Map<string, Set<string>>();
   const childParentMap = new Map<string, string>();
-
-  function scheduleDiscoveredRecovery(sessionId: string, state: SessionState): void {
-    // FIX 4: Increment generation to invalidate stale timers
-    state.timerGeneration++;
-    const currentGeneration = state.timerGeneration;
-    // FIX 9: Use shorter initial timeout for discovered sessions that may already be stuck
-    const timeoutMs = Math.min(config.stallTimeoutMs, 30000);
-    const timer = setTimeout(() => {
-      const current = sessions.get(sessionId);
-      if (current && current.timer === timer && current.timerGeneration === currentGeneration) {
-        current.timer = null;
-        recover(sessionId);
-      } else {
-        log('[SessionMonitor] stale discovered recovery timer ignored:', sessionId);
-      }
-    }, timeoutMs);
-    (timer as any).unref?.();
-    state.timer = timer;
-  }
 
   function getBusyCount(): number {
     let count = 0;
@@ -88,7 +61,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function getIdleSessions(): string[] {
     const idle: string[] = [];
-    const now = Date.now();
     for (const [id, s] of sessions) {
       if (s.lastKnownStatus !== 'busy' && s.lastKnownStatus !== 'retry' && !s.aborting && !s.compacting) {
         idle.push(id);
@@ -97,40 +69,18 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     return idle;
   }
 
-  function hasPendingWork(s: SessionState): boolean {
-    return (
-      s.timer != null ||
-      s.nudgeTimer != null ||
-      s.reviewDebounceTimer != null ||
-      s.needsContinue ||
-      s.aborting ||
-      s.compacting
-    );
-  }
-
-  /**
-   * Check for orphan parent sessions.
-   * When busyCount drops from >1 to 1, a subagent may have finished
-   * but the parent is still stuck as busy.
-   * 
-   * FIX 2: Also detect single busy sessions that have been stuck for too long.
-   */
   function checkOrphanParents(): void {
     if (isDisposed()) return;
 
     const currentBusyCount = getBusyCount();
 
-    // Detect transition: multiple busy → single busy (potential orphan)
     if (previousBusyCount > 1 && currentBusyCount === 1) {
       log('[SessionMonitor] busyCount dropped from', previousBusyCount, 'to 1, checking for orphan parent');
 
-      // Find the remaining busy session
       for (const [id, s] of sessions) {
         if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
-          // Check if this session has children that recently finished
           const children = parentChildMap.get(id);
           if (children && children.size > 0) {
-            // This is a parent session - check if it's been stuck too long
             const timeSinceProgress = Date.now() - s.lastProgressAt;
             if (timeSinceProgress > config.subagentWaitMs) {
               log('[SessionMonitor] orphan parent detected:', id, 'stuck for', timeSinceProgress, 'ms after subagent completion');
@@ -144,7 +94,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               orphanRecoveryCount++;
               recover(id);
             } else {
-              // Schedule another check after the wait period
               setTimeout(() => {
                 if (!isDisposed()) {
                   const session = sessions.get(id);
@@ -172,13 +121,9 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       }
     }
 
-    // FIX 2: Also check for single busy sessions stuck for too long
-    // (catches orphans even without parent-child tracking, and single-session stalls)
-    // FIX 5: Use stallTimeoutMs instead of subagentWaitMs * 2 (30s is too aggressive vs 180s stallTimeoutMs)
     if (currentBusyCount >= 1) {
       for (const [id, s] of sessions) {
         if (s.lastKnownStatus === 'busy' || s.lastKnownStatus === 'retry' || s.aborting || s.compacting) {
-          // Skip if recovery is already in progress
           if (s.aborting) continue;
           const timeSinceProgress = Date.now() - s.lastProgressAt;
           const stuckThreshold = config.stallTimeoutMs;
@@ -194,134 +139,11 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
             orphanRecoveryCount++;
             recover(id);
           }
-          // Don't break — check ALL busy sessions, not just the first
         }
       }
     }
 
     previousBusyCount = currentBusyCount;
-  }
-
-  /**
-   * Discover sessions via session.list() API.
-   * Catches sessions missed by event tracking.
-   */
-  async function discoverSessions(): Promise<void> {
-    if (isDisposed()) return;
-
-    try {
-      const result = await input.client.session.list();
-      const sessionList = Array.isArray(result.data) ? result.data : [];
-      let statusData: Record<string, { type: string }> = {};
-
-      try {
-        const statusResult = await (input.client.session as any).status?.({});
-        statusData = (statusResult?.data || {}) as Record<string, { type: string }>;
-      } catch (e) {
-        log('[SessionMonitor] status check during discovery failed:', e);
-      }
-
-      for (const session of sessionList) {
-        const id = session.id;
-        if (!id) continue;
-
-        if (!sessions.has(id)) {
-          const statusType =
-            statusData[id]?.type ||
-            (session as any).status?.type ||
-            (session as any).type ||
-            null;
-
-          if (statusType && statusType !== "busy" && statusType !== "retry") {
-            continue;
-          }
-
-          // New session discovered - create minimal session entry
-          log('[SessionMonitor] discovered missed session:', id);
-          discoveredCount++;
-
-          // Create minimal session so recovery knows about it
-          const state = createSession();
-          state.actionStartedAt = Date.now();
-          state.reviewFired = true;
-          state.lastReviewAt = Date.now();
-
-          // FIX 10: Only arm recovery on busy/retry status, skip on null/unknown
-          if (statusType === "busy" || statusType === "retry") {
-            scheduleDiscoveredRecovery(id, state);
-          } else if (statusType === null) {
-            log('[SessionMonitor] discovered session with unknown status, not arming recovery:', id);
-          }
-
-          sessions.set(id, state);
-        }
-      }
-
-      log('[SessionMonitor] discovery complete, tracked:', sessions.size, 'sessions, discovered:', discoveredCount);
-    } catch (e) {
-      log('[SessionMonitor] session discovery failed:', e);
-    }
-  }
-
-  /**
-   * Clean up idle sessions to prevent memory leaks.
-   */
-  function cleanupIdleSessions(): void {
-    if (isDisposed()) return;
-
-    const now = Date.now();
-    const toDelete: string[] = [];
-
-    for (const [id, s] of sessions) {
-      // Clean up if idle for too long
-      if (!hasPendingWork(s)) {
-        const idleTime = now - s.lastProgressAt;
-        if (idleTime > config.idleSessionTimeoutMs) {
-          toDelete.push(id);
-        }
-      }
-    }
-
-    // Enforce max session limit
-    if (sessions.size > config.maxSessions) {
-      // Sort by last activity, oldest first
-      const sorted = Array.from(sessions.entries())
-        .filter(([id]) => !toDelete.includes(id))
-        .filter(([, s]) => !hasPendingWork(s))
-        .sort((a, b) => a[1].lastProgressAt - b[1].lastProgressAt);
-
-      const toRemove = sessions.size - config.maxSessions;
-      for (let i = 0; i < toRemove && i < sorted.length; i++) {
-        const id = sorted[i][0];
-        if (!toDelete.includes(id)) {
-          toDelete.push(id);
-        }
-      }
-    }
-
-    for (const id of toDelete) {
-      const s = sessions.get(id);
-      if (s) {
-        // FIX 2: Clear dangling timers before deleting session
-        if (s.timer) {
-          clearTimeout(s.timer);
-          s.timer = null;
-        }
-        if (s.nudgeTimer) {
-          clearTimeout(s.nudgeTimer);
-          s.nudgeTimer = null;
-        }
-        if (s.reviewDebounceTimer) {
-          clearTimeout(s.reviewDebounceTimer);
-          s.reviewDebounceTimer = null;
-        }
-      }
-      sessions.delete(id);
-      parentChildMap.delete(id);
-      childParentMap.delete(id);
-      cleanedUpCount++;
-      log('[SessionMonitor] cleaned up idle session:', id);
-    }
   }
 
   function touchSession(sessionId: string): void {
@@ -342,50 +164,29 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
   function start(): void {
     if (isDisposed()) return;
-    if (orphanCheckTimer || discoveryTimer || cleanupTimer) return; // Already started
+    if (orphanCheckTimer) return;
 
     if (config.sessionMonitorEnabled === false) {
       log('[SessionMonitor] disabled by config');
       return;
     }
 
-    // Orphan parent check every 5 seconds
     if (config.orphanParentDetection !== false) {
       orphanCheckTimer = setInterval(checkOrphanParents, 5000);
     }
 
-    // Session discovery every configured interval
-    if (config.sessionDiscovery !== false && config.sessionDiscoveryIntervalMs > 0) {
-      discoveryTimer = setInterval(() => {
-        discoverSessions().catch(e => log('[SessionMonitor] discovery error:', e));
-      }, config.sessionDiscoveryIntervalMs);
-    }
-
-    // Idle cleanup every 30 seconds
-    if (config.idleCleanup !== false) {
-      cleanupTimer = setInterval(cleanupIdleSessions, 30000);
-    }
-
-    if (!orphanCheckTimer && !discoveryTimer && !cleanupTimer) {
+    if (!orphanCheckTimer) {
       log('[SessionMonitor] all monitor features disabled by config');
       return;
     }
 
-    log(`[SessionMonitor] started, orphanCheck: ${orphanCheckTimer ? '5s' : 'off'}, discovery: ${discoveryTimer ? `${config.sessionDiscoveryIntervalMs}ms` : 'off'}, cleanup: ${cleanupTimer ? '30s' : 'off'}`);
+    log('[SessionMonitor] started, orphanCheck: 5s');
   }
 
   function stop(): void {
     if (orphanCheckTimer) {
       clearInterval(orphanCheckTimer);
       orphanCheckTimer = null;
-    }
-    if (discoveryTimer) {
-      clearInterval(discoveryTimer);
-      discoveryTimer = null;
-    }
-    if (cleanupTimer) {
-      clearInterval(cleanupTimer);
-      cleanupTimer = null;
     }
     log('[SessionMonitor] stopped');
   }
@@ -396,8 +197,6 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       busySessions: getBusyCount(),
       idleSessions: getIdleSessions().length,
       orphanRecoveries: orphanRecoveryCount,
-      discoveredSessions: discoveredCount,
-      cleanedUpSessions: cleanedUpCount,
     };
   }
 
