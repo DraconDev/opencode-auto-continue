@@ -15,7 +15,7 @@
   - **Cleared on success**: All 3 compaction success paths reset `lastCompactionFailedAt = 0`
   - **Catch block fix**: `attemptCompact()` catch block now sets `lastCompactionFailedAt` (was missing — exception-thrown compactions didn't record failure)
   - **7 new tests**: Backoff blocks hard/proactive/opportunistic, backoff clears on success, backoff elapsed allows retry
-- **Hard compaction ignores planning** (`src/compaction.ts:221`): Removed `if (s.planning) return false` from `maybeHardCompact()`. At 100k+ tokens, the context danger outweighs any planning concern. Hard compaction must fire to prevent OOM.
+- **Hard compaction ignores planning** (`src/compaction.ts`): Removed `if (s.planning) return false` from `maybeHardCompact()`. At 100k+ tokens, the context danger outweighs any planning concern. Hard compaction must fire to prevent OOM.
   - **1 test updated**: Test now verifies compaction fires during planning (was verifying it blocks)
 - **Scaled verify wait for massive sessions** (`src/compaction.ts:63-66`): `compactionVerifyWaitMs` is scaled by token count:
   - >500k tokens: 3× wait (e.g., 90s for default 30s config)
