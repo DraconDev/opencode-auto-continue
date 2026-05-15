@@ -1,11 +1,19 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.2000)
+## Current State (v7.8.2006)
 
 **Status:** Released & Dogfooding (local dev mode)
 **Tests:** 545/545 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.2000`
+**npm:** `@dracondev/opencode-auto-continue@7.8.2006`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.2006 Changes
+- **TodoWrite tool naming** (`src/config.ts`): All 7 message templates now explicitly name the `TodoWrite` tool instead of generic "create a todo" phrasing. Forces the AI to use the actual tool rather than just mentioning todos in text.
+  - Affected messages: `shortContinueMessage`, `continueWithPlanMessage`, `continueMessage`, `continueWithTodosMessage`, `reviewMessage`, `reviewWithoutTestsMessage`, `nudgeMessage`
+  - Example: *"create a todo for it"* → *"**use the TodoWrite tool to create a todo for it**"*
+- **`reviewWithoutTestsMessage` fix** (`src/config.ts`): Added missing fix-todo instruction — previously only said "Review... Verify... Check..." with no imperative to create todos or keep working. Now includes: *"Use the TodoWrite tool to create fix-todos for any issues or bugs you find before fixing them. Keep working until everything is correct. Do not stop until everything passes."*
+- **`<system-reminder>` detection** (`src/shared.ts:123`): Added `/<system[\s_-]reminder/i` to `TOOL_TEXT_PATTERNS`. When the model generates a `<system-reminder>` block as text output (e.g., `<system-reminder>Your operational mode has changed from plan to build</system-reminder>`), this is a role-confusion stall — the model is confused about its own operational mode, not actually doing work. Now suppressed from `lastOutputAt` reset, causing faster stall detection.
+  - **1 new test**: `shared-utility.test.ts` — `containsToolCallAsText` detects `<system-reminder>` and `<system_reminder>` variants
 
 ### v7.8.2000 Changes
 - **Compaction failure backoff** (`src/compaction.ts`): After compaction fails (timeout, safety timeout, or error), all 3 compaction layers (opportunistic/proactive/hard) now skip for `compactionFailBackoffMs` (default 60s). Previously, every `message.part.updated` would re-trigger proactive+hard compaction checks, causing spam.
