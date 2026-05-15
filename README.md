@@ -706,6 +706,8 @@ Minimal configuration with sensible defaults:
 | `compactionVerifyWaitMs` | `30000` | Max wait for compaction verification |
 | `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
 | `compactionSafetyTimeoutMs` | `15000` | Safety timeout to clear stuck compacting flag |
+| `compactionGracePeriodMs` | `10000` | Grace period after compaction — all layers skip while DB updates |
+| `compactionFailBackoffMs` | `60000` | After compaction fails, all layers skip for this period to prevent spam |
 
 ### Context Window
 
