@@ -736,13 +736,14 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 - **MODERATE (5)**: Discovered sessions busy check, configurable planningTimeoutMs, reduced shouldBlockPrompt limit (50→15), debounced status writes (500ms), max auto-submits UX
 - **MINOR (5)**: Consistent state reset, removed redundant shouldUseAI, AbortController timeout leak, progressTypes array
 
-#### Reanalysis (6 Fixes)
+#### Reanalysis (7 Fixes)
 1. **Duplicate attempts increment** - Removed double `s.attempts++` in recovery.ts catch block
 2. **Variable shadowing** - Fixed nudge.ts AI advisory block shadowing
 3. **Duplicate state reset** - Removed duplicate assignments in resetSession()
 4. **Indentation issue** - Fixed message.part.updated handler structure
 5. **Silent failure** - Added error logging to shouldBlockPrompt
 6. **Memory leak** - Clear old timer in scheduleRecoveryWithGeneration
+7. **Review loop credit burn** - Three-layer cooldown defense (`reviewCooldownMs`) + removed `agent: "plan"` from review prompt
 
 ## Common Issues
 
