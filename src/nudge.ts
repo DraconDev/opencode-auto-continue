@@ -46,6 +46,11 @@ export function createNudgeModule(deps: NudgeDeps) {
       s.nudgeTimer = null;
       log("nudge cancelled for session:", sessionId);
     }
+    if (s?.nudgeRetryTimer) {
+      clearTimeout(s.nudgeRetryTimer);
+      s.nudgeRetryTimer = null;
+      log("nudge retry cancelled for session:", sessionId);
+    }
   }
 
   // Reset nudge state on user activity
