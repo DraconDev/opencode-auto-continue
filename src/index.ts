@@ -603,6 +603,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             s.backoffAttempts = 0;
             s.lastNudgeAt = 0; // Prevent false "Session Resumed" toast
             s.lastContinueAt = 0; // Prevent false "Recovery Successful" toast
+            // Reset output timestamps so text-only stall timer gives AI fresh start
+            s.lastOutputAt = Date.now();
+            s.lastToolExecutionAt = Date.now();
             nudge.resetNudge(sid);
             log('user message detected, resetting counters:', sid);
           }
