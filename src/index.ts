@@ -1250,6 +1250,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
           review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
         }
+
+        // Re-schedule nudge after compaction if there are open todos.
+        // Handles the case where nudge retries gave up during compaction
+        // (e.g., compaction took >60s or a status check race dropped the retry).
+        // The nudge module's cooldown and duplicate guards prevent double-sends.
+        if (s.hasOpenTodos && config.nudgeEnabled && !s.planning) {
+          log('re-scheduling nudge after compaction, session:', sid);
+          nudge.scheduleNudge(sid);
+        }
+
         writeStatusFile(sid);
         return;
       }
