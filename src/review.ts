@@ -106,13 +106,6 @@ export function createReviewModule(deps: ReviewDeps) {
         return;
       }
 
-      // Guard against calling prompt() while session is compacting —
-      // "Tool call not allowed while generating summary" error.
-      if (s.compacting) {
-        log('sendReview skipped — session compacting, will retry after session.compacted:', sessionId);
-        return;
-      }
-
       // Send review prompt
       s.messageCount++;
       await input.client.session.prompt({
