@@ -370,6 +370,8 @@ These fields are tracked during `message.part.updated` events and injected as `#
 | `message.updated` (assistant tokens) | Update `estimatedTokens` for status tracking |
 | `message.updated` (user) | Reset counters, cancel nudge, reset `lastNudgeAt` |
 | `message.part.updated` (real progress) | Reset stall timer, reset attempts, update `lastOutputAt` |
+| `message.part.updated` (text/reasoning with tool-call-as-text) | **Do NOT reset** `lastOutputAt` or `lastProgressAt` — session is stuck generating tool calls as text |
+| `message.part.updated` (tool/file/subtask/step) | Update `lastToolExecutionAt`, track tool loop (increment `toolRepeatCount` if same tool) |
 | `message.part.updated` (step-finish tokens) | Update `estimatedTokens` with actual token counts |
 | `message.part.updated` (synthetic) | **Ignore** — prevents infinite loop |
 | `message.part.updated` (compaction) | Set `compacting = true`, pause monitoring |
@@ -408,6 +410,9 @@ These fields are tracked during `message.part.updated` events and injected as `#
 18. **Emergency failure recovery** — emergency compaction failure schedules recovery with backoff instead of abandoning session
 19. **Double compact prevention (grace period)** — all 3 layers skip if `lastCompactionAt` is within `compactionGracePeriodMs` (10s), even when `hardCompactBypassCooldown: true`. `session.compacted` sets `realTokens=0` so `getTokenCount()` falls back to reduced `estimatedTokens` until DB refreshes.
 20. **Todo polling supplements missing events** — `todo.updated` events do not arrive in plugin event stream (confirmed in OpenCode v1.14.51). The todo poller polls `session.todo()` API on `session.idle` and periodically (default 30s) to discover todos. Events, when received, mark the session fresh for 10s to skip redundant polls.
+21. **Tool-call-as-text suppresses progress** — text/reasoning parts containing XML tool call patterns do NOT reset `lastOutputAt` or `lastProgressAt`. The stall timer fires naturally, and `checkToolTextInSession()` in recovery confirms and uses the tool-text recovery prompt.
+22. **Text-only stall detection** — if only text/reasoning parts have been generated for `textOnlyStallTimeoutMs` (2min default) without any tool/file/subtask/step parts, recovery is forced. Catches "stuck toolcalling" where the model generates text but never executes tools.
+23. **Tool loop detection** — if the same tool is called `toolLoopMaxRepeats` (5 default) consecutive times, recovery is forced. Catches the scenario where the model keeps executing a broken tool.
 
 ## Nudge Architecture
 
