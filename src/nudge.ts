@@ -115,9 +115,6 @@ export function createNudgeModule(deps: NudgeDeps) {
       log("no open todos (cached), skipping nudge", { sessionId, knownTodos: s.lastKnownTodos.length });
       return;
     }
-    if (!s.hasOpenTodos && s.lastKnownTodos.length === 0) {
-      log("no todo data yet (no todo.updated events received), will try API fallback", { sessionId });
-    }
 
     // FIX 8: Check failure backoff before proceeding
     const NUDGE_FAILURE_BACKOFF_MS = 5000;
@@ -138,9 +135,10 @@ export function createNudgeModule(deps: NudgeDeps) {
       return;
     }
 
-    // Use cached todos from todo.updated events as primary source.
-    // The session.todo() API is unreliable — often returns empty/stale data.
-    // Only fall back to API when cache is empty.
+    // Todo source priority:
+    // 1. Cached from todo.updated events (instant, but events may not arrive)
+    // 2. Provided by caller (e.g., todo poller on session.idle)
+    // 3. Fallback: fetch from session.todo() API
     let todos: Array<{ id: string; status: string; content?: string; title?: string }>;
     if (s.lastKnownTodos && s.lastKnownTodos.length > 0) {
       todos = s.lastKnownTodos;

@@ -1243,6 +1243,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       log('disposing plugin');
       isDisposed = true;
       sessionMonitor.stop();
+      todoPoller.stopPeriodicPoll();
       clearPendingWrites();
       clearMessagesCache();
       invalidateModelLimitCache();
