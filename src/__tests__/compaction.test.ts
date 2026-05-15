@@ -523,11 +523,19 @@ describe("compaction module unit tests", () => {
       expect(result).toBe(false);
     });
 
-    it("returns false if session is planning", async () => {
+    it("fires compaction even when session is planning (tokens above hard threshold)", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
       sessions.set("test", createSessionState({ estimatedTokens: 200000, planning: true }));
-      module = createModule();
-      const result = await module.maybeHardCompact("test");
-      expect(result).toBe(false);
+      module = createModule({ hardCompactAtTokens: 100000, compactReductionFactor: 0.4 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(mockSummarize).toHaveBeenCalled();
     });
 
     it("returns false if session is stopped by condition", async () => {
