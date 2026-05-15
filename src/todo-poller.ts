@@ -91,6 +91,14 @@ export function createTodoPoller(deps: TodoPollerDeps) {
   }
 
   async function pollAndProcess(sessionId: string): Promise<Todo[] | null> {
+    // Skip API poll if a todo.updated event was received recently —
+    // events are more accurate than the API, and we don't want redundant fetches.
+    const lastEvent = lastEventTodoAt.get(sessionId);
+    if (lastEvent && Date.now() - lastEvent < TODO_EVENT_FRESH_MS) {
+      log("todo poll skipped — recent todo.updated event:", sessionId);
+      return null;
+    }
+
     const todos = await pollSession(sessionId);
     if (todos !== null && todos.length > 0) {
       processTodos(sessionId, todos);
