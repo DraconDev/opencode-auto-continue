@@ -48,27 +48,44 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     });
 
     if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
-      log("todo poll detected all completed, triggering review:", sessionId);
-      if (config.opportunisticCompactAfterReview && deps.maybeOpportunisticCompact) {
-        if (getTokenCount(s) >= config.opportunisticCompactAtTokens) {
-          deps.maybeOpportunisticCompact(sessionId, "post-review").catch((e: unknown) => log("opportunistic compact post-review failed:", e));
+      const now = Date.now();
+      const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
+      if (inCooldown) {
+        log("todo poll: all completed but review cooldown active, skipping:", {
+          sessionId,
+          lastReviewAt: s.lastReviewAt,
+          cooldownMs: config.reviewCooldownMs,
+          elapsed: now - s.lastReviewAt,
+        });
+      } else {
+        log("todo poll detected all completed, triggering review:", sessionId);
+        if (config.opportunisticCompactAfterReview && deps.maybeOpportunisticCompact) {
+          if (getTokenCount(s) >= config.opportunisticCompactAtTokens) {
+            deps.maybeOpportunisticCompact(sessionId, "post-review").catch((e: unknown) => log("opportunistic compact post-review failed:", e));
+          }
         }
+        if (s.reviewDebounceTimer) {
+          clearTimeout(s.reviewDebounceTimer);
+        }
+        s.reviewDebounceTimer = setTimeout(() => {
+          s.reviewDebounceTimer = null;
+          if (deps.triggerReview) deps.triggerReview(sessionId);
+        }, config.reviewDebounceMs);
       }
-      if (s.reviewDebounceTimer) {
-        clearTimeout(s.reviewDebounceTimer);
-      }
-      s.reviewDebounceTimer = setTimeout(() => {
-        s.reviewDebounceTimer = null;
-        if (deps.triggerReview) deps.triggerReview(sessionId);
-      }, config.reviewDebounceMs);
     } else if (!allCompleted && s.reviewDebounceTimer) {
       clearTimeout(s.reviewDebounceTimer);
       s.reviewDebounceTimer = null;
     }
 
     if (hasPending && s.reviewFired) {
-      log("todo poll: new pending todos after review, resetting review flag:", sessionId);
-      s.reviewFired = false;
+      const now = Date.now();
+      const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
+      if (inCooldown) {
+        log("todo poll: new pending todos after review, but cooldown active — NOT resetting reviewFired:", sessionId);
+      } else {
+        log("todo poll: new pending todos after review, resetting review flag:", sessionId);
+        s.reviewFired = false;
+      }
     }
 
     deps.writeStatusFile(sessionId);

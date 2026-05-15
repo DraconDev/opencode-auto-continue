@@ -5,7 +5,7 @@ import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
 export interface ReviewDeps {
-  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage">;
+  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -25,6 +25,13 @@ export function createReviewModule(deps: ReviewDeps) {
     if (isDisposed()) return;
     const s = sessions.get(sessionId);
     if (!s || s.reviewFired) return;
+
+    // Cooldown check — prevent rapid-fire review loop
+    const now = Date.now();
+    if (s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs) {
+      log('review cooldown active, skipping:', sessionId, 'elapsed:', now - s.lastReviewAt, 'ms, cooldown:', config.reviewCooldownMs, 'ms');
+      return;
+    }
 
     log('triggering review for session:', sessionId);
 
@@ -91,7 +98,6 @@ export function createReviewModule(deps: ReviewDeps) {
         path: { id: sessionId },
         query: { directory: input.directory || "" },
         body: {
-          agent: "plan",
           parts: [{
             type: "text",
             text: messageText,
@@ -102,7 +108,9 @@ export function createReviewModule(deps: ReviewDeps) {
 
       // FIX 9: Only mark as fired after successful send
       s.reviewFired = true;
-      log('review sent successfully');
+      s.lastReviewAt = Date.now();
+      s.reviewCount++;
+      log('review sent successfully (count:', s.reviewCount, ')');
     } catch (e: any) {
       log('review failed:', e);
       // FIX 9: Reset reviewFired on failure so it can retry
