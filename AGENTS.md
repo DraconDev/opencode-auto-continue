@@ -406,6 +406,7 @@ These fields are tracked during `message.part.updated` events and injected as `#
 17. **Compaction safety timeout** — `compactionSafetyTimeoutMs` force-clears stuck `compacting` flag if `session.summarize()` hangs
 18. **Emergency failure recovery** — emergency compaction failure schedules recovery with backoff instead of abandoning session
 19. **Double compact prevention (grace period)** — all 3 layers skip if `lastCompactionAt` is within `compactionGracePeriodMs` (10s), even when `hardCompactBypassCooldown: true`. `session.compacted` sets `realTokens=0` so `getTokenCount()` falls back to reduced `estimatedTokens` until DB refreshes.
+20. **Todo polling supplements missing events** — `todo.updated` events do not arrive in plugin event stream (confirmed in OpenCode v1.14.51). The todo poller polls `session.todo()` API on `session.idle` and periodically (default 30s) to discover todos. Events, when received, mark the session fresh for 10s to skip redundant polls.
 
 ## Nudge Architecture
 
