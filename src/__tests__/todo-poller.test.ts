@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createTodoPoller } from "../todo-poller.js";
 import type { SessionState } from "../session-state.js";
 import { createSession } from "../session-state.js";
