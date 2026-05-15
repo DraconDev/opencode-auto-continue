@@ -3,7 +3,7 @@
 ## Current State (v7.8.1987)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 530/530 passing
+**Tests:** 531/531 passing
 **npm:** `@dracondev/opencode-auto-continue@7.8.1973`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
 
