@@ -106,6 +106,38 @@ export function isPlanContent(text: string): boolean {
   return PLAN_PATTERNS.some(pattern => pattern.test(text.trim()));
 }
 
+export const TOOL_TEXT_PATTERNS = [
+  /<function\s*=/i,
+  /<function>/i,
+  /<\/function>/i,
+  /<parameter\s*=/i,
+  /<parameter>/i,
+  /<\/parameter>/i,
+  /<tool_call[\s>]/i,
+  /<\/tool_call>/i,
+  /<tool[\s_]name\s*=/i,
+  /<invoke\s+/i,
+  /<invoke>/i,
+  /<\/invoke>/i,
+  /<(?:edit|write|read|bash|grep|glob|search|replace|execute|run|cat|ls|npm|pip|docker)\s*(?:\s[^>]*)?\s*(?:\/>|>)/i,
+];
+
+export const TRUNCATED_XML_PATTERNS = [
+  { open: /<function[^>]*>/i, close: /<\/function>/i },
+  { open: /<parameter[^>]*>/i, close: /<\/parameter>/i },
+  { open: /<tool_call[^>]*>/i, close: /<\/tool_call>/i },
+  { open: /<invoke[^>]*>/i, close: /<\/invoke>/i },
+];
+
+export function containsToolCallAsText(text: string): boolean {
+  if (text.length <= 10) return false;
+  if (TOOL_TEXT_PATTERNS.some((pat) => pat.test(text))) return true;
+  for (const { open, close } of TRUNCATED_XML_PATTERNS) {
+    if (open.test(text) && !close.test(text)) return true;
+  }
+  return false;
+}
+
 export function estimateTokens(text: string, multiplier: number = 1.0): number {
   const codeChars = new Set("{}[]();+-*/=<>!&||^~%@#$'\"`");
   const digitChars = new Set("0123456789");
