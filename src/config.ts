@@ -197,15 +197,13 @@ export const DEFAULT_CONFIG: PluginConfig = {
   planningTimeoutMs: 300000,
 
   // Busy-but-dead detection (default 3 minutes — session busy but no real output)
-  // Note: busyStallTimeoutMs > stallTimeoutMs means the reschedule path (lastToolExecutionAt check)
-  // gets a chance to fire before busy-but-dead recovery. With lastToolExecutionAt checking
-  // recent tool execution, long subagents are correctly handled.
+  // This runs on every session.status(busy) event, independently of the general stall timer.
+  // The lastToolExecutionAt check reschedules recovery when tools are actively running.
   busyStallTimeoutMs: 180000,
 
-  // Text-only stall detection (default 2 minutes — only text/reasoning, no tool execution)
-  // textOnlyStallTimeoutMs > busyStallTimeoutMs ensures text-only stall (reasoning without tools)
-  // fires after busy-but-dead has a chance to reschedule when tool execution is recent.
-  // If tools haven't run but text has been produced, text-only stall fires.
+  // Text-only stall detection (default 3 minutes — only text/reasoning, no tool execution)
+  // Fires when session outputs text/reasoning but no tool execution for this duration.
+  // Independent of busyStallTimeoutMs — the two checks run on different conditions.
   textOnlyStallTimeoutMs: 180000,
 
   // Tool loop detection (same tool called repeatedly without progress)
@@ -312,16 +310,13 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.planningTimeoutMs < 0) addError('planningTimeoutMs', `planningTimeoutMs must be >= 0, got ${normalized.planningTimeoutMs}`);
   if (normalized.busyStallTimeoutMs < 0) addError('busyStallTimeoutMs', `busyStallTimeoutMs must be >= 0, got ${normalized.busyStallTimeoutMs}`);
   if (normalized.textOnlyStallTimeoutMs < 0) addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs must be >= 0, got ${normalized.textOnlyStallTimeoutMs}`);
-  // Enforce logical relationships between stall timeouts
-  if (normalized.busyStallTimeoutMs > 0 && normalized.stallTimeoutMs > 0 && normalized.busyStallTimeoutMs > normalized.stallTimeoutMs) {
-    addError('busyStallTimeoutMs', `busyStallTimeoutMs (${normalized.busyStallTimeoutMs}) should be <= stallTimeoutMs (${normalized.stallTimeoutMs}) to prevent unreachable busy-but-dead detection`);
-  }
-  if (normalized.textOnlyStallTimeoutMs > 0 && normalized.busyStallTimeoutMs > 0 && normalized.textOnlyStallTimeoutMs < normalized.busyStallTimeoutMs) {
-    addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs (${normalized.textOnlyStallTimeoutMs}) should be >= busyStallTimeoutMs (${normalized.busyStallTimeoutMs}) to maintain detection hierarchy`);
-  }
-  if (normalized.textOnlyStallTimeoutMs > 0 && normalized.stallTimeoutMs > 0 && normalized.textOnlyStallTimeoutMs > normalized.stallTimeoutMs) {
-    addError('textOnlyStallTimeoutMs', `textOnlyStallTimeoutMs (${normalized.textOnlyStallTimeoutMs}) should be <= stallTimeoutMs (${normalized.stallTimeoutMs}) to prevent unreachable text-only detection`);
-  }
+  // Stall timeout relationships are NOT enforced because the detection mechanisms
+  // are independent: the general stall timer (scheduleRecovery) is a fallback for
+  // when session.status(busy) events stop entirely; busy-but-dead runs on every
+  // status event with lastToolExecutionAt reschedule protection; text-only stall
+  // runs on every status event checking tool execution recency. Having
+  // busyStallTimeoutMs > stallTimeoutMs is valid and common (e.g., dogfood config
+  // with stallTimeoutMs:45000, busyStallTimeoutMs:180000).
   if (normalized.toolLoopMaxRepeats < 2) addError('toolLoopMaxRepeats', `toolLoopMaxRepeats must be >= 2, got ${normalized.toolLoopMaxRepeats}`);
   if (normalized.toolLoopWindowMs < 0) addError('toolLoopWindowMs', `toolLoopWindowMs must be >= 0, got ${normalized.toolLoopWindowMs}`);
   if (typeof normalized.tokenEstimateMultiplier !== 'number' || normalized.tokenEstimateMultiplier <= 0) addError('tokenEstimateMultiplier', `tokenEstimateMultiplier must be a positive number, got ${normalized.tokenEstimateMultiplier}`);

@@ -398,6 +398,36 @@ describe("shared.ts utilities", () => {
       expect(result.compactReductionFactor).toBe(0.01);
     });
 
+    it("should accept busyStallTimeoutMs > stallTimeoutMs (busy-but-dead is event-based, general stall timer is a fallback)", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, stallTimeoutMs: 45000, busyStallTimeoutMs: 180000 };
+      const result = validateConfig(config);
+
+      expect(result.stallTimeoutMs).toBe(45000);
+      expect(result.busyStallTimeoutMs).toBe(180000);
+    });
+
+    it("should accept textOnlyStallTimeoutMs > stallTimeoutMs (text-only stall is independent of general stall timer)", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, stallTimeoutMs: 45000, textOnlyStallTimeoutMs: 180000 };
+      const result = validateConfig(config);
+
+      expect(result.stallTimeoutMs).toBe(45000);
+      expect(result.textOnlyStallTimeoutMs).toBe(180000);
+    });
+
+    it("should accept textOnlyStallTimeoutMs < busyStallTimeoutMs (independent detection mechanisms)", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, busyStallTimeoutMs: 180000, textOnlyStallTimeoutMs: 120000 };
+      const result = validateConfig(config);
+
+      expect(result.busyStallTimeoutMs).toBe(180000);
+      expect(result.textOnlyStallTimeoutMs).toBe(120000);
+    });
+
     it("should normalize documented session monitor aliases", async () => {
       const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
 
