@@ -313,7 +313,8 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
 
       s.nudgeCount++;
-      s.nudgeFailureCount = 0; // FIX 8: Reset failure count on success
+      s.nudgeFailureCount = 0;
+      s.nudgeRetryCount = 0; // Reset retry count on success
       s.lastNudgeAt = Date.now();
       s.messageCount++;
       log("nudge sent successfully", { newCount: s.nudgeCount });

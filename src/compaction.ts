@@ -225,6 +225,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       const deadline = Date.now() + maxWait;
 
       let success = false;
+      let attempted = false;
       for (let attempt = 0; attempt < config.compactMaxRetries; attempt++) {
         if (Date.now() > deadline) {
           log(`[Compaction] HARD TIMEOUT — exceeded max wait ${maxWait}ms for session ${sessionId}`);
@@ -235,6 +236,7 @@ export function createCompactionModule(deps: CompactionDeps) {
           if (delay > 0) await new Promise(r => setTimeout(r, delay));
           s.compactionTimedOut = false;
         }
+        attempted = true;
         success = await attemptCompact(sessionId);
         if (success) break;
         if (s.compactionTimedOut) {
@@ -246,7 +248,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       if (success) {
         log(`[Compaction] HARD SUCCESS — session ${sessionId} compacted via hard compactor`);
         s.lastHardCompactionAt = Date.now();
-      } else {
+      } else if (attempted) {
         log(`[Compaction] HARD FAILED — session ${sessionId} hard compaction did not succeed within ${maxWait}ms`);
       }
     } else {
@@ -254,7 +256,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     }
 
     s.hardCompactionInProgress = false;
-    return getTokenCount(s) < threshold;
+    return success;
   }
 
   return { isTokenLimitError, attemptCompact, forceCompact, maybeProactiveCompact, maybeOpportunisticCompact, maybeHardCompact, inGracePeriod };
