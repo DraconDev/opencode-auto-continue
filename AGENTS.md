@@ -1,11 +1,20 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1923)
+## Current State (v7.8.1931)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 549/549 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1923`
+**Tests:** 555/555 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1931`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1931 Changes
+- **Review loop credit burn fix** (`src/review.ts`, `src/todo-poller.ts`): Three-layer defense against rapid-fire review loop that burned AI credits by sending `agent: "plan"` prompts every ~2 minutes.
+  - **Root cause**: Todo poller's `processTodos()` reset `reviewFired = false` whenever new pending todos appeared after review. Review itself often created new fix-todos → poller reset the flag → todos completed → another review fired → infinite loop. Session `ses_22aa046fcffeoin9otfWr6k8ZP` had 30+ reviews in ~40 min.
+  - **`agent: "plan"` removed**: Review prompt no longer specifies `agent: "plan"`, so it uses the session's active model instead of potentially switching to an unauthorized/uncredited model.
+  - **`reviewCooldownMs` config** (default 60000): Min time between reviews. After a review fires, both the poller's trigger path and `reviewFired` reset path check cooldown before proceeding.
+  - **`lastReviewAt` + `reviewCount`**: New SessionState fields track review timing and count.
+  - **3 cooldown checks**: (1) `todo-poller.ts processTodos` — allCompleted trigger path skips if in cooldown; (2) `todo-poller.ts processTodos` — reviewFired reset path skips if in cooldown; (3) `review.ts triggerReview` — safety net cooldown check.
+  - **6 new tests**: Cooldown blocks trigger, cooldown blocks reviewFired reset, cooldown elapsed allows trigger, cooldown elapsed allows reset, integration test with short cooldown.
 
 ### v7.8.1923 Changes
 - **Shell quiet mode** (`src/test-runner.ts`): BunShell `.quiet()` added to test command execution chain. Previously, `cargo test`/`cargo build` stdout+stderr was piped directly to the TUI by default. Now suppressed — output is captured internally but never displayed.
