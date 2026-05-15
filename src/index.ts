@@ -336,6 +336,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastUserMessageId = '';
       s.sentMessageAt = 0;
       s.reviewFired = false;
+      s.lastReviewAt = 0;
+      s.reviewCount = 0;
       s.lastNudgeAt = 0;
       s.nudgeCount = 0;
       s.nudgePaused = false;
