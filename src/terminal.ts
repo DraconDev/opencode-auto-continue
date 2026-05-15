@@ -97,40 +97,5 @@ export function createTerminalModule(deps: TerminalDeps) {
     }
   }
 
-  // ── StatusLine Hook (future-proof) ────────────────────────────────────
-
-  function registerStatusLineHook() {
-    try {
-      // Check if the plugin system supports statusLine hooks
-      const pluginSystem = input as any;
-      if (typeof pluginSystem.hook === 'function') {
-        pluginSystem.hook("tui.statusLine.variables", async (_input: any, result: any) => {
-          // Provide timer variables for each active session
-          sessions.forEach((s, sid) => {
-            if (s.actionStartedAt > 0) {
-              const now = Date.now();
-              const actionDuration = now - s.actionStartedAt;
-              const progressAgo = now - s.lastProgressAt;
-              const shortSid = sid.slice(0, 8);
-              result.variables[`afr_timer_${shortSid}`] = formatDuration(actionDuration);
-              result.variables[`afr_progress_${shortSid}`] = formatDuration(progressAgo);
-              const threshold = config.hardCompactAtTokens || config.proactiveCompactAtTokens;
-              if (threshold > 0) {
-                const tokenCount = getTokenCount(s);
-                const pressure = tokenCount >= threshold ? "high" : tokenCount >= threshold * 0.5 ? "med" : "low";
-                result.variables[`afr_tokens_${shortSid}`] = `${formatTokenCount(tokenCount)}/${formatTokenCount(threshold)} ${pressure}`;
-              }
-            }
-          });
-          return result;
-        });
-        log('statusLine hook registered');
-      }
-    } catch {
-      // Hook not available in this OpenCode version
-    }
-  }
-
-
-  return { updateTerminalTitle, clearTerminalTitle, updateTerminalProgress, clearTerminalProgress, registerStatusLineHook };
+  return { updateTerminalTitle, clearTerminalTitle, updateTerminalProgress, clearTerminalProgress };
 }

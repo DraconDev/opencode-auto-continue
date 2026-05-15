@@ -1,13 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
   getSessionTokens,
   getDbPath,
   setDbPath,
   getDbLastError,
-  getLatestMessageTokens,
-  getContextWindowUsage,
 } from "../tokens.js";
 import { createSession, getTokenCount } from "../session-state.js";
 
@@ -30,26 +28,11 @@ function createTestDb() {
       tokens_cache_write INTEGER DEFAULT 0,
       time_updated INTEGER DEFAULT 0
     );
-    CREATE TABLE IF NOT EXISTS message (
-      id TEXT PRIMARY KEY,
-      session_id TEXT,
-      data TEXT,
-      time_created INTEGER DEFAULT 0
-    );
   `);
 
   db.prepare(
     "INSERT INTO session (id, tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write, time_updated) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run("ses_test123", 50000, 5000, 1000, 200000, 10000, Date.now());
-
-  db.prepare(
-    "INSERT INTO message (id, session_id, data, time_created) VALUES (?, ?, ?, ?)"
-  ).run(
-    "msg_1",
-    "ses_test123",
-    JSON.stringify({ tokens: { input: 10000, output: 1000, reasoning: 500, total: 11500 } }),
-    Date.now()
-  );
 
   db.close();
 }
@@ -126,56 +109,6 @@ describe("tokens module", () => {
       setDbPath(DB_PATH);
       getSessionTokens("ses_test123");
       expect(getDbLastError()).toBe("");
-    });
-  });
-
-  describe("getLatestMessageTokens", () => {
-    it("should return null when DB does not exist", () => {
-      setDbPath("/nonexistent/path/opencode.db");
-      const result = getLatestMessageTokens("ses_test123");
-      expect(result).toBeNull();
-    });
-
-    it("should return token data from latest message", () => {
-      createTestDb();
-      setDbPath(DB_PATH);
-      const result = getLatestMessageTokens("ses_test123");
-      expect(result).not.toBeNull();
-      expect(result!.input).toBe(10000);
-      expect(result!.output).toBe(1000);
-      expect(result!.total).toBe(11500);
-    });
-
-    it("should return null when no messages with tokens", () => {
-      createTestDb();
-      setDbPath(DB_PATH);
-      const result = getLatestMessageTokens("ses_nonexistent");
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("getContextWindowUsage", () => {
-    it("should return null when contextLimit <= 0", () => {
-      createTestDb();
-      setDbPath(DB_PATH);
-      const result = getContextWindowUsage("ses_test123", 0);
-      expect(result).toBeNull();
-    });
-
-    it("should return null when no tokens available", () => {
-      setDbPath("/nonexistent/path/opencode.db");
-      const result = getContextWindowUsage("ses_test123", 100000);
-      expect(result).toBeNull();
-    });
-
-    it("should return usage info based on input tokens vs context limit", () => {
-      createTestDb();
-      setDbPath(DB_PATH);
-      const result = getContextWindowUsage("ses_test123", 200000);
-      expect(result).not.toBeNull();
-      expect(result!.usedTokens).toBe(50000);
-      expect(result!.totalTokens).toBe(200000);
-      expect(result!.percent).toBe(25);
     });
   });
 
