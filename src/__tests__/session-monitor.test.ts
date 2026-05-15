@@ -358,6 +358,44 @@ describe("SessionMonitor", () => {
       expect(recoverCalls).not.toContain("unknown-session");
       customMonitor.stop();
     });
+
+    it("should mark discovered sessions with reviewFired=true to prevent review spam", async () => {
+      const mockList = vi.fn().mockResolvedValue({
+        data: [{ id: "discovered-session" }],
+      });
+      const mockStatus = vi.fn().mockResolvedValue({ data: {} });
+
+      const customInput = {
+        client: {
+          session: {
+            list: mockList,
+            status: mockStatus,
+          },
+        },
+      } as unknown as TypedPluginInput;
+
+      const customMonitor = createSessionMonitor({
+        config: { ...mockConfig, sessionDiscoveryIntervalMs: 50, stallTimeoutMs: 100 },
+        sessions,
+        log: mockLog,
+        input: customInput,
+        isDisposed: () => isDisposed,
+        recover: (id: string) => {
+          recoverCalls.push(id);
+        },
+      });
+
+      customMonitor.start();
+      await vi.advanceTimersByTimeAsync(60);
+      await flushPromises();
+
+      const state = sessions.get("discovered-session");
+      expect(state).toBeDefined();
+      expect(state?.reviewFired).toBe(true);
+      expect(state?.lastReviewAt).toBeGreaterThan(0);
+
+      customMonitor.stop();
+    });
   });
 
   describe("Idle Session Cleanup", () => {
