@@ -1,13 +1,20 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1904)
+## Current State (v7.8.1914)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 518/518 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1904`
+**Tests:** 535/535 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1914`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
 
-### v7.8.1904 Changes
+### v7.8.1914 Changes
+- **Todo Poller module** (`src/todo-poller.ts`): Polls `session.todo()` API because the plugin event stream does not emit `todo.updated` events (confirmed missing in OpenCode v1.14.51). This was the root cause of nudge/review never firing in production — the plugin was entirely blind to todo state.
+  - **On-idle polling**: Before scheduling nudge on `session.idle`, polls the API to discover todos and update `hasOpenTodos`/`lastKnownTodos`.
+  - **Periodic polling**: Configurable `todoPollIntervalMs` (default 30s) polls all active (non-compacting, non-planning) sessions.
+  - **Event freshness**: When `todo.updated` events ARE received (e.g., in future OpenCode versions), they mark the session as fresh for 10s — skipping redundant API polls.
+  - **Review trigger**: Poller detects `allCompleted` and triggers review with debounce, identical to the event-based path.
+  - **17 new tests**: `src/__tests__/todo-poller.test.ts` covers poll-and-process, periodic polling, event freshness, review trigger, error handling.
+- **`todoPollIntervalMs` config**: New option (default 30000). Set to 0 to disable periodic polling (on-idle polling still active).
 - **Double compact prevention (grace period)**: All 3 compaction layers (opportunistic/proactive/hard) now skip if `lastCompactionAt` is within `compactionGracePeriodMs` (default 10s), even when `hardCompactBypassCooldown: true`. Prevents second `session.summarize()` from firing while DB token counts are still stale post-compaction.
 - **`realTokens = 0` on `session.compacted`**: Instead of calling `refreshRealTokens()` (which would read stale DB values), the handler now sets `realTokens = 0` + `lastRealTokenRefreshAt = Date.now()`. Forces `getTokenCount()` to use reduced `estimatedTokens` (already multiplied by `compactReductionFactor`) for 10s until DB refreshes.
 - **Two-path `refreshRealTokens` throttle**: Normal path (`realTokens > 0` + 10s) and post-compaction path (`realTokens === 0` + `lastCompactionAt` within 10s). Failed DB reads (where `realTokens = 0` from birth) now retry immediately instead of being throttled.
