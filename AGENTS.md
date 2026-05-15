@@ -726,7 +726,7 @@ Logs go to `~/.opencode/logs/auto-force-resume.log`.
 4. **Dual Timer Race** - Added `timerGeneration` counter to prevent stale timers
 5. **Triple Token Counting** - Deduplicated token estimation, added configurable `tokenEstimateMultiplier` (default 1.0)
 6. **Nudge API Error** - Fallback to cached todos on fetch failure
-7. **Review One-Shot** - Reset `reviewFired` when new todos appear
+7. **Review One-Shot** - Reset `reviewFired` when new todos appear (now with `reviewCooldownMs` guard to prevent rapid-fire loop)
 8. **0ms Recovery After Compaction** - Use `stallTimeoutMs` instead of 0
 9. **Advisory Wrong Provider** - Match by model name instead of first available
 
