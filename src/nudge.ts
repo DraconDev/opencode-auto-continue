@@ -238,7 +238,9 @@ export function createNudgeModule(deps: NudgeDeps) {
     // testRunner.runTests() checks config.testOnIdle internally
     let testFailureOutput = "";
     if (deps.testRunner && s && !s.testRunInProgress) {
-      if (config.showToasts) {
+      // Only show toast if tests are actually configured to run
+      const hasTestCommands = config.testOnIdle && config.testCommands.length > 0;
+      if (hasTestCommands && config.showToasts) {
         try {
           await input.client.tui.showToast({
             query: { directory: input.directory || "" },
