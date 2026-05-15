@@ -199,6 +199,13 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Busy-but-dead detection (default 1 minute — session busy but no real output)
   busyStallTimeoutMs: 60000,
 
+  // Text-only stall detection (default 2 minutes — only text/reasoning, no tool execution)
+  textOnlyStallTimeoutMs: 120000,
+
+  // Tool loop detection (same tool called repeatedly without progress)
+  toolLoopMaxRepeats: 5,
+  toolLoopWindowMs: 120000,
+
   // AI Advisory defaults
   enableAdvisory: false,
   advisoryModel: "",
