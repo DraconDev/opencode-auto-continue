@@ -92,6 +92,13 @@ export function createReviewModule(deps: ReviewDeps) {
         return;
       }
 
+      // Guard against calling prompt() while session is compacting —
+      // "Tool call not allowed while generating summary" error.
+      if (s.compacting) {
+        log('sendReview skipped — session compacting, will retry after session.compacted:', sessionId);
+        return;
+      }
+
       // Send review prompt
       s.messageCount++;
       await input.client.session.prompt({
@@ -137,6 +144,14 @@ export function createReviewModule(deps: ReviewDeps) {
 
     try {
       const messageText = s.continueMessageText;
+      // FIX: Guard against sending prompts while session is compacting
+      // OpenCode throws "Tool call not allowed while generating summary" if we
+      // call prompt() during session.summarize(). Queue continue for after compaction.
+      if (s.compacting) {
+        log('sendContinue skipped — session compacting, will resume after session.compacted:', sessionId);
+        s.continueInProgress = false;
+        return;
+      }
       // FIX 1: Check retry limit to prevent infinite retry loops
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;
