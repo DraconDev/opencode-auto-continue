@@ -443,8 +443,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const sessionMonitor = createSessionMonitor({ config, sessions, log, isDisposed: () => isDisposed, recover, checkStopConditions: stopConditions.checkStopConditions });
   sessionMonitor.start();
 
-  terminal.registerStatusLineHook();
-
   const staleTypes = [
     "session.ended",
     "session.deleted"
