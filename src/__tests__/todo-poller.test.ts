@@ -8,6 +8,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     todoPollIntervalMs: 30000,
     reviewOnComplete: true,
     reviewDebounceMs: 500,
+    reviewCooldownMs: 60000,
     opportunisticCompactAfterReview: true,
     opportunisticCompactAtTokens: 60000,
     ...overrides,
