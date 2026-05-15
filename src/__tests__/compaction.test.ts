@@ -138,6 +138,8 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     backoffAttempts: 0,
     reviewFired: false,
     reviewDebounceTimer: null,
+    lastReviewAt: 0,
+    reviewCount: 0,
     planBuffer: "",
     autoSubmitCount: 0,
     messageCount: 0,
