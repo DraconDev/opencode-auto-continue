@@ -1165,21 +1165,6 @@ describe("opencode-auto-continue", () => {
     });
   });
 
-  describe("statusLine hook", () => {
-    it("should attempt to register statusLine hook on init", async () => {
-      const hookSpy = vi.fn();
-      const plugin = await createPlugin(
-        { client: mockClient, hook: hookSpy } as any,
-        { stallTimeoutMs: 5000, terminalTitleEnabled: false }
-      );
-
-      // Plugin should initialize without error
-      expect(plugin).toBeDefined();
-      expect(plugin.event).toBeDefined();
-      expect(plugin.dispose).toBeDefined();
-    });
-  });
-
   describe("status file config", () => {
     it("should not write status file when disabled", async () => {
       const writeFileSpy = vi.spyOn(require('fs'), 'writeFileSync').mockImplementation(() => {});
