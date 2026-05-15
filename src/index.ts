@@ -666,6 +666,44 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
           }
           
+          // Check for text-only stall: session outputting text/reasoning but no tool execution
+          // This catches the "stuck toolcalling" scenario where the model generates
+          // tool calls as text/reasoning instead of actually executing them.
+          const timeSinceToolExecution = Date.now() - s.lastToolExecutionAt;
+          if (config.textOnlyStallTimeoutMs > 0 && timeSinceToolExecution > config.textOnlyStallTimeoutMs && timeSinceOutput <= config.busyStallTimeoutMs) {
+            const stop = stopConditions.checkStopConditions(sid);
+            if (stop.shouldStop) {
+              log('[StopConditions] session stopped, skipping text-only stall recovery:', stop.reason);
+            } else {
+              log('text-only stall detected: no tool execution for', timeSinceToolExecution, 'ms (output is recent), forcing recovery');
+              if (config.showToasts) {
+                try {
+                  input.client.tui.showToast({
+                    query: { directory: input.directory || "" },
+                    body: {
+                      title: "Session Stuck",
+                      message: `No tool execution for ${Math.round(timeSinceToolExecution / 1000)}s. Text-only stall detected.`,
+                      variant: "warning",
+                    },
+                  }).catch(() => {});
+                } catch (e) {}
+              }
+              recover(sid).catch((e: unknown) => log('text-only stall recovery failed:', e));
+            }
+          }
+          
+          // Check for tool loop: same tool called N times without progress
+          if (s.toolRepeatCount >= config.toolLoopMaxRepeats) {
+            const stop = stopConditions.checkStopConditions(sid);
+            if (stop.shouldStop) {
+              log('[StopConditions] session stopped, skipping tool loop recovery:', stop.reason);
+            } else {
+              log('tool loop recovery: tool', s.lastToolName, 'called', s.toolRepeatCount, 'times, forcing recovery');
+              s.toolRepeatCount = 0;
+              recover(sid).catch((e: unknown) => log('tool loop recovery failed:', e));
+            }
+          }
+          
           // Show "Session Resumed" toast if progress detected after recent nudge
           if (s.lastNudgeAt > 0 && Date.now() - s.lastNudgeAt < 30000) {
             if (config.showToasts) {
