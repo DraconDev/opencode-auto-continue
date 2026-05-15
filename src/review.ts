@@ -59,6 +59,20 @@ export function createReviewModule(deps: ReviewDeps) {
       let testOutput = "";
       let hasRealTests = false;
       if (deps.testRunner && s && !s.testRunInProgress) {
+        if (config.showToasts) {
+          try {
+            await input.client.tui.showToast({
+              query: { directory: input.directory || "" },
+              body: {
+                title: "Running Tests",
+                message: "Running cargo test for review...",
+                variant: "info",
+              },
+            });
+          } catch (e) {
+            log('test runner start toast error (ignored):', e);
+          }
+        }
         s.testRunInProgress = true;
         try {
           const results = await deps.testRunner.runTests();
