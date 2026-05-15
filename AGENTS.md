@@ -167,6 +167,7 @@ All config options are set in `opencode.json` under the plugin entry:
 | `includeTodoContext` | boolean | `true` | Include pending todos in nudge message |
 | `continueWithTodosMessage` | string | `"..."` | Nudge message template with todo context |
 | `todoPollIntervalMs` | number | `30000` | Periodic todo API poll interval (0=disable periodic, on-idle still active) |
+| `reviewCooldownMs` | number | `60000` | Min time between reviews (prevents rapid-fire review loop) |
 
 ### Compaction
 
