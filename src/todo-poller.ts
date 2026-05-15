@@ -11,7 +11,7 @@ export interface TodoPollerDeps {
   input: TypedPluginInput;
   writeStatusFile: (sessionId: string) => void;
   triggerReview?: (sessionId: string) => void;
-  maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<void>;
+  maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<boolean>;
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;
