@@ -228,12 +228,8 @@ export function updateProgress(s: SessionState) {
 }
 
 export function getTokenCount(s: SessionState): number {
-  if (s.realTokens > 0) {
-    if (s.realTokensBaseline > 0) {
-      const adjusted = Math.max(0, s.realTokens - s.realTokensBaseline);
-      return adjusted > 0 ? adjusted : s.estimatedTokens;
-    }
-    return s.realTokens;
+  if (s.realTokensBaseline > 0) {
+    return s.estimatedTokens;
   }
-  return s.estimatedTokens;
+  return s.realTokens > 0 ? s.realTokens : s.estimatedTokens;
 }
