@@ -57,7 +57,6 @@ function recordContinue(s: SessionState): void {
 }
 
 function isHallucinationLoop(s: SessionState): boolean {
-  recordContinue(s);
   return s.continueTimestamps.length >= LOOP_MAX_CONTINUES;
 }
 
@@ -328,7 +327,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         log('recovery intent added:', intentHint);
       }
 
-      if (s.tokenLimitHits > 0) {
+      if (s.tokenLimitHits > 0 && !hasToolText && !s.planning) {
         log('using short continue message due to previous token limit hits:', s.tokenLimitHits);
         messageText = config.shortContinueMessage;
       }
@@ -346,6 +345,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       log('queued continue message, waiting for stable state');
 
       s.attempts++;
+      recordContinue(s);
       s.autoSubmitCount++;
       s.lastRecoveryTime = Date.now();
       s.backoffAttempts = 0;
