@@ -93,6 +93,8 @@ export interface SessionState {
   // === Review (review.ts) ===
   reviewFired: boolean;
   reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
+  lastReviewAt: number;
+  reviewCount: number;
 
   // === Message Tracking (index.ts) ===
   lastUserMessageId: string;
@@ -189,6 +191,8 @@ export function createSession(): SessionState {
 
     reviewFired: false,
     reviewDebounceTimer: null,
+    lastReviewAt: 0,
+    reviewCount: 0,
 
     lastUserMessageId: '',
     sentMessageAt: 0,

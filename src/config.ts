@@ -22,6 +22,7 @@ export interface PluginConfig {
   reviewOnComplete: boolean;
   reviewMessage: string;
   reviewDebounceMs: number;
+  reviewCooldownMs: number;
   showToasts: boolean;
   nudgeEnabled: boolean;
   nudgeIdleDelayMs: number;
