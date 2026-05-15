@@ -1,11 +1,21 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1914)
+## Current State (v7.8.1921)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 535/535 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.1914`
+**Tests:** 548/548 passing
+**npm:** `@dracondev/opencode-auto-continue@7.8.1921`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1921 Changes
+- **Lock contention skip detection** (`src/test-runner.ts`): Detects "Blocking waiting for file lock on package cache" and similar lock contention messages from Cargo/other build tools. Marks affected test results as **skipped** (not failures) so they don't corrupt AI prompts with false test failures.
+  - **`LOCK_CONTENTION_PATTERNS`**: 5 patterns — `blocking waiting for file lock`, `waiting for file lock on package cache`, `unable to acquire lock`, `lock file already locked`, `another process holds the lock`.
+  - **Retroactive skip in `runTests()`**: After command execution, checks output for lock contention before env errors.
+  - **Catch block skip**: When command throws with lock contention in stderr/message, also marks as skipped.
+  - **Zero test noise**: Lock contention skipped results are excluded from `formatResults()`/`formatFailures()` (same as all skipped results).
+  - **Root cause**: Multiple OpenCode sessions running `cargo test`/`cargo build` concurrently compete for Cargo's global package cache lock. The blocked process reports this as output; previously treated as a real failure.
+  - **12 new tests**: `src/__tests__/test-runner.test.ts` covers pattern detection, retroactive skip, catch-block skip, format exclusion, non-contention pass-through.
+- **`isLockContention()` exported**: Available for testing and external use.
 
 ### v7.8.1914 Changes
 - **Todo Poller module** (`src/todo-poller.ts`): Polls `session.todo()` API because the plugin event stream does not emit `todo.updated` events (confirmed missing in OpenCode v1.14.51). This was the root cause of nudge/review never firing in production — the plugin was entirely blind to todo state.
