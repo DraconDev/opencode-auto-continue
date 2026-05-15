@@ -344,6 +344,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.hardCompactMaxWaitMs < 0) addError('hardCompactMaxWaitMs', `hardCompactMaxWaitMs must be >= 0, got ${normalized.hardCompactMaxWaitMs}`);
   if (normalized.compactionSafetyTimeoutMs < 0) addError('compactionSafetyTimeoutMs', `compactionSafetyTimeoutMs must be >= 0, got ${normalized.compactionSafetyTimeoutMs}`);
   if (normalized.compactionGracePeriodMs < 0) addError('compactionGracePeriodMs', `compactionGracePeriodMs must be >= 0, got ${normalized.compactionGracePeriodMs}`);
+  if (normalized.compactionFailBackoffMs < 0) addError('compactionFailBackoffMs', `compactionFailBackoffMs must be >= 0, got ${normalized.compactionFailBackoffMs}`);
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);

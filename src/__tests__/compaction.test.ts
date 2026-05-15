@@ -80,6 +80,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   hardCompactBypassCooldown: true,
   compactionSafetyTimeoutMs: 15000,
   compactionGracePeriodMs: 10000,
+  compactionFailBackoffMs: 60000,
   stopFilePath: "",
   maxRuntimeMs: 0,
   untilMarker: "",
