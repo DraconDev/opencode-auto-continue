@@ -1079,6 +1079,49 @@ describe("opencode-auto-continue", () => {
       expect(true).toBe(true);
     });
 
+    it("should reset lastOutputAt and lastToolExecutionAt on user message to prevent false text-only stall", async () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        textOnlyStallTimeoutMs: 120000,
+        busyStallTimeoutMs: 180000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      // Session busy — simulate old activity
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Simulate tools were run long ago
+      const fakeState = (plugin as any).runtime?.sessions?.get?.("test");
+      if (fakeState) {
+        fakeState.lastOutputAt = now - 300000; // 5 minutes ago
+        fakeState.lastToolExecutionAt = now - 300000;
+      }
+
+      // User sends a new message — should reset the timestamps
+      const beforeUserMsg = Date.now();
+      await plugin.event({ event: { type: "message.created", properties: { sessionID: "test", info: { role: "user", id: "msg-new" } } } });
+
+      // Verify timestamps were reset (should be >= when user message was sent)
+      if (fakeState) {
+        expect(fakeState.lastOutputAt).toBeGreaterThanOrEqual(beforeUserMsg - 1000);
+        expect(fakeState.lastToolExecutionAt).toBeGreaterThanOrEqual(beforeUserMsg - 1000);
+      }
+
+      // session.status(busy) fires now — text-only stall should NOT fire because timeSinceToolExecution is ~0
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Should NOT have triggered abort (no false text-only stall)
+      expect(mockAbort).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
     it("should validate proactive compaction token threshold", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
