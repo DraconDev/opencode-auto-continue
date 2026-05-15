@@ -1299,8 +1299,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // Disable OpenCode's generic synthetic continue after compaction
       // We handle our own continue with todo context via the recovery flow
       output.enabled = false;
-      
-      const sid = (_input as any)?.sessionID || "default";
+
+      const sid = (_input as any)?.sessionID;
+      if (!sid) {
+        log('experimental.compaction.autocontinue hook called without sessionID, skipping');
+        return;
+      }
       const s = sessions.get(sid);
       if (s && s.needsContinue) {
         // Our recovery flow already queued a continue, let it handle it
