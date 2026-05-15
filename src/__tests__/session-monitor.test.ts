@@ -116,6 +116,11 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     reviewCount: 0,
     lastKnownStatus: 'unknown',
     lastRealTokenRefreshAt: 0,
+    lastOutputAt: Date.now(),
+    lastOutputLength: 0,
+    lastToolExecutionAt: Date.now(),
+    toolRepeatCount: 0,
+    lastToolName: '',
     stoppedByCondition: null,
     ...partial,
   };

@@ -160,12 +160,20 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         // Check busy-but-dead: session has "progress" pings but no actual output
         const timeSinceOutput = currentTime - s.lastOutputAt;
         if (timeSinceOutput < config.busyStallTimeoutMs) {
-          s.aborting = false;
-          const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
-          scheduleRecovery(sessionId, Math.max(remaining, 100));
-          return;
+          // Check text-only stall: session outputting text but no tool execution
+          const timeSinceToolExecution = currentTime - s.lastToolExecutionAt;
+          if (config.textOnlyStallTimeoutMs > 0 && timeSinceToolExecution > config.textOnlyStallTimeoutMs) {
+            log('text-only stall in recover(): no tool execution for', timeSinceToolExecution, 'ms');
+            // Fall through to recovery — tool-text detection will confirm
+          } else {
+            s.aborting = false;
+            const remaining = config.stallTimeoutMs - (currentTime - s.lastProgressAt);
+            scheduleRecovery(sessionId, Math.max(remaining, 100));
+            return;
+          }
+        } else {
+          log('busy-but-dead detected: last progress recent but no actual output for', timeSinceOutput, 'ms');
         }
-        log('busy-but-dead detected: last progress recent but no actual output for', timeSinceOutput, 'ms');
         // Fall through to recovery despite recent progress ping
       }
 
