@@ -813,4 +813,38 @@ describe("shared.ts utilities", () => {
       }
     });
   });
+
+  describe("containsToolCallAsText", () => {
+    it("should detect function= XML in text", async () => {
+      const { containsToolCallAsText } = await import('../shared.js');
+      expect(containsToolCallAsText('<function=edit_file>some code</function>')).toBe(true);
+    });
+
+    it("should detect invoke XML in text", async () => {
+      const { containsToolCallAsText } = await import('../shared.js');
+      expect(containsToolCallAsText('<invoke name="read">content</invoke>')).toBe(true);
+    });
+
+    it("should detect truncated XML (open tag without close)", async () => {
+      const { containsToolCallAsText } = await import('../shared.js');
+      expect(containsToolCallAsText('<function=edit_file>some code that got cut of')).toBe(true);
+    });
+
+    it("should detect tool-like XML tags (edit, bash, etc.)", async () => {
+      const { containsToolCallAsText } = await import('../shared.js');
+      expect(containsToolCallAsText('<edit file="test.ts">content</edit>')).toBe(true);
+      expect(containsToolCallAsText('<bash command="ls -la">')).toBe(true);
+    });
+
+    it("should NOT flag normal text", async () => {
+      const { containsToolCallAsText } = await import('../shared.js');
+      expect(containsToolCallAsText('I will now edit the file to add the new feature.')).toBe(false);
+      expect(containsToolCallAsText('Running the tests...')).toBe(false);
+    });
+
+    it("should NOT flag very short text", async () => {
+      const { containsToolCallAsText } = await import('../shared.js');
+      expect(containsToolCallAsText('<func>')).toBe(false);
+    });
+  });
 });

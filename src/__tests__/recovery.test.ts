@@ -415,6 +415,39 @@ describe("recovery module unit tests", () => {
     });
   });
 
+  describe("text-only stall detection", () => {
+    it("should proceed with recovery when text-only stall detected in recover()", async () => {
+      const now = Date.now();
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockAbort.mockResolvedValue({});
+      const s = createSession("test", {
+        lastProgressAt: now - 1000,
+        lastOutputAt: now - 1000,
+        lastToolExecutionAt: now - 130000,
+      });
+      module = createModule({ textOnlyStallTimeoutMs: 120000, autoCompact: false });
+      const promise = module.recover("test");
+      await settleTimers();
+      await promise;
+      expect(mockAbort).toHaveBeenCalled();
+    });
+
+    it("should NOT proceed when text-only stall not reached", async () => {
+      const now = Date.now();
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      const s = createSession("test", {
+        lastProgressAt: now - 1000,
+        lastOutputAt: now - 1000,
+        lastToolExecutionAt: now - 60000,
+      });
+      module = createModule({ textOnlyStallTimeoutMs: 120000, autoCompact: false });
+      const promise = module.recover("test");
+      await settleTimers();
+      await promise;
+      expect(mockAbort).not.toHaveBeenCalled();
+    });
+  });
+
   describe("hallucination loop", () => {
     it("detects 3+ continues in 10 minute window", async () => {
       const now = Date.now();
