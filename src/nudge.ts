@@ -238,22 +238,6 @@ export function createNudgeModule(deps: NudgeDeps) {
     // testRunner.runTests() checks config.testOnIdle internally
     let testFailureOutput = "";
     if (deps.testRunner && s && !s.testRunInProgress) {
-      // Only show toast if tests are actually configured to run
-      const hasTestCommands = config.testOnIdle && config.testCommands.length > 0;
-      if (hasTestCommands && config.showToasts) {
-        try {
-          await input.client.tui.showToast({
-            query: { directory: input.directory || "" },
-            body: {
-              title: "Running Tests",
-              message: "Running cargo test before nudge...",
-              variant: "info",
-            },
-          });
-        } catch (e) {
-          log("test runner start toast error (ignored)", String(e));
-        }
-      }
       s.testRunInProgress = true;
       try {
         const results = await deps.testRunner.runTests();
