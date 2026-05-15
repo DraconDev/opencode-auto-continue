@@ -1,11 +1,18 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.1983)
+## Current State (v7.8.1987)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 529/529 passing
+**Tests:** 530/530 passing
 **npm:** `@dracondev/opencode-auto-continue@7.8.1973`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.8.1987 Changes
+- **Remove `"default"` session ID fallback** (`src/index.ts:463`): Replaced `|| "default"` fallback with explicit skip when no valid sessionID is present in the event. The OpenCode SDK expects session IDs (format `ses_*`), not a literal `"default"` string. When events arrive without a sessionID property, the old fallback created phantom sessions with ID `"default"` that downstream API calls would reject with `"Expected 'id' to be a string"`.
+  - **Root cause**: Three locations used `"default"` as fallback: main event handler (line 463), `experimental.session.compacting` hook (line 1230), and `experimental.compaction.autocontinue` hook (line 1303). All now return early when no sessionID is present.
+- **Add `<system-reminder>` detection** (`src/shared.ts:122`): Added `/<system[\s_-]reminder/i` to `TOOL_TEXT_PATTERNS`. When the model generates a `<system-reminder>` block as text output (e.g., `<system-reminder>Your operational mode has changed from plan to build</system-reminder>`), this is a role-confusion stall — the model is confused about its own operational mode, not actually doing work. Now suppressed from `lastOutputAt` reset, causing faster stall detection.
+  - **Root cause**: Model in plan mode sometimes outputs system-reminder blocks as text instead of executing tools. This is distinct from `<function=...>` tool-call-as-text but equally stuck.
+  - **1 new test**: `shared-utility.test.ts` — `containsToolCallAsText` detects `<system-reminder>` and `<system_reminder>` variants.
 
 ### v7.8.1983 Changes
 - **Config validation relationship checks removed** (`src/config.ts`): Removed 3 stall timeout relationship validations (`busyStallTimeoutMs <= stallTimeoutMs`, `textOnlyStallTimeoutMs >= busyStallTimeoutMs`, `textOnlyStallTimeoutMs <= stallTimeoutMs`). These were **conceptually wrong** and **rejected valid configs** including the dogfood config (`stallTimeoutMs:45000` with default `busyStallTimeoutMs:180000`).
