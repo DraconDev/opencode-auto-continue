@@ -238,6 +238,20 @@ export function createNudgeModule(deps: NudgeDeps) {
     // testRunner.runTests() checks config.testOnIdle internally
     let testFailureOutput = "";
     if (deps.testRunner && s && !s.testRunInProgress) {
+      if (config.showToasts) {
+        try {
+          await input.client.tui.showToast({
+            query: { directory: input.directory || "" },
+            body: {
+              title: "Running Tests",
+              message: "Running cargo test before nudge...",
+              variant: "info",
+            },
+          });
+        } catch (e) {
+          log("test runner start toast error (ignored)", String(e));
+        }
+      }
       s.testRunInProgress = true;
       try {
         const results = await deps.testRunner.runTests();
@@ -393,6 +407,46 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
     }, config.nudgeIdleDelayMs);
+  }
+
+  // Retry nudge when blocked by compaction/planning — retries every 5s up to 12 times (1 minute)
+  const NUDGE_RETRY_INTERVAL_MS = 5000;
+  const NUDGE_MAX_RETRY_COUNT = 12;
+
+  function scheduleNudgeRetry(
+    sessionId: string,
+    knownTodos?: Array<{ id: string; status: string; content?: string; title?: string }>
+  ): void {
+    const s = sessions.get(sessionId);
+    if (!s || !config.nudgeEnabled) return;
+
+    // Cancel any existing retry timer
+    if (s.nudgeRetryTimer) {
+      clearTimeout(s.nudgeRetryTimer);
+      s.nudgeRetryTimer = null;
+    }
+
+    // Enforce max retry count to prevent infinite retries
+    if (s.nudgeRetryCount >= NUDGE_MAX_RETRY_COUNT) {
+      log("nudge max retry count reached, giving up:", sessionId, "retries:", s.nudgeRetryCount);
+      s.nudgeRetryCount = 0;
+      if (s.nudgeRetryTimer) {
+        clearTimeout(s.nudgeRetryTimer);
+        s.nudgeRetryTimer = null;
+      }
+      return;
+    }
+
+    s.nudgeRetryCount++;
+    log("scheduling nudge retry", { sessionId, retryCount: s.nudgeRetryCount, maxRetries: NUDGE_MAX_RETRY_COUNT });
+
+    s.nudgeRetryTimer = setTimeout(() => {
+      const session = sessions.get(sessionId);
+      if (session) {
+        session.nudgeRetryTimer = null;
+      }
+      injectNudge(sessionId, knownTodos).catch((e) => log("nudge retry inject error", String(e)));
+    }, NUDGE_RETRY_INTERVAL_MS);
   }
 
   return {
