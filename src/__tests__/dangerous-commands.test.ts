@@ -83,7 +83,7 @@ describe("dangerous commands", () => {
     });
 
     it("allows non-remote commands containing ssh/scp", () => {
-      expect(containsDangerousCommand("ssh-keygen -t ed25519")).toBe(true); // has "ssh " prefix
+      expect(containsDangerousCommand("ssh-keygen -t ed25519")).toBe(false);
       expect(containsDangerousCommand("git clone git@github.com:user/repo.git")).toBe(false);
     });
 

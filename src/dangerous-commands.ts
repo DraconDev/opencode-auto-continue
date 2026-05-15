@@ -31,7 +31,8 @@ export const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   /\b(?:curl|wget)\s+.*?\|.*?\b(?:sh|bash|zsh|ksh|dash)\b/i,
 
   // Netcat — no valid AI use case
-  /\b(?:ncat?)\s+/i,
+  /\bnc\b/i,
+  /\bncat\b/i,
 
   // Remote access — AI should never SSH/SCP/SFTP
   /\bssh\s+/i,
