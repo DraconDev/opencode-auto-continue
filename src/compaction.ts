@@ -220,12 +220,12 @@ export function createCompactionModule(deps: CompactionDeps) {
     const bypassCooldown = config.hardCompactBypassCooldown;
     const cooldownOk = bypassCooldown || s.lastCompactionAt === 0 || Date.now() - s.lastCompactionAt >= config.compactCooldownMs;
 
+    let success = false;
+    let attempted = false;
     if (cooldownOk) {
       const maxWait = config.hardCompactMaxWaitMs;
       const deadline = Date.now() + maxWait;
 
-      let success = false;
-      let attempted = false;
       for (let attempt = 0; attempt < config.compactMaxRetries; attempt++) {
         if (Date.now() > deadline) {
           log(`[Compaction] HARD TIMEOUT — exceeded max wait ${maxWait}ms for session ${sessionId}`);
