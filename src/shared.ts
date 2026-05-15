@@ -120,6 +120,7 @@ export const TOOL_TEXT_PATTERNS = [
   /<invoke>/i,
   /<\/invoke>/i,
   /<(?:edit|write|read|bash|grep|glob|search|replace|execute|run|cat|ls|npm|pip|docker)\s*(?:\s[^>]*)?\s*(?:\/>|>)/i,
+  /<system[\s_-]reminder/i,
 ];
 
 export const TRUNCATED_XML_PATTERNS = [
