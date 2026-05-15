@@ -381,6 +381,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.statusHistory = [];
     }
     sessions.delete(id);
+    todoPoller.cleanupSession(id);
   }
 
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
@@ -1002,42 +1003,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (!Array.isArray(todos)) return;
         
         todoPoller.markEventTodoReceived(sid);
-
-        const s = getSession(sid);
-        const allCompleted = todos.length > 0 && todos.every((t: any) => t.status === 'completed' || t.status === 'cancelled');
-        const hasPending = todos.some((t: any) => t.status === 'in_progress' || t.status === 'pending');
-        
-        // Track open todos for nudging
-        s.hasOpenTodos = hasPending;
-        s.lastKnownTodos = todos;
-        
-        // Handle review on completion
-        if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
-          // Opportunistic compaction after review completion
-          if (config.opportunisticCompactAfterReview && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
-            compaction.maybeOpportunisticCompact(sid, 'post-review').catch((e: unknown) => log('opportunistic compact post-review failed:', e));
-          }
-          if (s.reviewDebounceTimer) {
-            clearTimeout(s.reviewDebounceTimer);
-          }
-          s.reviewDebounceTimer = setTimeout(() => {
-            s.reviewDebounceTimer = null;
-            review.triggerReview(sid);
-          }, config.reviewDebounceMs);
-        } else if (!allCompleted && s.reviewDebounceTimer) {
-          clearTimeout(s.reviewDebounceTimer);
-          s.reviewDebounceTimer = null;
-        }
-
-        // FIX 7: Reset reviewFired when new pending todos appear after review was fired
-        // This enables the test-fix loop: review creates fix todos → review fires again
-        if (hasPending && s.reviewFired) {
-          log('new pending todos detected after review, resetting review flag:', sid);
-          s.reviewFired = false;
-        }
-
-        // Nudge is triggered by session.idle — todo.updated just sets hasOpenTodos flag
-        writeStatusFile(sid);
+        todoPoller.processTodos(sid, todos);
         return;
       }
 

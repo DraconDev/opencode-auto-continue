@@ -344,4 +344,31 @@ describe("todo-poller", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("cleanupSession", () => {
+    it("should clear event freshness so future polls are not skipped", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      deps.sessions.set("test", s);
+      deps.mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "Task", status: "in_progress" }],
+        error: undefined,
+      });
+
+      const poller = createTodoPoller(deps);
+      poller.markEventTodoReceived("test");
+
+      // Event freshness should skip the poll
+      let result = await poller.pollAndProcess("test");
+      expect(result).toBeNull();
+
+      // Cleanup removes the freshness entry
+      poller.cleanupSession("test");
+
+      // Now poll should proceed (no freshness skip)
+      result = await poller.pollAndProcess("test");
+      expect(result).not.toBeNull();
+      expect(deps.mockTodo).toHaveBeenCalled();
+    });
+  });
 });
