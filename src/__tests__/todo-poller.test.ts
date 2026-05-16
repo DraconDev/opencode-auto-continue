@@ -452,6 +452,53 @@ describe("todo-poller", () => {
       expect(s.reviewFired).toBe(false);
     });
 
+    it("should reset reviewFired when all todos complete after cooldown expires", () => {
+      vi.useFakeTimers();
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = Date.now() - 10000;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+
+      // Pending todos appear but cooldown prevents reviewFired reset
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+        { id: "t2", content: "New bug", status: "in_progress" },
+      ]);
+      expect(s.reviewFired).toBe(true);
+
+      // Advance past cooldown
+      vi.advanceTimersByTime(60000);
+
+      // All todos complete — reviewFired should be reset so review can fire
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+        { id: "t2", content: "Fixed", status: "completed" },
+      ]);
+      expect(s.reviewFired).toBe(false);
+      expect(s.reviewDebounceTimer).not.toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("should NOT reset reviewFired when all completed and cooldown still active", () => {
+      const deps = makeDeps({ reviewCooldownMs: 60000 });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = Date.now() - 10000;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+      ]);
+
+      expect(s.reviewFired).toBe(true);
+      expect(s.reviewDebounceTimer).toBeNull();
+    });
+
     describe("nudge fallback scheduling", () => {
       it("should call scheduleNudge when pending todos are detected", () => {
         const deps = makeDeps();
