@@ -317,7 +317,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
-  const logFile = join(logDir, "auto-force-resume.log");
+  const logFile = join(logDir, "auto-continue.log");
 
   function ensureLogDir() {
     try {
@@ -334,7 +334,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     try {
       ensureLogDir();
       const timestamp = new Date().toISOString();
-      const message = `[${timestamp}] [auto-force-resume] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
+      const message = `[${timestamp}] [auto-continue] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
       appendFileSync(logFile, message);
     } catch {
       // Logging itself failed — nothing we can do

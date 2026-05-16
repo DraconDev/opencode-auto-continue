@@ -1795,41 +1795,55 @@ describe("opencode-auto-continue", () => {
     it("should clear continueInProgress even when prompt throws", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
-      mockPrompt.mockRejectedValue(new Error("prompt error"));
-      mockTodo.mockResolvedValue({ data: [], error: undefined });
       mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
 
       const plugin = await createPlugin({ client: mockClient }, {
         stallTimeoutMs: 5000,
-        autoCompact: false,
+        autoCompact: true,
+        hardCompactAtTokens: 999999,
         terminalTitleEnabled: false,
         terminalProgressEnabled: false,
         statusFilePath: "",
+        compactionVerifyWaitMs: 1000,
       });
 
-      // Create session
-      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
-      await flushPromises();
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
-      // Token limit error sets needsContinue
+      // Fire token limit error → triggers emergency compaction
       await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Token limit exceeded" } } } });
+
+      // Make prompt fail on first attempt
+      mockPrompt.mockRejectedValueOnce(new Error("prompt error"));
+
+      // Advance timers to let compaction resolve
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
-      // Session becomes idle — sendContinue will fail
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(5000);
-      await flushPromises();
+      // Simulate compaction success
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(500);
+        await flushPromises();
+      }
 
-      // Prompt was attempted
+      // First prompt was attempted (and failed)
       expect(mockPrompt).toHaveBeenCalled();
 
-      // Now make prompt succeed and try again
+      // Now make prompt succeed
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
 
-      // Session becomes idle again — continueInProgress should have been cleared
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(5000);
+      // Advance enough for continueRetryCount backoff to pass (5s)
+      await vi.advanceTimersByTimeAsync(10000);
       await flushPromises();
+
+      // Session becomes idle again — continueInProgress should have been cleared by finally
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(500);
+        await flushPromises();
+      }
 
       // Second prompt call should have been made (continueInProgress was cleared)
       expect(mockPrompt.mock.calls.length).toBeGreaterThanOrEqual(2);

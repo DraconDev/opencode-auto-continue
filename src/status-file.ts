@@ -42,7 +42,7 @@ function getPluginVersion(): string {
 export function createStatusFileModule(deps: StatusFileDeps) {
   const { config, sessions, log } = deps;
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");
-  const defaultStatusFile = join(logDir, "auto-force-resume.status");
+  const defaultStatusFile = join(logDir, "auto-continue.status");
   
   // FIX 13: Debounce status file writes - max once per 500ms per session
   const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>();
