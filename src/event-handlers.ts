@@ -1,5 +1,4 @@
 import type { PluginConfig } from "./config.js";
-import type { PluginConfig } from "./config.js";
 import type { SessionState, Todo, clearAllSessionTimers } from "./session-state.js";
 import { getTokenCount } from "./session-state.js";
 import {
@@ -18,8 +17,8 @@ import type { createNudgeModule } from "./nudge.js";
 import type { createReviewModule } from "./review.js";
 import type { createSessionMonitor } from "./session-monitor.js";
 import type { createStopConditionsModule } from "./stop-conditions.js";
-import type { createTestRunnerModule } from "./test-runner.js";
-import type { createTodoPollerModule } from "./todo-poller.js";
+import type { createTestRunner } from "./test-runner.js";
+import type { createTodoPoller } from "./todo-poller.js";
 import { getSessionTokens, getDbLastError, closeDb } from "./tokens.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
 import type {
@@ -569,7 +568,7 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: Plu
     } else if (partType === "subtask") {
       partText = (part?.prompt || "") + " " + (part?.description || "");
     } else if (partType === "step-start") {
-      partText = (part as Record<string, unknown>)?.name as string || "";
+      partText = (part as unknown as Record<string, unknown>)?.name as string || "";
     }
 
     if (partText) {
@@ -798,9 +797,9 @@ async function handleQuestionAsked(ctx: HandlerContext, sid: string, e: PluginEv
       if (opts.length === 1) {
         answers.push([opts[0].label || ""]);
       } else if (config.autoAnswerSafeOnly) {
-      const safeOpt = opts.find((o) => SAFE_PATTERNS.test(o.label?.trim() || ""));
+        const safeOpt = opts.find((o) => SAFE_PATTERNS.test(o.label?.trim() || ""));
         if (safeOpt) {
-          answers.push([safeOpt.label]);
+          answers.push([safeOpt.label || ""]);
         } else {
           allSafe = false;
           break;
