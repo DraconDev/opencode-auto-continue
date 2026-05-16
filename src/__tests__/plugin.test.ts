@@ -1778,6 +1778,8 @@ describe("opencode-auto-continue", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("nudge pause and resume behavior", () => {
     it("should pause nudge on MessageAbortedError", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });

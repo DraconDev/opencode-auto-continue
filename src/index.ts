@@ -1048,6 +1048,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (s.planning && (partType === "tool" || partType === "file" || partType === "subtask" || partType === "step-start" || partType === "step-finish")) {
             log('non-plan progress detected, clearing plan flag');
             s.planning = false;
+            s.planBuffer = '';
             // Schedule normal recovery now that planning is done
             scheduleRecovery(sid, config.stallTimeoutMs);
           }
