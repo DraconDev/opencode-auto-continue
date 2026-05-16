@@ -266,6 +266,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   
   config = validateConfig(config);
 
+  // Pre-load SQLite module so first getSessionTokens call is fast
+  warmupSqlite().catch(() => {});
+
   const sessions = new Map<string, SessionState>();
   let disposed = false;
   const isDisposed = () => disposed;

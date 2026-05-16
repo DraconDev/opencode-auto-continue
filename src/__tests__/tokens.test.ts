@@ -76,26 +76,26 @@ describe("tokens module", () => {
   });
 
   describe("getSessionTokens", () => {
-    it("should return NO_TOKENS when DB does not exist", () => {
+    it("should return NO_TOKENS when DB does not exist", async () => {
       setDbPath("/nonexistent/path/opencode.db");
-      const tokens = getSessionTokens("ses_test123");
+      const tokens = await getSessionTokens("ses_test123");
       expect(tokens.total).toBe(0);
       expect(tokens.input).toBe(0);
       expect(getDbLastError()).toContain("DB not found");
     });
 
-    it("should return NO_TOKENS when session not found in DB", () => {
+    it("should return NO_TOKENS when session not found in DB", async () => {
       createTestDb();
       setDbPath(DB_PATH);
-      const tokens = getSessionTokens("ses_nonexistent");
+      const tokens = await getSessionTokens("ses_nonexistent");
       expect(tokens.total).toBe(0);
       expect(getDbLastError()).toContain("session not found");
     });
 
-    it("should return real token counts from SQLite", () => {
+    it("should return real token counts from SQLite", async () => {
       createTestDb();
       setDbPath(DB_PATH);
-      const tokens = getSessionTokens("ses_test123");
+      const tokens = await getSessionTokens("ses_test123");
       expect(tokens.input).toBe(50000);
       expect(tokens.output).toBe(5000);
       expect(tokens.reasoning).toBe(1000);
@@ -104,10 +104,10 @@ describe("tokens module", () => {
       expect(tokens.total).toBe(56000);
     });
 
-    it("should clear last error on success", () => {
+    it("should clear last error on success", async () => {
       createTestDb();
       setDbPath(DB_PATH);
-      getSessionTokens("ses_test123");
+      await getSessionTokens("ses_test123");
       expect(getDbLastError()).toBe("");
     });
   });
