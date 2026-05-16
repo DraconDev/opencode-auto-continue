@@ -416,7 +416,6 @@ export function createNudgeModule(deps: NudgeDeps) {
     // Enforce max retry count to prevent infinite retries
     if (s.nudgeRetryCount >= NUDGE_MAX_RETRY_COUNT) {
       log("nudge max retry count reached, giving up:", sessionId, "retries:", s.nudgeRetryCount);
-      s.nudgeRetryCount = 0;
       return;
     }
 

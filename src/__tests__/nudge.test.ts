@@ -910,5 +910,48 @@ describe("nudge integration with plugin events", () => {
 
       vi.useRealTimers();
     });
+
+    it("should NOT reset nudgeRetryCount on max retries — prevents infinite retry cycles", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        showToasts: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      // Session idle — nudge deferred (compacting=true from previous events)
+      // Simulate by making the session always appear busy
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Advance through all 12 retries (5s each = 60s)
+      await vi.advanceTimersByTimeAsync(65000);
+
+      // After max retries, no more retries should be scheduled.
+      // The prompt count should be bounded (0 if blocked by compacting/busy,
+      // or 1 if the first nudge succeeded before being blocked)
+      const promptCount1 = mockPrompt.mock.calls.length;
+
+      // Advance another full minute — no more retries should fire
+      await vi.advanceTimersByTimeAsync(65000);
+      const promptCount2 = mockPrompt.mock.calls.length;
+
+      // If retry count was NOT reset to 0 on max, no new prompts should appear
+      expect(promptCount2).toBe(promptCount1);
+
+      vi.useRealTimers();
+    });
   });
 });
