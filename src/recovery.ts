@@ -89,8 +89,9 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       return;
     } else if (s.planning) {
       log('planning timeout reached (', config.planningTimeoutMs, 'ms), forcing recovery:', sessionId);
-      s.planning = false; // Clear planning flag to allow recovery
     }
+    const wasPlanningTimeout = !!s.planning;
+    if (s.planning) s.planning = false;
     if (s.compacting) return;
     if (s.hardCompactionInProgress) return;
 
@@ -129,7 +130,6 @@ export function createRecoveryModule(deps: RecoveryDeps) {
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
-      s.aborting = false;
       return;
     }
 
@@ -280,7 +280,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       if (hasToolText) {
         messageText = TOOL_TEXT_RECOVERY_PROMPT;
         log('using tool-text recovery prompt');
-      } else if (s.planning) {
+      } else if (wasPlanningTimeout) {
         messageText = config.continueWithPlanMessage;
         log('using plan-aware continue message');
       } else if (config.includeTodoContext) {
@@ -325,7 +325,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         log('recovery intent added:', intentHint);
       }
 
-      if (s.tokenLimitHits > 0 && !hasToolText && !s.planning) {
+      if (s.tokenLimitHits > 0 && !hasToolText && !wasPlanningTimeout) {
         log('using short continue message due to previous token limit hits:', s.tokenLimitHits);
         messageText = config.shortContinueMessage;
       }
@@ -380,7 +380,8 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } catch (e) {
       log('recovery failed:', e);
-      // FIX 3: Only increment recoveryFailed here - attempts was already incremented in try block (line 379)
+      s.needsContinue = false;
+      s.continueMessageText = '';
       s.recoveryFailed++;
       
       if (s.attempts >= config.maxRecoveries) {
