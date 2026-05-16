@@ -178,6 +178,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
 
     if (config.orphanParentDetection !== false) {
       orphanCheckTimer = setInterval(checkOrphanParents, 5000);
+      if (orphanCheckTimer.unref) orphanCheckTimer.unref();
     }
 
     if (!orphanCheckTimer) {

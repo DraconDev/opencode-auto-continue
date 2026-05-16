@@ -394,6 +394,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
     }, config.nudgeIdleDelayMs);
+    if (s.nudgeTimer && (s.nudgeTimer as any).unref) (s.nudgeTimer as any).unref();
   }
 
   // Retry nudge when blocked by compaction/planning — retries every 5s up to 12 times (1 minute)
@@ -429,6 +430,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge retry inject error", String(e)));
     }, NUDGE_RETRY_INTERVAL_MS);
+    if (s.nudgeRetryTimer && (s.nudgeRetryTimer as any).unref) (s.nudgeRetryTimer as any).unref();
   }
 
   return {
