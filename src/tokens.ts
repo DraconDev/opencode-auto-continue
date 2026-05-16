@@ -14,14 +14,52 @@ let sqliteModuleError: string | null = null;
 let sqliteModuleLoading: Promise<{ open(path: string, options: { readonly: boolean }): SqliteDatabase } | null> | null = null;
 
 /**
- * Attempt to load a SQLite module. Tries bun:sqlite first, then node:sqlite.
+ * Attempt to load a SQLite module synchronously via require() (CJS environments).
+ * Returns the module wrapper or null if neither is available.
+ */
+function tryRequireSqlite(): { open(path: string, options: { readonly: boolean }): SqliteDatabase } | null {
+  // Try bun:sqlite via require
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const bunSqlite = require("bun:sqlite");
+    return {
+      open(path: string, options: { readonly: boolean }) {
+        return new bunSqlite.Database(path, options) as SqliteDatabase;
+      },
+    };
+  } catch {}
+
+  // Try node:sqlite via require
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nodeSqlite = require("node:sqlite");
+    return {
+      open(path: string, _options: { readonly: boolean }) {
+        return new nodeSqlite.DatabaseSync(path, { open: true }) as SqliteDatabase;
+      },
+    };
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Attempt to load a SQLite module. Tries require() first (CJS), then import() (ESM).
  * Returns null and sets sqliteModuleError if neither is available.
- * Uses dynamic import() instead of require() for proper ESM/CJS interop.
  * Caches the result so subsequent calls are synchronous (return from cache).
  */
 async function loadSqliteModule(): Promise<{ open(path: string, options: { readonly: boolean }): SqliteDatabase } | null> {
   if (sqliteModule) return sqliteModule;
   if (sqliteModuleError) return null;
+
+  // Try CJS require() first — works in Node.js / vitest CJS contexts
+  const syncResult = tryRequireSqlite();
+  if (syncResult) {
+    sqliteModule = syncResult;
+    return sqliteModule;
+  }
+
+  // Fall back to ESM dynamic import — needed for pure ESM environments
   if (sqliteModuleLoading) return sqliteModuleLoading;
 
   sqliteModuleLoading = (async () => {
