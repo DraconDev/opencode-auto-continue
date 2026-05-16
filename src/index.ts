@@ -1,7 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin";
 import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
-import type { TypedPluginInput } from "./types.js";
+import type { TypedPluginInput, PluginEvent } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
 import { type SessionState, createSession, getTokenCount, clearAllSessionTimers } from "./session-state.js";
 import {
@@ -393,7 +393,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   };
 
   return {
-    event: async ({ event }: { event: any }) => {
+    event: async ({ event }: { event: PluginEvent }) => {
       await handleEvent(ctx, event);
     },
     "experimental.chat.system.transform": async (_input, output) => {

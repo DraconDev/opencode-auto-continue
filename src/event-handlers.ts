@@ -1,4 +1,5 @@
 import type { PluginConfig } from "./config.js";
+import type { PluginConfig } from "./config.js";
 import type { SessionState, Todo, clearAllSessionTimers } from "./session-state.js";
 import { getTokenCount } from "./session-state.js";
 import {
@@ -17,14 +18,24 @@ import type { createNudgeModule } from "./nudge.js";
 import type { createReviewModule } from "./review.js";
 import type { createSessionMonitor } from "./session-monitor.js";
 import type { createStopConditionsModule } from "./stop-conditions.js";
-import type { createTestRunner } from "./test-runner.js";
-import type { createTodoPoller } from "./todo-poller.js";
+import type { createTestRunnerModule } from "./test-runner.js";
+import type { createTodoPollerModule } from "./todo-poller.js";
 import { getSessionTokens, getDbLastError, closeDb } from "./tokens.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
-
+import type {
+  TypedPluginInput,
+  PluginEvent,
+  PartInfo,
+  PartType,
+  MessageInfo,
+  SessionStatusType,
+  SessionInfo,
+  TodoItem,
+} from "./types.js";
+import { extractSessionId, isSyntheticEvent } from "./types.js";
 /** Bundles all dependencies needed by event handlers */
 export interface HandlerContext {
-  input: any; // TypedPluginInput — untyped until we add proper interfaces
+  input: TypedPluginInput;
   config: PluginConfig;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
@@ -53,58 +64,43 @@ export interface HandlerContext {
   recover: (sessionId: string) => Promise<void>;
 }
 
-function isSyntheticMessageEvent(e: any): boolean {
-  const props = e?.properties || {};
-  const info = props.info || {};
-  const part = props.part || {};
-
-  if (props.synthetic === true || info.synthetic === true || part.synthetic === true) {
-    return true;
-  }
-
-  const parts = [
-    ...(Array.isArray(props.parts) ? props.parts : []),
-    ...(Array.isArray(info.parts) ? info.parts : []),
-    ...(Array.isArray(props.message?.parts) ? props.message.parts : []),
-  ];
-
-  return parts.some((p: any) => p?.synthetic === true);
+function isSyntheticMessageEvent(e: PluginEvent): boolean {
+  return isSyntheticEvent(e);
 }
 
 /**
  * Main event dispatcher. Routes events to the appropriate handler function.
  */
-export async function handleEvent(ctx: HandlerContext, event: any): Promise<void> {
+export async function handleEvent(ctx: HandlerContext, event: PluginEvent): Promise<void> {
   await safeHook("event", async () => {
-    const e = event as any;
-    const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID;
+    const sid = extractSessionId(event);
     if (!sid) {
-      ctx.log('event received without sessionID, skipping:', event?.type);
+      ctx.log('event received without sessionID, skipping:', event.type);
       return;
     }
 
-    const type = event?.type;
+    const type = event.type;
 
     if (type === "session.error") {
-      await handleSessionError(ctx, sid, e);
+      await handleSessionError(ctx, sid, event);
     } else if (type === "session.created") {
-      await handleSessionCreated(ctx, sid, e);
+      await handleSessionCreated(ctx, sid, event);
     } else if (type === "session.updated") {
       handleSessionUpdated(ctx, sid);
     } else if (type === "session.diff") {
       ctx.log('session.diff:', sid);
     } else if (type === "message.updated") {
-      await handleMessageUpdated(ctx, sid, e);
+      await handleMessageUpdated(ctx, sid, event);
     } else if (type === "session.status") {
-      await handleSessionStatus(ctx, sid, e);
+      await handleSessionStatus(ctx, sid, event);
     } else if (type === "message.part.updated") {
-      await handleMessagePartUpdated(ctx, sid, e);
+      await handleMessagePartUpdated(ctx, sid, event);
     } else if (type === "message.created" || type === "message.part.added") {
-      await handleMessageActivity(ctx, sid, e, type);
+      await handleMessageActivity(ctx, sid, event, type);
     } else if (type === "todo.updated") {
-      handleTodoUpdated(ctx, sid, e);
+      handleTodoUpdated(ctx, sid, event);
     } else if (type === "question.asked") {
-      await handleQuestionAsked(ctx, sid, e);
+      await handleQuestionAsked(ctx, sid, event);
     } else if (type === "session.idle") {
       await handleSessionIdle(ctx, sid);
     } else if (type === "session.compacted") {
@@ -115,9 +111,10 @@ export async function handleEvent(ctx: HandlerContext, event: any): Promise<void
   }, ctx.log);
 }
 
-async function handleSessionError(ctx: HandlerContext, sid: string, e: any): Promise<void> {
+async function handleSessionError(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
   const { config, sessions, log, clearTimer, writeStatusFile, compaction, review, scheduleRecovery, input } = ctx;
-  const err = e?.properties?.error;
+  const props = e.properties as Record<string, unknown>;
+  const err = props.error as { name: string; message?: string; data?: Record<string, unknown>; statusCode?: number; isRetryable?: boolean } | undefined;
   log('session.error:', err?.name, err?.message);
 
   if (err?.name === "MessageAbortedError") {
@@ -206,7 +203,7 @@ async function handleSessionError(ctx: HandlerContext, sid: string, e: any): Pro
   writeStatusFile(sid);
 }
 
-async function handleSessionCreated(ctx: HandlerContext, sid: string, e: any): Promise<void> {
+async function handleSessionCreated(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
   const { config, sessions, log, getSession, sessionMonitor, writeStatusFile, input, isDisposed } = ctx;
   log('session.created:', sid);
   const s = getSession(sid);
@@ -249,9 +246,10 @@ function handleSessionUpdated(ctx: HandlerContext, sid: string): void {
   ctx.writeStatusFile(sid);
 }
 
-async function handleMessageUpdated(ctx: HandlerContext, sid: string, e: any): Promise<void> {
+async function handleMessageUpdated(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
   const { config, sessions, log, getSession, nudge, writeStatusFile } = ctx;
-  const info = e?.properties?.info;
+  const props = e.properties as Record<string, unknown>;
+  const info = props.info as MessageInfo | undefined;
   const isSynthetic = isSyntheticMessageEvent(e);
 
   if (info?.role === "user" && isSynthetic) {
@@ -290,9 +288,10 @@ async function handleMessageUpdated(ctx: HandlerContext, sid: string, e: any): P
   writeStatusFile(sid);
 }
 
-async function handleSessionStatus(ctx: HandlerContext, sid: string, e: any): Promise<void> {
+async function handleSessionStatus(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
   const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, recover, sessionMonitor, stopConditions, review, compaction, terminal, input } = ctx;
-  const status = e?.properties?.status;
+  const props = e.properties as Record<string, unknown>;
+  const status = props.status as SessionStatusType | undefined;
   log('session.status:', sid, status?.type);
   const s = getSession(sid);
 
@@ -451,12 +450,13 @@ async function handleSessionStatus(ctx: HandlerContext, sid: string, e: any): Pr
   writeStatusFile(sid);
 }
 
-async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any): Promise<void> {
+async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
   const { config, log, getSession, sessionMonitor, clearTimer, scheduleRecovery, writeStatusFile, compaction, nudge, input } = ctx;
   log('progress event: message.part.updated', sid);
   const s = getSession(sid);
-  const part = e?.properties?.part;
-  const partType = part?.type;
+  const props = e.properties as Record<string, unknown>;
+  const part = props.part as PartInfo | undefined;
+  const partType = part?.type as PartType | undefined;
 
   // CRITICAL: Ignore synthetic messages to prevent infinite loops
   if (part?.synthetic === true) {
@@ -471,7 +471,7 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
     // Detect tool-call-as-text
     let isToolCallAsText = false;
     if (partType === "text" || partType === "reasoning") {
-      const partText = e?.properties?.part?.text || "";
+      const partText = part?.text || "";
       if (containsToolCallAsText(partText)) {
         isToolCallAsText = true;
         log('tool-call-as-text detected in', partType, 'part — NOT resetting progress, session:', sid);
@@ -494,7 +494,7 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
 
     // Track text content length
     if (partType === "text" || partType === "reasoning") {
-      const text = e?.properties?.part?.text || "";
+      const text = part?.text || "";
       if (text.length > s.lastOutputLength) {
         s.lastOutputLength = text.length;
         log('output tracked: text length', text.length, 'session:', sid);
@@ -518,7 +518,7 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
 
         // Dangerous command detection — fire-and-forget abort
         if (config.dangerousCommandBlocking && (toolName === "bash" || toolName === "shell" || toolName === "execute")) {
-          const partInput = e?.properties?.part?.input;
+          const partInput = part?.input as Record<string, unknown> | undefined;
           const cmdText = (typeof partInput?.command === 'string' && partInput.command)
             || (Array.isArray(partInput) && typeof partInput[0] === 'string' && partInput[0])
             || (typeof partInput === 'string' && partInput)
@@ -563,13 +563,13 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
     // Estimate tokens for parts without actual token counts
     let partText = "";
     if (partType === "tool") {
-      partText = JSON.stringify(e?.properties?.part) || "";
+      partText = JSON.stringify(part) || "";
     } else if (partType === "file") {
-      partText = (e?.properties?.part?.url || "") + " " + (e?.properties?.part?.mime || "");
+      partText = (part?.url || "") + " " + (part?.mime || "");
     } else if (partType === "subtask") {
-      partText = (e?.properties?.part?.prompt || "") + " " + (e?.properties?.part?.description || "");
+      partText = (part?.prompt || "") + " " + (part?.description || "");
     } else if (partType === "step-start") {
-      partText = e?.properties?.part?.name || "";
+      partText = (part as Record<string, unknown>)?.name as string || "";
     }
 
     if (partText) {
@@ -648,7 +648,7 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
 
   // Handle text parts for plan detection
   if (partType === "text") {
-    const partText = e?.properties?.part?.text as string | undefined;
+    const partText = part?.text as string | undefined;
     if (partText) {
       if (isPlanContent(partText)) {
         log('plan detected in updated text part, pausing stall monitoring');
@@ -669,7 +669,7 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
   }
 
   // Check for plan content in delta
-  const deltaText = e?.properties?.delta as string | undefined;
+  const deltaText = props.delta as string | undefined;
   if (deltaText) {
     s.planBuffer = (s.planBuffer + deltaText).slice(-200);
     if (isPlanContent(s.planBuffer)) {
@@ -693,9 +693,11 @@ async function handleMessagePartUpdated(ctx: HandlerContext, sid: string, e: any
   writeStatusFile(sid);
 }
 
-async function handleMessageActivity(ctx: HandlerContext, sid: string, e: any, eventType: string): Promise<void> {
+async function handleMessageActivity(ctx: HandlerContext, sid: string, e: PluginEvent, eventType: string): Promise<void> {
   const { config, sessions, log, getSession, clearTimer, scheduleRecovery, writeStatusFile, compaction } = ctx;
-  const msgRole = e?.properties?.info?.role;
+  const props = e.properties as Record<string, unknown>;
+  const info = props.info as MessageInfo | undefined;
+  const msgRole = info?.role;
   const isSynthetic = isSyntheticMessageEvent(e);
   const isUserMessage = msgRole === "user" && !isSynthetic;
 
@@ -726,12 +728,12 @@ async function handleMessageActivity(ctx: HandlerContext, sid: string, e: any, e
   // Track message count and estimate tokens
   if (isUserMessage) {
     s.messageCount++;
-    const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+    const msgText = (info?.content || info?.text || '') as string;
     const estTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
     s.estimatedTokens += estTokens;
     log('message count incremented:', s.messageCount, 'estimated tokens added:', estTokens, 'total:', s.estimatedTokens);
   } else {
-    const msgText = e?.properties?.info?.content || e?.properties?.info?.text || '';
+    const msgText = (info?.content || info?.text || '') as string;
     if (msgText && msgRole !== 'assistant') {
       const estTokens = estimateTokens(msgText, config.tokenEstimateMultiplier);
       s.estimatedTokens += estTokens;
@@ -768,20 +770,21 @@ async function handleMessageActivity(ctx: HandlerContext, sid: string, e: any, e
   }).catch((e: unknown) => log('proactive compact check failed:', e));
 }
 
-function handleTodoUpdated(ctx: HandlerContext, sid: string, e: any): void {
-  const todos = e?.properties?.todos;
+function handleTodoUpdated(ctx: HandlerContext, sid: string, e: PluginEvent): void {
+  const props = e.properties as Record<string, unknown>;
+  const todos = props.todos as TodoItem[] | undefined;
   if (!Array.isArray(todos)) return;
   ctx.todoPoller.markEventTodoReceived(sid);
   ctx.todoPoller.processTodos(sid, todos);
 }
 
-async function handleQuestionAsked(ctx: HandlerContext, sid: string, e: any): Promise<void> {
+async function handleQuestionAsked(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
   const { config, log, getSession, writeStatusFile, input, nudge } = ctx;
   if (!config.autoAnswerQuestions) return;
 
-  const props = e?.properties;
-  const requestID = props?.id;
-  const questions = props?.questions || [];
+  const props = e.properties as Record<string, unknown>;
+  const requestID = props.id as string | undefined;
+  const questions = (props.questions || []) as Array<{ header?: string; question?: string; options?: Array<{ label?: string }> }>;
   log('question.asked:', requestID, 'session:', sid, 'questions:', questions.length);
 
   if (requestID && questions.length > 0) {
@@ -795,7 +798,7 @@ async function handleQuestionAsked(ctx: HandlerContext, sid: string, e: any): Pr
       if (opts.length === 1) {
         answers.push([opts[0].label || ""]);
       } else if (config.autoAnswerSafeOnly) {
-        const safeOpt = opts.find((o: any) => SAFE_PATTERNS.test(o.label?.trim() || ""));
+      const safeOpt = opts.find((o) => SAFE_PATTERNS.test(o.label?.trim() || ""));
         if (safeOpt) {
           answers.push([safeOpt.label]);
         } else {
@@ -927,9 +930,9 @@ function handleSessionEnded(ctx: HandlerContext, sid: string, type: string): voi
  * Handle the experimental.chat.system.transform hook.
  * Injects dangerous command policy into the system prompt.
  */
-export function handleSystemTransform(ctx: HandlerContext, _input: any, output: any): void {
+export function handleSystemTransform(ctx: HandlerContext, _input: Record<string, unknown>, output: { system: string[] }): void {
   const { config, sessions, log } = ctx;
-  const sid = (_input as any)?.sessionID;
+  const sid = _input?.sessionID as string | undefined;
   if (config.dangerousCommandBlocking && config.dangerousCommandInjection) {
     output.system = output.system || [];
     const policy = `## ⚠️ Dangerous Commands Policy\n\nThe following commands are blocked by policy and must never be used:\n\n${formatDangerousBlocklist()}\n\nIf you need one of these for a legitimate reason, explain why and it can be approved manually.`;
@@ -946,9 +949,9 @@ export function handleSystemTransform(ctx: HandlerContext, _input: any, output: 
  * Handle the experimental.session.compacting hook.
  * Injects session state context into compaction to preserve important context.
  */
-export function handleSessionCompacting(ctx: HandlerContext, _input: any, output: any): void {
+export function handleSessionCompacting(ctx: HandlerContext, _input: Record<string, unknown>, output: { context: string[]; prompt?: string }): void {
   const { sessions, log } = ctx;
-  const sid = (_input as any)?.sessionID;
+  const sid = _input?.sessionID as string | undefined;
   if (!sid) {
     log('experimental.session.compacting hook called without sessionID, skipping');
     return;
@@ -1021,11 +1024,11 @@ export function handleSessionCompacting(ctx: HandlerContext, _input: any, output
  * Handle the experimental.compaction.autocontinue hook.
  * Disables OpenCode's generic synthetic continue — we handle our own.
  */
-export function handleCompactionAutocontinue(ctx: HandlerContext, _input: any, output: any): void {
+export function handleCompactionAutocontinue(ctx: HandlerContext, _input: Record<string, unknown>, output: { enabled: boolean }): void {
   const { sessions, log } = ctx;
   output.enabled = false;
 
-  const sid = (_input as any)?.sessionID;
+  const sid = _input?.sessionID as string | undefined;
   if (!sid) {
     log('experimental.compaction.autocontinue hook called without sessionID, skipping');
     return;
