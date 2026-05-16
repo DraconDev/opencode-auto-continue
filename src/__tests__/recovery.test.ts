@@ -78,12 +78,6 @@ const DEFAULT_CONFIG: PluginConfig = {
   reviewCooldownMs: 60000,
   subagentWaitMs: 15000,
   orphanParentDetection: true,
-  sessionDiscovery: true,
-  sessionDiscoveryIntervalMs: 60000,
-  idleSessionTimeoutMs: 600000,
-  idleCleanup: true,
-  idleCleanupMs: 600000,
-  maxSessions: 50,
 };
 
 function createSessionState(overrides?: Partial<SessionState>): SessionState {

@@ -441,13 +441,13 @@ describe("shared.ts utilities", () => {
     });
 
     it("should keep shared and extracted config defaults in sync", async () => {
-    it("should keep shared and extracted config defaults in sync", async () => {
       const shared = await import('../shared.js');
       const extracted = await import('../config.js');
 
       expect(shared.DEFAULT_CONFIG.sessionMonitorEnabled).toBe(extracted.DEFAULT_CONFIG.sessionMonitorEnabled);
       expect(shared.DEFAULT_CONFIG.subagentWaitMs).toBe(extracted.DEFAULT_CONFIG.subagentWaitMs);
     });
+
     it("should disable orphan detection in extracted config module", async () => {
       const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
