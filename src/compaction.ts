@@ -10,6 +10,14 @@ export interface CompactionDeps {
   input: TypedPluginInput;
 }
 
+/**
+ * Create the compaction module. Implements a 4-layer compaction strategy:
+ * 1. Opportunistic — when token usage is elevated but not critical
+ * 2. Proactive — when token usage is approaching the limit
+ * 3. Hard — when token usage is at the limit
+ * 4. Emergency — last resort when hard compaction fails
+ * Each layer has its own thresholds, grace periods, and failure backoff.
+ */
 export function createCompactionModule(deps: CompactionDeps) {
   const { config, sessions, log, input } = deps;
 

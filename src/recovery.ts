@@ -61,11 +61,13 @@ function isHallucinationLoop(s: SessionState): boolean {
 }
 
 /**
- * Create the recovery module. Handles stalled session detection and recovery:
- * - Detects stalls (no output, text-only, busy-but-dead)
- * - Applies exponential backoff on repeated failures
- * - Detects hallucination loops (repeated identical continue messages)
- * - Respects max recovery limits and cooldown periods
+ * Create the recovery module. Detects stalled sessions and injects recovery
+ * prompts to unblock them. Handles three stall types:
+ * - General stall (no events at all)
+ * - Busy-but-dead (status pings but no output)
+ * - Text-only stall (text/reasoning output but no tool execution)
+ * Enforces cooldown, max recovery limits, exponential backoff,
+ * and hallucination loop detection.
  */
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge, scheduleRecovery } = deps;

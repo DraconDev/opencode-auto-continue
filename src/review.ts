@@ -17,6 +17,12 @@ export interface ReviewDeps {
   testRunner?: TestRunner;
 }
 
+/**
+ * Create the review module. Triggers a post-task review when the AI
+ * signals completion (e.g., all todos done or stop condition met).
+ * Optionally runs test commands and sends a review prompt with
+ * the test results.
+ */
 export function createReviewModule(deps: ReviewDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, isTokenLimitError, forceCompact } = deps;
 

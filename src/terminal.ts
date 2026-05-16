@@ -8,6 +8,11 @@ export interface TerminalDeps {
   log: (message: string, ...args: unknown[]) => void;
 }
 
+/**
+ * Create the terminal module. Manages terminal title (OSC sequences)
+ * and shell integration for status reporting. Sets the terminal title
+ * to show the current plugin state (idle, working, recovering, etc.).
+ */
 export function createTerminalModule(deps: TerminalDeps) {
   const { config, sessions, log } = deps;
 

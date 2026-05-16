@@ -34,6 +34,11 @@ function getPluginVersion(): string {
   return _pluginVersion!;
 }
 
+/**
+ * Create the status file module. Writes session state to a JSON file
+ * on disk for external monitoring. Handles log rotation with a
+ * configurable max file size and write debounce to avoid excessive I/O.
+ */
 export function createStatusFileModule(deps: StatusFileDeps) {
   const { config, sessions, log } = deps;
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");

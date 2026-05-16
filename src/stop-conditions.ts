@@ -13,6 +13,11 @@ export interface StopConditionsDeps {
   log: (...args: unknown[]) => void;
 }
 
+/**
+ * Create the stop-conditions module. Evaluates whether a session
+ * should stop based on configured conditions such as all todos
+ * completed, max message count reached, or idle timeout exceeded.
+ */
 export function createStopConditionsModule(deps: StopConditionsDeps) {
   const { config, sessions, log } = deps;
 
