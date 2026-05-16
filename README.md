@@ -104,13 +104,13 @@ Some models output XML tool calls inside their reasoning/text fields instead of 
         ▼
 Scan ~20 recent messages for XML tool-like patterns
         │
-        ├── Detects 18 patterns:
+        ├── Detects 17+ patterns:
         │   <function=...>, <invoke>, <tool_call>, <tool_call>,
-        │   <invoke name="...">, <function_calls>, <function name="...">,
-        │   [FunctionCalling], [TOOL_CALLS], [tool_calls],
-        │   ```json { "function":, ```json { "tool_calls":,
-        │   <|tool_call|>, <TOOL>, [FUNCTION], <use_tools>,
-        │   <function_chain>, <execute>, <run_tool>
+        │   <invoke name="...">, <function_calls>,
+        │   ```json tool calls, <|tool_call|>,
+        │   <use_tools>, <function_chain>, <execute>, <run_tool>,
+        │   <system-reminder> (role confusion),
+        │   + truncated/unclosed tag patterns
         │
         ├── Also detects truncated/unclosed tags
         │
@@ -126,11 +126,11 @@ Scan ~20 recent messages for XML tool-like patterns
 
 **Why this matters**: Models that output XML instead of executing tool calls get stuck — they think they ran the tool but actually didn't. This recovery prompt breaks that cycle.
 
-**Trade-off**: 18 regex patterns may have rare false positives on legitimate XML in code (e.g., JSX, XML examples in documentation).
+**Trade-off**: Regex patterns may have rare false positives on legitimate XML in code (e.g., JSX, XML examples in documentation).
 
 ### Hallucination Loop Detection (Breaks Infinite Repeat Cycles)
 
-When a model gets stuck repeating the same broken output (e.g., generating the same error over and over), the plugin detects the pattern and forces a fresh start.
+When a model gets stuck repeating the same broken output (e.g., generating the same error over and over), the plugin detects the pattern and forces a short delay before continuing, breaking the cycle.
 
 ```
 [Continue sent]
@@ -141,11 +141,10 @@ Record timestamp in sliding window
         ▼
 Check: 3+ continues within 10 minutes?
         │
-        ├──YES ──► Force abort+resume
-        │            Instead of another continue, do a full session reset
-        │            to break the hallucination cycle
-        │
-        └──NO ──► Normal continue flow
+              ├──YES ──► Short delay (3s) then continue
+            │            The delay breaks the hallucination cycle
+            │
+            └──NO ──► Normal continue flow
 ```
 
 **Why this matters**: Without this, a hallucinating model can generate the same broken output → plugin sends continue → model generates same broken output → infinite loop. The abort+resume forces the model to start fresh with a clean context.
@@ -160,7 +159,7 @@ When multiple plugin instances or race conditions try to inject the same prompt,
 [About to send nudge/continue/review]
         │
         ▼
-Fetch recent messages (last ~50)
+Fetch recent messages (last ~15)
         │
         ▼
 Check: similar prompt content already sent within 30 seconds?
