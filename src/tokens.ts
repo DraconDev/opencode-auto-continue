@@ -92,7 +92,7 @@ export function getSessionTokens(sessionId: string): SessionTokens {
     }
 
     try {
-      const row = db
+      const row = db!
         .prepare(
           "SELECT tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write FROM session WHERE id = ?"
         )
@@ -123,7 +123,7 @@ export function getSessionTokens(sessionId: string): SessionTokens {
         total,
       };
     } finally {
-      db.close();
+      db?.close();
     }
   } catch (e: any) {
     dbLastError = e?.message || String(e);

@@ -81,7 +81,7 @@ export interface SessionState {
   lastTodoSnapshot: string;
   nudgePaused: boolean;
   hasOpenTodos: boolean;
-  lastKnownTodos: Array<{ id: string; status: string; content?: string; title?: string }>;
+  lastKnownTodos: Todo[];
 
   // === Continue Queue (recovery.ts, review.ts) ===
   needsContinue: boolean;
