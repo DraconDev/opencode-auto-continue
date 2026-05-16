@@ -1733,9 +1733,51 @@ describe("opencode-auto-continue", () => {
       expect(mockAbort).toHaveBeenCalled();
       vi.useRealTimers();
     });
-  });
 
-  describe("nudge pause and resume behavior", () => {
+    it("should clear planBuffer when planning flag is cleared by tool progress", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        planningTimeoutMs: 60000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Detect planning via delta
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part1", type: "text", text: "", sessionID: "test", messageID: "msg1" },
+        delta: "Here is my plan"
+      }}});
+
+      // Now simulate tool call — should clear planning AND planBuffer
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part2", type: "tool", name: "bash", sessionID: "test", messageID: "msg1" }
+      }}});
+
+      // Next delta should NOT match stale planBuffer
+      await plugin.event({ event: { type: "message.part.updated", properties: {
+        sessionID: "test",
+        messageID: "msg1",
+        part: { id: "part3", type: "text", text: "", sessionID: "test", messageID: "msg1" },
+        delta: "Some non-plan text"
+      }}});
+
+      // If planBuffer was NOT cleared, isPlanContent would match stale "Here is my plan"
+      // and planning would be set again, preventing recovery. We verify by advancing
+      // past stallTimeout — if planBuffer was properly cleared, recovery fires.
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
     it("should pause nudge on MessageAbortedError", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
