@@ -251,7 +251,20 @@ export const DEFAULT_CONFIG: PluginConfig = {
   dangerousCommandInjection: true,
 };
 
+export interface ConfigValidationResult {
+  config: PluginConfig;
+  errors: string[];
+  invalidFields: string[];
+  replacedFields: string[];
+  valid: boolean;
+}
+
 export function validateConfig(config: PluginConfig): PluginConfig {
+  const result = validateConfigDetailed(config);
+  return result.config;
+}
+
+export function validateConfigDetailed(config: PluginConfig): ConfigValidationResult {
   const normalized: PluginConfig = { ...config };
 
   if (normalized.sessionMonitorEnabled === false) {
@@ -259,11 +272,11 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   }
 
   // Track invalid fields explicitly rather than parsing error messages
-  const invalidFields = new Set<string>();
+  const invalidFields: string[] = [];
   const errors: string[] = [];
   
   const addError = (field: keyof PluginConfig, message: string) => {
-    invalidFields.add(String(field));
+    if (!invalidFields.includes(String(field))) invalidFields.push(String(field));
     errors.push(message);
   };
   
@@ -341,15 +354,18 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (errors.length > 0) {
     console.warn(`[opencode-auto-continue] Config validation errors:\n${errors.map(e => `  - ${e}`).join('\n')}`);
     const result = { ...DEFAULT_CONFIG };
+    const replacedFields: string[] = [];
     
     (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
-      if (!invalidFields.has(String(key))) {
+      if (!invalidFields.includes(String(key))) {
         (result as any)[key] = normalized[key];
+      } else {
+        replacedFields.push(String(key));
       }
     });
     
-    return result;
+    return { config: result, errors, invalidFields, replacedFields, valid: false };
   }
   
-  return normalized;
+  return { config: normalized, errors: [], invalidFields: [], replacedFields: [], valid: true };
 }
