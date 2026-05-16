@@ -1,18 +1,66 @@
-interface DatabaseSync {
+import { existsSync } from "node:fs";
+
+/** Minimal interface for both node:sqlite and bun:sqlite databases */
+interface SqliteDatabase {
   prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
   close(): void;
 }
 
-declare function require(module: "node:sqlite"): { DatabaseSync: new (path: string, options?: { open?: boolean; readonly?: boolean }) => DatabaseSync };
+/** Lazy-loaded SQLite module — initialized once on first use */
+let sqliteModule: {
+  open(path: string, options: { readonly: boolean }): SqliteDatabase;
+} | null = null;
+let sqliteModuleError: string | null = null;
+let sqliteModuleLoading: Promise<typeof sqliteModule> | null = null;
 
-// Bun's SQLite API (different from node:sqlite)
-interface BunSqliteDb {
-  prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
-  close(): void;
+/**
+ * Attempt to load a SQLite module. Tries bun:sqlite first, then node:sqlite.
+ * Returns null and sets sqliteModuleError if neither is available.
+ * Uses dynamic import() instead of require() for proper ESM/CJS interop.
+ * Caches the result so subsequent calls are synchronous (return from cache).
+ */
+async function loadSqliteModule(): Promise<typeof sqliteModule> {
+  if (sqliteModule) return sqliteModule;
+  if (sqliteModuleError) return null;
+  if (sqliteModuleLoading) return sqliteModuleLoading;
+
+  sqliteModuleLoading = (async () => {
+    try {
+      const bunSqlite = await import("bun:sqlite") as any;
+      sqliteModule = {
+        open(path: string, options: { readonly: boolean }) {
+          return new bunSqlite.Database(path, options) as SqliteDatabase;
+        },
+      };
+      return sqliteModule;
+    } catch {}
+
+    try {
+      const nodeSqlite = await import("node:sqlite") as any;
+      sqliteModule = {
+        open(path: string, _options: { readonly: boolean }) {
+          return new nodeSqlite.DatabaseSync(path, { open: true }) as SqliteDatabase;
+        },
+      };
+      return sqliteModule;
+    } catch {}
+
+    sqliteModuleError = "No SQLite module available (tried bun:sqlite and node:sqlite)";
+    return null;
+  })();
+
+  return sqliteModuleLoading;
 }
 
-declare function require(module: "bun:sqlite"): { Database: new (path: string, options?: { readonly?: boolean }) => BunSqliteDb };
-declare function require(module: "node:fs"): typeof import("node:fs");
+/**
+ * Warm up the SQLite module cache. Call this early (e.g., on plugin init)
+ * so that subsequent getSessionTokens calls can open the DB synchronously
+ * if the module is already cached. Not required — getSessionTokens will
+ * call this internally if needed.
+ */
+export async function warmupSqlite(): Promise<void> {
+  await loadSqliteModule();
+}
 
 export interface SessionTokens {
   input: number;
@@ -36,7 +84,7 @@ let dbPath: string | null = null;
 let dbLastError: string = "";
 
 interface CachedDb {
-  db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void };
+  db: SqliteDatabase;
   path: string;
   idleTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -93,12 +141,19 @@ export function getDbLastError(): string {
   return dbLastError;
 }
 
-export function getSessionTokens(sessionId: string): SessionTokens {
+/**
+ * Get session token counts from the OpenCode SQLite database.
+ * Returns NO_TOKENS if the DB is unavailable or the session is not found.
+ *
+ * On the first call, this is async because it needs to load the SQLite module
+ * via dynamic import(). Subsequent calls are synchronous (module is cached).
+ * Call warmupSqlite() during plugin init to ensure the module is pre-loaded.
+ */
+export async function getSessionTokens(sessionId: string): Promise<SessionTokens> {
   try {
     const path = getDbPath();
 
-    const fs = require("node:fs");
-    if (!fs.existsSync(path)) {
+    if (!existsSync(path)) {
       dbLastError = `DB not found: ${path}`;
       closeCachedDb();
       return NO_TOKENS;
@@ -109,22 +164,14 @@ export function getSessionTokens(sessionId: string): SessionTokens {
     }
 
     if (!cachedDb) {
-      let db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void } | null = null;
-
-      try {
-        const bunSqlite = require("bun:sqlite");
-        db = new bunSqlite.Database(path, { readonly: true });
-      } catch {
-        try {
-          const { DatabaseSync } = require("node:sqlite");
-          db = new DatabaseSync(path, { open: true }) as any;
-        } catch {
-          dbLastError = `No SQLite module available (tried bun:sqlite and node:sqlite)`;
-          return NO_TOKENS;
-        }
+      const mod = await loadSqliteModule();
+      if (!mod) {
+        dbLastError = sqliteModuleError || "No SQLite module available";
+        return NO_TOKENS;
       }
 
-      cachedDb = { db: db!, path, idleTimer: null };
+      const db = mod.open(path, { readonly: true });
+      cachedDb = { db, path, idleTimer: null };
     }
 
     resetIdleTimer();

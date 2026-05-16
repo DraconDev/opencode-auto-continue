@@ -28,7 +28,7 @@ import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
 import { createTestRunner } from "./test-runner.js";
 import { createTodoPoller } from "./todo-poller.js";
-import { getSessionTokens, getDbLastError, closeDb } from "./tokens.js";
+import { getSessionTokens, getDbLastError, closeDb, warmupSqlite } from "./tokens.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
 
 import type { Todo } from "./session-state.js";
@@ -277,7 +277,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     return sessions.get(id)!;
   }
 
-  function refreshRealTokens(id: string): number {
+  async function refreshRealTokens(id: string): Promise<number> {
     const s = getSession(id);
     const now = Date.now();
     if (s.realTokens > 0 && now - s.lastRealTokenRefreshAt < REAL_TOKEN_REFRESH_INTERVAL_MS) {
@@ -285,7 +285,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
     s.lastRealTokenRefreshAt = now;
     try {
-      const tokens = getSessionTokens(id);
+      const tokens = await getSessionTokens(id);
       if (tokens.total > 0) {
         s.realTokens = tokens.total;
         log('refreshRealTokens:', id, 'real=', s.realTokens, 'baseline=', s.realTokensBaseline, 'estimated=', s.estimatedTokens, 'effective=', getTokenCount(s));
@@ -485,7 +485,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       if (event?.type === "session.created") {
         log('session.created:', sid);
         const s = getSession(sid);
-        refreshRealTokens(sid);
+        await refreshRealTokens(sid);
         sessionMonitor.touchSession(sid);
 
         // Schedule delayed fallback for dangerous command policy injection.
@@ -932,7 +932,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             }
           }
 
-          refreshRealTokens(sid);
+          await refreshRealTokens(sid);
           log('[Compaction] token check:', sid, 'effective=', getTokenCount(s), 'real=', s.realTokens, 'baseline=', s.realTokensBaseline, 'estimated=', s.estimatedTokens, 'proactiveThreshold=', config.proactiveCompactAtTokens, 'hardThreshold=', config.hardCompactAtTokens);
           compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
             if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
@@ -1092,7 +1092,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           scheduleRecovery(sid, config.stallTimeoutMs);
         }
         writeStatusFile(sid);
-        refreshRealTokens(sid);
+        await refreshRealTokens(sid);
         compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
           if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
         }).catch((e: unknown) => log('proactive compact check failed:', e));
@@ -1186,7 +1186,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             await review.sendContinue(sid);
          }
          writeStatusFile(sid);
-         refreshRealTokens(sid);
+         await refreshRealTokens(sid);
          compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
            if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
          }).catch((e: unknown) => log('proactive compact check failed:', e));
@@ -1202,7 +1202,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             // Safety net: re-check proactive compact threshold during idle
             // (proactive compact normally only runs during message events, so idle
             // periods after long silent gaps could miss the threshold without this)
-            refreshRealTokens(sid);
+            await refreshRealTokens(sid);
             compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact failed during idle:', e));
             if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
               compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
