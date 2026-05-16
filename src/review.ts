@@ -64,7 +64,7 @@ export function createReviewModule(deps: ReviewDeps) {
               query: { directory: input.directory || "" },
               body: {
                 title: "Running Tests",
-                message: "Running cargo test for review...",
+                message: "Running tests for review...",
                 variant: "info",
               },
             });

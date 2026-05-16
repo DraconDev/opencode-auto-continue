@@ -356,7 +356,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.todoPollIntervalMs < 0) addError('todoPollIntervalMs', `todoPollIntervalMs must be >= 0, got ${normalized.todoPollIntervalMs}`);
 
   if (typeof normalized.testOnIdle !== 'boolean') addError('testOnIdle', `testOnIdle must be a boolean, got ${typeof normalized.testOnIdle}`);
-  if (!Array.isArray(normalized.testCommands) || normalized.testCommands.length === 0 || !normalized.testCommands.every((c: unknown) => typeof c === 'string')) addError('testCommands', `testCommands must be a non-empty array of strings`);
+  if (!Array.isArray(normalized.testCommands) || !normalized.testCommands.every((c: unknown) => typeof c === 'string')) addError('testCommands', `testCommands must be an array of strings`);
   // Warn about shell injection risk in testCommands
   const SHELL_META_RE = /[;&|`$]/;
   if (Array.isArray(normalized.testCommands)) {
