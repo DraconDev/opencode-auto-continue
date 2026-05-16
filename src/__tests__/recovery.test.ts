@@ -146,6 +146,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
     continueInProgress: false,
+    recoveryInProgress: false,
     stoppedByCondition: null,
     ...overrides,
   };

@@ -1331,4 +1331,4 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 
 ## License
 
-MIT
+AGPL-3.0-only

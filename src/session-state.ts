@@ -83,6 +83,9 @@ export interface SessionState {
   hasOpenTodos: boolean;
   lastKnownTodos: Todo[];
 
+  // === Concurrency Guard (recovery.ts) ===
+  recoveryInProgress: boolean;
+
   // === Continue Queue (recovery.ts, review.ts) ===
   needsContinue: boolean;
   continueMessageText: string;
@@ -187,6 +190,8 @@ export function createSession(): SessionState {
     nudgePaused: false,
     hasOpenTodos: false,
     lastKnownTodos: [],
+
+    recoveryInProgress: false,
 
     needsContinue: false,
     continueMessageText: '',
