@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import type { PluginConfig } from "./config.js";
-import type { SessionState, Todo } from "./session-state.js";
+import type { SessionState } from "./session-state.js";
 
 export interface StopConditionResult {
   shouldStop: boolean;
@@ -37,7 +37,7 @@ export function createStopConditionsModule(deps: StopConditionsDeps) {
 
     if (config.untilMarker) {
       const marker = config.untilMarker;
-      const todos = s.lastKnownTodos as Todo[] | undefined;
+      const todos = s.lastKnownTodos;
       if (todos && todos.length > 0) {
         const found = todos.some(t =>
           (t.content && t.content.includes(marker)) ||

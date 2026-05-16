@@ -897,3 +897,61 @@ describe("gate file boundary matching", () => {
     expect(findGateFile("pip3 install", gatesWithPip3)).toBe("pyproject.toml");
   });
 });
+
+describe("timeout kills subprocess", () => {
+  it("should call kill on processPromise when command times out", async () => {
+    vi.useFakeTimers();
+    const killSpy = vi.fn();
+    let resolvePromise: (value: any) => void;
+    const hangingPromise = new Promise((resolve) => { resolvePromise = resolve; });
+    const thenable = Object.assign(hangingPromise, { kill: killSpy });
+
+    const quiet = vi.fn(() => thenable);
+    const cwd = vi.fn(() => ({ quiet }));
+    const mockShell = vi.fn(() => ({ cwd }));
+
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommandTimeoutMs: 100 },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const resultsPromise = runner.runTests();
+    await vi.advanceTimersByTimeAsync(150);
+    resolvePromise!({ stdout: "", stderr: "", exitCode: 0 });
+    const results = await resultsPromise;
+
+    expect(results).toHaveLength(1);
+    expect(results[0].timedOut).toBe(true);
+    expect(results[0].exitCode).toBe(-1);
+    expect(killSpy).toHaveBeenCalledWith("SIGTERM");
+
+    vi.useRealTimers();
+  });
+
+  it("should return timed-out result when kill is not available", async () => {
+    vi.useFakeTimers();
+    const hangingPromise = new Promise(() => {});
+    const thenable = Object.assign(hangingPromise, {});
+
+    const quiet = vi.fn(() => thenable);
+    const cwd = vi.fn(() => ({ quiet }));
+    const mockShell = vi.fn(() => ({ cwd }));
+
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommandTimeoutMs: 100 },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const resultsPromise = runner.runTests();
+    await vi.advanceTimersByTimeAsync(150);
+    const results = await resultsPromise;
+
+    expect(results).toHaveLength(1);
+    expect(results[0].timedOut).toBe(true);
+    expect(results[0].exitCode).toBe(-1);
+
+    vi.useRealTimers();
+  });
+});
