@@ -12,6 +12,7 @@ export interface TodoPollerDeps {
   writeStatusFile: (sessionId: string) => void;
   triggerReview?: (sessionId: string) => void;
   maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<boolean>;
+  scheduleNudge?: (sessionId: string) => void;
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;
@@ -92,6 +93,10 @@ export function createTodoPoller(deps: TodoPollerDeps) {
         log("todo poll: new pending todos after review, resetting review flag:", sessionId);
         s.reviewFired = false;
       }
+    }
+
+    if (hasPending && deps.scheduleNudge && !s.nudgePaused) {
+      deps.scheduleNudge(sessionId);
     }
 
     deps.writeStatusFile(sessionId);
