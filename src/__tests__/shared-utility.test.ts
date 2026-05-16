@@ -428,50 +428,35 @@ describe("shared.ts utilities", () => {
       expect(result.textOnlyStallTimeoutMs).toBe(120000);
     });
 
-    it("should normalize documented session monitor aliases", async () => {
+    it("should disable orphan detection when session monitor disabled", async () => {
       const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
 
       const config = {
         ...DEFAULT_CONFIG,
-        orphanWaitMs: 1234,
-        idleCleanupMs: 5678,
         sessionMonitorEnabled: false,
       };
       const result = validateConfig(config);
 
-      expect(result.subagentWaitMs).toBe(1234);
-      expect(result.idleSessionTimeoutMs).toBe(5678);
       expect(result.orphanParentDetection).toBe(false);
-      expect(result.sessionDiscovery).toBe(false);
-      expect(result.idleCleanup).toBe(false);
     });
 
+    it("should keep shared and extracted config defaults in sync", async () => {
     it("should keep shared and extracted config defaults in sync", async () => {
       const shared = await import('../shared.js');
       const extracted = await import('../config.js');
 
       expect(shared.DEFAULT_CONFIG.sessionMonitorEnabled).toBe(extracted.DEFAULT_CONFIG.sessionMonitorEnabled);
-      expect(shared.DEFAULT_CONFIG.orphanWaitMs).toBe(extracted.DEFAULT_CONFIG.orphanWaitMs);
       expect(shared.DEFAULT_CONFIG.subagentWaitMs).toBe(extracted.DEFAULT_CONFIG.subagentWaitMs);
-      expect(shared.DEFAULT_CONFIG.idleCleanupMs).toBe(extracted.DEFAULT_CONFIG.idleCleanupMs);
-      expect(shared.DEFAULT_CONFIG.idleSessionTimeoutMs).toBe(extracted.DEFAULT_CONFIG.idleSessionTimeoutMs);
     });
-
-    it("should normalize documented aliases in extracted config module", async () => {
+    it("should disable orphan detection in extracted config module", async () => {
       const { validateConfig, DEFAULT_CONFIG } = await import('../config.js');
 
       const result = validateConfig({
         ...DEFAULT_CONFIG,
-        orphanWaitMs: 2222,
-        idleCleanupMs: 3333,
         sessionMonitorEnabled: false,
       });
 
-      expect(result.subagentWaitMs).toBe(2222);
-      expect(result.idleSessionTimeoutMs).toBe(3333);
       expect(result.orphanParentDetection).toBe(false);
-      expect(result.sessionDiscovery).toBe(false);
-      expect(result.idleCleanup).toBe(false);
     });
   });
 

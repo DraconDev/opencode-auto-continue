@@ -95,22 +95,8 @@ export interface PluginConfig {
 
   // Session Monitor
   subagentWaitMs: number;
-  /** @deprecated Use subagentWaitMs instead */
-  orphanWaitMs?: number;
-  /** @deprecated No longer used */
-  sessionDiscoveryIntervalMs: number;
-  /** @deprecated No longer used */
-  idleSessionTimeoutMs: number;
-  /** @deprecated No longer used */
-  idleCleanupMs?: number;
-  /** @deprecated No longer used */
-  maxSessions: number;
   sessionMonitorEnabled?: boolean;
   orphanParentDetection: boolean;
-  /** @deprecated No longer used */
-  sessionDiscovery: boolean;
-  /** @deprecated No longer used */
-  idleCleanup: boolean;
 
   // Question auto-answer
   autoAnswerQuestions: boolean;
@@ -224,15 +210,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Session Monitor defaults
   subagentWaitMs: 15000,
-  orphanWaitMs: 15000,
-  sessionDiscoveryIntervalMs: 60000,
-  idleSessionTimeoutMs: 600000,
-  idleCleanupMs: 600000,
-  maxSessions: 50,
   sessionMonitorEnabled: true,
   orphanParentDetection: true,
-  sessionDiscovery: true,
-  idleCleanup: true,
 
   // Question auto-answer
   autoAnswerQuestions: false,
@@ -274,16 +253,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
 export function validateConfig(config: PluginConfig): PluginConfig {
   const normalized: PluginConfig = { ...config };
-  if (typeof normalized.orphanWaitMs === "number") {
-    normalized.subagentWaitMs = normalized.orphanWaitMs;
-  }
-  if (typeof normalized.idleCleanupMs === "number") {
-    normalized.idleSessionTimeoutMs = normalized.idleCleanupMs;
-  }
+
   if (normalized.sessionMonitorEnabled === false) {
     normalized.orphanParentDetection = false;
-    normalized.sessionDiscovery = false;
-    normalized.idleCleanup = false;
   }
 
   // Track invalid fields explicitly rather than parsing error messages
@@ -337,9 +309,6 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (!Array.isArray(normalized.tokenLimitPatterns) || normalized.tokenLimitPatterns.length === 0) addError('tokenLimitPatterns', `tokenLimitPatterns must be a non-empty array`);
 
   if (normalized.subagentWaitMs < 0) addError('subagentWaitMs', `subagentWaitMs must be >= 0, got ${normalized.subagentWaitMs}`);
-  if (normalized.sessionDiscoveryIntervalMs < 0) addError('sessionDiscoveryIntervalMs', `sessionDiscoveryIntervalMs must be >= 0, got ${normalized.sessionDiscoveryIntervalMs}`);
-  if (normalized.idleSessionTimeoutMs < 0) addError('idleSessionTimeoutMs', `idleSessionTimeoutMs must be >= 0, got ${normalized.idleSessionTimeoutMs}`);
-  if (normalized.maxSessions < 0) addError('maxSessions', `maxSessions must be >= 0, got ${normalized.maxSessions}`);
 
   if (normalized.opportunisticCompactAtTokens < 0) addError('opportunisticCompactAtTokens', `opportunisticCompactAtTokens must be >= 0, got ${normalized.opportunisticCompactAtTokens}`);
   if (normalized.nudgeCompactThreshold < 0) addError('nudgeCompactThreshold', `nudgeCompactThreshold must be >= 0, got ${normalized.nudgeCompactThreshold}`);
