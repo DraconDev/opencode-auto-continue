@@ -4,7 +4,7 @@ import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface TodoPollerDeps {
-  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens">;
+  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "nudgeEnabled">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -12,6 +12,8 @@ export interface TodoPollerDeps {
   writeStatusFile: (sessionId: string) => void;
   triggerReview?: (sessionId: string) => void;
   maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<boolean>;
+  /** Schedule a nudge for the session. Used as fallback when session.idle events are unreliable. */
+  scheduleNudge?: (sessionId: string) => void;
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;
@@ -92,6 +94,15 @@ export function createTodoPoller(deps: TodoPollerDeps) {
         log("todo poll: new pending todos after review, resetting review flag:", sessionId);
         s.reviewFired = false;
       }
+    }
+
+    // Nudge fallback: if session has pending todos and nudge is enabled, schedule
+    // a nudge. This is the main fix for unreliable session.idle events — the periodic
+    // todo poller now acts as a fallback trigger for nudges.
+    // The nudge module's own guards (cooldown, loop protection, paused, etc.) still
+    // apply, so this is safe to call even if a nudge was already scheduled.
+    if (hasPending && config.nudgeEnabled && deps.scheduleNudge && !s.nudgePaused) {
+      deps.scheduleNudge(sessionId);
     }
 
     deps.writeStatusFile(sessionId);
