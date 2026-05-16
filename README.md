@@ -147,7 +147,7 @@ Check: 3+ continues within 10 minutes?
             └──NO ──► Normal continue flow
 ```
 
-**Why this matters**: Without this, a hallucinating model can generate the same broken output → plugin sends continue → model generates same broken output → infinite loop. The abort+resume forces the model to start fresh with a clean context.
+**Why this matters**: Without this, a hallucinating model can generate the same broken output → plugin sends continue → model generates same broken output → infinite loop. The delay breaks the hallucination cycle — the model gets a moment to reset instead of looping the same broken output.
 
 **Trade-off**: 3-in-10min threshold may catch legitimate rapid continues (e.g., fast-paced debugging sessions), but false positives are rare and only result in one extra abort+resume.
 
@@ -939,9 +939,9 @@ s.estimatedTokens = Math.max(s.estimatedTokens, total);
 ```
 
 **Ratios used for text-based estimation** (fallback only):
-- English text: ~0.75 tokens/char
-- Code: ~1.0 tokens/char
-- Digits/numbers: ~0.5 tokens/char
+- English text: ~0.35 tokens/char
+- Code: ~0.50 tokens/char
+- Digits/numbers: ~0.25 tokens/char
 
 #### Why session.status() Doesn't Help
 
