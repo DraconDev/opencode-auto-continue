@@ -142,6 +142,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
         }
       }
     }
+
+    previousBusyCount = currentBusyCount;
   }
 
   function touchSession(sessionId: string): void {
