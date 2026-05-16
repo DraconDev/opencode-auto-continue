@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.14.37] - 2026-05-16
+
+### Fixed
+
+- **Post-compaction token drift** (`getTokenCount()`): After repeated compactions, `estimatedTokens` could drift below compaction thresholds because the reduction factor was applied each cycle while accumulation undershot (assistant message text estimation skipped when `info.tokens` unavailable). Compaction would stop firing despite the context growing. Fixed by using `Math.max(estimatedTokens, realTokens - realTokensBaseline)` — DB growth since last compaction acts as a floor.
+
 ## [7.8.1852] - 2026-05-14
 
 ### Added
