@@ -377,15 +377,16 @@ The nudge system prevents sessions from going idle with pending todos. It follow
 - Cancels pending nudge on `message.updated` (user), `session.error`, `session.deleted`
 
 **Nudge injection** (`injectNudge`):
-1. Check cooldown (`nudgeCooldownMs` default 30s)
-2. Check session status (skip if busy/retry)
-3. Check user message cooldown (skip if user messaged recently)
-4. Check `nudgePaused` flag (set on MessageAbortedError, cleared on user message)
-5. Check loop protection (`nudgeMaxSubmits` default 10)
-   - Compare todo snapshot to detect real progress
-   - If snapshot unchanged after max submits → pause
-6. Fetch todos via API for context
-7. Send nudge via `session.promptAsync()`
+1. Check hard compaction (tokens > `hardCompactAtTokens` → await compaction first)
+2. Check failure backoff (5s cooldown after nudge failure)
+3. Check cooldown (`nudgeCooldownMs` default 30s)
+4. Check session status (busy/retry → schedule retry, skip)
+5. Check user message cooldown (skip if user messaged recently)
+6. Check `nudgePaused` flag (set on MessageAbortedError, cleared on user message)
+7. Run test commands if `testOnIdle` enabled (failures change nudge message to "fix tests")
+8. Check loop protection (`nudgeMaxSubmits` default 10)
+9. Fetch todos via API for context
+10. Send nudge via `session.prompt()`
 
 **Loop protection**:
 - `nudgeCount` increments each successful nudge
