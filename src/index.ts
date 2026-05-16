@@ -1140,6 +1140,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.planning && isUserMessage) {
           log('user sent message, clearing plan flag');
           s.planning = false;
+          s.planBuffer = '';
         }
         if (s.compacting) {
           // NOTE: Do NOT clear s.compacting here. Compaction produces message events,
