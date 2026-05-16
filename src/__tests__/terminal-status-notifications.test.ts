@@ -937,7 +937,10 @@ describe("status file rotation", () => {
     try { rmdirSync(dir, { recursive: true }); } catch {}
   }
 
-  it("should rotate files .1 through .N on successive writes", async () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("should rotate files .1 through .N on successive writes", () => {
     const dir = makeTempDir();
     const statusFile = join(dir, "status.json");
     const sessions = new Map();
@@ -949,6 +952,7 @@ describe("status file rotation", () => {
 
     for (let i = 0; i < 5; i++) {
       writeStatusFile("s1");
+      vi.advanceTimersByTime(600);
     }
 
     expect(existsSync(statusFile)).toBe(true);
@@ -960,7 +964,7 @@ describe("status file rotation", () => {
     cleanup(dir, statusFile, 5);
   });
 
-  it("should cap rotation at maxRotate and delete oldest", async () => {
+  it("should cap rotation at maxRotate and delete oldest", () => {
     const dir = makeTempDir();
     const statusFile = join(dir, "status.json");
     const sessions = new Map();
@@ -972,6 +976,7 @@ describe("status file rotation", () => {
 
     for (let i = 0; i < 5; i++) {
       writeStatusFile("s1");
+      vi.advanceTimersByTime(600);
     }
 
     expect(existsSync(`${statusFile}.3`)).toBe(false);
@@ -981,7 +986,7 @@ describe("status file rotation", () => {
     cleanup(dir, statusFile, 5);
   });
 
-  it("should work when no rotated files exist yet (first rotation)", async () => {
+  it("should work when no rotated files exist yet (first rotation)", () => {
     const dir = makeTempDir();
     const statusFile = join(dir, "status.json");
     const sessions = new Map();
@@ -992,12 +997,15 @@ describe("status file rotation", () => {
     const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
 
     writeStatusFile("s1");
+    vi.advanceTimersByTime(600);
     expect(existsSync(statusFile)).toBe(true);
 
     writeStatusFile("s1");
+    vi.advanceTimersByTime(600);
     expect(existsSync(`${statusFile}.1`)).toBe(true);
 
     writeStatusFile("s1");
+    vi.advanceTimersByTime(600);
     expect(existsSync(`${statusFile}.2`)).toBe(true);
 
     cleanup(dir, statusFile, 5);
