@@ -81,6 +81,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   compactionSafetyTimeoutMs: 15000,
   compactionGracePeriodMs: 10000,
   compactionFailBackoffMs: 60000,
+  compactionTimeoutBackoffMs: 15000,
   stopFilePath: "",
   maxRuntimeMs: 0,
   untilMarker: "",
@@ -145,6 +146,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     compactionTimedOut: false,
     compactionSafetyTimer: null,
     lastCompactionFailedAt: 0,
+    lastCompactionTimeoutAt: 0,
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     proactiveCompactCount: 0,
@@ -1070,6 +1072,192 @@ describe("compaction module unit tests", () => {
       const result = await promise;
       expect(result).toBe(false);
       expect(s.compacting).toBe(false);
+    });
+  });
+
+  describe("compaction timeout vs failure backoff", () => {
+    it("safety timeout sets lastCompactionTimeoutAt (not lastCompactionFailedAt)", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
+
+      const s = createSessionState({ estimatedTokens: 100000 });
+      sessions.set("test", s);
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
+
+      const promise = module.forceCompact("test");
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      expect(s.lastCompactionTimeoutAt).toBeGreaterThan(0);
+      expect(s.lastCompactionFailedAt).toBe(0);
+    });
+
+    it("proactive compact uses shorter timeout backoff when last failure was timeout", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionTimeoutAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionTimeoutBackoffMs: 10000,
+        compactionFailBackoffMs: 60000,
+      });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("timeout backoff");
+    });
+
+    it("proactive compact proceeds after timeout backoff expires", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionTimeoutAt: Date.now() - 20000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionTimeoutBackoffMs: 10000,
+      });
+
+      const promise = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+
+      const result = await promise;
+      expect(result).toBe(true);
+    });
+
+    it("hard compact uses shorter timeout backoff when last failure was timeout", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionTimeoutAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        hardCompactAtTokens: 100000,
+        compactionTimeoutBackoffMs: 10000,
+        compactionFailBackoffMs: 60000,
+      });
+
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("timeout backoff");
+    });
+
+    it("opportunistic compact uses shorter timeout backoff when last failure was timeout", async () => {
+      const s = createSessionState({
+        estimatedTokens: 60000,
+        lastCompactionTimeoutAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        opportunisticCompactAtTokens: 50000,
+        compactionTimeoutBackoffMs: 10000,
+        compactionFailBackoffMs: 60000,
+      });
+
+      const result = await module.maybeOpportunisticCompact("test", "post-recovery");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("timeout backoff");
+    });
+
+    it("real error uses full failure backoff (not shorter timeout backoff)", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionTimeoutBackoffMs: 10000,
+        compactionFailBackoffMs: 60000,
+      });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("failure backoff");
+      expect(allLogs).not.toContain("timeout backoff");
+    });
+
+    it("both timeout and failure set — uses longer failure backoff", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionTimeoutAt: Date.now() - 20000,
+        lastCompactionFailedAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionTimeoutBackoffMs: 10000,
+        compactionFailBackoffMs: 60000,
+      });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("failure backoff");
+    });
+
+    it("lastCompactionTimeoutAt cleared on successful compaction", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionTimeoutAt: Date.now() - 20000,
+      });
+      sessions.set("test", s);
+      module = createModule({ hardCompactAtTokens: 100000, compactionTimeoutBackoffMs: 10000, compactReductionFactor: 0.4 });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test", { compactReductionFactor: 0.4 });
+
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(s.lastCompactionTimeoutAt).toBe(0);
+    });
+
+    it("lastCompactionTimeoutAt set on verify timeout (not safety timeout)", async () => {
+      mockSummarize.mockResolvedValue({ data: {} });
+
+      const s = createSessionState({ estimatedTokens: 200000 });
+      sessions.set("test", s);
+      module = createModule({
+        compactionVerifyWaitMs: 3000,
+        compactionSafetyTimeoutMs: 0,
+        compactMaxRetries: 1,
+      });
+
+      const promise = module.forceCompact("test");
+      await vi.advanceTimersByTimeAsync(4000);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(s.lastCompactionTimeoutAt).toBeGreaterThan(0);
+      expect(s.lastCompactionFailedAt).toBe(0);
+    });
+
+    it("real API error sets lastCompactionFailedAt (not lastCompactionTimeoutAt)", async () => {
+      mockSummarize.mockRejectedValue(new Error("API error"));
+      const s = createSessionState({ estimatedTokens: 200000 });
+      sessions.set("test", s);
+      module = createModule({ compactMaxRetries: 1, compactRetryDelayMs: 100 });
+
+      const promise = module.forceCompact("test");
+      await vi.advanceTimersByTimeAsync(200);
+      await flushPromises();
+
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(s.lastCompactionFailedAt).toBeGreaterThan(0);
+      expect(s.lastCompactionTimeoutAt).toBe(0);
     });
   });
 

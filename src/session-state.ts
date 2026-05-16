@@ -66,6 +66,7 @@ export interface SessionState {
   compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
   compactionTimedOut: boolean;
   lastCompactionFailedAt: number; // Timestamp of last compaction failure — backoff period
+  lastCompactionTimeoutAt: number; // Timestamp of last compaction timeout — shorter backoff period
   realTokensBaseline: number; // Set to realTokens on compaction — signals DB values are cumulative, prefer estimatedTokens
   proactiveCompactCount: number;
   hardCompactCount: number;
@@ -185,6 +186,7 @@ export function createSession(): SessionState {
     compactionSafetyTimer: null,
     compactionTimedOut: false,
     lastCompactionFailedAt: 0,
+    lastCompactionTimeoutAt: 0,
     realTokensBaseline: 0,
     proactiveCompactCount: 0,
     hardCompactCount: 0,

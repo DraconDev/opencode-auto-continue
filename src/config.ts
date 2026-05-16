@@ -79,6 +79,11 @@ export interface PluginConfig {
   // for this period. Prevents spam of proactive+hard checks on every message.part.updated.
   compactionFailBackoffMs: number;
 
+  // Compaction timeout backoff — after compaction safety timeout (compacting flag stuck),
+  // don't retry for this period. Shorter than failure backoff because a timeout just means
+  // session.compacted hasn't arrived yet — the server may still be processing.
+  compactionTimeoutBackoffMs: number;
+
   // Stop conditions
   stopFilePath: string;
   maxRuntimeMs: number;
@@ -193,6 +198,10 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Compaction failure backoff — don't retry after failure for 60s (default)
   compactionFailBackoffMs: 60000,
+
+  // Compaction timeout backoff — don't retry after timeout for 15s (default)
+  // Shorter than failure backoff because timeout just means session.compacted hasn't arrived
+  compactionTimeoutBackoffMs: 15000,
 
   // Stop conditions
   stopFilePath: "",
@@ -356,6 +365,7 @@ export function validateConfigDetailed(config: PluginConfig): ConfigValidationRe
   if (normalized.compactionSafetyTimeoutMs < 0) addError('compactionSafetyTimeoutMs', `compactionSafetyTimeoutMs must be >= 0, got ${normalized.compactionSafetyTimeoutMs}`);
   if (normalized.compactionGracePeriodMs < 0) addError('compactionGracePeriodMs', `compactionGracePeriodMs must be >= 0, got ${normalized.compactionGracePeriodMs}`);
   if (normalized.compactionFailBackoffMs < 0) addError('compactionFailBackoffMs', `compactionFailBackoffMs must be >= 0, got ${normalized.compactionFailBackoffMs}`);
+  if (normalized.compactionTimeoutBackoffMs < 0) addError('compactionTimeoutBackoffMs', `compactionTimeoutBackoffMs must be >= 0, got ${normalized.compactionTimeoutBackoffMs}`);
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);

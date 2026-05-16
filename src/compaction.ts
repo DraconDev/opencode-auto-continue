@@ -10,6 +10,36 @@ export interface CompactionDeps {
   input: TypedPluginInput;
 }
 
+type BackoffCheckResult = { blocked: boolean; reason: string; remainingMs: number };
+
+function checkBackoff(s: SessionState, config: PluginConfig): BackoffCheckResult {
+  const now = Date.now();
+
+  if (s.lastCompactionFailedAt > 0) {
+    const timeSinceFail = now - s.lastCompactionFailedAt;
+    if (timeSinceFail < config.compactionFailBackoffMs) {
+      return {
+        blocked: true,
+        reason: 'failure backoff',
+        remainingMs: config.compactionFailBackoffMs - timeSinceFail,
+      };
+    }
+  }
+
+  if (s.lastCompactionTimeoutAt > 0) {
+    const timeSinceTimeout = now - s.lastCompactionTimeoutAt;
+    if (timeSinceTimeout < config.compactionTimeoutBackoffMs) {
+      return {
+        blocked: true,
+        reason: 'timeout backoff',
+        remainingMs: config.compactionTimeoutBackoffMs - timeSinceTimeout,
+      };
+    }
+  }
+
+  return { blocked: false, reason: '', remainingMs: 0 };
+}
+
 /**
  * Create the compaction module. Implements a 4-layer compaction strategy:
  * 1. Opportunistic — when token usage is elevated but not critical
