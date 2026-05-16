@@ -904,20 +904,31 @@ The factor represents the fraction of tokens **remaining** after compaction. Com
 - **Hard** (100k): Mandatory gate — blocks operations until compacted
 - **Emergency**: Safety net for edge cases that slip through
 
-### Double Compact Prevention (v7.8.1904+)
+### Double Compact Prevention (v7.8.1904+) & Token Drift Fix (v7.14.35+)
 
 After `session.compacted` fires, the SQLite DB still holds pre-compaction token counts (they accumulate over the session's lifetime — `tokens_input` is a lifetime total, not current context). Without intervention, `getTokenCount()` would return values like 29M tokens from the DB instead of the actual ~70k context size.
 
-**Two-part fix**:
+**Initial fix (v7.8.1904)**:
 
 1. **Grace period guard** (`compactionGracePeriodMs`, default 10s): All 3 compaction layers skip if `lastCompactionAt` is within this window, even if `hardCompactBypassCooldown: true`. Prevents triggering while DB values are stale.
 
-2. **`realTokensBaseline` tracking on `session.compacted`**: Sets `realTokensBaseline = realTokens` (the lifetime token total at compaction time). After this, `getTokenCount()` ignores the cumulative DB `realTokens` and returns `estimatedTokens` instead — which has already been reduced by `compactReductionFactor`. This prevents the massive token count discrepancy (29M DB vs 70k actual) from triggering false compaction.
+2. **`realTokensBaseline` tracking on `session.compacted`**: Sets `realTokensBaseline = realTokens` (the lifetime token total at compaction time). After this, `getTokenCount()` switches from cumulative DB values to `estimatedTokens` (already reduced by `compactReductionFactor`). This prevents the massive token count discrepancy (29M DB vs 70k actual) from triggering false compaction.
+
+**Drift problem (v7.14.35 fix)**: After repeated compactions, `estimatedTokens` could drift downward because the reduction factor is applied each time while accumulation may undershoot (e.g., assistant message text is estimated from `info.tokens` which isn't always available). This caused compaction to stop firing even as the context grew. The fix: `getTokenCount()` now uses `Math.max(estimatedTokens, realTokens - realTokensBaseline)` — a floor set by the actual DB growth since last compaction prevents the count from dropping below real context growth:
+
+```typescript
+// session-state.ts — getTokenCount()
+if (s.realTokensBaseline > 0 && s.realTokens > 0) {
+  const growth = Math.max(0, s.realTokens - s.realTokensBaseline);
+  return Math.max(s.estimatedTokens, growth);  // floor by DB growth
+}
+```
 
 The `refreshRealTokens()` throttle:
 - `realTokens > 0 && now - lastRealTokenRefreshAt < 10s` → return cached
-- `realTokensBaseline > 0` → return `estimatedTokens` (not the cumulative DB value)
-- After baseline is set: DB values are ignored until a new compaction resets the baseline
+- After baseline is set: returns `Math.max(estimatedTokens, growth)` where growth is new tokens since last compaction
+- Immediately after compaction: `growth = 0` → returns `estimatedTokens` (no loop)
+- After 50k new tokens: `growth = 50k` → returns `max(estimatedTokens, 50k)` (prevents drift)
 
 `forceCompact()` (emergency) is NOT blocked by grace period — token limit errors require immediate action.
 
@@ -984,6 +995,17 @@ There are NO token count fields in `session.status()`. The plugin relies on the 
 - Pre-existing context (before plugin started) isn't counted
 
 This is intentional — we'd rather over-estimate and compact early than hit the limit.
+
+#### Post-Compaction Growth Tracking
+
+After compaction, `estimatedTokens` is reduced by `compactReductionFactor`. If it drifts too low (e.g., because `info.tokens` is missing for assistant messages), `getTokenCount()` uses the actual DB growth as a floor:
+
+```
+growth = max(0, realTokens - realTokensBaseline)
+effective = max(estimatedTokens, growth)
+```
+
+This ensures that even if `estimatedTokens` undershoots, we never ignore more than 80k tokens of new content between compactions.
 
 ### How to Verify Compaction Is Working
 
