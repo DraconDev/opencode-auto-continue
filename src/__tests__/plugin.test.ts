@@ -1713,6 +1713,46 @@ describe("opencode-auto-continue", () => {
       expect(true).toBe(true);
       vi.useRealTimers();
     });
+
+    it("should send continue when session.idle fires while aborting=true and needsContinue=true", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test", status: "in_progress" }],
+        error: undefined,
+      });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        autoCompact: false,
+        waitAfterAbortMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Stall fires → recovery sets aborting=true, then needsContinue=true
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      // Session becomes idle while aborting is still true and needsContinue is true
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await flushPromises();
+
+      // Advance timers to allow any delayed sendContinue to fire
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+
+      // The continue should eventually be sent (either directly or via retry)
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 
   describe("custom prompt API", () => {

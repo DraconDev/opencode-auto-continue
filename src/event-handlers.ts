@@ -428,7 +428,14 @@ async function handleSessionStatus(ctx: HandlerContext, sid: string, e: PluginEv
     // Send queued continue when session becomes idle/stable
     if (s.needsContinue) {
       if (s.aborting) {
-        log('session idle while recovery is finalizing, recovery will send queued continue for:', sid);
+        log('session idle while recovery is finalizing, scheduling delayed continue fallback for:', sid);
+        setTimeout(() => {
+          const session = sessions.get(sid);
+          if (session && session.needsContinue && !session.continueInProgress) {
+            log('delayed continue fallback firing for:', sid);
+            review.sendContinue(sid).catch((e: unknown) => log('delayed continue fallback failed:', e));
+          }
+        }, 3000);
       } else {
         log('session idle, sending queued continue for:', sid);
         await review.sendContinue(sid);
@@ -852,7 +859,14 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
 
   if (s.needsContinue) {
     if (s.aborting) {
-      log('session.idle while recovery is finalizing, recovery will send queued continue for:', sid);
+      log('session.idle while recovery is finalizing, scheduling delayed continue fallback for:', sid);
+      setTimeout(() => {
+        const session = sessions.get(sid);
+        if (session && session.needsContinue && !session.continueInProgress) {
+          log('delayed continue fallback firing for:', sid);
+          review.sendContinue(sid).catch((e: unknown) => log('delayed continue fallback failed:', e));
+        }
+      }, 3000);
     } else {
       log('session.idle, sending queued continue for:', sid);
       await review.sendContinue(sid);
