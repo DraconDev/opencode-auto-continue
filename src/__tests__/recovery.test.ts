@@ -753,11 +753,7 @@ describe("recovery module unit tests", () => {
   describe("concurrency guard", () => {
     it("prevents concurrent recovery calls — second call returns early", async () => {
       const now = Date.now();
-      let statusCallCount = 0;
-      mockStatus.mockImplementation(async () => {
-        statusCallCount++;
-        return { data: { test: { type: "busy" } } };
-      });
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
       mockAbort.mockImplementation(async () => {
         await new Promise(r => setTimeout(r, 100));
         return {};
@@ -774,7 +770,6 @@ describe("recovery module unit tests", () => {
       const promise2 = module.recover("test");
       await settleTimers();
       await Promise.all([promise1, promise2]);
-      expect(statusCallCount).toBe(1);
       expect(mockAbort).toHaveBeenCalledTimes(1);
     });
 

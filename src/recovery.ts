@@ -96,6 +96,8 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (s.compacting) return;
     if (s.hardCompactionInProgress) return;
 
+    s.recoveryInProgress = true;
+
     if (deps.maybeHardCompact) {
       try {
         const compacted = await deps.maybeHardCompact(sessionId);
@@ -116,6 +118,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       s.backoffAttempts++;
       log('max recoveries reached, using exponential backoff:', backoffDelay, 'ms (attempt', s.backoffAttempts, ')');
       scheduleRecovery(sessionId, backoffDelay);
+      s.recoveryInProgress = false;
       return;
     }
 
@@ -126,16 +129,17 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const delay = Math.max(remainingCooldown, 100);
       log('recovery cooldown active, rescheduling:', delay, 'ms');
       scheduleRecovery(sessionId, delay);
+      s.recoveryInProgress = false;
       return;
     }
 
     if (config.maxSessionAgeMs > 0 && now - s.sessionCreatedAt > config.maxSessionAgeMs) {
       log('session too old, giving up:', sessionId, 'age:', now - s.sessionCreatedAt, 'ms');
+      s.recoveryInProgress = false;
       return;
     }
 
     s.aborting = true;
-    s.recoveryInProgress = true;
     s.stallDetections++;
     s.recoveryStartTime = Date.now();
 
