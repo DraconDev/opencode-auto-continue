@@ -434,10 +434,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
   };
 };
-              } catch (e) {
-                // ignore toast errors
-              }
-            }
+}
             
             // Attempt emergency compaction asynchronously
             compaction.forceCompact(sid).then(async (compacted) => {
