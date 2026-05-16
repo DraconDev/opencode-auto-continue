@@ -627,18 +627,18 @@ Minimal configuration with sensible defaults:
 |--------|---------|-------------|
 | `nudgeEnabled` | `true` | Send continue prompts for incomplete todos |
 | `nudgeIdleDelayMs` | `0` | Delay after session.idle before sending nudge |
-| `nudgeMessage` | `"..."` | Nudge message telling agent to continue |
+| `nudgeMessage` | `"You have {pending}..."` | Nudge message (TDD + TodoWrite) |
 | `nudgeCooldownMs` | `30000` | Min time between nudges (30s) |
 | `nudgeMaxSubmits` | `10` | Max nudges before loop protection pauses |
 | `includeTodoContext` | `true` | Include pending todos in nudge message |
 | `todoPollIntervalMs` | `30000` | Periodic todo API poll interval (0=disable) |
-| `reviewCooldownMs` | `60000` | Min time between reviews (prevents rapid-fire loop) |
 
 ### Compaction Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `autoCompact` | `true` | Enable proactive and opportunistic compaction |
+| `compactCooldownMs` | `60000` | Min time between soft compactions |
 | `proactiveCompactAtTokens` | `80000` | Token threshold for proactive compaction |
 | `opportunisticCompactAtTokens` | `60000` | Token threshold for opportunistic compaction |
 | `hardCompactAtTokens` | `100000` | Token threshold for mandatory blocking compaction |
