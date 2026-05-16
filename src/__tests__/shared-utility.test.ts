@@ -246,6 +246,14 @@ describe("shared.ts utilities", () => {
   });
 
   describe("validateConfig", () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
     it("should accept valid config", async () => {
       const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
 

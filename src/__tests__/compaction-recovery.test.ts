@@ -12,6 +12,7 @@ describe("compaction module", () => {
 
   beforeEach(() => {
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
@@ -475,6 +476,7 @@ describe("recovery module", () => {
 
   beforeEach(() => {
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
@@ -972,6 +974,7 @@ describe("token estimation", () => {
 
   beforeEach(() => {
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockClient = {
       session: {
         abort: vi.fn().mockResolvedValue({ data: true, error: undefined }),

@@ -802,6 +802,14 @@ describe("opencode-auto-continue", () => {
   });
 
   describe("config validation", () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
     it("should use defaults when stallTimeoutMs <= waitAfterAbortMs", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
