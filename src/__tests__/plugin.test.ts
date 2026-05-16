@@ -1890,13 +1890,16 @@ describe("opencode-auto-continue", () => {
       // Review prompt should NOT have been sent yet (compaction in progress)
       expect(mockPrompt).not.toHaveBeenCalled();
 
-      // Compaction completes — clears compacting flag and schedules retry
+      // Compaction completes — clears compacting flag and re-triggers deferred review
       await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
-      await vi.advanceTimersByTimeAsync(6000); // retry timer is 5s
       await flushPromises();
 
-      // Now review should have fired
-      expect(mockPrompt).toHaveBeenCalled();
+      // Review should have been re-triggered immediately (not via 5s retry timer)
+      // The review prompt contains "All tracked tasks are marked complete"
+      const reviewCall = mockPrompt.mock.calls.find((c: any[]) =>
+        c.some((arg: any) => typeof arg === 'object' && arg?.body?.parts?.some((p: any) => p.text?.includes('All tracked tasks')))
+      );
+      expect(reviewCall).toBeTruthy();
 
       vi.useRealTimers();
     });

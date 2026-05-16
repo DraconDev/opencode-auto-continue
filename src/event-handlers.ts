@@ -904,6 +904,7 @@ function handleSessionCompacted(ctx: HandlerContext, sid: string): void {
   s.lastCompactionTimeoutAt = 0;
   s.hardCompactionInProgress = false;
   if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
+  const hadPendingReview = s.reviewRetryTimer !== null;
   if (s.reviewRetryTimer) { clearTimeout(s.reviewRetryTimer); s.reviewRetryTimer = null; }
   s.lastCompactionAt = Date.now();
   s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
@@ -920,6 +921,12 @@ function handleSessionCompacted(ctx: HandlerContext, sid: string): void {
     s.needsContinue = true;
     s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
     review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
+  }
+
+  // Re-trigger deferred review if one was pending before compaction completed
+  if (hadPendingReview && !s.reviewFired && !s.userCancelled && !isDisposed()) {
+    log('re-triggering deferred review after compaction, session:', sid);
+    review.triggerReview(sid).catch((e) => log('deferred review after compaction failed:', e));
   }
 
   // Re-schedule nudge after compaction
