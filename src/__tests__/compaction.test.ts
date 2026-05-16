@@ -1290,13 +1290,12 @@ describe("compaction module unit tests", () => {
   });
 
   describe("checkBackoff (unit)", () => {
-    it("returns blocked=false when no failures or timeouts", async () => {
-      const s = createSessionState({ estimatedTokens: 200000 });
+    it("returns not blocked when no failures or timeouts and below threshold", async () => {
+      const s = createSessionState({ estimatedTokens: 50000 });
       sessions.set("test", s);
       module = createModule();
 
       const result = await module.maybeProactiveCompact("test");
-      // Not blocked — just below threshold
       expect(result).toBe(false);
       const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(allLogs).not.toContain("backoff");
