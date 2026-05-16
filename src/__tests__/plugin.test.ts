@@ -1903,6 +1903,63 @@ describe("opencode-auto-continue", () => {
 
       vi.useRealTimers();
     });
+
+    it("should NOT re-trigger review after compaction when reviewFired is already true", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "Done", status: "completed" }],
+        error: undefined,
+      });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        reviewOnComplete: true,
+        reviewDebounceMs: 100,
+        autoCompact: false,
+        nudgeEnabled: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+      await flushPromises();
+
+      // Set compacting flag
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", part: { type: "compaction" } } } });
+      await flushPromises();
+
+      // Mark all todos complete — review deferred because compacting
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "Done", status: "completed" }] } } });
+      await vi.advanceTimersByTimeAsync(200);
+      await flushPromises();
+
+      // Review not sent yet
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      // Manually set reviewFired=true to simulate review already completed before compaction ended
+      // (e.g., review completed via the 5s retry timer that fired between compaction starting and ending)
+      const sessions = (plugin as any).sessions as Map<string, any>;
+      const s = sessions.get("test");
+      s.reviewFired = true;
+
+      const promptCallCountBefore = mockPrompt.mock.calls.length;
+
+      // Compaction completes
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+      await flushPromises();
+
+      // The re-trigger should NOT fire a second review prompt
+      const reviewCallsAfter = mockPrompt.mock.calls.filter((c: any[]) =>
+        c.some((arg: any) => typeof arg === 'object' && arg?.body?.parts?.some((p: any) => p.text?.includes('All tracked tasks')))
+      );
+      expect(reviewCallsAfter.length).toBe(0);
+
+      vi.useRealTimers();
+    });
   });
 
   describe("continueSafetyTimer", () => {
