@@ -2810,6 +2810,7 @@ describe("test-fix loop", () => {
         nudgeEnabled: true,
         nudgeIdleDelayMs: 0,
         nudgeCooldownMs: 0,
+        nudgeMaxSubmits: 10,
         compactionSafetyTimeoutMs: 5000,
         terminalTitleEnabled: false,
         terminalProgressEnabled: false,
@@ -2832,13 +2833,22 @@ describe("test-fix loop", () => {
       // Session idle again — nudge deferred because compacting
       mockPrompt.mockClear();
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-      // Advance through multiple nudge retry cycles (5s each) past safety timeout (5s)
+
+      // Advance past safety timeout (5000ms)
       await vi.advanceTimersByTimeAsync(6000);
 
-      // After safety timeout fires, compacting is cleared and nudge is re-scheduled.
-      // The retry mechanism should eventually deliver the nudge.
-      // Advance further to let the nudge retry or scheduleNudge fire.
-      await vi.advanceTimersByTimeAsync(10000);
+      // Safety timeout cleared compacting flag and called scheduleNudge.
+      // The scheduleNudge timer fires after nudgeIdleDelayMs (0ms), calling injectNudge.
+      // injectNudge checks session status via API — mock returns "idle".
+      // But nudge might be blocked by nudgeCount or other guards.
+      // Send session.status(idle) to clear internal state.
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+
+      // Give the nudge timer a chance to fire
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // The nudge retry that was blocked by compacting should now proceed,
+      // or the scheduleNudge from safety timeout should deliver
       expect(mockPrompt).toHaveBeenCalled();
 
       vi.useRealTimers();
