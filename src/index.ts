@@ -30,6 +30,7 @@ import { createTestRunner } from "./test-runner.js";
 import { createTodoPoller } from "./todo-poller.js";
 import { getSessionTokens, getDbLastError, closeDb, warmupSqlite } from "./tokens.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
+import { type HandlerContext, handleEvent, handleSystemTransform, handleSessionCompacting, handleCompactionAutocontinue } from "./event-handlers.js";
 
 import type { Todo } from "./session-state.js";
 
@@ -377,58 +378,62 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const sessionMonitor = createSessionMonitor({ config, sessions, log, isDisposed: isDisposed, recover, checkStopConditions: stopConditions.checkStopConditions });
   sessionMonitor.start();
 
+  const ctx: HandlerContext = {
+    input,
+    config,
+    sessions,
+    log,
+    isDisposed,
+    getSession,
+    refreshRealTokens,
+    clearTimer,
+    resetSession,
+    terminal,
+    writeStatusFile,
+    clearPendingWrites,
+    compaction,
+    nudge,
+    review,
+    sessionMonitor,
+    stopConditions,
+    testRunner,
+    todoPoller,
+    scheduleRecovery,
+    recover,
+  };
+
   return {
     event: async ({ event }: { event: any }) => {
-      await safeHook("event", async () => {
-        const e = event as any;
-        const sid = e?.properties?.sessionID || e?.properties?.info?.sessionID || e?.properties?.part?.sessionID;
-        if (!sid) {
-          log('event received without sessionID, skipping:', event?.type);
-          return;
-        }
-
-        if (event?.type === "session.error") {
-        const err = e?.properties?.error;
-        log('session.error:', err?.name, err?.message);
-        if (err?.name === "MessageAbortedError") {
-          const s = sessions.get(sid);
-          if (s?.aborting) {
-            log('session abort was plugin-initiated, keeping recovery enabled:', sid);
-            clearTimer(sid);
-            writeStatusFile(sid);
-            return;
-          }
-          if (s) {
-            s.userCancelled = true;
-            s.lastKnownStatus = 'error';
-            nudge.pauseNudge(sid);
-          }
-          log('user cancelled session:', sid);
-        } else if (compaction.isTokenLimitError(err)) {
-          const s = sessions.get(sid);
-          if (s) {
-            s.tokenLimitHits++;
-            
-            // Parse exact token counts from error message
-            const parsedTokens = parseTokensFromError(err);
-            if (parsedTokens) {
-              s.estimatedTokens = Math.max(s.estimatedTokens, parsedTokens.total);
-              log('parsed tokens from error:', parsedTokens.total, 'input:', parsedTokens.input, 'output:', parsedTokens.output, 'session:', sid);
-            }
-            
-            log('token limit error detected (hit #' + s.tokenLimitHits + ') for session:', sid);
-            
-            // Show token limit toast
-            if (config.showToasts) {
-              try {
-                input.client.tui.showToast({
-                  query: { directory: input.directory || "" },
-                  body: {
-                    title: "Token Limit Reached",
-                    message: `Compacting context to free up tokens (hit #${s.tokenLimitHits})...`,
-                    variant: "warning",
-                  },
-                }).catch(() => {});
+      await handleEvent(ctx, event);
+    },
+    "experimental.chat.system.transform": async (_input, output) => {
+      handleSystemTransform(ctx, _input, output);
+    },
+    "experimental.session.compacting": async (_input, output) => {
+      handleSessionCompacting(ctx, _input, output);
+    },
+    "experimental.compaction.autocontinue": async (_input, output) => {
+      handleCompactionAutocontinue(ctx, _input, output);
+    },
+    dispose: () => {
+      log('disposing plugin');
+      disposed = true;
+      sessionMonitor.stop();
+      todoPoller.stopPeriodicPoll();
+      clearPendingWrites();
+      clearMessagesCache();
+      invalidateModelLimitCache();
+      unregisterCustomPromptRuntime(customPromptRuntime);
+      customPromptRuntimes.clear();
+      latestCustomPromptRuntime = null;
+      sessions.forEach((s) => {
+        clearAllSessionTimers(s);
+      });
+      sessions.clear();
+      closeDb();
+    }
+  };
+};
               } catch (e) {
                 // ignore toast errors
               }
