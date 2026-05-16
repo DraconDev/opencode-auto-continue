@@ -1,7 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 import { existsSync, readFileSync, statSync } from "fs";
 
-// Import canonical types/values for local use.
+type TypedPluginInput = PluginInput;
 import type { PluginConfig } from "./config.js";
 import { DEFAULT_CONFIG, validateConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
