@@ -5,13 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.14.40] - 2026-05-16
+## [7.14.41] - 2026-05-16
 
 ### Changed
 
 - **Dangerous commands policy injection moved to system prompt**: Previously injected via `session.prompt` on `session.created`, which caused the AI to waste its first turn acknowledging the policy instead of responding to the user's actual request. Now uses `experimental.chat.system.transform` hook to inject the policy into the system prompt — visible to the AI every turn but no wasted turn on session start.
-
-## [7.14.38] - 2026-05-16
 
 ### Fixed
 
