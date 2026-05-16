@@ -54,6 +54,15 @@ export function createTodoPoller(deps: TodoPollerDeps) {
       prevHasOpenTodos,
     });
 
+    if (allCompleted && s.reviewFired) {
+      const now = Date.now();
+      const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
+      if (!inCooldown) {
+        log("todo poll: all completed with stale reviewFired flag, resetting:", sessionId);
+        s.reviewFired = false;
+      }
+    }
+
     if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
       const now = Date.now();
       const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
@@ -78,27 +87,6 @@ export function createTodoPoller(deps: TodoPollerDeps) {
           s.reviewDebounceTimer = null;
           if (deps.triggerReview) deps.triggerReview(sessionId);
         }, config.reviewDebounceMs);
-      }
-    } else if (allCompleted && s.reviewFired) {
-      const now = Date.now();
-      const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
-      if (!inCooldown) {
-        log("todo poll: all completed with stale reviewFired flag, resetting:", sessionId);
-        s.reviewFired = false;
-        if (config.reviewOnComplete) {
-          if (config.opportunisticCompactAfterReview && deps.maybeOpportunisticCompact) {
-            if (getTokenCount(s) >= config.opportunisticCompactAtTokens) {
-              deps.maybeOpportunisticCompact(sessionId, "post-review").catch((e: unknown) => log("opportunistic compact post-review failed:", e));
-            }
-          }
-          if (s.reviewDebounceTimer) {
-            clearTimeout(s.reviewDebounceTimer);
-          }
-          s.reviewDebounceTimer = setTimeout(() => {
-            s.reviewDebounceTimer = null;
-            if (deps.triggerReview) deps.triggerReview(sessionId);
-          }, config.reviewDebounceMs);
-        }
       }
     } else if (!allCompleted && s.reviewDebounceTimer) {
       clearTimeout(s.reviewDebounceTimer);
