@@ -492,22 +492,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         getSession(sid);
         refreshRealTokens(sid);
         sessionMonitor.touchSession(sid);
-
-        // Layer 1: Proactive injection of dangerous command blocklist
-        if (config.dangerousCommandBlocking && config.dangerousCommandInjection) {
-          input.client.session.prompt({
-            path: { id: sid },
-            query: { directory: input.directory || "" },
-            body: {
-              parts: [{
-                type: "text",
-                text: `## ⚠️ Dangerous Commands Policy\n\nThe following commands are blocked by policy and must never be used:\n\n${formatDangerousBlocklist()}\n\nIf you need one of these for a legitimate reason, explain why and it can be approved manually.`,
-                synthetic: true,
-              }],
-            },
-          }).catch((e: any) => log('dangerous command injection failed:', e));
-        }
-
         writeStatusFile(sid);
         return;
       }
@@ -1255,6 +1239,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         return;
       }
       }, log);
+    },
+    "experimental.chat.system.transform": async (_input, output) => {
+      if (config.dangerousCommandBlocking && config.dangerousCommandInjection) {
+        const policy = `## ⚠️ Dangerous Commands Policy\n\nThe following commands are blocked by policy and must never be used:\n\n${formatDangerousBlocklist()}\n\nIf you need one of these for a legitimate reason, explain why and it can be approved manually.`;
+        output.system.push(policy);
+      }
     },
     "experimental.session.compacting": async (_input, output) => {
       // Inject session state into compaction to preserve important context
