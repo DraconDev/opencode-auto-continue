@@ -43,8 +43,8 @@ export function createTerminalModule(deps: TerminalDeps) {
         process.stdout.write(`\x1b]0;${title}\x07`);
         process.stdout.write(`\x1b]2;${title}\x07`);
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      log('terminal title write failed:', e);
     }
   }
 
@@ -55,8 +55,8 @@ export function createTerminalModule(deps: TerminalDeps) {
         process.stdout.write('\x1b]0;opencode\x07');
         process.stdout.write('\x1b]2;opencode\x07');
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      log('terminal title clear failed:', e);
     }
   }
 
@@ -79,8 +79,8 @@ export function createTerminalModule(deps: TerminalDeps) {
       if (process.stdout.isTTY) {
         process.stdout.write(`\x1b]9;4;1;${progress}\x07`);
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      log('terminal progress write failed:', e);
     }
   }
 
@@ -90,8 +90,8 @@ export function createTerminalModule(deps: TerminalDeps) {
       if (process.stdout.isTTY) {
         process.stdout.write('\x1b]9;4;0\x07');
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      log('terminal progress clear failed:', e);
     }
   }
 

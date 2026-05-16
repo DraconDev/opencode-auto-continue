@@ -16,8 +16,8 @@ function ensureLogDir(logDir: string) {
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    log('ensureLogDir failed:', e);
   }
 }
 
@@ -194,16 +194,16 @@ export function createStatusFileModule(deps: StatusFileDeps) {
             }
           }
           renameSync(statusFile, statusFile + ".1");
-        } catch {
-          // ignore rotation errors
+        } catch (e) {
+          log('status file rotation error:', e);
         }
       }
 
       const tmpFile = statusFile + ".tmp";
       writeFileSync(tmpFile, JSON.stringify(data, null, 2) + "\n");
       renameSync(tmpFile, statusFile);
-    } catch {
-      // Silently ignore file system errors
+    } catch (e) {
+      log('status file write failed:', e);
     }
   }
 

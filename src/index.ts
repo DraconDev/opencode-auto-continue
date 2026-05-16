@@ -324,7 +324,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         mkdirSync(logDir, { recursive: true });
       }
     } catch {
-      // ignore
+      // Cannot log here — log function depends on this directory
     }
   }
 
@@ -336,7 +336,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       const message = `[${timestamp}] [auto-force-resume] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
       appendFileSync(logFile, message);
     } catch {
-      // ignore file errors silently
+      // Logging itself failed — nothing we can do
     }
   }
   
