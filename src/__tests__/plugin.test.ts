@@ -1753,6 +1753,50 @@ describe("opencode-auto-continue", () => {
 
       vi.useRealTimers();
     });
+
+    it("should reset stale continueRetryCount when last retry was over 60s ago", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+
+      // First 3 prompts fail (hitting the retry limit)
+      mockPrompt.mockRejectedValueOnce(new Error("prompt fail 1"))
+        .mockRejectedValueOnce(new Error("prompt fail 2"))
+        .mockRejectedValueOnce(new Error("prompt fail 3"))
+        .mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+      mockMessages.mockResolvedValue({ data: [], error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      // Create session
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+      await flushPromises();
+
+      // Advance 120s to make any retry count stale
+      await vi.advanceTimersByTimeAsync(120000);
+      await flushPromises();
+
+      // Simulate a token limit error to set needsContinue
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Token limit exceeded" } } } });
+      await flushPromises();
+
+      // Session becomes idle — should attempt continue (stale retry count should be reset)
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      // At least one prompt should have been attempted
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 
   describe("custom prompt API", () => {

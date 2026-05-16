@@ -104,6 +104,7 @@ export interface SessionState {
   // === Review (review.ts) ===
   reviewFired: boolean;
   reviewDebounceTimer: ReturnType<typeof setTimeout> | null;
+  reviewRetryTimer: ReturnType<typeof setTimeout> | null;
   lastReviewAt: number;
   reviewCount: number;
 
@@ -220,6 +221,7 @@ export function createSession(): SessionState {
 
     reviewFired: false,
     reviewDebounceTimer: null,
+    reviewRetryTimer: null,
     lastReviewAt: 0,
     reviewCount: 0,
 
@@ -275,6 +277,7 @@ export function clearAllSessionTimers(s: SessionState): void {
     'nudgeTimer',
     'nudgeRetryTimer',
     'reviewDebounceTimer',
+    'reviewRetryTimer',
     'compactionSafetyTimer',
     'dangerousCommandPromptTimer',
   ];

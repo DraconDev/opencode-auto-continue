@@ -192,6 +192,10 @@ export function createTodoPoller(deps: TodoPollerDeps) {
       clearTimeout(s.reviewDebounceTimer);
       s.reviewDebounceTimer = null;
     }
+    if (s?.reviewRetryTimer) {
+      clearTimeout(s.reviewRetryTimer);
+      s.reviewRetryTimer = null;
+    }
   }
 
   function stopPeriodicPoll(): void {

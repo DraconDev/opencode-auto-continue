@@ -901,8 +901,10 @@ function handleSessionCompacted(ctx: HandlerContext, sid: string): void {
   s.compacting = false;
   s.compactionTimedOut = false;
   s.lastCompactionFailedAt = 0;
+  s.lastCompactionTimeoutAt = 0;
   s.hardCompactionInProgress = false;
   if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
+  if (s.reviewRetryTimer) { clearTimeout(s.reviewRetryTimer); s.reviewRetryTimer = null; }
   s.lastCompactionAt = Date.now();
   s.estimatedTokens = Math.floor(s.estimatedTokens * config.compactReductionFactor);
   s.realTokensBaseline = s.realTokens;

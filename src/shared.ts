@@ -350,11 +350,14 @@ function hasSimilarPrompt(a: string, b: string): boolean {
   const leftNeedle = left.slice(0, Math.min(80, left.length));
   const rightNeedle = right.slice(0, Math.min(80, right.length));
 
-  return (
-    leftNeedle.length >= 20 &&
-    rightNeedle.length >= 20 &&
-    (left.includes(rightNeedle) || right.includes(leftNeedle))
-  );
+  if (leftNeedle.length < 20 || rightNeedle.length < 20) return false;
+
+  if (!left.includes(rightNeedle) && !right.includes(leftNeedle)) return false;
+
+  const lengthRatio = Math.min(left.length, right.length) / Math.max(left.length, right.length);
+  if (lengthRatio < 0.5) return false;
+
+  return true;
 }
 
 /**

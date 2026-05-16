@@ -1382,4 +1382,9 @@ When a `todo.updated` event arrived within 10 seconds of the last, `pollAndProce
 
 ## License
 
-AGPL-3.0-only
+This project is dual-licensed:
+
+- **AGPL-3.0-only** — See [LICENSE](LICENSE) for the full text. This is the default license for open source use.
+- **Commercial License** — For organizations that prefer not to comply with AGPLv3's source disclosure requirements. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for details.
+
+By contributing to this project, you agree to the terms in [CLA.md](CLA.md).

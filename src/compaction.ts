@@ -176,7 +176,11 @@ export function createCompactionModule(deps: CompactionDeps) {
 
     log('compaction failed after all retries for session:', sessionId);
     s.compacting = false;
-    s.lastCompactionFailedAt = Date.now();
+    if (s.compactionTimedOut) {
+      s.lastCompactionTimeoutAt = Date.now();
+    } else {
+      s.lastCompactionFailedAt = Date.now();
+    }
     return false;
   }
 
@@ -187,12 +191,10 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (s.planning) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — planning`); return false; }
     if (s.stoppedByCondition) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — stopped by condition`); return false; }
     if (inGracePeriod(s)) { log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — grace period`); return false; }
-    if (s.lastCompactionFailedAt > 0) {
-      const timeSinceFail = Date.now() - s.lastCompactionFailedAt;
-      if (timeSinceFail < config.compactionFailBackoffMs) {
-        log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — recent failure backoff (${Math.round((config.compactionFailBackoffMs - timeSinceFail) / 1000)}s remaining)`);
-        return false;
-      }
+    const backoff = checkBackoff(s, config);
+    if (backoff.blocked) {
+      log(`[Compaction] OPPORTUNISTIC SKIP (${reason}) — recent ${backoff.reason} (${Math.round(backoff.remainingMs / 1000)}s remaining)`);
+      return false;
     }
 
     const now = Date.now();
@@ -224,12 +226,10 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (s.compacting) { log('[Compaction] PROACTIVE SKIP — already compacting'); return false; }
     if (s.planning) { log('[Compaction] PROACTIVE SKIP — planning'); return false; }
     if (inGracePeriod(s)) { log('[Compaction] PROACTIVE SKIP — grace period'); return false; }
-    if (s.lastCompactionFailedAt > 0) {
-      const timeSinceFail = Date.now() - s.lastCompactionFailedAt;
-      if (timeSinceFail < config.compactionFailBackoffMs) {
-        log(`[Compaction] PROACTIVE SKIP — recent failure backoff (${Math.round((config.compactionFailBackoffMs - timeSinceFail) / 1000)}s remaining)`);
-        return false;
-      }
+    const backoff = checkBackoff(s, config);
+    if (backoff.blocked) {
+      log(`[Compaction] PROACTIVE SKIP — recent ${backoff.reason} (${Math.round(backoff.remainingMs / 1000)}s remaining)`);
+      return false;
     }
     
     const now = Date.now();
@@ -263,12 +263,10 @@ export function createCompactionModule(deps: CompactionDeps) {
     if (s.compacting) { log('[Compaction] HARD SKIP — already compacting'); return false; }
     if (s.stoppedByCondition) { log('[Compaction] HARD SKIP — stopped by condition'); return false; }
     if (inGracePeriod(s)) { log('[Compaction] HARD SKIP — grace period'); return false; }
-    if (s.lastCompactionFailedAt > 0) {
-      const timeSinceFail = Date.now() - s.lastCompactionFailedAt;
-      if (timeSinceFail < config.compactionFailBackoffMs) {
-        log(`[Compaction] HARD SKIP — recent failure backoff (${Math.round((config.compactionFailBackoffMs - timeSinceFail) / 1000)}s remaining)`);
-        return false;
-      }
+    const backoff = checkBackoff(s, config);
+    if (backoff.blocked) {
+      log(`[Compaction] HARD SKIP — recent ${backoff.reason} (${Math.round(backoff.remainingMs / 1000)}s remaining)`);
+      return false;
     }
 
     const threshold = config.hardCompactAtTokens;
@@ -315,9 +313,14 @@ export function createCompactionModule(deps: CompactionDeps) {
         log(`[Compaction] HARD SUCCESS — session ${sessionId} compacted via hard compactor`);
         s.lastHardCompactionAt = Date.now();
         s.lastCompactionFailedAt = 0;
+        s.lastCompactionTimeoutAt = 0;
       } else if (attempted) {
         log(`[Compaction] HARD FAILED — session ${sessionId} hard compaction did not succeed within ${maxWait}ms`);
-        s.lastCompactionFailedAt = Date.now();
+        if (s.compactionTimedOut) {
+          s.lastCompactionTimeoutAt = Date.now();
+        } else {
+          s.lastCompactionFailedAt = Date.now();
+        }
       }
     } else {
       log(`[Compaction] HARD SKIP — cooldown active and bypass disabled for session ${sessionId}`);

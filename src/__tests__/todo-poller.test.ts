@@ -557,6 +557,42 @@ describe("todo-poller", () => {
       expect(s.reviewDebounceTimer).toBeNull();
     });
 
+    describe("review compaction deferral", () => {
+      it("should still trigger review debounce even when session was compacting during poll", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        s.compacting = false;
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Done", status: "completed" },
+        ]);
+
+        expect(s.reviewDebounceTimer).not.toBeNull();
+        expect(deps.triggerReview).not.toHaveBeenCalled();
+      });
+
+      it("should trigger review debounce when all completed after compaction clears", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+
+        // First: todos pending, then all complete
+        poller.processTodos("test", [
+          { id: "t1", content: "Task", status: "in_progress" },
+        ]);
+
+        poller.processTodos("test", [
+          { id: "t1", content: "Done", status: "completed" },
+        ]);
+
+        expect(s.reviewDebounceTimer).not.toBeNull();
+      });
+    });
+
     describe("nudge fallback scheduling", () => {
       it("should call scheduleNudge when pending todos are detected", () => {
         const deps = makeDeps();
@@ -695,6 +731,28 @@ describe("todo-poller", () => {
       const deps = makeDeps();
       const s = createSession();
       s.reviewDebounceTimer = null;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      expect(() => poller.cleanupSession("test")).not.toThrow();
+    });
+
+    it("should clear reviewRetryTimer to prevent leaked timeouts", () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.reviewRetryTimer = setTimeout(() => {}, 99999) as any;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.cleanupSession("test");
+
+      expect(s.reviewRetryTimer).toBeNull();
+    });
+
+    it("should handle cleanup when reviewRetryTimer is null", () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.reviewRetryTimer = null;
       deps.sessions.set("test", s);
 
       const poller = createTodoPoller(deps);

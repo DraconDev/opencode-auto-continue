@@ -31,6 +31,21 @@ export function createReviewModule(deps: ReviewDeps) {
     const s = sessions.get(sessionId);
     if (!s || s.reviewFired) return;
 
+    if (s.compacting || s.hardCompactionInProgress) {
+      log('review deferred — compaction in progress, scheduling retry:', sessionId);
+      if (s.reviewRetryTimer) clearTimeout(s.reviewRetryTimer);
+      s.reviewRetryTimer = setTimeout(() => {
+        s.reviewRetryTimer = null;
+        if (!isDisposed() && sessions.has(sessionId)) {
+          const current = sessions.get(sessionId)!;
+          if (current.reviewFired) return;
+          triggerReview(sessionId).catch((e: unknown) => log('review retry failed:', e));
+        }
+      }, 5000);
+      if (s.reviewRetryTimer && (s.reviewRetryTimer as any).unref) (s.reviewRetryTimer as any).unref();
+      return;
+    }
+
     // Cooldown check — prevent rapid-fire review loop
     const now = Date.now();
     if (s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs) {
@@ -158,6 +173,14 @@ export function createReviewModule(deps: ReviewDeps) {
       const messageText = s.continueMessageText;
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;
+      const CONTINUE_RETRY_STALE_MS = 60000;
+
+      if (s.continueRetryCount > 0 && s.lastContinueRetryAt > 0 && Date.now() - s.lastContinueRetryAt > CONTINUE_RETRY_STALE_MS) {
+        log('continue retry count reset — stale retries from previous cycle:', sessionId, 'stale count:', s.continueRetryCount, 'age:', Date.now() - s.lastContinueRetryAt, 'ms');
+        s.continueRetryCount = 0;
+        s.lastContinueRetryAt = 0;
+      }
+
       if (s.continueRetryCount >= MAX_CONTINUE_RETRIES) {
         log('continue retry limit reached, giving up:', sessionId, 'retries:', s.continueRetryCount);
         s.needsContinue = false;

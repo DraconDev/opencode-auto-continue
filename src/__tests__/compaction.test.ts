@@ -131,6 +131,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     backoffAttempts: 0,
     reviewFired: false,
     reviewDebounceTimer: null,
+    reviewRetryTimer: null,
     lastReviewAt: 0,
     reviewCount: 0,
     planBuffer: "",
@@ -979,7 +980,7 @@ describe("compaction module unit tests", () => {
       expect(s.lastCompactionFailedAt).toBeGreaterThan(0);
     });
 
-    it("lastCompactionFailedAt set on verify timeout", async () => {
+    it("lastCompactionTimeoutAt set on verify timeout (not lastCompactionFailedAt)", async () => {
       mockSummarize.mockResolvedValue({ data: {} });
 
       const s = createSessionState({ estimatedTokens: 200000 });
@@ -997,7 +998,8 @@ describe("compaction module unit tests", () => {
       await flushPromises();
 
       await promise;
-      expect(s.lastCompactionFailedAt).toBeGreaterThan(0);
+      expect(s.lastCompactionTimeoutAt).toBeGreaterThan(0);
+      expect(s.lastCompactionFailedAt).toBe(0);
     });
   });
 
@@ -1077,14 +1079,21 @@ describe("compaction module unit tests", () => {
 
   describe("compaction timeout vs failure backoff", () => {
     it("safety timeout sets lastCompactionTimeoutAt (not lastCompactionFailedAt)", async () => {
-      mockSummarize.mockImplementation(() => new Promise(() => {}));
+      let resolveSummarize: (() => void) | undefined;
+      mockSummarize.mockImplementation(() => new Promise<void>((resolve) => { resolveSummarize = resolve; }));
 
       const s = createSessionState({ estimatedTokens: 100000 });
       sessions.set("test", s);
-      module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1, compactionVerifyWaitMs: 1000 });
 
       const promise = module.forceCompact("test");
+      // Advance past safety timeout
       await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+
+      // Resolve the pending summarize so attemptCompact can continue
+      if (resolveSummarize) resolveSummarize();
+      await vi.advanceTimersByTimeAsync(1000);
       await flushPromises();
 
       expect(s.lastCompactionTimeoutAt).toBeGreaterThan(0);

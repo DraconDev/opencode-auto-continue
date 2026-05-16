@@ -674,6 +674,51 @@ describe("shared.ts utilities", () => {
 
       expect(result).toBe(false);
     });
+
+    it("should NOT block when messages have very different lengths (short continue vs long review)", async () => {
+      const { shouldBlockPrompt } = await import('../shared.js');
+      const shortContinueMsg = "Continue. Use the TodoWrite tool to create todo items for any untracked work before starting it.";
+      const longReviewMsg = "Continue. All tracked tasks are marked complete. Review the changes for correctness and completeness. Verify the scope is correct — did we only change what was asked? Are there new functions without corresponding tests? Check for warnings, unused imports, and dead code. Create fix-todos for any issues or bugs you find before fixing them. Keep working until everything is correct.";
+      const input = {
+        client: {
+          session: {
+            messages: vi.fn().mockResolvedValue({
+              data: [{
+                role: "user",
+                createdAt: new Date().toISOString(),
+                parts: [{ type: "text", text: longReviewMsg, synthetic: true }],
+              }],
+            }),
+          },
+        },
+      } as any;
+
+      const result = await shouldBlockPrompt("test", shortContinueMsg, input);
+
+      expect(result).toBe(false);
+    });
+
+    it("should block when messages have similar lengths with same prefix", async () => {
+      const { shouldBlockPrompt } = await import('../shared.js');
+      const msg = "Continue. Use the TodoWrite tool to create todo items for any untracked work before starting it.";
+      const input = {
+        client: {
+          session: {
+            messages: vi.fn().mockResolvedValue({
+              data: [{
+                role: "user",
+                createdAt: new Date().toISOString(),
+                parts: [{ type: "text", text: msg, synthetic: true }],
+              }],
+            }),
+          },
+        },
+      } as any;
+
+      const result = await shouldBlockPrompt("test", msg, input);
+
+      expect(result).toBe(true);
+    });
   });
 
   describe("getCompactionThreshold", () => {
