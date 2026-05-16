@@ -121,6 +121,10 @@ export interface SessionState {
 
   // === Stop Conditions (stop-conditions) ===
   stoppedByCondition: string | null;
+
+  // === Dangerous Commands Policy Injection ===
+  systemTransformHookCalled: boolean;
+  dangerousCommandPromptTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export function createSession(): SessionState {
@@ -221,6 +225,9 @@ export function createSession(): SessionState {
     statusHistory: [],
 
     stoppedByCondition: null,
+
+    systemTransformHookCalled: false,
+    dangerousCommandPromptTimer: null,
   };
 }
 
@@ -243,6 +250,7 @@ export function clearAllSessionTimers(s: SessionState): void {
     'nudgeRetryTimer',
     'reviewDebounceTimer',
     'compactionSafetyTimer',
+    'dangerousCommandPromptTimer',
   ];
   for (const field of timerFields) {
     const t = s[field] as ReturnType<typeof setTimeout> | null;

@@ -489,9 +489,41 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
       if (event?.type === "session.created") {
         log('session.created:', sid);
-        getSession(sid);
+        const s = getSession(sid);
         refreshRealTokens(sid);
         sessionMonitor.touchSession(sid);
+
+        // Schedule delayed fallback for dangerous command policy injection.
+        // Primary mechanism: experimental.chat.system.transform hook (no wasted turn).
+        // If that hook is never called by the runtime, this fallback fires after
+        // DANGEROUS_CMD_FALLBACK_MS to inject the policy via session.prompt.
+        if (config.dangerousCommandBlocking && config.dangerousCommandInjection) {
+          const DANGEROUS_CMD_FALLBACK_MS = 30000;
+          s.dangerousCommandPromptTimer = setTimeout(() => {
+            s.dangerousCommandPromptTimer = null;
+            if (s.systemTransformHookCalled) {
+              log('dangerous command policy already injected via system transform hook, skipping session.prompt fallback, session:', sid);
+              return;
+            }
+            if (disposed || !sessions.has(sid)) return;
+            log('system transform hook not called after', DANGEROUS_CMD_FALLBACK_MS, 'ms, falling back to session.prompt injection, session:', sid);
+            input.client.session.prompt({
+              path: { id: sid },
+              query: { directory: input.directory || "" },
+              body: {
+                parts: [{
+                  type: "text",
+                  text: `## ⚠️ Dangerous Commands Policy\n\nThe following commands are blocked by policy and must never be used:\n\n${formatDangerousBlocklist()}\n\nIf you need one of these for a legitimate reason, explain why and it can be approved manually.`,
+                  synthetic: true,
+                }],
+              },
+            }).catch((e: any) => log('dangerous command fallback injection failed:', e));
+          }, DANGEROUS_CMD_FALLBACK_MS);
+          if (s.dangerousCommandPromptTimer && (s.dangerousCommandPromptTimer as any).unref) {
+            (s.dangerousCommandPromptTimer as any).unref();
+          }
+        }
+
         writeStatusFile(sid);
         return;
       }
@@ -1241,9 +1273,16 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       }, log);
     },
     "experimental.chat.system.transform": async (_input, output) => {
+      const sid = (_input as any)?.sessionID;
       if (config.dangerousCommandBlocking && config.dangerousCommandInjection) {
+        output.system = output.system || [];
         const policy = `## ⚠️ Dangerous Commands Policy\n\nThe following commands are blocked by policy and must never be used:\n\n${formatDangerousBlocklist()}\n\nIf you need one of these for a legitimate reason, explain why and it can be approved manually.`;
         output.system.push(policy);
+        if (sid) {
+          const s = sessions.get(sid);
+          if (s) s.systemTransformHookCalled = true;
+        }
+        log('dangerous commands policy injected via system transform hook, session:', sid);
       }
     },
     "experimental.session.compacting": async (_input, output) => {
