@@ -223,10 +223,6 @@ export function createSession(): SessionState {
   };
 }
 
-export function updateProgress(s: SessionState) {
-  s.lastProgressAt = Date.now();
-}
-
 export function getTokenCount(s: SessionState): number {
   if (s.realTokensBaseline > 0) {
     return s.estimatedTokens;

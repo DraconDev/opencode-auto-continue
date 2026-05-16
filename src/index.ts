@@ -29,7 +29,7 @@ import { createStopConditionsModule } from "./stop-conditions.js";
 import { createTestRunner } from "./test-runner.js";
 import { createTodoPoller } from "./todo-poller.js";
 import { getSessionTokens, getDbLastError } from "./tokens.js";
-import { containsDangerousCommand, formatDangerousBlocklist, DANGEROUS_COMMAND_WARNING } from "./dangerous-commands.js";
+import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
 
 import type { Todo } from "./session-state.js";
 
@@ -1001,6 +1001,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           // Handle compaction parts (outside isRealProgress check - compaction is always tracked)
           if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
+            clearTimer(sid);
             s.compacting = true;
             // Safety timeout: if session.compacted never fires (event dropped or
             // compaction failed silently), force-clear the flag so the session
@@ -1389,6 +1390,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           clearTimeout(s.timer);
           s.timer = null;
         }
+        if (s.compactionSafetyTimer) {
+          clearTimeout(s.compactionSafetyTimer);
+          s.compactionSafetyTimer = null;
+        }
         if (s.reviewDebounceTimer) {
           clearTimeout(s.reviewDebounceTimer);
           s.reviewDebounceTimer = null;
@@ -1396,6 +1401,10 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         if (s.nudgeTimer) {
           clearTimeout(s.nudgeTimer);
           s.nudgeTimer = null;
+        }
+        if (s.nudgeRetryTimer) {
+          clearTimeout(s.nudgeRetryTimer);
+          s.nudgeRetryTimer = null;
         }
       });
       sessions.clear();
