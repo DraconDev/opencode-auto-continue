@@ -71,8 +71,8 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const statusData = statusResult.data as Record<string, { type: string }>;
       return statusData[sessionId]?.type === "idle";
     } catch (e) {
-      log('status check before immediate continue failed:', e);
-      return false;
+      log('status check before immediate continue failed, assuming idle:', e);
+      return true;
     }
   }
 
@@ -102,6 +102,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         }
       } catch (e) {
         log('hard compaction before recovery failed (proceeding anyway):', e);
+        s.hardCompactionInProgress = false;
       }
     }
 

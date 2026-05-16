@@ -386,6 +386,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.toolRepeatCount = 0;
       s.lastToolName = '';
       s.statusHistory = [];
+      s.stoppedByCondition = null;
     }
     sessions.delete(id);
     todoPoller.cleanupSession(id);
