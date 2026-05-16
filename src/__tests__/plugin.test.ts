@@ -2800,7 +2800,7 @@ describe("test-fix loop", () => {
   });
 
   describe("nudge re-activation after compaction", () => {
-    it("should re-schedule nudge after safety timeout clears compacting flag", async () => {
+    it("should send nudge after session.compacted clears compacting and needsContinue", async () => {
       vi.useFakeTimers();
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
@@ -2811,7 +2811,7 @@ describe("test-fix loop", () => {
         nudgeIdleDelayMs: 0,
         nudgeCooldownMs: 0,
         nudgeMaxSubmits: 10,
-        compactionSafetyTimeoutMs: 5000,
+        compactionSafetyTimeoutMs: 30000,
         terminalTitleEnabled: false,
         terminalProgressEnabled: false,
         statusFilePath: "",
@@ -2827,25 +2827,32 @@ describe("test-fix loop", () => {
       expect(mockPrompt).toHaveBeenCalledTimes(1);
       mockPrompt.mockClear();
 
-      // Start compaction — sets compacting=true, starts safety timer (5s)
+      // Start compaction — sets compacting=true
       await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", part: { type: "compaction" } } } });
 
-      // Session goes idle — nudge deferred, retries scheduled
+      // Session goes idle — nudge deferred because compacting, retry scheduled
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
 
-      // Advance past safety timeout (5s) — clears compacting, re-schedules nudge
-      await vi.advanceTimersByTimeAsync(6000);
+      // Compaction completes — session.compacted clears compacting, sets needsContinue, re-schedules nudge
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
 
-      // The scheduleNudge from the safety timeout calls injectNudge,
-      // but injectNudge calls getSessionStatusType() which calls the mock API.
-      // The API returns "idle" but the session's internal state may still show busy.
-      // What matters: the safety timeout DID clear compacting and DID call scheduleNudge.
-      // If injectNudge is blocked by nudgeCount >= nudgeMaxSubmits or loop protection,
-      // that's expected behavior. Test the flow end-to-end by sending another idle event.
-      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      // The session.compacted handler calls nudge.scheduleNudge() which sets a timer.
+      // When injectNudge runs, it finds needsContinue=true.
+      // Before the fix: injectNudge returned silently — nudge was dead.
+      // After the fix: injectNudge schedules retry — nudge eventually fires.
+      // But needsContinue blocks until the session goes idle and the continue is sent.
+      // Let the nudge timer fire (nudgeIdleDelayMs=0, but the scheduleNudge timer)
       await vi.advanceTimersByTimeAsync(100);
 
-      // After session.idle with compacting cleared, nudge should fire
+      // At this point injectNudge runs but needsContinue=true → schedules retry
+      // Now simulate the session going idle again (continue was processed)
+      // which clears needsContinue
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Wait for nudge retry to fire
+      await vi.advanceTimersByTimeAsync(6000);
+
+      // Nudge should fire now (needsContinue cleared, compacting cleared)
       expect(mockPrompt).toHaveBeenCalled();
 
       vi.useRealTimers();
