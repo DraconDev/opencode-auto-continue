@@ -2798,4 +2798,88 @@ describe("test-fix loop", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("nudge re-activation after compaction", () => {
+    it("should re-schedule nudge after safety timeout clears compacting flag", async () => {
+      vi.useFakeTimers();
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        compactionSafetyTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      mockPrompt.mockClear();
+
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", part: { type: "compaction" } } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it("should reset nudgeRetryCount after session.compacted", async () => {
+      vi.useFakeTimers();
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        compactionSafetyTimeoutMs: 30000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      mockPrompt.mockClear();
+
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
 });
