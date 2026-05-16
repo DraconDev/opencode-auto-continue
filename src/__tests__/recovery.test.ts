@@ -796,4 +796,27 @@ describe("recovery module unit tests", () => {
       expect(s.recoveryInProgress).toBe(false);
     });
   });
+
+  describe("summarize error data", () => {
+    it("handles summarize returning error data instead of throwing", async () => {
+      const now = Date.now();
+      mockStatus
+        .mockResolvedValueOnce({ data: { test: { type: "busy" } } })
+        .mockResolvedValue({ data: { test: { type: "idle" } } });
+      mockAbort.mockResolvedValue({});
+      mockSummarize.mockResolvedValue({ data: undefined, error: new Error("compaction failed") });
+      createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ autoCompact: true });
+      const promise = module.recover("test");
+      await settleTimers();
+      await promise;
+      const s = sessions.get("test")!;
+      expect(s.recoveryFailed).toBe(0);
+      expect(mockAbort).toHaveBeenCalled();
+    });
+  });
 });
