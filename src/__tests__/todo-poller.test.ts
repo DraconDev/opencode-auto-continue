@@ -152,6 +152,36 @@ describe("todo-poller", () => {
       expect(deps.scheduleNudge).toHaveBeenCalledWith("test");
     });
 
+    it("should trigger review from cached todos when poll is skipped and all todos completed", async () => {
+      vi.useFakeTimers();
+      const deps = makeDeps();
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+
+      // Populate cached todos with all completed
+      poller.processTodos("test", [
+        { id: "t1", content: "Task A", status: "completed" },
+      ]);
+
+      // Simulate a recent todo.updated event
+      poller.markEventTodoReceived("test");
+
+      // Poll should be skipped, but cached todos should be reprocessed
+      const result = await poller.pollAndProcess("test");
+
+      expect(result).toBeNull();
+      expect(deps.mockTodo).not.toHaveBeenCalled();
+
+      // Review debounce timer should be started from cached todos
+      expect(s.reviewDebounceTimer).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(deps.triggerReview).toHaveBeenCalledWith("test");
+
+      vi.useRealTimers();
+    });
+
     it("should poll after event freshness window expires", async () => {
       vi.useFakeTimers();
       const deps = makeDeps();
