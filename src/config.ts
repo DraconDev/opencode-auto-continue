@@ -93,13 +93,6 @@ export interface PluginConfig {
   toolLoopMaxRepeats: number;
   toolLoopWindowMs: number;
 
-  // AI Advisory
-  enableAdvisory: boolean;
-  advisoryModel: string;
-  advisoryTimeoutMs: number;
-  advisoryMaxTokens: number;
-  advisoryTemperature: number;
-
   // Session Monitor
   subagentWaitMs: number;
   orphanWaitMs?: number;
@@ -220,13 +213,6 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Tool loop detection (same tool called repeatedly without progress)
   toolLoopMaxRepeats: 5,
   toolLoopWindowMs: 120000,
-
-  // AI Advisory defaults
-  enableAdvisory: false,
-  advisoryModel: "",
-  advisoryTimeoutMs: 5000,
-  advisoryMaxTokens: 500,
-  advisoryTemperature: 0.1,
 
   // Session Monitor defaults
   subagentWaitMs: 15000,
