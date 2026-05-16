@@ -1012,6 +1012,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               s.compactionSafetyTimer = setTimeout(() => {
                 if (s.compacting) {
                   log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sid, ', force-clearing after', config.compactionSafetyTimeoutMs, 'ms');
+                  s.compactionTimedOut = true;
                   s.compacting = false;
                   s.hardCompactionInProgress = false;
                 }

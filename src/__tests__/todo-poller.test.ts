@@ -476,5 +476,27 @@ describe("todo-poller", () => {
       expect(result).not.toBeNull();
       expect(deps.mockTodo).toHaveBeenCalled();
     });
+
+    it("should clear reviewDebounceTimer to prevent leaked timeouts", () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.reviewDebounceTimer = setTimeout(() => {}, 99999) as any;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.cleanupSession("test");
+
+      expect(s.reviewDebounceTimer).toBeNull();
+    });
+
+    it("should handle cleanup when reviewDebounceTimer is null", () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.reviewDebounceTimer = null;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      expect(() => poller.cleanupSession("test")).not.toThrow();
+    });
   });
 });

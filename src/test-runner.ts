@@ -137,9 +137,8 @@ export function createTestRunner(deps: TestRunnerDeps) {
     }
 
     try {
-      let subprocess: any = null;
-      const outputPromise = input.$`${{ raw: cmd }}`.cwd(cwd ?? ".").quiet().then((p: any) => {
-        subprocess = p;
+      const processPromise = input.$`${{ raw: cmd }}`.cwd(cwd ?? ".").quiet();
+      const outputPromise = processPromise.then((p: any) => {
         const stdout = typeof p?.stdout === "string" ? p.stdout : "";
         const stderr = typeof p?.stderr === "string" ? p.stderr : "";
         const exitCode = p?.exitCode ?? 0;
@@ -156,8 +155,8 @@ export function createTestRunner(deps: TestRunnerDeps) {
         result = await Promise.race([outputPromise, timeoutPromise]);
       } catch (e: any) {
         const isTimeout = e?.message?.includes("timeout");
-        if (isTimeout && subprocess && typeof subprocess.kill === "function") {
-          try { subprocess.kill("SIGTERM"); } catch {}
+        if (isTimeout && typeof processPromise.kill === "function") {
+          try { processPromise.kill("SIGTERM"); } catch {}
         }
         throw e;
       } finally {

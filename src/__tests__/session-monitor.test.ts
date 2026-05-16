@@ -210,6 +210,35 @@ describe("SessionMonitor", () => {
     });
   });
 
+  describe("cleanupSession", () => {
+    it("should remove parent entry and all child→parent mappings when session is a parent", () => {
+      monitor.trackParentChild("parent-1", "child-1");
+      monitor.trackParentChild("parent-1", "child-2");
+      monitor.cleanupSession("parent-1");
+      const stats = monitor.getStats();
+      expect(stats.totalSessions).toBe(0);
+    });
+
+    it("should remove child from parent's set and prune empty parent set", () => {
+      monitor.trackParentChild("parent-1", "child-1");
+      monitor.cleanupSession("child-1");
+      const stats = monitor.getStats();
+      expect(stats.totalSessions).toBe(0);
+    });
+
+    it("should handle cleanup of unknown session gracefully", () => {
+      expect(() => monitor.cleanupSession("unknown-session")).not.toThrow();
+    });
+
+    it("should handle child that is also a parent", () => {
+      monitor.trackParentChild("grandparent", "parent");
+      monitor.trackParentChild("parent", "child");
+      monitor.cleanupSession("parent");
+      const stats = monitor.getStats();
+      expect(stats.totalSessions).toBe(1);
+    });
+  });
+
   describe("Stats", () => {
     it("should report correct stats", () => {
       sessions.set("busy-1", createMockSession({ timer: setTimeout(() => {}, 1000), lastKnownStatus: 'busy' as const }));

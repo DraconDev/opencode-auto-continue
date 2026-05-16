@@ -205,4 +205,62 @@ describe("stop conditions module", () => {
       expect(s.stoppedByCondition).toBeTruthy();
     });
   });
+
+  describe("evaluateStopConditions", () => {
+    it("returns shouldStop=false when no conditions configured", () => {
+      const s = createSession();
+      sessions.set("test", s);
+      const module = createModule();
+      const result = module.evaluateStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("returns shouldStop=false when session does not exist", () => {
+      const module = createModule({ maxRuntimeMs: 5000 });
+      const result = module.evaluateStopConditions("nonexistent");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("does NOT check stoppedByCondition (unlike checkStopConditions)", () => {
+      const s = createSession();
+      s.stoppedByCondition = "previous stop";
+      sessions.set("test", s);
+      const module = createModule();
+      const result = module.evaluateStopConditions("test");
+      expect(result.shouldStop).toBe(false);
+    });
+
+    it("does NOT mutate session state — no side effects", () => {
+      const s = createSession();
+      s.sessionCreatedAt = Date.now() - 10000;
+      sessions.set("test", s);
+      const module = createModule({ maxRuntimeMs: 5000 });
+      expect(s.stoppedByCondition).toBeNull();
+      const result = module.evaluateStopConditions("test");
+      expect(result.shouldStop).toBe(true);
+      expect(s.stoppedByCondition).toBeNull();
+    });
+
+    it("detects maxRuntimeMs exceeded", () => {
+      const s = createSession();
+      s.sessionCreatedAt = Date.now() - 10000;
+      sessions.set("test", s);
+      const module = createModule({ maxRuntimeMs: 5000 });
+      const result = module.evaluateStopConditions("test");
+      expect(result.shouldStop).toBe(true);
+      expect(result.reason).toContain("maxRuntimeMs");
+    });
+
+    it("detects untilMarker in todo content", () => {
+      const s = createSession();
+      s.lastKnownTodos = [
+        { id: "todo1", status: "completed", content: "ALL_DONE marker" },
+      ];
+      sessions.set("test", s);
+      const module = createModule({ untilMarker: "ALL_DONE" });
+      const result = module.evaluateStopConditions("test");
+      expect(result.shouldStop).toBe(true);
+      expect(result.reason).toContain("untilMarker");
+    });
+  });
 });
