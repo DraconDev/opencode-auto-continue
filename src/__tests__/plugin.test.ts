@@ -1791,6 +1791,51 @@ describe("opencode-auto-continue", () => {
 
       vi.useRealTimers();
     });
+
+    it("should clear continueInProgress even when prompt throws", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockRejectedValue(new Error("prompt error"));
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      // Create session
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+      await flushPromises();
+
+      // Token limit error sets needsContinue
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Token limit exceeded" } } } });
+      await flushPromises();
+
+      // Session becomes idle — sendContinue will fail
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      // Prompt was attempted
+      expect(mockPrompt).toHaveBeenCalled();
+
+      // Now make prompt succeed and try again
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      // Session becomes idle again — continueInProgress should have been cleared
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      // Second prompt call should have been made (continueInProgress was cleared)
+      expect(mockPrompt.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      vi.useRealTimers();
+    });
   });
 
   describe("custom prompt API", () => {
