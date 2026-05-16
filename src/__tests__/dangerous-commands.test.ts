@@ -76,6 +76,13 @@ describe("dangerous commands", () => {
       expect(containsDangerousCommand("ncdu")).toBe(false);
     });
 
+    it("does not false-positive on English words containing nc", () => {
+      expect(containsDangerousCommand("since the update")).toBe(false);
+      expect(containsDangerousCommand("prince")).toBe(false);
+      expect(containsDangerousCommand("fence")).toBe(false);
+      expect(containsDangerousCommand("inconvenience")).toBe(false);
+    });
+
     it("detects ssh/scp/sftp", () => {
       expect(containsDangerousCommand("ssh user@host")).toBe(true);
       expect(containsDangerousCommand("scp file.txt user@host:~/")).toBe(true);

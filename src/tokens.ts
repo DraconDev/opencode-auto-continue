@@ -91,11 +91,6 @@ export function getSessionTokens(sessionId: string): SessionTokens {
       }
     }
 
-    if (!db) {
-      dbLastError = `Failed to open SQLite database`;
-      return NO_TOKENS;
-    }
-
     try {
       const row = db
         .prepare(

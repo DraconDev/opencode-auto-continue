@@ -29,6 +29,7 @@ export interface SessionMonitor {
   stop(): void;
   touchSession(sessionId: string): void;
   trackParentChild(parentId: string, childId: string): void;
+  cleanupSession(sessionId: string): void;
   getStats(): SessionMonitorStats;
 }
 
@@ -45,6 +46,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   let orphanCheckTimer: ReturnType<typeof setInterval> | null = null;
   let previousBusyCount = 0;
   let orphanRecoveryCount = 0;
+  const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
   const parentChildMap = new Map<string, Set<string>>();
   const childParentMap = new Map<string, string>();
@@ -94,7 +96,9 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               orphanRecoveryCount++;
               recover(id).catch((e: unknown) => log('[SessionMonitor] orphan recovery failed:', e));
             } else {
-              setTimeout(() => {
+              const delay = config.subagentWaitMs - timeSinceProgress + 1000;
+              const timer = setTimeout(() => {
+                pendingTimers.delete(timer);
                 if (!isDisposed()) {
                   const session = sessions.get(id);
                   if (session && (session.lastKnownStatus === 'busy' || session.lastKnownStatus === 'retry' || session.aborting || session.compacting)) {
@@ -113,7 +117,8 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                     }
                   }
                 }
-              }, config.subagentWaitMs - timeSinceProgress + 1000);
+              }, delay);
+              pendingTimers.add(timer);
             }
           }
           break;
@@ -188,7 +193,30 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
       clearInterval(orphanCheckTimer);
       orphanCheckTimer = null;
     }
+    for (const timer of pendingTimers) {
+      clearTimeout(timer);
+    }
+    pendingTimers.clear();
     log('[SessionMonitor] stopped');
+  }
+
+  function cleanupSession(sessionId: string): void {
+    const children = parentChildMap.get(sessionId);
+    if (children) {
+      for (const childId of children) {
+        childParentMap.delete(childId);
+      }
+      parentChildMap.delete(sessionId);
+    }
+    if (childParentMap.has(sessionId)) {
+      const parentId = childParentMap.get(sessionId)!;
+      const siblings = parentChildMap.get(parentId);
+      if (siblings) {
+        siblings.delete(sessionId);
+        if (siblings.size === 0) parentChildMap.delete(parentId);
+      }
+      childParentMap.delete(sessionId);
+    }
   }
 
   function getStats(): SessionMonitorStats {
@@ -205,6 +233,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
     stop,
     touchSession,
     trackParentChild,
+    cleanupSession,
     getStats,
   };
 }

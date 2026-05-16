@@ -390,6 +390,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     }
     sessions.delete(id);
     todoPoller.cleanupSession(id);
+    sessionMonitor.cleanupSession(id);
   }
 
   const logDir = join(process.env.HOME || "/tmp", ".opencode", "logs");

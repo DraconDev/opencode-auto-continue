@@ -162,6 +162,11 @@ export function createTodoPoller(deps: TodoPollerDeps) {
 
   function cleanupSession(sessionId: string): void {
     lastEventTodoAt.delete(sessionId);
+    const s = sessions.get(sessionId);
+    if (s?.reviewDebounceTimer) {
+      clearTimeout(s.reviewDebounceTimer);
+      s.reviewDebounceTimer = null;
+    }
   }
 
   function stopPeriodicPoll(): void {

@@ -30,8 +30,8 @@ export const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   // Remote code execution via pipe-to-shell
   /\b(?:curl|wget)\s+.*?\|.*?\b(?:sh|bash|zsh|ksh|dash)\b/i,
 
-  // Netcat — no valid AI use case
-  /\bnc\b/i,
+  // Netcat — no valid AI use case; require command context to avoid matching English words like "since"
+  /\bnc\s+/i,
   /\bncat\b/i,
 
   // Remote access — AI should never SSH/SCP/SFTP

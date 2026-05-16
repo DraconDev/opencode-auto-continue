@@ -367,8 +367,8 @@ export function createNudgeModule(deps: NudgeDeps) {
               variant: "warning",
             },
           });
-        } catch (e) {
-          log("nudge failure toast error (ignored)", String(e));
+        } catch (toastErr) {
+          log("nudge failure toast error (ignored)", String(toastErr));
         }
       }
     }
@@ -415,10 +415,6 @@ export function createNudgeModule(deps: NudgeDeps) {
     if (s.nudgeRetryCount >= NUDGE_MAX_RETRY_COUNT) {
       log("nudge max retry count reached, giving up:", sessionId, "retries:", s.nudgeRetryCount);
       s.nudgeRetryCount = 0;
-      if (s.nudgeRetryTimer) {
-        clearTimeout(s.nudgeRetryTimer);
-        s.nudgeRetryTimer = null;
-      }
       return;
     }
 
