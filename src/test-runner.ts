@@ -127,11 +127,13 @@ export function createTestRunner(deps: TestRunnerDeps) {
         return { output: (stdout + stderr).slice(0, MAX_OUTPUT_PER_COMMAND), exitCode };
       });
 
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<{ output: string; exitCode: number }>((_resolve, reject) => {
-        setTimeout(() => reject(new Error(`timeout after ${timeout}ms`)), timeout);
+        timeoutId = setTimeout(() => reject(new Error(`timeout after ${timeout}ms`)), timeout);
       });
 
       const { output, exitCode } = await Promise.race([outputPromise, timeoutPromise]);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
 
       // Exit code 127 = command not found → skip
       if (exitCode === EXIT_CODE_NOT_FOUND) {
