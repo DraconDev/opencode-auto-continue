@@ -664,6 +664,7 @@ If you frequently hit token limits with large pastes (HTML, JSON, etc.), conside
 |--------|---------|-------------|
 | `terminalTitleEnabled` | `true` | Update terminal title with elapsed time |
 | `terminalProgressEnabled` | `true` | OSC 9;4 terminal tab progress bar |
+| `showToasts` | `true` | Show toast notifications |
 
 ### Status File Options
 
@@ -691,8 +692,17 @@ When enabled, the plugin intercepts `question.asked` events and replies with the
 | `testOnIdle` | `true` | Auto-run `testCommands` when session goes idle; inject failures into nudge |
 | `testCommands` | `["cargo test"]` | Shell commands to run for test verification (sequentially) |
 | `testCommandTimeoutMs` | `300000` | Per-command timeout in ms (5 minutes) |
+| `testCommandGates` | `{}` | Gate files for test commands (e.g., `{"cargo": "Cargo.toml"}`) — prevents running tests in non-project directories |
 
 When enabled, the plugin runs tests automatically before each nudge. If tests fail, the nudge message becomes `"Tests are failing. Fix these before continuing..."`. At review time, test output is injected via `{testOutput}` template variable. Continue/nudge messages include TDD instructions.
+
+### Stop Conditions
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `stopFilePath` | `""` | Path to a stop file — plugin pauses when file exists |
+| `maxRuntimeMs` | `0` | Max session runtime in ms (0=disabled) |
+| `untilMarker` | `""` | Stop when this marker text appears in output |
 
 ### Other Options
 
