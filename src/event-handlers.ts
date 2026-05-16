@@ -1,5 +1,5 @@
 import type { PluginConfig } from "./config.js";
-import type { SessionState, Todo, clearAllSessionTimers } from "./session-state.js";
+import type { SessionState } from "./session-state.js";
 import { getTokenCount } from "./session-state.js";
 import {
   isPlanContent,
@@ -11,7 +11,6 @@ import {
   getMessageText,
 } from "./shared.js";
 import type { createTerminalModule } from "./terminal.js";
-import type { createStatusFileModule } from "./status-file.js";
 import type { createCompactionModule } from "./compaction.js";
 import type { createNudgeModule } from "./nudge.js";
 import type { createReviewModule } from "./review.js";
@@ -19,16 +18,13 @@ import type { createSessionMonitor } from "./session-monitor.js";
 import type { createStopConditionsModule } from "./stop-conditions.js";
 import type { createTestRunner } from "./test-runner.js";
 import type { createTodoPoller } from "./todo-poller.js";
-import { getSessionTokens, getDbLastError, closeDb } from "./tokens.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
 import type {
   TypedPluginInput,
   PluginEvent,
   PartInfo,
   PartType,
-  MessageInfo,
   SessionStatusType,
-  SessionInfo,
   TodoItem,
 } from "./types.js";
 import { extractSessionId, isSyntheticEvent } from "./types.js";
