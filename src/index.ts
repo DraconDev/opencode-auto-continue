@@ -439,7 +439,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const nudge = createNudgeModule({ config, sessions, log, isDisposed: () => isDisposed, input, maybeHardCompact: compaction.maybeHardCompact, testRunner });
 
-  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, scheduleRecovery, testRunner });
+  const review = createReviewModule({ config, sessions, log, input, isDisposed: () => isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, testRunner });
 
   const todoPoller = createTodoPoller({ config, sessions, log, isDisposed: () => isDisposed, input, writeStatusFile, triggerReview: review.triggerReview, maybeOpportunisticCompact: compaction.maybeOpportunisticCompact });
   todoPoller.startPeriodicPoll();

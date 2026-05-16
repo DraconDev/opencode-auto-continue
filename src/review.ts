@@ -14,7 +14,6 @@ export interface ReviewDeps {
   isTokenLimitError: (error: any) => boolean;
   forceCompact: (sessionId: string) => Promise<boolean>;
   maybeHardCompact?: (sessionId: string) => Promise<boolean>;
-  scheduleRecovery?: (sessionId: string, delayMs: number) => void;
   testRunner?: TestRunner;
 }
 
