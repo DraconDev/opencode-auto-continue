@@ -430,6 +430,7 @@ async function handleSessionStatus(ctx: HandlerContext, sid: string, e: PluginEv
       if (s.aborting) {
         log('session idle while recovery is finalizing, scheduling delayed continue fallback for:', sid);
         setTimeout(() => {
+          if (isDisposed()) return;
           const session = sessions.get(sid);
           if (session && session.needsContinue && !session.continueInProgress) {
             log('delayed continue fallback firing for:', sid);
@@ -861,6 +862,7 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
     if (s.aborting) {
       log('session.idle while recovery is finalizing, scheduling delayed continue fallback for:', sid);
       setTimeout(() => {
+        if (isDisposed()) return;
         const session = sessions.get(sid);
         if (session && session.needsContinue && !session.continueInProgress) {
           log('delayed continue fallback firing for:', sid);
