@@ -1273,6 +1273,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // (e.g., compaction took >60s or a status check race dropped the retry).
         // The nudge module's cooldown and duplicate guards prevent double-sends.
         if (s.hasOpenTodos && config.nudgeEnabled && !s.planning) {
+          s.nudgeRetryCount = 0;
           log('re-scheduling nudge after compaction, session:', sid);
           nudge.scheduleNudge(sid);
         }

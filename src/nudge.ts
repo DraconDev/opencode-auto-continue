@@ -97,7 +97,8 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
 
     if (s.needsContinue || s.aborting) {
-      log("nudge skipped - continue/recovery already pending", sessionId);
+      log("nudge deferred — continue/recovery already pending, scheduling retry, session:", sessionId);
+      scheduleNudgeRetry(sessionId, knownTodos);
       return;
     }
 
