@@ -2,6 +2,10 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // Test the nudge module's utility functions in isolation
 describe("nudge module utilities", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe("formatMessage template replacement", () => {
     it("should replace single placeholder", async () => {
       const { formatMessage } = await import('../shared.js');
@@ -96,8 +100,6 @@ describe("nudge module utilities", () => {
 
       vi.advanceTimersByTime(1);
       expect(executed).toBe(true);
-
-      vi.useRealTimers();
     });
 
     it("should handle zero delay", async () => {
@@ -108,8 +110,6 @@ describe("nudge module utilities", () => {
 
       vi.runAllTimers();
       expect(executed).toBe(true);
-
-      vi.useRealTimers();
     });
 
     it("should handle very large delay", async () => {
@@ -123,8 +123,6 @@ describe("nudge module utilities", () => {
 
       vi.advanceTimersByTime(1);
       expect(executed).toBe(true);
-
-      vi.useRealTimers();
     });
   });
 
@@ -164,7 +162,7 @@ describe("nudge module utilities", () => {
 
       expect(callCount).toBe(2);
 
-      vi.useRealTimers();
+      (global.setTimeout as any).mockRestore?.();
     });
   });
 
