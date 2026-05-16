@@ -42,6 +42,8 @@ export function createStatusFileModule(deps: StatusFileDeps) {
   // FIX 13: Debounce status file writes - max once per 500ms per session
   const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>();
   const DEBOUNCE_MS = 500;
+  let writeInProgress = false;
+  let writeQueue: string[] = [];
 
   function writeStatusFile(sessionId: string) {
     if (!config.statusFileEnabled) return;
