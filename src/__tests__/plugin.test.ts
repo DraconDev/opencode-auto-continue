@@ -1497,6 +1497,67 @@ describe("opencode-auto-continue", () => {
     });
   });
 
+  describe("experimental.chat.system.transform hook", () => {
+    it("should inject dangerous commands policy into system prompt when enabled", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: true,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      const output = { system: [] as string[] };
+      await (plugin as any)["experimental.chat.system.transform"](
+        { sessionID: "test" },
+        output
+      );
+
+      expect(output.system.length).toBe(1);
+      expect(output.system[0]).toContain("Dangerous Commands Policy");
+      expect(output.system[0]).toContain("blocked by policy");
+
+      plugin.dispose?.();
+    });
+
+    it("should NOT inject policy when dangerousCommandInjection is disabled", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: false,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      const output = { system: [] as string[] };
+      await (plugin as any)["experimental.chat.system.transform"](
+        { sessionID: "test" },
+        output
+      );
+
+      expect(output.system.length).toBe(0);
+
+      plugin.dispose?.();
+    });
+
+    it("should NOT inject policy when dangerousCommandBlocking is disabled", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: false,
+        dangerousCommandInjection: true,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      const output = { system: [] as string[] };
+      await (plugin as any)["experimental.chat.system.transform"](
+        { sessionID: "test" },
+        output
+      );
+
+      expect(output.system.length).toBe(0);
+
+      plugin.dispose?.();
+    });
+  });
+
   describe("needsContinue flag behavior", () => {
     it("should handle needsContinue with successful prompt", async () => {
       vi.useFakeTimers();
