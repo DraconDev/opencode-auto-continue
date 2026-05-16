@@ -28,7 +28,7 @@ import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
 import { createTestRunner } from "./test-runner.js";
 import { createTodoPoller } from "./todo-poller.js";
-import { getSessionTokens, getDbLastError } from "./tokens.js";
+import { getSessionTokens, getDbLastError, closeDb } from "./tokens.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
 
 import type { Todo } from "./session-state.js";
@@ -1352,6 +1352,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         clearAllSessionTimers(s);
       });
       sessions.clear();
+      closeDb();
     }
   };
 };

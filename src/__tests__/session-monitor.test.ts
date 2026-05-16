@@ -110,6 +110,7 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     lastToolExecutionAt: Date.now(),
     toolRepeatCount: 0,
     lastToolName: '',
+    recoveryInProgress: false,
     stoppedByCondition: null,
     ...partial,
   };
