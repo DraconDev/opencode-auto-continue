@@ -1,11 +1,26 @@
 # Agent Instructions for opencode-auto-continue
 
-## Current State (v7.8.2006)
+## Current State (v7.11.0)
 
 **Status:** Released & Dogfooding (local dev mode)
-**Tests:** 545/545 passing
-**npm:** `@dracondev/opencode-auto-continue@7.8.2006`
+**Tests:** 572/572 passing
+**npm:** `@dracondev/opencode-auto-continue@7.11.0`
 **Local:** `file:///home/dracon/Dev/opencode-auto-continue/dist/index.js`
+
+### v7.10.3 Changes
+- **Nudge stuck after compaction** (`src/nudge.ts`, `src/index.ts`): Fixed two root causes of nudge silently dropping after long compaction (>60s).
+  - **Fix A** (`index.ts:1254-1261`): After `session.compacted`, if `s.hasOpenTodos` is true, calls `nudge.scheduleNudge()` explicitly. Re-catches nudge retries that gave up during the compaction window.
+  - **Fix B** (`nudge.ts:152-153`): When `injectNudge()` finds session status is "busy" or "retry" (not "idle"), now calls `scheduleNudgeRetry()` instead of silently returning. Previously, the status check returned early with no retry — nudge was lost until the next `session.idle`. Now schedules a retry within the existing 12-retry budget.
+
+### v7.9.0 Changes
+- **Dangerous command blocking** (`src/dangerous-commands.ts`, `src/index.ts`): Two-layer defense against accidental execution of destructive commands.
+  - **Layer 1** (`index.ts`): On `session.created`, injects a synthetic warning message listing blocked commands — prevents the AI from ever generating them.
+  - **Layer 2** (`index.ts:895+`): In `message.part.updated` tool handler, detects dangerous bash/shell/execute calls and aborts the session immediately.
+  - **Blocked patterns**: `sudo`, `rm -rf /~`, `chmod 777`, `mkfs`, `dd of=/dev/`, `eval`/`exec` with string args, `curl|sh`, `nc`/`ncat`, `ssh`/`scp`/`sftp`
+  - **Allowed**: `rm` (safe use), `mv`, `chmod 755`, `curl` (without pipe-to-shell), `git push --force`, `ncdu`, `ssh-keygen`, `git clone`
+  - **New config**: `dangerousCommandBlocking: true`, `dangerousCommandInjection: true`
+  - **New file**: `src/dangerous-commands.ts` — 11 RegExp patterns, `containsDangerousCommand()`, `formatDangerousBlocklist()`, `DANGEROUS_COMMAND_WARNING`
+  - **27 new tests**: All patterns, false positives (safe rm, cargo, git, npm, docker, chmod 755, ncdu, ssh-keygen, git clone), blocklist formatting
 
 ### v7.8.2006 Changes
 - **TodoWrite tool naming** (`src/config.ts`): All 7 message templates now explicitly name the `TodoWrite` tool instead of generic "create a todo" phrasing. Forces the AI to use the actual tool rather than just mentioning todos in text.
