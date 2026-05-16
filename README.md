@@ -582,7 +582,7 @@ Minimal configuration with sensible defaults:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `stallTimeoutMs` | `45000` | Time without activity before recovery (45s) |
+| `stallTimeoutMs` | `180000` | Time without activity before recovery (3 min) |
 | `busyStallTimeoutMs` | `180000` | Time without real output when session reports busy (3 min) |
 | `textOnlyStallTimeoutMs` | `180000` | Time with only text/reasoning output before stall (3 min) |
 | `toolLoopMaxRepeats` | `5` | Max consecutive same-tool calls before tool loop detection |
