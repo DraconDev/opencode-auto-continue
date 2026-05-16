@@ -375,12 +375,14 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         if (readyForContinue) {
           log('session is idle after recovery, sending queued continue immediately');
           const SEND_CONTINUE_TIMEOUT_MS = 30000;
+          let sendContinueTimerId: ReturnType<typeof setTimeout> | undefined;
           await Promise.race([
             deps.sendContinue(sessionId),
-            new Promise<void>((_, reject) =>
-              setTimeout(() => reject(new Error('sendContinue timed out after ' + SEND_CONTINUE_TIMEOUT_MS + 'ms')), SEND_CONTINUE_TIMEOUT_MS)
-            ),
+            new Promise<void>((_, reject) => {
+              sendContinueTimerId = setTimeout(() => reject(new Error('sendContinue timed out after ' + SEND_CONTINUE_TIMEOUT_MS + 'ms')), SEND_CONTINUE_TIMEOUT_MS);
+            }),
           ]);
+          if (sendContinueTimerId !== undefined) clearTimeout(sendContinueTimerId);
         } else {
           log('queued continue remains pending until session becomes idle:', sessionId);
         }
