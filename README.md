@@ -272,7 +272,7 @@ AI receives review prompt
 
 The default review message asks the AI to run tests and verify everything passes. The AI may create new fix todos if it finds failures.
 
-**Note**: Review can fire multiple times per session. After a review fires and the AI creates new pending todos, the todo poller's `processTodos()` resets `reviewFired = false` when the `reviewCooldownMs` has elapsed, enabling another review cycle. If the AI completes all todos without creating new ones, review fires once and stays done.
+**Note**: Review can fire multiple times per session. After a review fires and the AI creates new pending todos, the todo poller's `processTodos()` resets `reviewFired = false` when the `reviewCooldownMs` has elapsed, enabling another review cycle. If the AI completes all todos without creating new ones, review fires once and stays done. Additionally, if all todos complete while `reviewFired` is still set (e.g., from a previous cycle), the stale flag is reset after cooldown expires, ensuring reviews fire reliably in multi-cycle scenarios.
 
 **Config**:
 ```json
