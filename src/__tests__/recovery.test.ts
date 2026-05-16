@@ -151,7 +151,6 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastHardCompactionAt: 0,
     proactiveCompactCount: 0,
     hardCompactCount: 0,
-    lastRealTokenRefreshAt: 0,
     nudgeRetryTimer: null,
     nudgeRetryCount: 0,
     lastFileEdited: '',
