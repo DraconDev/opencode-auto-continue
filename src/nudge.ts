@@ -51,6 +51,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       s.nudgeRetryTimer = null;
       log("nudge retry cancelled for session:", sessionId);
     }
+    if (s) s.nudgeRetryCount = 0;
   }
 
   // Reset nudge state on user activity

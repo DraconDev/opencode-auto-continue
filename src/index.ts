@@ -1015,6 +1015,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                   s.compactionTimedOut = true;
                   s.compacting = false;
                   s.hardCompactionInProgress = false;
+                  if (s.hasOpenTodos && config.nudgeEnabled && !s.planning) {
+                    s.nudgeRetryCount = 0;
+                    log('[Compaction] re-scheduling nudge after safety timeout, session:', sid);
+                    nudge.scheduleNudge(sid);
+                  }
                 }
               }, config.compactionSafetyTimeoutMs);
               if (s.compactionSafetyTimer.unref) s.compactionSafetyTimer.unref();
