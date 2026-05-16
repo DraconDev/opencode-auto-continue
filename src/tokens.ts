@@ -1,7 +1,25 @@
 import { existsSync } from "node:fs";
 
+// Ambient module declarations for optional SQLite backends.
+// These exist so TypeScript can resolve dynamic import() expressions.
+// At runtime, the actual modules may or may not be available.
+declare module "bun:sqlite" {
+  const Database: new (path: string, options?: { readonly?: boolean }) => {
+    prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
+    close(): void;
+  };
+  export { Database };
+}
+declare module "node:sqlite" {
+  const DatabaseSync: new (path: string, options?: { open?: boolean; readonly?: boolean }) => {
+    prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
+    close(): void;
+  };
+  export { DatabaseSync };
+}
+
 /** Minimal interface for both node:sqlite and bun:sqlite databases */
-interface SqliteDatabase {
+export interface SqliteDatabase {
   prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
   close(): void;
 }
@@ -11,7 +29,7 @@ let sqliteModule: {
   open(path: string, options: { readonly: boolean }): SqliteDatabase;
 } | null = null;
 let sqliteModuleError: string | null = null;
-let sqliteModuleLoading: Promise<typeof sqliteModule> | null = null;
+let sqliteModuleLoading: Promise<{ open(path: string, options: { readonly: boolean }): SqliteDatabase } | null> | null = null;
 
 /**
  * Attempt to load a SQLite module. Tries bun:sqlite first, then node:sqlite.
@@ -19,14 +37,14 @@ let sqliteModuleLoading: Promise<typeof sqliteModule> | null = null;
  * Uses dynamic import() instead of require() for proper ESM/CJS interop.
  * Caches the result so subsequent calls are synchronous (return from cache).
  */
-async function loadSqliteModule(): Promise<typeof sqliteModule> {
+async function loadSqliteModule(): Promise<{ open(path: string, options: { readonly: boolean }): SqliteDatabase } | null> {
   if (sqliteModule) return sqliteModule;
   if (sqliteModuleError) return null;
   if (sqliteModuleLoading) return sqliteModuleLoading;
 
   sqliteModuleLoading = (async () => {
     try {
-      const bunSqlite = await import("bun:sqlite") as any;
+      const bunSqlite = await import("bun:sqlite");
       sqliteModule = {
         open(path: string, options: { readonly: boolean }) {
           return new bunSqlite.Database(path, options) as SqliteDatabase;
@@ -36,7 +54,7 @@ async function loadSqliteModule(): Promise<typeof sqliteModule> {
     } catch {}
 
     try {
-      const nodeSqlite = await import("node:sqlite") as any;
+      const nodeSqlite = await import("node:sqlite");
       sqliteModule = {
         open(path: string, _options: { readonly: boolean }) {
           return new nodeSqlite.DatabaseSync(path, { open: true }) as SqliteDatabase;
