@@ -33,6 +33,7 @@ describe("opencode-auto-continue", () => {
 
   beforeEach(() => {
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
@@ -2745,6 +2746,7 @@ describe("test-fix loop", () => {
 
   beforeEach(() => {
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     
     mockAbort = vi.fn().mockResolvedValue({ data: true, error: undefined });
     mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
