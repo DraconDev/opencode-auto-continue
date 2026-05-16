@@ -334,7 +334,7 @@ Start stall timer (stallTimeoutMs)
 - Receives `writeStatusFile` and `cancelNudge` as dependencies
 - Uses `input as any` for all client API calls
 - Sends continue via `sendContinue()` — guarded by `continueInProgress` flag and prompt guard
-- If `session.idle` fires while `aborting=true`, a delayed fallback (3s) ensures the continue is sent even if the primary `sendContinue` call was blocked
+- If `session.idle` or `session.status(idle)` fires while `aborting=true`, both handlers schedule a 3-second delayed fallback that calls `sendContinue()` with `continueInProgress` guard, ensuring the continue fires even if the primary path was blocked
 
 **Exponential backoff**:
 - After `maxRecoveries` attempts, delay doubles each time
