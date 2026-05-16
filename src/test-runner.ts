@@ -9,7 +9,7 @@ export interface TestResult {
   passed: boolean;
   timedOut: boolean;
   skipped: boolean;
-  exitCode: number;
+  exitCode?: number;
 }
 
 export interface TestRunnerDeps {
@@ -110,7 +110,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
         result.output = "(lock contention — another process holds the build lock)";
       }
       // Retroactive skip: if output suggests environment error, mark as skipped
-      if (!result.passed && !result.skipped && !result.timedOut && isEnvError(result.output, result.exitCode)) {
+      if (!result.passed && !result.skipped && !result.timedOut && isEnvError(result.output, result.exitCode ?? (result.passed ? 0 : 1))) {
         log("test command retroactively skipped — env error detected:", cmd);
         result.skipped = true;
         result.output = result.output || "(environment error — command not applicable)";
