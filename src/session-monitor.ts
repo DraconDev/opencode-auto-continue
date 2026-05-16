@@ -20,7 +20,7 @@ export interface SessionMonitorDeps {
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
-  recover: (sessionId: string) => void;
+  recover: (sessionId: string) => Promise<void>;
   checkStopConditions?: (sessionId: string) => StopConditionResult;
 }
 
@@ -138,8 +138,10 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
             }
             orphanRecoveryCount++;
             recover(id).catch((e: unknown) => log('[SessionMonitor] stuck session recovery failed:', e));
-
-    previousBusyCount = currentBusyCount;
+          }
+        }
+      }
+    }
   }
 
   function touchSession(sessionId: string): void {
