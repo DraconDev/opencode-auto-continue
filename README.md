@@ -716,7 +716,7 @@ When enabled, the plugin runs tests automatically before each nudge. If tests fa
 | Option | Default | Description |
 |--------|---------|-------------|
 | `dangerousCommandBlocking` | `true` | Abort session if AI tries blocked commands (sudo, rm -rf /~, chmod 777, etc.) |
-| `dangerousCommandInjection` | `true` | Inject warning message on session start listing blocked commands |
+| `dangerousCommandInjection` | `true` | Inject dangerous commands policy into system prompt (visible every turn, no wasted AI turn) |
 
 ## Template Variables
 
