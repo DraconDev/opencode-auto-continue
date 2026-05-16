@@ -47,9 +47,7 @@ function findGateFile(command: string, gates: Record<string, string>): string | 
   // Longest prefix match: sort gate keys by length descending
   const sortedKeys = Object.keys(gates).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
-    if (prefix === key || (prefix.startsWith(key) && prefix.length > key.length && !/^[a-zA-Z0-9]/.test(prefix[key.length]))) {
-      return gates[key];
-    }
+    if (prefix === key) return gates[key];
   }
   return null;
 }

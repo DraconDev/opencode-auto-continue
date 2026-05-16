@@ -1,5 +1,10 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { flushPromises } from './helpers.js';
+import { DEFAULT_CONFIG } from '../config.js';
+import { createSession } from '../session-state.js';
+import { createStatusFileModule } from '../status-file.js';
+import { writeFileSync, readFileSync, existsSync, unlinkSync, mkdirSync, rmdirSync } from 'fs';
+import { join } from 'path';
 
 // Test terminal output generation
 describe("terminal module output", () => {
@@ -913,5 +918,88 @@ describe("compaction state behavior", () => {
     expect(true).toBe(true);
 
     vi.useRealTimers();
+  });
+});
+
+describe("status file rotation", () => {
+  function makeTempDir(): string {
+    const dir = join("/tmp", `opencode-rotation-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+
+  function cleanup(dir: string, base: string, maxRotate: number) {
+    try { unlinkSync(base); } catch {}
+    for (let i = 1; i <= maxRotate; i++) {
+      try { unlinkSync(`${base}.${i}`); } catch {}
+    }
+    try { unlinkSync(`${base}.tmp`); } catch {}
+    try { rmdirSync(dir, { recursive: true }); } catch {}
+  }
+
+  it("should rotate files .1 through .N on successive writes", async () => {
+    const dir = makeTempDir();
+    const statusFile = join(dir, "status.json");
+    const sessions = new Map();
+    const log = vi.fn();
+    const config = { ...DEFAULT_CONFIG, statusFileEnabled: true, statusFilePath: statusFile, statusFileRotate: 3 };
+
+    sessions.set("s1", createSession());
+    const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
+
+    for (let i = 0; i < 5; i++) {
+      writeStatusFile("s1");
+    }
+
+    expect(existsSync(statusFile)).toBe(true);
+    expect(existsSync(`${statusFile}.1`)).toBe(true);
+    expect(existsSync(`${statusFile}.2`)).toBe(true);
+    expect(existsSync(`${statusFile}.3`)).toBe(true);
+    expect(existsSync(`${statusFile}.4`)).toBe(false);
+
+    cleanup(dir, statusFile, 5);
+  });
+
+  it("should cap rotation at maxRotate and delete oldest", async () => {
+    const dir = makeTempDir();
+    const statusFile = join(dir, "status.json");
+    const sessions = new Map();
+    const log = vi.fn();
+    const config = { ...DEFAULT_CONFIG, statusFileEnabled: true, statusFilePath: statusFile, statusFileRotate: 2 };
+
+    sessions.set("s1", createSession());
+    const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
+
+    for (let i = 0; i < 5; i++) {
+      writeStatusFile("s1");
+    }
+
+    expect(existsSync(`${statusFile}.3`)).toBe(false);
+    expect(existsSync(`${statusFile}.2`)).toBe(true);
+    expect(existsSync(`${statusFile}.1`)).toBe(true);
+
+    cleanup(dir, statusFile, 5);
+  });
+
+  it("should work when no rotated files exist yet (first rotation)", async () => {
+    const dir = makeTempDir();
+    const statusFile = join(dir, "status.json");
+    const sessions = new Map();
+    const log = vi.fn();
+    const config = { ...DEFAULT_CONFIG, statusFileEnabled: true, statusFilePath: statusFile, statusFileRotate: 5 };
+
+    sessions.set("s1", createSession());
+    const { writeStatusFile } = createStatusFileModule({ config, sessions, log });
+
+    writeStatusFile("s1");
+    expect(existsSync(statusFile)).toBe(true);
+
+    writeStatusFile("s1");
+    expect(existsSync(`${statusFile}.1`)).toBe(true);
+
+    writeStatusFile("s1");
+    expect(existsSync(`${statusFile}.2`)).toBe(true);
+
+    cleanup(dir, statusFile, 5);
   });
 });

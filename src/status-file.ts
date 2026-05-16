@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, renameSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, writeFileSync, renameSync, mkdirSync, readFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
@@ -182,15 +182,15 @@ export function createStatusFileModule(deps: StatusFileDeps) {
 
       if (config.statusFileRotate > 0 && existsSync(statusFile)) {
         try {
-          const rotateExt = `.${config.statusFileRotate}`;
-          const rotateFile = statusFile + rotateExt;
-          if (existsSync(rotateFile)) {
-            for (let i = config.statusFileRotate - 1; i >= 1; i--) {
-              const oldFile = statusFile + `.${i}`;
-              const newFile = statusFile + `.${i + 1}`;
-              if (existsSync(oldFile)) {
-                renameSync(oldFile, newFile);
-              }
+          const maxRotated = statusFile + `.${config.statusFileRotate}`;
+          if (existsSync(maxRotated)) {
+            unlinkSync(maxRotated);
+          }
+          for (let i = config.statusFileRotate - 1; i >= 1; i--) {
+            const oldFile = statusFile + `.${i}`;
+            const newFile = statusFile + `.${i + 1}`;
+            if (existsSync(oldFile)) {
+              renameSync(oldFile, newFile);
             }
           }
           renameSync(statusFile, statusFile + ".1");

