@@ -155,8 +155,8 @@ export function createTestRunner(deps: TestRunnerDeps) {
         result = await Promise.race([outputPromise, timeoutPromise]);
       } catch (e: any) {
         const isTimeout = e?.message?.includes("timeout");
-        if (isTimeout && typeof processPromise.kill === "function") {
-          try { processPromise.kill("SIGTERM"); } catch {}
+        if (isTimeout && typeof (processPromise as any).kill === "function") {
+          try { (processPromise as any).kill("SIGTERM"); } catch {}
         }
         throw e;
       } finally {

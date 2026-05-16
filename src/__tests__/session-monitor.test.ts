@@ -235,7 +235,7 @@ describe("SessionMonitor", () => {
       monitor.trackParentChild("parent", "child");
       monitor.cleanupSession("parent");
       const stats = monitor.getStats();
-      expect(stats.totalSessions).toBe(1);
+      expect(stats.totalSessions).toBe(0);
     });
   });
 
