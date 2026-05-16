@@ -1852,6 +1852,113 @@ describe("opencode-auto-continue", () => {
     });
   });
 
+  describe("review compaction deferral", () => {
+    it("should defer review when session is compacting and retry after compaction completes", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "Done", status: "completed" }],
+        error: undefined,
+      });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        reviewOnComplete: true,
+        reviewDebounceMs: 100,
+        autoCompact: false,
+        nudgeEnabled: false,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      // Create session and set it as compacting
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+      await flushPromises();
+
+      // Set compacting flag via compaction event
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", part: { type: "compaction" } } } });
+      await flushPromises();
+
+      // Now mark all todos complete — review should be deferred because compacting
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "Done", status: "completed" }] } } });
+      await vi.advanceTimersByTimeAsync(200); // review debounce
+      await flushPromises();
+
+      // Review prompt should NOT have been sent yet (compaction in progress)
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      // Compaction completes — clears compacting flag and schedules retry
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+      await vi.advanceTimersByTimeAsync(6000); // retry timer is 5s
+      await flushPromises();
+
+      // Now review should have fired
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("continueSafetyTimer", () => {
+    it("should force-clear continueInProgress after 60s if stuck", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+      mockSummarize.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        autoCompact: true,
+        hardCompactAtTokens: 999999,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        compactionVerifyWaitMs: 1000,
+      });
+
+      // Create session with busy status
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Fire token limit error → triggers compaction → needsContinue=true
+      await plugin.event({ event: { type: "session.error", properties: { sessionID: "test", error: { name: "TokenLimitError", message: "Token limit exceeded" } } } });
+
+      // Advance timers to let compaction resolve
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+
+      // Simulate compaction success
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(500);
+        await flushPromises();
+      }
+
+      // Prompt was called (but never resolves, so continueInProgress is stuck)
+      expect(mockPrompt).toHaveBeenCalled();
+
+      // Advance past the 60s safety timeout
+      await vi.advanceTimersByTimeAsync(65000);
+      await flushPromises();
+
+      // Make prompt succeed now
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      // Session becomes idle again — continueInProgress should have been force-cleared
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      // Second prompt should be possible (continueInProgress was cleared)
+      expect(mockPrompt.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      vi.useRealTimers();
+    });
+  });
+
   describe("custom prompt API", () => {
     it("should render todo and context variables and send a synthetic prompt", async () => {
       const { AutoForceResumePlugin, sendCustomPrompt } = await import('../index.js');
