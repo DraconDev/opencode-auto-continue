@@ -737,6 +737,8 @@ Plugin Init
 
 **Post-compaction**: `estimatedTokens *= compactReductionFactor`
 - Default factor: 0.7 → 70% of tokens remain (30% removed)
+- `realTokensBaseline = realTokens` (snapshot DB value at compaction)
+- `getTokenCount()` now returns `Math.max(estimatedTokens, realTokens - realTokensBaseline)` — the DB growth since compaction acts as a floor, preventing drift across repeated compactions
 
 ---
 
