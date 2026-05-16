@@ -132,27 +132,39 @@ describe("tokens module", () => {
       expect(getTokenCount(s)).toBe(0);
     });
 
-    it("should use estimatedTokens when realTokensBaseline > 0 (post-compaction)", () => {
+    it("should return max of estimatedTokens and post-compaction growth", () => {
       const s = createSession();
-      s.realTokens = 29500000;
-      s.realTokensBaseline = 29000000;
-      s.estimatedTokens = 70000;
-      expect(getTokenCount(s)).toBe(70000);
-    });
-
-    it("should use estimatedTokens when baseline equals realTokens (post-compaction)", () => {
-      const s = createSession();
-      s.realTokens = 29000000;
-      s.realTokensBaseline = 29000000;
-      s.estimatedTokens = 50000;
+      s.realTokens = 200000;
+      s.realTokensBaseline = 150000;
+      s.estimatedTokens = 40000;
+      // growth = 200000 - 150000 = 50000
       expect(getTokenCount(s)).toBe(50000);
     });
 
-    it("should use estimatedTokens when baseline exceeds realTokens (post-compaction)", () => {
+    it("should prefer estimatedTokens when it exceeds post-compaction growth", () => {
       const s = createSession();
-      s.realTokens = 29000000;
-      s.realTokensBaseline = 29500000;
+      s.realTokens = 200000;
+      s.realTokensBaseline = 150000;
+      s.estimatedTokens = 70000;
+      // growth = 50000, max(70000, 50000) = 70000
+      expect(getTokenCount(s)).toBe(70000);
+    });
+
+    it("should return estimatedTokens when growth is zero (fresh compaction)", () => {
+      const s = createSession();
+      s.realTokens = 200000;
+      s.realTokensBaseline = 200000;
       s.estimatedTokens = 50000;
+      // growth = 0, max(50000, 0) = 50000
+      expect(getTokenCount(s)).toBe(50000);
+    });
+
+    it("should return estimatedTokens when baseline exceeds realTokens (stale DB)", () => {
+      const s = createSession();
+      s.realTokens = 200000;
+      s.realTokensBaseline = 250000;
+      s.estimatedTokens = 50000;
+      // growth = max(0, 200000 - 250000) = 0, max(50000, 0) = 50000
       expect(getTokenCount(s)).toBe(50000);
     });
 
