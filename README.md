@@ -372,6 +372,7 @@ The nudge system prevents sessions from going idle with pending todos. It follow
 
 **Nudge scheduling** (`scheduleNudge`):
 - Fires on every `session.idle` with pending todos (NO wasBusy dedup)
+- Also fires from the periodic todo poller as a fallback when `session.idle` events are unreliable
 - Schedules via `setTimeout` with `nudgeIdleDelayMs` (default 0 = immediate)
 - Resets nudge timer on `todo.updated` with pending todos
 - Cancels pending nudge on `message.updated` (user), `session.error`, `session.deleted`
