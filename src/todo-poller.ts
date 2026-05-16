@@ -96,15 +96,6 @@ export function createTodoPoller(deps: TodoPollerDeps) {
       }
     }
 
-    // Nudge fallback: if session has pending todos and nudge is enabled, schedule
-    // a nudge. This is the main fix for unreliable session.idle events — the periodic
-    // todo poller now acts as a fallback trigger for nudges.
-    // The nudge module's own guards (cooldown, loop protection, paused, etc.) still
-    // apply, so this is safe to call even if a nudge was already scheduled.
-    if (hasPending && config.nudgeEnabled && deps.scheduleNudge && !s.nudgePaused) {
-      deps.scheduleNudge(sessionId);
-    }
-
     deps.writeStatusFile(sessionId);
   }
 

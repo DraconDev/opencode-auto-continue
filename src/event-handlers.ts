@@ -845,7 +845,7 @@ async function handleQuestionAsked(ctx: HandlerContext, sid: string, e: PluginEv
 }
 
 async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void> {
-  const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, review, compaction, stopConditions, todoPoller, isDisposed } = ctx;
+  const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, review, compaction, nudge, stopConditions, todoPoller, isDisposed } = ctx;
   if (isDisposed()) return;
   const s = getSession(sid);
   clearTimer(sid);
@@ -875,8 +875,7 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
     if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
       compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
     }
-    // Nudge scheduling is now handled by todoPoller.pollAndProcess() → processTodos()
-    // which calls scheduleNudge. This is the single unified trigger point for nudges.
+    nudge.scheduleNudge(sid);
   }
 
   writeStatusFile(sid);
