@@ -11,7 +11,7 @@ export interface StatusFileDeps {
   log: (...args: unknown[]) => void;
 }
 
-function ensureLogDir(logDir: string) {
+function ensureLogDir(logDir: string, log: (...args: unknown[]) => void) {
   try {
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
@@ -68,7 +68,7 @@ export function createStatusFileModule(deps: StatusFileDeps) {
   function doWriteStatusFile(sessionId: string) {
     writeInProgress = true;
     try {
-      ensureLogDir(logDir);
+      ensureLogDir(logDir, log);
       const s = sessions.get(sessionId);
       if (!s) return;
 
