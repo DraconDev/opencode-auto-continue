@@ -148,6 +148,8 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     continueInProgress: false,
     recoveryInProgress: false,
     stoppedByCondition: null,
+    systemTransformHookCalled: false,
+    dangerousCommandPromptTimer: null,
     ...overrides,
   };
 }
