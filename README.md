@@ -51,6 +51,7 @@ index.ts                Main plugin — event routing, module wiring
 ├── shared.ts            Utilities, prompt guard, token estimation
 ├── config.ts            Plugin config interface, validation, defaults
 └── session-state.ts     SessionState interface, token counting
+├── types.ts             TypedPluginInput type alias (OpenCode SDK bridge)
 ```
 
 Each module is initialized early and receives its dependencies:
@@ -271,7 +272,7 @@ AI receives review prompt
 
 The default review message asks the AI to run tests and verify everything passes. The AI may create new fix todos if it finds failures.
 
-**Note**: Review is **one-shot per session** (`reviewFired` resets only on `session.deleted` / `session.ended`). If the AI creates fix todos after review, you'll need to manually trigger review again or wait for the session to end.
+**Note**: Review can fire multiple times per session. After a review fires and the AI creates new pending todos, the todo poller's `processTodos()` resets `reviewFired = false` when the `reviewCooldownMs` has elapsed, enabling another review cycle. If the AI completes all todos without creating new ones, review fires once and stays done.
 
 **Config**:
 ```json
@@ -430,7 +431,7 @@ A passive monitoring layer that watches for session lifecycle issues the event s
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `sessionMonitorEnabled` | boolean | `true` | Enable session monitoring layer |
-| `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
+| `subagentWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
 
 **Integration**:
 - `touchSession()` called on: session.created, session.status(busy/retry), message.part.updated(real progress)
@@ -525,8 +526,11 @@ Minimal configuration with sensible defaults:
 
 ```json
 ["opencode-auto-continue", {
-  "stallTimeoutMs": 45000,
+  "stallTimeoutMs": 180000,
   "maxRecoveries": 3,
+  "sessionMonitorEnabled": true,
+  "nudgeEnabled": true,
+  "autoCompact": true,
   "debug": false
 }]
 ```
