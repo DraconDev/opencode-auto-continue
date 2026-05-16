@@ -85,7 +85,19 @@ const DEFAULT_CONFIG: PluginConfig = {
   maxRuntimeMs: 0,
   untilMarker: "",
   planningTimeoutMs: 300000,
-
+  tokenLimitPatterns: ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],
+  busyStallTimeoutMs: 180000,
+  textOnlyStallTimeoutMs: 180000,
+  toolLoopMaxRepeats: 5,
+  toolLoopWindowMs: 120000,
+  dangerousCommandBlocking: true,
+  dangerousCommandInjection: true,
+  testOnIdle: true,
+  testCommands: ["cargo test"],
+  testCommandTimeoutMs: 300000,
+  testCommandGates: {},
+  todoPollIntervalMs: 30000,
+  reviewCooldownMs: 60000,
 };
 
 function createSessionState(overrides?: Partial<SessionState>): SessionState {
