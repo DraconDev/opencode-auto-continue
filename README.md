@@ -423,99 +423,25 @@ The nudge system prevents sessions from going idle with pending todos. It follow
 
 A passive monitoring layer that watches for session lifecycle issues the event system might miss.
 
-#### Features
-
-**1. Orphan Parent Detection**
-When a subagent finishes but the parent session stays stuck as "busy" forever:
+**Orphan Parent Detection**: When a subagent finishes but the parent session stays stuck as "busy" forever:
 - Monitors `busyCount` across all sessions via 5s timer
 - Detects when count drops from >1 to 1 (subagent completion signal)
 - Waits `orphanWaitMs` (15s default) for natural parent resume
 - If parent still busy → triggers recovery (abort + continue)
 
-**2. Session Discovery**
-Event hooks can miss sessions in edge cases (plugin loaded mid-session, SDK events dropped):
-- Periodic `session.list()` polling every `sessionDiscoveryIntervalMs` (60s)
-- Creates minimal `SessionState` for any untracked busy sessions
-- Integrates seamlessly with existing recovery/nudge timers
+**Why timers instead of events?** Orphan detection requires watching busyCount _over time_ — a single event can't detect "was >1 now =1".
 
-**3. Idle Session Cleanup**
-Prevents memory leaks in long-running OpenCode instances:
-- Removes sessions idle > `idleCleanupMs` (10min default)
-- Enforces `maxSessions` limit (50 default) — removes oldest idle first
-- Timer-based, not event-driven (runs every 30s)
-
-#### Architecture
-
-```
-Plugin init → sessionMonitor.start()
-                    │
-                    ├── 5s timer ──► checkOrphanParents()
-                    │                    │
-                    │                    └── busyCount drop?
-                    │                        ├── YES ──► wait 15s ──► recover parent
-                    │                        └── NO  ──► do nothing
-                    │
-                    ├── 60s timer ──► discoverSessions()
-                    │                    │
-                    │                    └── session.list()
-                    │                        ├── New session ──► create minimal state
-                    │                        └── Known session ──► skip
-                    │
-                    └── 30s timer ──► cleanupIdleSessions()
-                                         │
-                                         └── idle > 10min OR count > 50?
-                                             ├── YES ──► remove session
-                                             └── NO  ──► keep
-```
-
-#### Config
-
-```json
-["opencode-auto-continue", {
-  "sessionMonitorEnabled": true,
-  "orphanWaitMs": 15000,
-  "sessionDiscoveryIntervalMs": 60000,
-  "idleCleanupMs": 600000,
-  "maxSessions": 50
-}]
-```
+**Config**:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `sessionMonitorEnabled` | boolean | `true` | Enable session monitoring layer |
 | `orphanWaitMs` | number | `15000` | Wait after subagent finish before treating parent as orphan |
-| `sessionDiscoveryIntervalMs` | number | `60000` | How often to poll `session.list()` for missed sessions |
-| `idleCleanupMs` | number | `600000` | Remove idle sessions after this time (10min) |
-| `maxSessions` | number | `50` | Max sessions to keep in memory |
 
-### Session Monitor
-
-A passive monitoring layer that watches for session lifecycle issues the event system might miss.
-
-```
-[All sessions tracked in sessions Map]
-         │
-         ├── 5s timer ──► checkOrphanParents()
-         │                    │
-         │                    └── busyCount >1 → 1? ──► Wait 15s ──► recover parent
-         │
-         ├── 60s timer ──► discoverSessions()
-         │                    │
-         │                    └── session.list() shows unknown busy session? ──► create minimal state
-         │
-         └── 30s timer ──► cleanupIdleSessions()
-                              │
-                              └── idle > 10min OR count > 50? ──► remove oldest idle
-
-[Integration]
-• touchSession() called on: session.created, session.status(busy/retry), message.part.updated(real progress)
-• Orphan detection calls recovery.ts when parent stuck
-• State shares the same sessions Map with all other modules
-```
-
-**Why timers instead of events?** Orphan detection requires watching busyCount _over time_ — a single event can't detect "was >1 now =1". Session discovery catches sessions the event system missed (plugin loaded mid-session, events dropped). Idle cleanup prevents memory leaks in long-running instances.
-
-The plugin handles **4-layer compaction**: opportunistic at 40k, proactive at 60k, hard at 80k, and emergency on token limit errors, providing comprehensive context management without requiring external plugins.
+**Integration**:
+- `touchSession()` called on: session.created, session.status(busy/retry), message.part.updated(real progress)
+- Orphan detection calls recovery.ts when parent stuck
+- State shares the same sessions Map with all other modules
 
 ## Installation
 
