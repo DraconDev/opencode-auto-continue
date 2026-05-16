@@ -749,4 +749,56 @@ describe("recovery module unit tests", () => {
       expect(s.needsContinue).toBe(true);
     });
   });
+
+  describe("concurrency guard", () => {
+    it("prevents concurrent recovery calls — second call returns early", async () => {
+      const now = Date.now();
+      let statusCallCount = 0;
+      mockStatus.mockImplementation(async () => {
+        statusCallCount++;
+        return { data: { test: { type: "busy" } } };
+      });
+      mockAbort.mockImplementation(async () => {
+        await new Promise(r => setTimeout(r, 100));
+        return {};
+      });
+      const s = createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+        autoSubmitCount: 0,
+      });
+      module = createModule({ autoCompact: false, includeTodoContext: false });
+      const promise1 = module.recover("test");
+      await flushPromises();
+      expect(s.recoveryInProgress).toBe(true);
+      const promise2 = module.recover("test");
+      await settleTimers();
+      await Promise.all([promise1, promise2]);
+      expect(statusCallCount).toBe(1);
+      expect(mockAbort).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears recoveryInProgress on completion even if recovery fails", async () => {
+      createSession("test", { attempts: 1 });
+      module = createModule();
+      mockStatus.mockRejectedValue(new Error("status check failed"));
+      await module.recover("test");
+      const s = sessions.get("test")!;
+      expect(s.recoveryInProgress).toBe(false);
+    });
+
+    it("clears recoveryInProgress on abort failure", async () => {
+      const now = Date.now();
+      mockStatus.mockResolvedValue({ data: { test: { type: "busy" } } });
+      mockAbort.mockRejectedValue(new Error("abort failed"));
+      createSession("test", {
+        lastProgressAt: now - 30000,
+        lastOutputAt: now - 200000,
+      });
+      module = createModule({ autoCompact: false });
+      await module.recover("test");
+      const s = sessions.get("test")!;
+      expect(s.recoveryInProgress).toBe(false);
+    });
+  });
 });

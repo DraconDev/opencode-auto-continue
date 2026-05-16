@@ -82,6 +82,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     if (!s) return;
 
     if (s.aborting) return;
+    if (s.recoveryInProgress) return;
     if (s.userCancelled) return;
     // FIX 3/11: Allow recovery if planning has been going on too long
     if (s.planning && Date.now() - s.planningStartedAt < config.planningTimeoutMs) {
@@ -134,6 +135,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
     }
 
     s.aborting = true;
+    s.recoveryInProgress = true;
     s.stallDetections++;
     s.recoveryStartTime = Date.now();
 
@@ -411,6 +413,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
     } finally {
       s.aborting = false;
+      s.recoveryInProgress = false;
     }
   }
 
