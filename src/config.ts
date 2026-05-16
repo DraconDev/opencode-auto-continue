@@ -143,8 +143,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
   maxBackoffMs: 1800000,
   shortContinueMessage: "Continue. Use the TodoWrite tool to create todo items for any untracked work before starting it.",
   continueWithPlanMessage: "You were creating a plan. Finish the plan, **use the TodoWrite tool to create todos for each planned item**, then start executing the first one. Do not stop to ask for confirmation.",
-  continueMessage: "Continue from where you left off. Do not ask for permission — just proceed with the next step. For each task, write a test FIRST that defines the expected outcome, then implement the code to make it pass. Run `cargo test` to verify after each implementation. If you discover new work, **use the TodoWrite tool to create a todo for it before starting**.",
-  continueWithTodosMessage: "Continue from where you left off. You have {pending} open task(s): {todoList}. Work through these tasks. **Write a test first for each task, then implement the code.** Run `cargo test` to verify after each implementation. **You must use the TodoWrite tool to create todos for any new work you discover before starting it** — do not do untracked work. Do not ask for permission or confirmation.",
+  continueMessage: "Continue from where you left off. Do not ask for permission — just proceed with the next step. For each task, write a test FIRST that defines the expected outcome, then implement the code to make it pass. Run your project's test command to verify after each implementation. If you discover new work, **use the TodoWrite tool to create a todo for it before starting**.",
+  continueWithTodosMessage: "Continue from where you left off. You have {pending} open task(s): {todoList}. Work through these tasks. **Write a test first for each task, then implement the code.** Run your project's test command to verify after each implementation. **You must use the TodoWrite tool to create todos for any new work you discover before starting it** — do not do untracked work. Do not ask for permission or confirmation.",
   maxAttemptsMessage: "I've tried to continue several times but haven't seen progress. Please send a new message when you're ready to continue.",
   includeTodoContext: true,
   reviewOnComplete: true,
@@ -245,7 +245,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Test-Driven Quality Gate
   testOnIdle: true,
-  testCommands: ["cargo test"],
+  testCommands: [] as string[],
   testCommandTimeoutMs: 300000,
   testCommandGates: {
     cargo: "Cargo.toml",

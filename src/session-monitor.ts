@@ -118,6 +118,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                   }
                 }
               }, delay);
+              if (timer.unref) timer.unref();
               pendingTimers.add(timer);
             }
           }
