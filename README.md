@@ -366,7 +366,7 @@ Filter: pending/in_progress tasks
 The nudge system prevents sessions from going idle with pending todos. It follows the same pattern as opencode-todo-reminder:
 
 ```
-[session.idle] ──► scheduleNudge() ──► setTimeout(nudgeIdleDelayMs=500ms)
+[session.idle] ──► scheduleNudge() ──► setTimeout(nudgeIdleDelayMs)
                                                    │
                                           [Timer fires] ──► injectNudge()
                                                                │
@@ -639,7 +639,7 @@ Minimal configuration with sensible defaults:
 | `compactRetryDelayMs` | `3000` | Delay between compaction retries |
 | `compactMaxRetries` | `3` | Max compaction retry attempts |
 | `compactionVerifyWaitMs` | `30000` | Max wait for compaction verification |
-| `compactReductionFactor` | `0.7` | Fraction of tokens removed (70%) |
+| `compactReductionFactor` | `0.7` | Fraction of tokens remaining after compaction (0.7 = 70% remain, 30% removed) |
 | `compactionSafetyTimeoutMs` | `15000` | Safety timeout to clear stuck compacting flag |
 | `compactionGracePeriodMs` | `10000` | Grace period after compaction — all layers skip while DB updates |
 | `compactionFailBackoffMs` | `60000` | After compaction fails, all layers skip for this period to prevent spam |
@@ -872,11 +872,11 @@ When a token limit error is detected:
 **Post-compaction token reset**:
 After compaction completes, estimated tokens are recalculated using `compactReductionFactor`:
 ```
-estimatedTokens = estimatedTokens * (1 - compactReductionFactor)
+estimatedTokens = estimatedTokens * compactReductionFactor
 ```
-With default factor 0.7: `estimatedTokens = estimatedTokens * 0.3` (30% remain)
+With default factor 0.7: `estimatedTokens = estimatedTokens * 0.7` (70% remain, 30% removed)
 
-This matches the actual reduction — compaction removes ~70% of context, so the remaining tokens should be ~30% of pre-compaction count.
+The factor represents the fraction of tokens **remaining** after compaction. Compaction removes ~30% of context at default settings.
 
 ### Why Four Layers?
 
