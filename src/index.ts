@@ -656,7 +656,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
             if (stop.shouldStop) {
               log('[StopConditions] session stopped, skipping tool loop recovery:', stop.reason);
             } else {
-              log('tool loop recovery: tool', s.lastToolName, 'called', s.toolRepeatCount, 'times, forcing recovery');
+              log('tool loop recovery: tool', s.lastToolName, 'repeated', s.toolRepeatCount, 'times, forcing recovery');
               s.toolRepeatCount = 0;
               recover(sid).catch((e: unknown) => log('tool loop recovery failed:', e));
             }
