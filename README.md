@@ -1079,10 +1079,10 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 |-------|--------|
 | `session.created` | Initialize session state, inject dangerous command warning |
 | `session.status` (busy) | Start/reset stall timer (status pings do NOT count as progress) |
-| `session.status` (idle) | Send queued continue if `needsContinue`; if recovery in progress (`aborting=true`), schedule delayed fallback; trigger opportunistic compaction |
+| `session.status` (idle) | Send queued continue if `needsContinue`; if recovery in progress (`aborting=true`), schedule 3s delayed fallback; trigger opportunistic compaction |
 | `session.status` (retry) | Treat as busy (progress indicator) |
 | `session.compacted` | Clear compacting flag, reset estimates, queue continue, re-schedule nudge |
-| `session.idle` | Poll todos, schedule nudge if open todos exist; if recovery in progress, schedule delayed fallback instead of sending directly |
+| `session.idle` | Poll todos, schedule nudge if open todos exist; if recovery in progress (`aborting=true`), schedule 3s delayed fallback instead of sending directly |
 | `session.updated` | Write status file |
 | `session.deleted` / `session.ended` | Full session cleanup |
 | `message.updated` (assistant) | Accumulate token counts |
