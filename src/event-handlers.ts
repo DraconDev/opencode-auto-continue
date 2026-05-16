@@ -21,6 +21,7 @@ import type { createTodoPoller } from "./todo-poller.js";
 import { containsDangerousCommand, formatDangerousBlocklist } from "./dangerous-commands.js";
 import type {
   TypedPluginInput,
+  MessageInfo,
   PluginEvent,
   PartInfo,
   PartType,
