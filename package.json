@@ -1,6 +1,6 @@
 {
   "name": "@dracondev/opencode-auto-continue",
-  "version": "7.18.7",
+  "version": "7.18.8",
   "description": "Auto-continue stalled OpenCode sessions \u2014 stall recovery, todo nudging, review on completion, and AI-driven session analysis",
   "keywords": [
     "opencode",
