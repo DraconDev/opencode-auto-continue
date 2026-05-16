@@ -1506,6 +1506,8 @@ describe("opencode-auto-continue", () => {
         terminalTitleEnabled: false,
       });
 
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
       const output = { system: [] as string[] };
       await (plugin as any)["experimental.chat.system.transform"](
         { sessionID: "test" },
@@ -1554,6 +1556,122 @@ describe("opencode-auto-continue", () => {
 
       expect(output.system.length).toBe(0);
 
+      plugin.dispose?.();
+    });
+
+    it("should guard against undefined output.system", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: true,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      const output = {} as any;
+      await (plugin as any)["experimental.chat.system.transform"](
+        { sessionID: "test" },
+        output
+      );
+
+      expect(output.system).toBeDefined();
+      expect(output.system.length).toBe(1);
+
+      plugin.dispose?.();
+    });
+
+    it("should set systemTransformHookCalled flag on session when called", async () => {
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: true,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      const output = { system: [] as string[] };
+      await (plugin as any)["experimental.chat.system.transform"](
+        { sessionID: "test" },
+        output
+      );
+
+      expect(output.system.length).toBe(1);
+
+      plugin.dispose?.();
+    });
+  });
+
+  describe("dangerous command injection fallback", () => {
+    it("should schedule a delayed session.prompt fallback on session.created", async () => {
+      vi.useFakeTimers();
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: true,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(30000);
+      await flushPromises();
+
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      const call = (mockPrompt.mock.calls[0] as any)[0];
+      expect(call.body.parts[0].text).toContain("Dangerous Commands Policy");
+      expect(call.body.parts[0].synthetic).toBe(true);
+
+      vi.useRealTimers();
+      plugin.dispose?.();
+    });
+
+    it("should skip session.prompt fallback if system transform hook was called first", async () => {
+      vi.useFakeTimers();
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: true,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      const output = { system: [] as string[] };
+      await (plugin as any)["experimental.chat.system.transform"](
+        { sessionID: "test" },
+        output
+      );
+
+      vi.advanceTimersByTime(30000);
+      await flushPromises();
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+      plugin.dispose?.();
+    });
+
+    it("should NOT schedule fallback when dangerousCommandInjection is disabled", async () => {
+      vi.useFakeTimers();
+      const plugin = await createPlugin({ client: mockClient }, {
+        dangerousCommandBlocking: true,
+        dangerousCommandInjection: false,
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+      });
+
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      vi.advanceTimersByTime(60000);
+      await flushPromises();
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
       plugin.dispose?.();
     });
   });
