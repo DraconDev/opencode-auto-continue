@@ -582,7 +582,13 @@ Minimal configuration with sensible defaults:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `stallTimeoutMs` | `180000` | Time without activity before recovery (3 min) |
+| `stallTimeoutMs` | `45000` | Time without activity before recovery (45s) |
+| `busyStallTimeoutMs` | `180000` | Time without real output when session reports busy (3 min) |
+| `textOnlyStallTimeoutMs` | `180000` | Time with only text/reasoning output before stall (3 min) |
+| `toolLoopMaxRepeats` | `5` | Max consecutive same-tool calls before tool loop detection |
+| `toolLoopWindowMs` | `120000` | Window for tool loop detection (2 min) |
+| `planningTimeoutMs` | `300000` | Max time in planning state before forced recovery (5 min) |
+| `tokenEstimateMultiplier` | `1.0` | Multiplier for text-based token estimation |
 | `waitAfterAbortMs` | `5000` | Pause between abort and continue (5s) |
 | `maxRecoveries` | `3` | Max recovery attempts before exponential backoff |
 | `cooldownMs` | `60000` | Time between recovery attempts (1 min) |
@@ -616,6 +622,9 @@ Minimal configuration with sensible defaults:
 | `nudgeMessage` | `"..."` | Nudge message telling agent to continue |
 | `nudgeCooldownMs` | `30000` | Min time between nudges (30s) |
 | `nudgeMaxSubmits` | `10` | Max nudges before loop protection pauses |
+| `includeTodoContext` | `true` | Include pending todos in nudge message |
+| `todoPollIntervalMs` | `30000` | Periodic todo API poll interval (0=disable) |
+| `reviewCooldownMs` | `60000` | Min time between reviews (prevents rapid-fire loop) |
 
 ### Compaction Options
 
@@ -682,6 +691,13 @@ When enabled, the plugin runs tests automatically before each nudge. If tests fa
 | Option | Default | Description |
 |--------|---------|-------------|
 | `debug` | `false` | Enable debug logging to file |
+
+### Dangerous Command Blocking
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `dangerousCommandBlocking` | `true` | Abort session if AI tries blocked commands (sudo, rm -rf /~, chmod 777, etc.) |
+| `dangerousCommandInjection` | `true` | Inject warning message on session start listing blocked commands |
 
 ## Template Variables
 
