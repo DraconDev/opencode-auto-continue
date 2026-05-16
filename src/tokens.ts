@@ -151,6 +151,14 @@ export function closeDb(): void {
   closeCachedDb();
 }
 
+/** Reset the SQLite module cache (for testing only). */
+export function _resetSqliteCache(): void {
+  closeCachedDb();
+  sqliteModule = null;
+  sqliteModuleError = null;
+  sqliteModuleLoading = null;
+}
+
 export function getDbPath(): string {
   if (dbPath) return dbPath;
 

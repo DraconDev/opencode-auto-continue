@@ -6,6 +6,7 @@ import {
   getDbPath,
   setDbPath,
   getDbLastError,
+  _resetSqliteCache,
 } from "../tokens.js";
 import { createSession, getTokenCount } from "../session-state.js";
 
@@ -46,6 +47,7 @@ function cleanupTestDb() {
 describe("tokens module", () => {
   beforeEach(() => {
     cleanupTestDb();
+    _resetSqliteCache();
     setDbPath("");
     getDbLastError();
   });
