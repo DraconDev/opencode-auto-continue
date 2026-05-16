@@ -288,7 +288,7 @@ async function handleMessageUpdated(ctx: HandlerContext, sid: string, e: PluginE
 }
 
 async function handleSessionStatus(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
-  const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, recover, sessionMonitor, stopConditions, review, compaction, terminal, input } = ctx;
+  const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, recover, sessionMonitor, stopConditions, review, compaction, terminal, input, isDisposed } = ctx;
   const props = e.properties as Record<string, unknown>;
   const status = props.status as SessionStatusType | undefined;
   log('session.status:', sid, status?.type);
