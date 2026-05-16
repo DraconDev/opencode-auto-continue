@@ -1342,6 +1342,19 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 **Cause**: Terminal doesn't support OSC 9;4
 **Fix**: Use iTerm2 (3.6.6+), WezTerm, Windows Terminal, or Ghostty
 
+## Changelog
+
+### v7.18+ — Reliability Fixes
+
+**Bug: reviewFired stuck true after multi-cycle workflows**
+When todos went from "pending with cooldown active" directly to "all completed", the `reviewFired` flag remained set permanently, preventing the review prompt from ever firing again. Fix: `processTodos()` now detects this stale state and resets `reviewFired = false` after cooldown expires, ensuring reviews fire reliably in multi-cycle scenarios.
+
+**Bug: continue lost when session.idle fires during active recovery**
+When `session.idle` or `session.status(idle)` fired while recovery was in progress (`aborting=true` and `needsContinue=true`), the handler skipped calling `sendContinue()` and relied on recovery to send it. If recovery's call failed (e.g., blocked by prompt guard or concurrency guard), the continue was lost permanently — no future event would trigger it. Fix: both `handleSessionIdle` and `handleSessionStatus` now schedule a 3-second delayed fallback that fires `sendContinue()` with a `continueInProgress` guard, ensuring the continue is sent even if the primary path failed.
+
+**Bug: periodic poll skipped on fresh todo.updated but no nudge/review triggered**
+When a `todo.updated` event arrived within 10 seconds of the last, `pollAndProcess()` skipped the API poll and also skipped calling `processTodos()`. This meant the `scheduleNudge` fallback and review debounce timer were never started for sessions with pending todos. Fix: `pollAndProcess()` now reprocesses cached todos (`s.lastKnownTodos`) even when the poll is skipped due to event freshness, ensuring nudge scheduling and review triggers work correctly in this path.
+
 ## Roadmap
 
 ---
