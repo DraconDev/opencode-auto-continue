@@ -94,19 +94,6 @@ When plan content is detected, stall monitoring pauses until execution begins.
 **5. Status File Writes**
 Every meaningful event writes the status file atomically. This enables external monitoring without debug mode.
 
-**6. Module Architecture**
-The plugin uses a factory pattern with focused modules:
-
-```typescript
-createStatusFileModule({ config, sessions, log })   // Atomic status file writes
-createRecoveryModule({ config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge })  // Stall recovery
-createNudgeModule({ config, sessions, log, isDisposed, input })  // Idle nudges with loop protection
-createCompactionModule({ config, sessions, log, input })  // 4-layer compaction
-createTerminalModule({ config, sessions, log, input })  // Terminal title/progress/hook
-```
-
-Each module is initialized early and its API is called from event handlers in `index.ts`.
-
 ### Tool-Text Recovery (Catches XML Tool Calls in Reasoning)
 
 Some models output XML tool calls inside their reasoning/text fields instead of using the proper tool-calling mechanism. The plugin detects this during recovery and sends a specialized prompt to execute the tool call.
