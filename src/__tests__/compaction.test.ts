@@ -85,31 +85,7 @@ const DEFAULT_CONFIG: PluginConfig = {
   maxRuntimeMs: 0,
   untilMarker: "",
   planningTimeoutMs: 300000,
-  busyStallTimeoutMs: 180000,
-  enableAdvisory: false,
-  advisoryModel: "",
-  advisoryTimeoutMs: 5000,
-  advisoryMaxTokens: 500,
-  advisoryTemperature: 0.1,
-  subagentWaitMs: 15000,
-  orphanWaitMs: 15000,
-  sessionDiscoveryIntervalMs: 60000,
-  idleSessionTimeoutMs: 600000,
-  idleCleanupMs: 600000,
-  maxSessions: 50,
-  sessionMonitorEnabled: true,
-  orphanParentDetection: true,
-  sessionDiscovery: true,
-  idleCleanup: true,
-  autoAnswerQuestions: true,
-  tokenLimitPatterns: [
-    "context length",
-    "maximum context length",
-    "token count exceeds",
-    "too many tokens",
-    "payload too large",
-    "token limit exceeded",
-  ],
+
 };
 
 function createSessionState(overrides?: Partial<SessionState>): SessionState {

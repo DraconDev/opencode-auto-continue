@@ -55,18 +55,7 @@ const mockConfig: PluginConfig = {
   stopFilePath: "",
   maxRuntimeMs: 0,
   untilMarker: "",
-  enableAdvisory: false,
-  advisoryModel: "",
-  advisoryTimeoutMs: 5000,
-  advisoryMaxTokens: 500,
-  advisoryTemperature: 0.1,
-  subagentWaitMs: 15000,
-  sessionDiscoveryIntervalMs: 60000,
-  idleSessionTimeoutMs: 600000,
-  maxSessions: 50,
-  orphanParentDetection: true,
-  sessionDiscovery: true,
-  idleCleanup: true,
+  planningTimeoutMs: 300000,
 };
 
 function createMockSession(partial: Partial<SessionState> = {}): SessionState {
