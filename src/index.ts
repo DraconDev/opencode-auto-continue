@@ -1176,11 +1176,36 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         log('question.asked:', requestID, 'session:', sid, 'questions:', questions.length);
 
         if (requestID && questions.length > 0) {
-          const answers = questions.map((q: any) => {
-            const firstOption = q.options?.[0]?.label || "";
-            log('auto-answering question:', q.header || q.question, '→', firstOption);
-            return [firstOption];
-          });
+          const SAFE_PATTERNS = /^(yes|ok|okay|confirm|continue|proceed|accept|agree|got it|sure|y)$/i;
+          const answers: string[][] = [];
+          let allSafe = true;
+          for (const q of questions) {
+            const opts = q.options || [];
+            if (opts.length === 0) { allSafe = false; break; }
+            if (opts.length === 1) {
+              answers.push([opts[0].label || ""]);
+            } else if (config.autoAnswerSafeOnly) {
+              const safeOpt = opts.find((o: any) => SAFE_PATTERNS.test(o.label?.trim() || ""));
+              if (safeOpt) {
+                answers.push([safeOpt.label]);
+              } else {
+                allSafe = false;
+                break;
+              }
+            } else {
+              answers.push([opts[0]?.label || ""]);
+            }
+          }
+
+          if (!allSafe) {
+            log('skipping auto-answer: multi-option question without safe default');
+            writeStatusFile(sid);
+            return;
+          }
+
+          for (let i = 0; i < questions.length; i++) {
+            log('auto-answering question:', questions[i].header || questions[i].question, '→', answers[i][0]);
+          }
 
           try {
             const httpClient = (input.client as any)._client;

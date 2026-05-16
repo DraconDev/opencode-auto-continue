@@ -114,6 +114,7 @@ export interface PluginConfig {
 
   // Question auto-answer
   autoAnswerQuestions: boolean;
+  autoAnswerSafeOnly: boolean;
 
   // Todo polling (workaround for missing todo.updated events in plugin API)
   todoPollIntervalMs: number;
@@ -235,6 +236,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
 
   // Question auto-answer
   autoAnswerQuestions: false,
+  autoAnswerSafeOnly: true,
 
   // Todo polling — polls session.todo() API because plugin event stream
   // does not emit todo.updated events (confirmed in OpenCode v1.14.51).
@@ -349,6 +351,7 @@ export function validateConfig(config: PluginConfig): PluginConfig {
   if (normalized.maxRuntimeMs < 0) addError('maxRuntimeMs', `maxRuntimeMs must be >= 0, got ${normalized.maxRuntimeMs}`);
 
   if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);
+  if (typeof normalized.autoAnswerSafeOnly !== 'boolean') addError('autoAnswerSafeOnly', `autoAnswerSafeOnly must be a boolean, got ${typeof normalized.autoAnswerSafeOnly}`);
 
   if (normalized.todoPollIntervalMs < 0) addError('todoPollIntervalMs', `todoPollIntervalMs must be >= 0, got ${normalized.todoPollIntervalMs}`);
 
