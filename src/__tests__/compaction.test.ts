@@ -138,6 +138,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastKnownStatus: "idle",
     lastKnownTodos: [],
     stoppedByCondition: null,
+    recoveryInProgress: false,
     realTokens: 0,
     lastRealTokenRefreshAt: 0,
     hardCompactionInProgress: false,
@@ -1049,6 +1050,25 @@ describe("compaction module unit tests", () => {
       const result = await promise;
       expect(result).toBe(false);
       expect(s.compacting).toBe(false);
+    });
+  });
+
+  describe("double safety timer guard", () => {
+    it("does not overwrite existing compactionSafetyTimer in attemptCompact", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
+      const s = createSessionState({ estimatedTokens: 100000 });
+      sessions.set("test", s);
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
+
+      const existingTimer = setTimeout(() => {}, 99999);
+      s.compactionSafetyTimer = existingTimer;
+
+      const promise = module.attemptCompact("test");
+      expect(s.compactionSafetyTimer).toBe(existingTimer);
+      clearTimeout(existingTimer);
+
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
     });
   });
 });

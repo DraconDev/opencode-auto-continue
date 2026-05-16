@@ -43,7 +43,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       }
       s.compacting = true;
       s.compactionTimedOut = false;
-      if (config.compactionSafetyTimeoutMs > 0) {
+      if (config.compactionSafetyTimeoutMs > 0 && !s.compactionSafetyTimer) {
         s.compactionSafetyTimer = setTimeout(() => {
           if (s.compacting) {
             log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', force-clearing after', config.compactionSafetyTimeoutMs, 'ms');
