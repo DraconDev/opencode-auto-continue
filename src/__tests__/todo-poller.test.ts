@@ -452,6 +452,118 @@ describe("todo-poller", () => {
 
       expect(s.reviewFired).toBe(false);
     });
+
+    describe("nudge fallback scheduling", () => {
+      it("should call scheduleNudge when pending todos are detected", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "in_progress" },
+        ]);
+
+        expect(deps.scheduleNudge).toHaveBeenCalledWith("test");
+      });
+
+      it("should call scheduleNudge for pending status", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "pending" },
+        ]);
+
+        expect(deps.scheduleNudge).toHaveBeenCalledWith("test");
+      });
+
+      it("should NOT call scheduleNudge when all todos are completed", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Done", status: "completed" },
+        ]);
+
+        expect(deps.scheduleNudge).not.toHaveBeenCalled();
+      });
+
+      it("should NOT call scheduleNudge when nudgeEnabled is false", () => {
+        const deps = makeDeps({ config: makeConfig({ nudgeEnabled: false }) });
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "in_progress" },
+        ]);
+
+        expect(deps.scheduleNudge).not.toHaveBeenCalled();
+      });
+
+      it("should NOT call scheduleNudge when nudge is paused", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        s.nudgePaused = true;
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "in_progress" },
+        ]);
+
+        expect(deps.scheduleNudge).not.toHaveBeenCalled();
+      });
+
+      it("should NOT call scheduleNudge when scheduleNudge is undefined", () => {
+        const deps = makeDeps({ scheduleNudge: undefined });
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "in_progress" },
+        ]);
+
+        // No error should be thrown
+        expect(s.hasOpenTodos).toBe(true);
+      });
+
+      it("should call scheduleNudge on each processTodos call if pending todos persist", () => {
+        const deps = makeDeps();
+        const s = createSession();
+        deps.sessions.set("test", s);
+
+        const poller = createTodoPoller(deps);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "in_progress" },
+        ]);
+        poller.processTodos("test", [
+          { id: "t1", content: "Task A", status: "in_progress" },
+        ]);
+
+        // The nudge module's own guards (cooldown, loop protection) handle
+        // preventing excessive nudges — the poller should reliably trigger
+        // scheduleNudge each time it finds pending todos
+        expect(deps.scheduleNudge).toHaveBeenCalledTimes(2);
+      });
+
+      it("should not throw when session is not in the map", () => {
+        const deps = makeDeps();
+        const poller = createTodoPoller(deps);
+
+        expect(() => {
+          poller.processTodos("nonexistent", [
+            { id: "t1", content: "Task A", status: "in_progress" },
+          ]);
+        }).not.toThrow();
+      });
+    });
   });
 
   describe("cleanupSession", () => {
