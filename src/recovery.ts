@@ -92,7 +92,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       log('planning timeout reached (', config.planningTimeoutMs, 'ms), forcing recovery:', sessionId);
     }
     const wasPlanningTimeout = !!s.planning;
-    if (s.planning) s.planning = false;
+    if (s.planning) { s.planning = false; s.planBuffer = ''; }
     if (s.compacting) return;
     if (s.hardCompactionInProgress) return;
 

@@ -2841,6 +2841,96 @@ describe("test-fix loop", () => {
       });
       vi.useRealTimers();
     });
+
+    it("should NOT auto-answer multi-option questions when autoAnswerSafeOnly is true", async () => {
+      vi.useFakeTimers();
+      const mockPost = vi.fn().mockResolvedValue({ data: {} });
+      const mockHttpClient = { post: mockPost };
+      const mockInput = {
+        client: {
+          session: {
+            abort: mockAbort,
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+            summarize: mockSummarize,
+          },
+          tui: { showToast: mockShowToast },
+          _client: mockHttpClient,
+        },
+      };
+
+      const plugin = await createPlugin(mockInput as any, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        autoAnswerQuestions: true,
+        autoAnswerSafeOnly: true,
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "question.asked", properties: {
+        id: "req-danger",
+        sessionID: "test",
+        questions: [{
+          question: "Delete everything?",
+          header: "Confirm",
+          options: [{ label: "Yes, delete everything" }, { label: "No, keep it" }],
+        }],
+      } } });
+
+      expect(mockPost).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("should auto-answer single-option questions when autoAnswerSafeOnly is true", async () => {
+      vi.useFakeTimers();
+      const mockPost = vi.fn().mockResolvedValue({ data: {} });
+      const mockHttpClient = { post: mockPost };
+      const mockInput = {
+        client: {
+          session: {
+            abort: mockAbort,
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+            summarize: mockSummarize,
+          },
+          tui: { showToast: mockShowToast },
+          _client: mockHttpClient,
+        },
+      };
+
+      const plugin = await createPlugin(mockInput as any, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+        autoAnswerQuestions: true,
+        autoAnswerSafeOnly: true,
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      await plugin.event({ event: { type: "question.asked", properties: {
+        id: "req-safe",
+        sessionID: "test",
+        questions: [{
+          question: "Continue?",
+          header: "Confirm",
+          options: [{ label: "OK" }],
+        }],
+      } } });
+
+      expect(mockPost).toHaveBeenCalledWith({
+        url: "/question/req-safe/reply",
+        headers: { "Content-Type": "application/json" },
+        body: { answers: [["OK"]] },
+      });
+      vi.useRealTimers();
+    });
   });
 
   describe("nudge re-activation after compaction", () => {
