@@ -875,7 +875,6 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
     if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
       compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
     }
-    nudge.scheduleNudge(sid);
   }
 
   writeStatusFile(sid);
