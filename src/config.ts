@@ -5,6 +5,10 @@
  * Extracted from shared.ts to reduce file size.
  */
 
+/**
+ * Plugin configuration interface. All fields have defaults in DEFAULT_CONFIG.
+ * See README for detailed documentation of each field.
+ */
 export interface PluginConfig {
   stallTimeoutMs: number;
   waitAfterAbortMs: number;
@@ -117,6 +121,10 @@ export interface PluginConfig {
   dangerousCommandInjection: boolean;
 }
 
+/**
+ * Default plugin configuration values. All fields are specified here so that
+ * partial user configs can be merged with these defaults.
+ */
 export const DEFAULT_CONFIG: PluginConfig = {
   stallTimeoutMs: 180000,
   waitAfterAbortMs: 5000,
@@ -251,6 +259,10 @@ export const DEFAULT_CONFIG: PluginConfig = {
   dangerousCommandInjection: true,
 };
 
+/**
+ * Result of detailed config validation. Includes the normalized config,
+ * lists of errors, invalid fields, and replaced fields.
+ */
 export interface ConfigValidationResult {
   config: PluginConfig;
   errors: string[];
@@ -259,11 +271,25 @@ export interface ConfigValidationResult {
   valid: boolean;
 }
 
+/**
+ * Validate and normalize a plugin config, returning just the normalized config.
+ * For detailed validation results with error/field tracking, use validateConfigDetailed().
+ *
+ * @param config - The plugin configuration to validate
+ * @returns The normalized and validated config
+ */
 export function validateConfig(config: PluginConfig): PluginConfig {
   const result = validateConfigDetailed(config);
   return result.config;
 }
 
+/**
+ * Validate and normalize a plugin config, returning detailed results.
+ * Tracks which fields were invalid and replaced with defaults.
+ *
+ * @param config - The plugin configuration to validate
+ * @returns A ConfigValidationResult with the normalized config and field details
+ */
 export function validateConfigDetailed(config: PluginConfig): ConfigValidationResult {
   const normalized: PluginConfig = { ...config };
 

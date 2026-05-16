@@ -147,6 +147,7 @@ function resetIdleTimer(): void {
   if (cachedDb.idleTimer.unref) cachedDb.idleTimer.unref();
 }
 
+/** Close the cached SQLite database connection, releasing resources. */
 export function closeDb(): void {
   closeCachedDb();
 }
@@ -159,6 +160,13 @@ export function _resetSqliteCache(): void {
   sqliteModuleLoading = null;
 }
 
+/**
+ * Get the path to the OpenCode SQLite database.
+ * Resolves platform-specific default paths (macOS, Windows, Linux/XDG).
+ * Can be overridden with setDbPath().
+ *
+ * @returns The database file path
+ */
 export function getDbPath(): string {
   if (dbPath) return dbPath;
 
@@ -178,11 +186,23 @@ export function getDbPath(): string {
   return dbPath;
 }
 
+/**
+ * Override the database path (for testing or custom installations).
+ * Closes any existing DB connection if the path changes.
+ *
+ * @param path - The new database file path
+ */
 export function setDbPath(path: string): void {
   if (dbPath !== path) closeCachedDb();
   dbPath = path;
 }
 
+/**
+ * Get the last error that occurred during database access.
+ * Useful for diagnosing token counting failures.
+ *
+ * @returns The last error message string, or empty string if none
+ */
 export function getDbLastError(): string {
   return dbLastError;
 }

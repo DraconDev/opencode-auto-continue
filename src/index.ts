@@ -27,6 +27,7 @@ import { type HandlerContext, handleEvent, handleSystemTransform, handleSessionC
 
 import type { Todo } from "./session-state.js";
 
+/** Options for the {@link sendCustomPrompt} function. */
 export interface CustomPromptOptions {
   message: string;
   includeTodoContext?: boolean;
@@ -34,6 +35,7 @@ export interface CustomPromptOptions {
   customPrompt?: string;
 }
 
+/** Result returned by {@link sendCustomPrompt}. */
 export interface CustomPromptResult {
   success: boolean;
   message: string;
@@ -247,6 +249,11 @@ export async function sendCustomPrompt(
   }
 }
 
+/**
+ * The main OpenCode plugin. Auto-recovers stalled AI coding sessions with
+ * multi-layer compaction, dangerous command blocking, nudge reminders,
+ * review-on-completion, and session monitoring.
+ */
 export const AutoForceResumePlugin: Plugin = async (input, options) => {
   const REAL_TOKEN_REFRESH_INTERVAL_MS = 10000;
 

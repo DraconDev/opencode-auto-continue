@@ -69,10 +69,10 @@ class ModelContextCache {
 const modelContextCache = new ModelContextCache();
 
 /**
- * Get the model context limit from the opencode.json config file.
+ * Get the model context limit from the cache.
  * Results are cached and auto-invalidated when the file changes.
  *
- * @param opencodeConfigPath - Path to the opencode.json file
+ * @param opencodeConfigPath - Path to the OpenCode config file
  * @returns The context limit in tokens, or null if unavailable
  */
 export function getModelContextLimit(opencodeConfigPath: string): number | null {
@@ -93,6 +93,11 @@ export function getCompactionThreshold(config: PluginConfig): number {
   return config.proactiveCompactAtTokens;
 }
 
+/**
+ * Patterns that indicate the AI is outputting a plan rather than acting.
+ * Used by the nudge module to detect when the AI is planning
+ * (and should not be interrupted).
+ */
 export const PLAN_PATTERNS = [
   /^here\s+is\s+(my|the)\s+plan/i,
   /^here'[rs]\s+(my|the)\s+plan/i,
@@ -125,6 +130,11 @@ export function isPlanContent(text: string): boolean {
   return PLAN_PATTERNS.some(pattern => pattern.test(text.trim()));
 }
 
+/**
+ * Check whether text contains tool calls written as plain text
+ * (e.g., XML-formatted tool calls in reasoning output).
+ * Used by text-only stall detection.
+ */
 export const TOOL_TEXT_PATTERNS = [
   /<function\s*=/i,
   /<function>/i,
@@ -142,6 +152,10 @@ export const TOOL_TEXT_PATTERNS = [
   /<system[\s_-]reminder/i,
 ];
 
+/**
+ * Patterns that indicate truncated XML output, which suggests
+ * the AI was cut off mid-tool-call and needs recovery.
+ */
 export const TRUNCATED_XML_PATTERNS = [
   { open: /<function[^>]*>/i, close: /<\/function>/i },
   { open: /<parameter[^>]*>/i, close: /<\/parameter>/i },
@@ -167,12 +181,12 @@ export function containsToolCallAsText(text: string): boolean {
 }
 
 /**
- * Estimate the token count for a text string.
- * Uses a simple heuristic: characters divided by 4, multiplied by a configurable factor.
+ * Estimate the token count for a string based on character composition.
+ * Uses weighted ratios: English ~0.35 tokens/char, code ~0.50, digits ~0.25.
  *
  * @param text - The text to estimate tokens for
- * @param multiplier - Optional multiplier to adjust the estimate (default: 1.0)
- * @returns Estimated token count
+ * @param multiplier - Optional scaling factor (default: 1.0)
+ * @returns Estimated token count (minimum 1)
  */
 export function estimateTokens(text: string, multiplier: number = 1.0): number {
   const codeChars = new Set("{}[]();+-*/=<>!&||^~%@#$'\"`");
@@ -207,20 +221,10 @@ export function formatDuration(ms: number): string {
 /**
  * Parse token counts from error messages.
  * OpenCode includes exact token counts in token limit error messages.
- * 
- * Examples:
- * - "You requested a total of 264230 tokens: 232230 tokens from the input messages and 32000 tokens for the completion."
- * - "This model's maximum context length is 128000 tokens. You requested 150000 tokens."
- * 
- * Returns: { total: number, input: number, output: number } or null if not found
- */
-/**
- * Parse token counts from a provider error object.
- * Extracts input, output, and total tokens from various error formats
- * (e.g., Anthropic overloaded_error, OpenAI rate_limit_error).
+ * Tries three patterns in order: detailed, simple, and loose.
  *
- * @param error - The error object to parse
- * @returns Parsed token counts, or null if no tokens could be extracted
+ * @param error - The error object or message string
+ * @returns Parsed token counts or null if no pattern matched
  */
 export function parseTokensFromError(error: any): { total: number; input: number; output: number } | null {
   if (!error) return null;

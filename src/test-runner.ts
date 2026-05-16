@@ -71,6 +71,11 @@ function isSafeCommand(cmd: string): boolean {
   return !SHELL_META_RE.test(cmd);
 }
 
+/**
+ * Create the test runner module. Executes configured test commands
+ * when the session is idle and tests are enabled. Validates commands
+ * against shell metacharacters before execution to prevent injection.
+ */
 export function createTestRunner(deps: TestRunnerDeps) {
   const { config, log, input } = deps;
 

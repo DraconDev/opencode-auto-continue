@@ -17,6 +17,12 @@ export interface TodoPollerDeps {
 const MIN_POLL_INTERVAL_MS = 5000;
 const TODO_EVENT_FRESH_MS = 10000;
 
+/**
+ * Create the todo poller module. Periodically fetches the latest todo
+ * state from the OpenCode API when event-driven updates are stale.
+ * Prevents missed todo updates by polling at a configurable interval
+ * with debouncing against recent events.
+ */
 export function createTodoPoller(deps: TodoPollerDeps) {
   const { config, sessions, log, isDisposed, input } = deps;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;

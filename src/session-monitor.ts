@@ -40,6 +40,12 @@ export interface SessionMonitorStats {
   orphanRecoveries: number;
 }
 
+/**
+ * Create the session monitor module. Periodically checks for orphaned
+ * sessions (sub-agents whose parent session has ended), idle sessions
+ * that have timed out, and session count limits. Handles automatic
+ * cleanup and recovery for detected orphans.
+ */
 export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
   const { config, sessions, log, isDisposed, recover } = deps;
 

@@ -40,10 +40,19 @@ export const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   /\bsftp\s+/i,
 ];
 
+/**
+ * Check whether the given text contains a dangerous command pattern.
+ * Used to block AI-generated shell commands that could cause harm
+ * (e.g., sudo, rm -rf, mkfs, dd, etc.).
+ */
 export function containsDangerousCommand(text: string): boolean {
   return DANGEROUS_COMMAND_PATTERNS.some((pat) => pat.test(text));
 }
 
+/**
+ * Format the dangerous command blocklist as a human-readable string
+ * suitable for injection into the system prompt.
+ */
 export function formatDangerousBlocklist(): string {
   return [
     "- `sudo` — privilege escalation (AI must never escalate to root)",
