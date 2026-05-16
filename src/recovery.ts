@@ -319,9 +319,6 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         const fileName = s.lastFileEdited.split('/').pop() || s.lastFileEdited;
         intentHint += `File: ${fileName}. `;
       }
-      if (s.lastPlanItemDescription) {
-        intentHint += `Plan item: ${s.lastPlanItemDescription}.`;
-      }
       if (intentHint) {
         messageText = messageText.trim() + '\n\n## Recovery Context\n' + intentHint;
         log('recovery intent added:', intentHint);

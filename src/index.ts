@@ -373,7 +373,6 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       s.lastStallPartType = '';
       s.continueTimestamps = [];
       s.stallPatterns = {};
-      s.lastPlanItemDescription = "";
       s.lastFileEdited = "";
       s.lastToolCall = "";
       s.lastToolSummary = "";

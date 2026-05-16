@@ -135,7 +135,6 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     timerGeneration: 0,
     sentMessageAt: 0,
     lastRealTokenRefreshAt: 0,
-    lastPlanItemDescription: "",
     statusHistory: [],
     nudgeFailureCount: 0,
     lastNudgeFailureAt: 0,

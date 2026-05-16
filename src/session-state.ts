@@ -108,8 +108,6 @@ export interface SessionState {
   sentMessageAt: number;
 
   // === Plan-Driven Continue ===
-  lastPlanItemDescription: string;
-
   // === Recovery Intent (recovery.ts) ===
   lastFileEdited: string;  // Last file URL edited before stall
   lastToolCall: string;    // Last tool call name before stall
@@ -210,8 +208,6 @@ export function createSession(): SessionState {
 
     lastUserMessageId: '',
     sentMessageAt: 0,
-
-    lastPlanItemDescription: '',
 
     lastFileEdited: '',
     lastToolCall: '',
