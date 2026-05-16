@@ -305,9 +305,9 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   }
 
   function resetSession(id: string) {
-    clearTimer(id);
     const s = sessions.get(id);
     if (s) {
+      clearAllSessionTimers(s);
       Object.assign(s, createSession());
     }
     sessions.delete(id);
