@@ -68,14 +68,27 @@ class ModelContextCache {
 
 const modelContextCache = new ModelContextCache();
 
+/**
+ * Get the model context limit from the opencode.json config file.
+ * Results are cached and auto-invalidated when the file changes.
+ *
+ * @param opencodeConfigPath - Path to the opencode.json file
+ * @returns The context limit in tokens, or null if unavailable
+ */
 export function getModelContextLimit(opencodeConfigPath: string): number | null {
   return modelContextCache.get(opencodeConfigPath);
 }
 
+/** Invalidate the cached model context limit, forcing a re-read on next access. */
 export function invalidateModelLimitCache(): void {
   modelContextCache.invalidate();
 }
 
+/**
+ * Get the compaction threshold from the plugin config.
+ * @param config - The plugin configuration
+ * @returns The proactive compaction token threshold
+ */
 export function getCompactionThreshold(config: PluginConfig): number {
   return config.proactiveCompactAtTokens;
 }
@@ -101,6 +114,13 @@ export const PLAN_PATTERNS = [
   /^##\s+approach/i,
 ];
 
+/**
+ * Check if text content indicates the AI is creating a plan.
+ * Plans are detected via common patterns like "Here is my plan", "## Plan", etc.
+ *
+ * @param text - The text content to check
+ * @returns true if the text matches a plan-content pattern
+ */
 export function isPlanContent(text: string): boolean {
   return PLAN_PATTERNS.some(pattern => pattern.test(text.trim()));
 }
@@ -129,6 +149,14 @@ export const TRUNCATED_XML_PATTERNS = [
   { open: /<invoke[^>]*>/i, close: /<\/invoke>/i },
 ];
 
+/**
+ * Check if text content contains a tool call written as raw text/XML rather than
+ * being executed as an actual tool. This detects hallucinated tool calls where the
+ * AI outputs tool syntax in a text or reasoning part instead of using the tool system.
+ *
+ * @param text - The text content to check
+ * @returns true if tool-call-as-text patterns are found
+ */
 export function containsToolCallAsText(text: string): boolean {
   if (text.length <= 10) return false;
   if (TOOL_TEXT_PATTERNS.some((pat) => pat.test(text))) return true;
@@ -138,6 +166,14 @@ export function containsToolCallAsText(text: string): boolean {
   return false;
 }
 
+/**
+ * Estimate the token count for a text string.
+ * Uses a simple heuristic: characters divided by 4, multiplied by a configurable factor.
+ *
+ * @param text - The text to estimate tokens for
+ * @param multiplier - Optional multiplier to adjust the estimate (default: 1.0)
+ * @returns Estimated token count
+ */
 export function estimateTokens(text: string, multiplier: number = 1.0): number {
   const codeChars = new Set("{}[]();+-*/=<>!&||^~%@#$'\"`");
   const digitChars = new Set("0123456789");
@@ -152,6 +188,13 @@ export function estimateTokens(text: string, multiplier: number = 1.0): number {
   return Math.max(1, Math.ceil((english * 0.35 + code * 0.50 + digits * 0.25) * multiplier));
 }
 
+/**
+ * Format a duration in milliseconds into a human-readable string.
+ * Examples: "5s", "2m 30s", "1h 15m"
+ *
+ * @param ms - Duration in milliseconds
+ * @returns Formatted duration string
+ */
 export function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
@@ -170,6 +213,14 @@ export function formatDuration(ms: number): string {
  * - "This model's maximum context length is 128000 tokens. You requested 150000 tokens."
  * 
  * Returns: { total: number, input: number, output: number } or null if not found
+ */
+/**
+ * Parse token counts from a provider error object.
+ * Extracts input, output, and total tokens from various error formats
+ * (e.g., Anthropic overloaded_error, OpenAI rate_limit_error).
+ *
+ * @param error - The error object to parse
+ * @returns Parsed token counts, or null if no tokens could be extracted
  */
 export function parseTokensFromError(error: any): { total: number; input: number; output: number } | null {
   if (!error) return null;
@@ -203,10 +254,24 @@ export function parseTokensFromError(error: any): { total: number; input: number
   return null;
 }
 
+/**
+ * Update the progress timestamp on a session state.
+ * Called whenever real activity is detected to reset stall detection timers.
+ *
+ * @param s - The session state to update
+ */
 export function updateProgress(s: SessionState) {
   s.lastProgressAt = Date.now();
 }
 
+/**
+ * Format a template string by replacing `{variable}` placeholders with values.
+ * Unresolved variables are left as-is and a warning is logged.
+ *
+ * @param template - The template string with `{key}` placeholders
+ * @param vars - Key-value pairs to substitute into the template
+ * @returns The formatted string with placeholders replaced
+ */
 export function formatMessage(template: string, vars: Record<string, string>): string {
   const unresolved: string[] = [];
   const result = template.replace(/\{(\w+)\}/g, (_, key) => {
@@ -239,6 +304,14 @@ function getMessageTimestamp(message: any): number | null {
   return null;
 }
 
+/**
+ * Extract the text content from a message object.
+ * Tries direct `content`/`text` fields first, then falls back to
+ * concatenating text from the message's `parts` array.
+ *
+ * @param message - The message object (may have various shapes depending on event type)
+ * @returns The extracted text content, or an empty string
+ */
 export function getMessageText(message: any): string {
   const direct = message?.content ?? message?.text ?? message?.info?.content ?? message?.info?.text;
   if (typeof direct === "string" && direct.length > 0) return direct;
@@ -310,6 +383,20 @@ export function clearMessagesCache(): void {
   /* WeakMap clears itself — no manual cleanup needed */
 }
 
+/**
+ * Prompt guard — prevents duplicate injections within a time window.
+ * Checks if a similar prompt was recently sent to the same session
+ * by fetching recent messages and comparing text similarity.
+ * Results are cached per (input, sessionId) with a TTL to avoid redundant API calls.
+ *
+ * @param sessionId - The session to check
+ * @param promptText - The proposed prompt text
+ * @param input - The plugin input for API access
+ * @param log - Optional log function for debug output
+ * @param windowMs - Time window in ms to check for duplicates (default: 30000)
+ * @param minWindowMs - Minimum time window for hard-match checks (default: 0)
+ * @returns true if the prompt should be blocked as a duplicate
+ */
 export async function shouldBlockPrompt(
   sessionId: string,
   promptText: string,
@@ -343,6 +430,14 @@ export async function shouldBlockPrompt(
   }
   return false;
 }
+/**
+ * Execute an async hook safely, catching and logging any errors.
+ * Used to wrap event handlers and hooks so that failures don't crash the plugin.
+ *
+ * @param name - Identifier for the hook (used in error logging)
+ * @param fn - The async function to execute
+ * @param log - Optional log function for error output
+ */
 export async function safeHook(
   name: string,
   fn: () => Promise<void>,
@@ -361,6 +456,18 @@ export async function safeHook(
  * 
  * Usage: Call this from any module that needs to schedule recovery.
  * The generation counter ensures only the most recent timer fires.
+ */
+/**
+ * Schedule a recovery timer with a generation counter to prevent stale timer races.
+ * If the session's generation counter has advanced since the timer was scheduled,
+ * the timer callback is a no-op. This prevents recovery from firing after
+ * a session reset or manual recovery has already occurred.
+ *
+ * @param sessions - The session map
+ * @param sessionId - The session to schedule recovery for
+ * @param delayMs - Delay in milliseconds before recovery fires
+ * @param recoverFn - The recovery function to call
+ * @param log - Optional log function
  */
 export function scheduleRecoveryWithGeneration(
   sessions: Map<string, SessionState>,

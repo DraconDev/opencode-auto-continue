@@ -17,6 +17,14 @@ export interface NudgeDeps {
   testRunner?: TestRunner;
 }
 
+/**
+ * Create the nudge module. Sends gentle reminders when the session is idle
+ * with open todos, encouraging the AI to continue working.
+ * Nudges use progressively stronger messages and respect:
+ * - Max nudge count per session
+ * - Pause during compaction/planning
+ * - Cooldown between nudges
+ */
 export function createNudgeModule(deps: NudgeDeps) {
   const { config, sessions, log, isDisposed, input } = deps;
 

@@ -127,6 +127,12 @@ export interface SessionState {
   dangerousCommandPromptTimer: ReturnType<typeof setTimeout> | null;
 }
 
+/**
+ * Create a fresh session state with default values.
+ * All timestamps are initialized to `Date.now()` at creation time.
+ *
+ * @returns A new SessionState object with sensible defaults
+ */
 export function createSession(): SessionState {
   const now = Date.now();
   return {
@@ -231,6 +237,17 @@ export function createSession(): SessionState {
   };
 }
 
+/**
+ * Get the effective token count for a session.
+ *
+ * After compaction, the estimated tokens are reduced by the compaction reduction factor,
+ * but they can drift low if accumulation undershoots. This function uses the actual
+ * DB growth since last compaction as a floor to prevent underestimating by more than
+ * ~80k tokens between compactions.
+ *
+ * @param s - The session state to query
+ * @returns The effective token count (the higher of estimated or real growth since baseline)
+ */
 export function getTokenCount(s: SessionState): number {
   if (s.realTokensBaseline > 0 && s.realTokens > 0) {
     // Post-compaction: estimatedTokens is our local (reduced) estimate.
@@ -243,6 +260,13 @@ export function getTokenCount(s: SessionState): number {
   return s.realTokens > 0 ? s.realTokens : s.estimatedTokens;
 }
 
+/**
+ * Clear all timer references in a session state and call clearTimeout on each.
+ * Handles: timer, nudgeTimer, nudgeRetryTimer, reviewDebounceTimer,
+ * compactionSafetyTimer, dangerousCommandPromptTimer.
+ *
+ * @param s - The session state whose timers should be cleared
+ */
 export function clearAllSessionTimers(s: SessionState): void {
   const timerFields: (keyof SessionState)[] = [
     'timer',

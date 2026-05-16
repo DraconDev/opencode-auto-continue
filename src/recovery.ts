@@ -60,6 +60,13 @@ function isHallucinationLoop(s: SessionState): boolean {
   return s.continueTimestamps.length >= LOOP_MAX_CONTINUES;
 }
 
+/**
+ * Create the recovery module. Handles stalled session detection and recovery:
+ * - Detects stalls (no output, text-only, busy-but-dead)
+ * - Applies exponential backoff on repeated failures
+ * - Detects hallucination loops (repeated identical continue messages)
+ * - Respects max recovery limits and cooldown periods
+ */
 export function createRecoveryModule(deps: RecoveryDeps) {
   const { config, sessions, log, input, isDisposed, writeStatusFile, cancelNudge, scheduleRecovery } = deps;
 
