@@ -375,7 +375,7 @@ The nudge system prevents sessions from going idle with pending todos. It follow
 
 **Nudge scheduling** (`scheduleNudge`):
 - Fires on every `session.idle` with pending todos (NO wasBusy dedup)
-- Also fires from the periodic todo poller as a fallback when `session.idle` events are unreliable
+- Also fires from the periodic todo poller (`processTodos`) as a fallback when `session.idle` events are unreliable — this ensures nudges still fire even if the idle event stream is disrupted
 - Schedules via `setTimeout` with `nudgeIdleDelayMs` (default 0 = immediate)
 - Resets nudge timer on `todo.updated` with pending todos
 - Cancels pending nudge on `message.updated` (user), `session.error`, `session.deleted`
@@ -415,9 +415,15 @@ The nudge system prevents sessions from going idle with pending todos. It follow
         │                      └──YES──► Send review prompt
         │                                      │
         │                                      └──reviewFired = true
+        │                                              │
+        │                             [Compaction may fire here]
         │
         └──NO──► Clear any pending debounce
 ```
+
+**Compaction during review**: If tokens exceed `opportunisticCompactAtTokens` after review fires, opportunistic compaction triggers during the review cycle. This is safe — the review prompt still reaches the AI because `session.compacted` does not clear `reviewFired`. The `session.compacted` handler checks `!s.compacting` before sending continue, so it waits until compaction is fully done before sending its own continue (chained after compaction completes).
+
+**Multi-cycle review**: After a review fires and the AI creates new pending todos, `processTodos()` resets `reviewFired = false` when `reviewCooldownMs` has elapsed, enabling another review cycle when todos complete again.
 
 ### Session Monitor (v7.5)
 
