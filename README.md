@@ -600,16 +600,26 @@ Minimal configuration with sensible defaults:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `includeTodoContext` | `true` | Fetch and include todos in messages |
-| `continueMessage` | `"Please continue..."` | Message without todo context |
-| `continueWithTodosMessage` | `"You have {pending}..."` | Message with todo context |
 
 ### Review Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `reviewOnComplete` | `true` | Send review when all todos done |
-| `reviewMessage` | `"All tasks completed..."` | Review prompt text |
+| `reviewMessage` | `"..."` | Review prompt text (TDD-focused, includes {testOutput} template) |
+| `reviewWithoutTestsMessage` | `"..."` | Review prompt without test output |
 | `reviewDebounceMs` | `500` | Debounce before triggering review |
+| `reviewCooldownMs` | `60000` | Min time between reviews |
+
+### Message Templates
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `shortContinueMessage` | `"Continue..."` | Short continue prompt |
+| `continueWithPlanMessage` | `"Finish your plan..."` | Continue when plan detected |
+| `continueMessage` | `"Continue from where you left off..."` | Default continue (TDD + TodoWrite) |
+| `continueWithTodosMessage` | `"You have {pending}..."` | Continue with todo context (TDD + TodoWrite) |
+| `maxAttemptsMessage` | `"..."` | Shown after max recovery attempts |
 
 ### Nudge Options
 
