@@ -26,7 +26,6 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
   const writeStatusFile = vi.fn();
   const triggerReview = vi.fn();
   const maybeOpportunisticCompact = vi.fn().mockResolvedValue(false);
-  const scheduleNudge = vi.fn();
 
   return {
     config: makeConfig(),
@@ -37,7 +36,6 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     writeStatusFile,
     triggerReview,
     maybeOpportunisticCompact,
-    scheduleNudge,
     mockTodo,
     ...overrides,
   } as any;
