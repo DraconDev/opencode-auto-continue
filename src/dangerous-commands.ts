@@ -12,8 +12,8 @@ export const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   // Privilege escalation
   /\bsudo\b/i,
 
-  // Destructive file removal (only rm -rf / or rm -rf ~, not rm in general)
-  /\brm\s+(-[a-z]*f[a-z]*\s+)?(?:\/|~(?:\s|$|\/)|\$HOME(?:$|\s|\/)|\/home(?:\/|$|\s))/i,
+  // Destructive file removal (root, home, and system directories)
+  /\brm\s+(-[a-z]*f[a-z]*\s+)?(?:\/|~(?:\s|$|\/)|\$HOME(?:$|\s|\/)|\/home(?:\/|$|\s)|\/(?:etc|var|usr|opt|boot|lib|sbin|bin|root|srv|sys|proc|dev|run|tmp)(?:\/|$|\s))/i,
 
   // Insecure permissions
   /\bchmod\s+(?:-R\s+)?777\b/i,
@@ -47,7 +47,7 @@ export function containsDangerousCommand(text: string): boolean {
 export function formatDangerousBlocklist(): string {
   return [
     "- `sudo` — privilege escalation (AI must never escalate to root)",
-    "- `rm -rf /` or `rm -rf ~` — destructive file removal (use `rm` safely)",
+    "- `rm -rf /`, `rm -rf ~`, or `rm -rf /etc`, `/var`, `/usr`, etc. — destructive file removal (use `rm` safely)",
     "- `chmod 777` — insecure permissions (never the right fix)",
     "- `mkfs` — filesystem formatting (destructive)",
     "- `dd of=/dev/...` — raw disk writes (destructive)",

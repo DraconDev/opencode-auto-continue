@@ -17,6 +17,24 @@ describe("dangerous commands", () => {
       expect(containsDangerousCommand("rm -rf $HOME")).toBe(true);
     });
 
+    it("detects rm -rf on system directories", () => {
+      expect(containsDangerousCommand("rm -rf /etc")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /var")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /usr")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /opt")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /boot")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /lib")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /sbin")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /bin")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /root")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /srv")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /sys")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /proc")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /dev")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /run")).toBe(true);
+      expect(containsDangerousCommand("rm -rf /tmp")).toBe(true);
+    });
+
     it("allows safe rm", () => {
       expect(containsDangerousCommand("rm -rf node_modules/")).toBe(false);
       expect(containsDangerousCommand("rm -rf ./dist")).toBe(false);
