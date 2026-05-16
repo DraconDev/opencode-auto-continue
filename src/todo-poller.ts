@@ -4,7 +4,7 @@ import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface TodoPollerDeps {
-  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "nudgeEnabled">;
+  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -12,8 +12,6 @@ export interface TodoPollerDeps {
   writeStatusFile: (sessionId: string) => void;
   triggerReview?: (sessionId: string) => void;
   maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<boolean>;
-  /** Schedule a nudge for the session. Used as fallback when session.idle events are unreliable. */
-  scheduleNudge?: (sessionId: string) => void;
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;
