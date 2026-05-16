@@ -1350,16 +1350,22 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 
 ## Changelog
 
-### v7.18+ — Reliability Fixes
+### v7.19+ — Reliability Fixes
 
-**Bug: reviewFired stuck true after multi-cycle workflows**
+**Bug: reviewFired stuck true after multi-cycle workflows** (Bug A)
 When todos went from "pending with cooldown active" directly to "all completed", the `reviewFired` flag remained set permanently, preventing the review prompt from ever firing again. Fix: `processTodos()` now detects this stale state and resets `reviewFired = false` after cooldown expires, ensuring reviews fire reliably in multi-cycle scenarios.
 
-**Bug: continue lost when session.idle fires during active recovery**
+**Bug: continue lost when session.idle fires during active recovery** (Bug B)
 When `session.idle` or `session.status(idle)` fired while recovery was in progress (`aborting=true` and `needsContinue=true`), the handler skipped calling `sendContinue()` and relied on recovery to send it. If recovery's call failed (e.g., blocked by prompt guard or concurrency guard), the continue was lost permanently — no future event would trigger it. Fix: both `handleSessionIdle` and `handleSessionStatus` now schedule a 3-second delayed fallback that fires `sendContinue()` with a `continueInProgress` guard, ensuring the continue is sent even if the primary path failed.
 
-**Bug: periodic poll skipped on fresh todo.updated but no nudge/review triggered**
+**Bug: periodic poll skipped on fresh todo.updated but no nudge/review triggered** (Bug C)
 When a `todo.updated` event arrived within 10 seconds of the last, `pollAndProcess()` skipped the API poll and also skipped calling `processTodos()`. This meant the `scheduleNudge` fallback and review debounce timer were never started for sessions with pending todos. Fix: `pollAndProcess()` now reprocesses cached todos (`s.lastKnownTodos`) even when the poll is skipped due to event freshness, ensuring nudge scheduling and review triggers work correctly in this path.
+
+**Delayed continue fallback**: Both `handleSessionIdle` and `handleSessionStatus` now schedule a 3-second delayed fallback when `session.idle/status(idle)` fires while `aborting=true` and `needsContinue=true`. The fallback is guarded by `isDisposed()` and `continueInProgress` to prevent double-sends.
+
+**Nudge fallback from todo poller**: `processTodos()` calls `scheduleNudge(sessionId)` when `hasPending && !nudgePaused`, providing a fallback nudge path independent of `session.idle` events.
+
+**Refactored reviewFired reset logic**: `processTodos()` now resets `reviewFired` earlier in a separate branch when `allCompleted && reviewFired && !inCooldown`, then falls through to the existing `allCompleted && !reviewFired` branch — eliminating ~20 lines of duplicated debounce/compact logic.
 
 ## Roadmap
 
