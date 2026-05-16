@@ -242,6 +242,8 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         await new Promise(r => setTimeout(r, remainingWait));
       }
 
+      // Safety net: re-check maxRecoveries after abort+wait (could have been incremented
+      // by a concurrent recovery during await points above)
       if (s.attempts >= config.maxRecoveries) {
         log('loop protection: max recoveries reached:', s.attempts);
         // Show toast when loop protection activates
@@ -346,7 +348,6 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       recordContinue(s);
       s.autoSubmitCount++;
       s.lastRecoveryTime = Date.now();
-      s.backoffAttempts = 0;
       s.messageCount++;
 
       s.nudgeCount = 0;
@@ -373,11 +374,18 @@ export function createRecoveryModule(deps: RecoveryDeps) {
         const readyForContinue = await isSessionIdle(sessionId);
         if (readyForContinue) {
           log('session is idle after recovery, sending queued continue immediately');
-          await deps.sendContinue(sessionId);
+          const SEND_CONTINUE_TIMEOUT_MS = 30000;
+          await Promise.race([
+            deps.sendContinue(sessionId),
+            new Promise<void>((_, reject) =>
+              setTimeout(() => reject(new Error('sendContinue timed out after ' + SEND_CONTINUE_TIMEOUT_MS + 'ms')), SEND_CONTINUE_TIMEOUT_MS)
+            ),
+          ]);
         } else {
           log('queued continue remains pending until session becomes idle:', sessionId);
         }
       }
+      s.backoffAttempts = 0;
     } catch (e) {
       log('recovery failed:', e);
       s.needsContinue = false;

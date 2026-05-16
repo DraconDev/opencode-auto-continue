@@ -92,7 +92,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                 }
               }
               orphanRecoveryCount++;
-              recover(id);
+              recover(id).catch((e: unknown) => log('[SessionMonitor] orphan recovery failed:', e));
             } else {
               setTimeout(() => {
                 if (!isDisposed()) {
@@ -109,7 +109,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
                         }
                       }
                       orphanRecoveryCount++;
-                      recover(id);
+                      recover(id).catch((e: unknown) => log('[SessionMonitor] delayed orphan recovery failed:', e));
                     }
                   }
                 }
@@ -137,11 +137,7 @@ export function createSessionMonitor(deps: SessionMonitorDeps): SessionMonitor {
               }
             }
             orphanRecoveryCount++;
-            recover(id);
-          }
-        }
-      }
-    }
+            recover(id).catch((e: unknown) => log('[SessionMonitor] stuck session recovery failed:', e));
 
     previousBusyCount = currentBusyCount;
   }

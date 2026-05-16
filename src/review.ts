@@ -154,13 +154,11 @@ export function createReviewModule(deps: ReviewDeps) {
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;
       if (s.continueRetryCount >= MAX_CONTINUE_RETRIES) {
-        log('continue retry limit reached, rescheduling recovery instead of giving up:', sessionId, 'retries:', s.continueRetryCount);
-        s.needsContinue = true;
+        log('continue retry limit reached, giving up:', sessionId, 'retries:', s.continueRetryCount);
+        s.needsContinue = false;
+        s.continueMessageText = '';
         s.continueRetryCount = 0;
         s.continueInProgress = false;
-        if (deps.scheduleRecovery) {
-          deps.scheduleRecovery(sessionId, config.shortContinueMessage ? 10000 : 30000);
-        }
         writeStatusFile(sessionId);
         return;
       }
