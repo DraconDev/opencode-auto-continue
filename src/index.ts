@@ -1002,6 +1002,20 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
           if (partType === "compaction") {
             log('compaction started, pausing stall monitoring');
             s.compacting = true;
+            // Safety timeout: if session.compacted never fires (event dropped or
+            // compaction failed silently), force-clear the flag so the session
+            // isn't stuck forever. Only start if attemptCompact() hasn't already
+            // started one.
+            if (config.compactionSafetyTimeoutMs > 0 && !s.compactionSafetyTimer) {
+              s.compactionSafetyTimer = setTimeout(() => {
+                if (s.compacting) {
+                  log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sid, ', force-clearing after', config.compactionSafetyTimeoutMs, 'ms');
+                  s.compacting = false;
+                  s.hardCompactionInProgress = false;
+                }
+              }, config.compactionSafetyTimeoutMs);
+              if (s.compactionSafetyTimer.unref) s.compactionSafetyTimer.unref();
+            }
           }
 
           // Handle text parts for plan detection

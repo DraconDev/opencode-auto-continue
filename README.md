@@ -17,7 +17,7 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 | **Hallucination Loop Detection** | Nothing — unique feature | Breaks infinite loops with abort+resume |
 | **Prompt Guard** | Nothing — unique feature | Prevents duplicate injections across plugin instances |
 | **Custom Prompts** | Nothing — unique feature | Per-session custom prompts with template variables |
-| **Session Monitor** | Nothing — unique feature | Detects orphan parents, discovers missed sessions, cleans idle sessions |
+| **Session Monitor** | Nothing — unique feature | Detects orphan parents after subagent completion |
 | **Terminal Timer** | Nothing — unique feature | Shows elapsed time in terminal title bar |
 | **Session Status File** | Nothing — unique feature | Real-time JSON status for external monitoring |
 | **Stall Pattern Detection** | Nothing — unique feature | Tracks which part types cause the most stalls |
