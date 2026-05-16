@@ -134,7 +134,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       if (s) {
         s.compacting = false;
         s.compactionTimedOut = true;
-        s.lastCompactionFailedAt = Date.now();
+        s.lastCompactionTimeoutAt = Date.now();
         if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
       }
       return false;
@@ -165,6 +165,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       if (success) {
         s.tokenLimitHits = 0;
         s.lastCompactionFailedAt = 0;
+        s.lastCompactionTimeoutAt = 0;
         return true;
       }
       if (s.compactionTimedOut) {
