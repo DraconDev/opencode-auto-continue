@@ -2731,6 +2731,7 @@ describe("test-fix loop", () => {
         terminalProgressEnabled: false,
         statusFilePath: "",
         autoAnswerQuestions: true,
+        autoAnswerSafeOnly: false,
       });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
@@ -2821,6 +2822,7 @@ describe("test-fix loop", () => {
         terminalProgressEnabled: false,
         statusFilePath: "",
         autoAnswerQuestions: true,
+        autoAnswerSafeOnly: false,
       });
 
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
