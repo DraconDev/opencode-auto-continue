@@ -339,7 +339,10 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       }
 
       // Prompt guard: prevent duplicate continue messages
-      const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
+      // Use a window that covers at least the time since last recovery
+      const timeSinceLastRecovery = s.lastRecoveryTime > 0 ? Date.now() - s.lastRecoveryTime : 0;
+      const minWindowMs = timeSinceLastRecovery > 0 ? timeSinceLastRecovery + 5000 : 0;
+      const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log, 30000, minWindowMs);
       if (isDuplicate) {
         log('prompt guard blocked duplicate continue, skipping recovery');
         s.aborting = false;

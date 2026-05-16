@@ -230,3 +230,20 @@ export function getTokenCount(s: SessionState): number {
   }
   return s.realTokens > 0 ? s.realTokens : s.estimatedTokens;
 }
+
+export function clearAllSessionTimers(s: SessionState): void {
+  const timerFields: (keyof SessionState)[] = [
+    'timer',
+    'nudgeTimer',
+    'nudgeRetryTimer',
+    'reviewDebounceTimer',
+    'compactionSafetyTimer',
+  ];
+  for (const field of timerFields) {
+    const t = s[field] as ReturnType<typeof setTimeout> | null;
+    if (t) {
+      clearTimeout(t);
+      (s as any)[field] = null;
+    }
+  }
+}

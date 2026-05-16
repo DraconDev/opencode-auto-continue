@@ -101,6 +101,16 @@ describe("dangerous commands", () => {
       expect(containsDangerousCommand(json)).toBe(false);
     });
 
+    it("detects dangerous command from input.command field", () => {
+      expect(containsDangerousCommand("sudo rm -rf /")).toBe(true);
+      expect(containsDangerousCommand("ls -la")).toBe(false);
+    });
+
+    it("does not false-positive on JSON key names", () => {
+      expect(containsDangerousCommand('{"command":"ls -la"}')).toBe(false);
+      expect(containsDangerousCommand('{"name":"bash","input":{"command":"npm install"}}')).toBe(false);
+    });
+
     it("handles empty string", () => {
       expect(containsDangerousCommand("")).toBe(false);
     });

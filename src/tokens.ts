@@ -35,6 +35,36 @@ const NO_TOKENS: SessionTokens = {
 let dbPath: string | null = null;
 let dbLastError: string = "";
 
+interface CachedDb {
+  db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void };
+  path: string;
+  idleTimer: ReturnType<typeof setTimeout> | null;
+}
+
+let cachedDb: CachedDb | null = null;
+const DB_IDLE_TIMEOUT_MS = 30000;
+
+function closeCachedDb(): void {
+  if (cachedDb) {
+    if (cachedDb.idleTimer) clearTimeout(cachedDb.idleTimer);
+    try { cachedDb.db.close(); } catch {}
+    cachedDb = null;
+  }
+}
+
+function resetIdleTimer(): void {
+  if (!cachedDb) return;
+  if (cachedDb.idleTimer) clearTimeout(cachedDb.idleTimer);
+  cachedDb.idleTimer = setTimeout(() => {
+    closeCachedDb();
+  }, DB_IDLE_TIMEOUT_MS);
+  if (cachedDb.idleTimer.unref) cachedDb.idleTimer.unref();
+}
+
+export function closeDb(): void {
+  closeCachedDb();
+}
+
 export function getDbPath(): string {
   if (dbPath) return dbPath;
 
@@ -55,6 +85,7 @@ export function getDbPath(): string {
 }
 
 export function setDbPath(path: string): void {
+  if (dbPath !== path) closeCachedDb();
   dbPath = path;
 }
 
@@ -69,30 +100,37 @@ export function getSessionTokens(sessionId: string): SessionTokens {
     const fs = require("node:fs");
     if (!fs.existsSync(path)) {
       dbLastError = `DB not found: ${path}`;
+      closeCachedDb();
       return NO_TOKENS;
     }
 
-    // Try Bun's SQLite first (OpenCode runs on Bun, not Node.js)
-    // Then fall back to node:sqlite (available in Node 22.5+)
-    let db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void } | null = null;
-    let usingBun = false;
-
-    try {
-      const bunSqlite = require("bun:sqlite");
-      db = new bunSqlite.Database(path, { readonly: true });
-      usingBun = true;
-    } catch {
-      try {
-        const { DatabaseSync } = require("node:sqlite");
-        db = new DatabaseSync(path, { open: true }) as any;
-      } catch {
-        dbLastError = `No SQLite module available (tried bun:sqlite and node:sqlite)`;
-        return NO_TOKENS;
-      }
+    if (cachedDb && cachedDb.path !== path) {
+      closeCachedDb();
     }
 
+    if (!cachedDb) {
+      let db: { prepare(sql: string): { get(...params: unknown[]): unknown }; close(): void } | null = null;
+
+      try {
+        const bunSqlite = require("bun:sqlite");
+        db = new bunSqlite.Database(path, { readonly: true });
+      } catch {
+        try {
+          const { DatabaseSync } = require("node:sqlite");
+          db = new DatabaseSync(path, { open: true }) as any;
+        } catch {
+          dbLastError = `No SQLite module available (tried bun:sqlite and node:sqlite)`;
+          return NO_TOKENS;
+        }
+      }
+
+      cachedDb = { db: db!, path, idleTimer: null };
+    }
+
+    resetIdleTimer();
+
     try {
-      const row = db!
+      const row = cachedDb.db
         .prepare(
           "SELECT tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write FROM session WHERE id = ?"
         )
@@ -122,11 +160,14 @@ export function getSessionTokens(sessionId: string): SessionTokens {
         cacheWrite: row.tokens_cache_write,
         total,
       };
-    } finally {
-      db?.close();
+    } catch (queryError: any) {
+      dbLastError = queryError?.message || String(queryError);
+      closeCachedDb();
+      return NO_TOKENS;
     }
   } catch (e: any) {
     dbLastError = e?.message || String(e);
+    closeCachedDb();
     return NO_TOKENS;
   }
 }

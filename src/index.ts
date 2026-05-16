@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import type { TypedPluginInput } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
-import { type SessionState, createSession, getTokenCount } from "./session-state.js";
+import { type SessionState, createSession, getTokenCount, clearAllSessionTimers } from "./session-state.js";
 import {
   isPlanContent,
   containsToolCallAsText,
@@ -267,7 +267,8 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   config = validateConfig(config);
 
   const sessions = new Map<string, SessionState>();
-  let isDisposed = false;
+  let disposed = false;
+  const isDisposed = () => disposed;
 
   function getSession(id: string): SessionState {
     if (!sessions.has(id)) {
@@ -300,27 +301,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
   function clearTimer(id: string) {
     const s = sessions.get(id);
     if (!s) return;
-    // FIX 6: Clear all timers, not just recovery timer
-    if (s.timer) {
-      clearTimeout(s.timer);
-      s.timer = null;
-    }
-    if (s.nudgeTimer) {
-      clearTimeout(s.nudgeTimer);
-      s.nudgeTimer = null;
-    }
-    if (s.nudgeRetryTimer) {
-      clearTimeout(s.nudgeRetryTimer);
-      s.nudgeRetryTimer = null;
-    }
-    if (s.reviewDebounceTimer) {
-      clearTimeout(s.reviewDebounceTimer);
-      s.reviewDebounceTimer = null;
-    }
-    if (s.compactionSafetyTimer) {
-      clearTimeout(s.compactionSafetyTimer);
-      s.compactionSafetyTimer = null;
-    }
+    clearAllSessionTimers(s);
   }
 
   function resetSession(id: string) {
@@ -829,17 +810,21 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
                 if (toolName === s.lastToolName && toolName) {
                   s.toolRepeatCount++;
                   if (s.toolRepeatCount >= config.toolLoopMaxRepeats) {
-                    log('tool loop detected:', toolName, 'called', s.toolRepeatCount, 'times, session:', sid);
+                    log('tool loop detected:', toolName, 'repeated', s.toolRepeatCount, 'times, session:', sid);
                   }
                 } else {
-                  s.toolRepeatCount = 1;
+                  s.toolRepeatCount = 0;
                   s.lastToolName = toolName;
                 }
 
                 // Layer 2: Dangerous command detection — fire-and-forget abort
                 if (config.dangerousCommandBlocking && (toolName === "bash" || toolName === "shell" || toolName === "execute")) {
-                  const cmdText = JSON.stringify(e?.properties?.part?.input || e?.properties?.part) || "";
-                  if (containsDangerousCommand(cmdText)) {
+                  const partInput = e?.properties?.part?.input;
+                  const cmdText = (typeof partInput?.command === 'string' && partInput.command)
+                    || (Array.isArray(partInput) && typeof partInput[0] === 'string' && partInput[0])
+                    || (typeof partInput === 'string' && partInput)
+                    || "";
+                  if (cmdText && containsDangerousCommand(cmdText)) {
                     log('DANGEROUS COMMAND BLOCKED — aborting session:', sid, 'tool:', toolName);
                     input.client.session.abort({
                       path: { id: sid },
@@ -1177,7 +1162,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       // session.idle fires when the model stops generating and goes idle
       // Schedule a nudge after delay (nudge module handles cooldown, loop protection, etc.)
       if (event?.type === "session.idle") {
-        if (isDisposed) return;
+        if (disposed) return;
         const s = getSession(sid);
         clearTimer(sid);
         if (s.needsContinue) {
@@ -1235,7 +1220,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
         // FIX 3: Queue and send continue after compaction to resume work
         // NOTE: Don't check s.aborting — compaction can happen during recovery,
         // and recovery needs the continue to resume after compaction completes.
-        if (!s.userCancelled && !isDisposed) {
+        if (!s.userCancelled && !disposed) {
           s.needsContinue = true;
           s.continueMessageText = s.planning ? config.continueWithPlanMessage : config.shortContinueMessage;
           review.sendContinue(sid).catch((e) => log('continue after compaction failed:', e));
@@ -1352,7 +1337,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     },
     dispose: () => {
       log('disposing plugin');
-      isDisposed = true;
+      disposed = true;
       sessionMonitor.stop();
       todoPoller.stopPeriodicPoll();
       clearPendingWrites();
@@ -1362,26 +1347,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
       customPromptRuntimes.clear();
       latestCustomPromptRuntime = null;
       sessions.forEach((s) => {
-        if (s.timer) {
-          clearTimeout(s.timer);
-          s.timer = null;
-        }
-        if (s.compactionSafetyTimer) {
-          clearTimeout(s.compactionSafetyTimer);
-          s.compactionSafetyTimer = null;
-        }
-        if (s.reviewDebounceTimer) {
-          clearTimeout(s.reviewDebounceTimer);
-          s.reviewDebounceTimer = null;
-        }
-        if (s.nudgeTimer) {
-          clearTimeout(s.nudgeTimer);
-          s.nudgeTimer = null;
-        }
-        if (s.nudgeRetryTimer) {
-          clearTimeout(s.nudgeRetryTimer);
-          s.nudgeRetryTimer = null;
-        }
+        clearAllSessionTimers(s);
       });
       sessions.clear();
     }

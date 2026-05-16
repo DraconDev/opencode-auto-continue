@@ -313,11 +313,14 @@ export async function shouldBlockPrompt(
   sessionId: string,
   promptText: string,
   input: TypedPluginInput,
-  log?: (...args: unknown[]) => void
+  log?: (...args: unknown[]) => void,
+  windowMs: number = 30000,
+  minWindowMs: number = 0
 ): Promise<boolean> {
   try {
     const messages = await fetchRecentMessages(sessionId, input);
     const now = Date.now();
+    const effectiveWindow = Math.max(windowMs, minWindowMs);
     
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i] as any;
@@ -326,7 +329,7 @@ export async function shouldBlockPrompt(
       
       const msgTime = getMessageTimestamp(msg);
       if (msgTime === null) continue;
-      if (now - msgTime > 30000) continue;
+      if (now - msgTime > effectiveWindow) continue;
       
       const text = getMessageText(msg);
       if (hasSimilarPrompt(text, promptText)) {
