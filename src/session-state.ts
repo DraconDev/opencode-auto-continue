@@ -225,8 +225,13 @@ export function createSession(): SessionState {
 }
 
 export function getTokenCount(s: SessionState): number {
-  if (s.realTokensBaseline > 0) {
-    return s.estimatedTokens;
+  if (s.realTokensBaseline > 0 && s.realTokens > 0) {
+    // Post-compaction: estimatedTokens is our local (reduced) estimate.
+    // But it can drift low if accumulation undershoots (e.g. assistant text
+    // with no info.tokens). Use actual DB growth since last compaction as a
+    // floor so we never ignore >80k of new content between compactions.
+    const growth = Math.max(0, s.realTokens - s.realTokensBaseline);
+    return Math.max(s.estimatedTokens, growth);
   }
   return s.realTokens > 0 ? s.realTokens : s.estimatedTokens;
 }
