@@ -9,6 +9,7 @@ export interface TestResult {
   passed: boolean;
   timedOut: boolean;
   skipped: boolean;
+  exitCode: number;
 }
 
 export interface TestRunnerDeps {
@@ -46,7 +47,7 @@ function findGateFile(command: string, gates: Record<string, string>): string | 
   // Longest prefix match: sort gate keys by length descending
   const sortedKeys = Object.keys(gates).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
-    if (prefix === key || prefix.startsWith(key)) {
+    if (prefix === key || (prefix.startsWith(key) && prefix.length > key.length && !/^[a-zA-Z0-9]/.test(prefix[key.length]))) {
       return gates[key];
     }
   }
@@ -64,6 +65,12 @@ function isLockContention(output: string): boolean {
 
 function hasRealResults(results: TestResult[]): boolean {
   return results.some((r) => !r.skipped);
+}
+
+const SHELL_META_RE = /[;&|`$(){}!\n\r]/;
+
+function isSafeCommand(cmd: string): boolean {
+  return !SHELL_META_RE.test(cmd);
 }
 
 export function createTestRunner(deps: TestRunnerDeps) {
@@ -90,7 +97,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
         const gatePath = join(dir, gateFile);
         if (!existsSync(gatePath)) {
           log("test command skipped — gate file not found:", gateFile, "for command:", cmd, "in:", dir);
-          results.push({ command: cmd, output: `(${gateFile} not found in project)`, passed: false, timedOut: false, skipped: true });
+          results.push({ command: cmd, output: `(${gateFile} not found in project)`, passed: false, timedOut: false, skipped: true, exitCode: 0 });
           continue;
         }
       }
@@ -103,7 +110,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
         result.output = "(lock contention — another process holds the build lock)";
       }
       // Retroactive skip: if output suggests environment error, mark as skipped
-      if (!result.passed && !result.skipped && !result.timedOut && isEnvError(result.output, result.passed ? 0 : -1)) {
+      if (!result.passed && !result.skipped && !result.timedOut && isEnvError(result.output, result.exitCode)) {
         log("test command retroactively skipped — env error detected:", cmd);
         result.skipped = true;
         result.output = result.output || "(environment error — command not applicable)";
@@ -119,8 +126,22 @@ export function createTestRunner(deps: TestRunnerDeps) {
     const timeout = config.testCommandTimeoutMs;
     const cwd = input.directory || undefined;
 
+    if (!isSafeCommand(cmd)) {
+      log("test command rejected — contains shell metacharacters:", cmd);
+      return {
+        command: cmd,
+        output: "(command rejected — contains shell metacharacters; set testCommands from a trusted config)",
+        passed: false,
+        timedOut: false,
+        skipped: true,
+        exitCode: -1,
+      };
+    }
+
     try {
+      let subprocess: any = null;
       const outputPromise = input.$`${{ raw: cmd }}`.cwd(cwd ?? ".").quiet().then((p: any) => {
+        subprocess = p;
         const stdout = typeof p?.stdout === "string" ? p.stdout : "";
         const stderr = typeof p?.stderr === "string" ? p.stderr : "";
         const exitCode = p?.exitCode ?? 0;
@@ -128,14 +149,25 @@ export function createTestRunner(deps: TestRunnerDeps) {
       });
 
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      const timeoutPromise = new Promise<{ output: string; exitCode: number }>((_resolve, reject) => {
+      const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error(`timeout after ${timeout}ms`)), timeout);
       });
 
-      const { output, exitCode } = await Promise.race([outputPromise, timeoutPromise]);
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      let result: { output: string; exitCode: number };
+      try {
+        result = await Promise.race([outputPromise, timeoutPromise]);
+      } catch (e: any) {
+        const isTimeout = e?.message?.includes("timeout");
+        if (isTimeout && subprocess && typeof subprocess.kill === "function") {
+          try { subprocess.kill("SIGTERM"); } catch {}
+        }
+        throw e;
+      } finally {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+      }
 
-      // Exit code 127 = command not found → skip
+      const { output, exitCode } = result;
+
       if (exitCode === EXIT_CODE_NOT_FOUND) {
         return {
           command: cmd,
@@ -143,6 +175,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
           passed: false,
           timedOut: false,
           skipped: true,
+          exitCode,
         };
       }
 
@@ -152,6 +185,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
         passed: exitCode === 0,
         timedOut: false,
         skipped: false,
+        exitCode,
       };
     } catch (e: any) {
       const isTimeout = e?.message?.includes("timeout");
@@ -163,11 +197,11 @@ export function createTestRunner(deps: TestRunnerDeps) {
           passed: false,
           timedOut: true,
           skipped: false,
+          exitCode: -1,
         };
       }
 
       const errOutput = e?.stdout || e?.stderr || e?.message || String(e);
-      // Check if the error output suggests lock contention
       if (isLockContention(errOutput)) {
         return {
           command: cmd,
@@ -175,9 +209,9 @@ export function createTestRunner(deps: TestRunnerDeps) {
           passed: false,
           timedOut: false,
           skipped: true,
+          exitCode: e?.exitCode ?? -1,
         };
       }
-      // Check if the error output suggests an env error
       if (isEnvError(errOutput, EXIT_CODE_NOT_FOUND)) {
         return {
           command: cmd,
@@ -185,6 +219,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
           passed: false,
           timedOut: false,
           skipped: true,
+          exitCode: e?.exitCode ?? -1,
         };
       }
 
@@ -194,6 +229,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
         passed: false,
         timedOut: false,
         skipped: false,
+        exitCode: e?.exitCode ?? 1,
       };
     }
   }
@@ -228,4 +264,4 @@ export function createTestRunner(deps: TestRunnerDeps) {
 export type TestRunner = ReturnType<typeof createTestRunner>;
 
 // Export for testing
-export { findGateFile, isEnvError, isLockContention, hasRealResults };
+export { findGateFile, isEnvError, isLockContention, hasRealResults, isSafeCommand };
