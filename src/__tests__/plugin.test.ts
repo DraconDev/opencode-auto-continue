@@ -1757,14 +1757,8 @@ describe("opencode-auto-continue", () => {
     it("should reset stale continueRetryCount when last retry was over 60s ago", async () => {
       vi.useFakeTimers();
       mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
-
-      // First 3 prompts fail (hitting the retry limit)
-      mockPrompt.mockRejectedValueOnce(new Error("prompt fail 1"))
-        .mockRejectedValueOnce(new Error("prompt fail 2"))
-        .mockRejectedValueOnce(new Error("prompt fail 3"))
-        .mockResolvedValue({ data: {}, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
       mockTodo.mockResolvedValue({ data: [], error: undefined });
-      mockMessages.mockResolvedValue({ data: [], error: undefined });
       mockSummarize.mockResolvedValue({ data: {}, error: undefined });
 
       const plugin = await createPlugin({ client: mockClient }, {

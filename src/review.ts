@@ -169,6 +169,16 @@ export function createReviewModule(deps: ReviewDeps) {
     }
     s.continueInProgress = true;
 
+    const CONTINUE_SAFETY_TIMEOUT_MS = 60000;
+    const continueSafetyTimer = setTimeout(() => {
+      const current = sessions.get(sessionId);
+      if (current && current.continueInProgress) {
+        log('continue safety timeout — force-clearing continueInProgress for:', sessionId);
+        current.continueInProgress = false;
+      }
+    }, CONTINUE_SAFETY_TIMEOUT_MS);
+    if ((continueSafetyTimer as any).unref) (continueSafetyTimer as any).unref();
+
     try {
       const messageText = s.continueMessageText;
       const MAX_CONTINUE_RETRIES = 3;
@@ -186,7 +196,6 @@ export function createReviewModule(deps: ReviewDeps) {
         s.needsContinue = false;
         s.continueMessageText = '';
         s.continueRetryCount = 0;
-        s.continueInProgress = false;
         writeStatusFile(sessionId);
         return;
       }
@@ -195,7 +204,6 @@ export function createReviewModule(deps: ReviewDeps) {
       const now = Date.now();
       if (s.continueRetryCount > 0 && now - s.lastContinueRetryAt < CONTINUE_RETRY_BACKOFF_MS) {
         log('continue retry backoff active, skipping:', sessionId);
-        s.continueInProgress = false;
         return;
       }
 
@@ -203,7 +211,6 @@ export function createReviewModule(deps: ReviewDeps) {
       const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log);
       if (isDuplicate) {
         log('prompt guard blocked duplicate continue, skipping:', sessionId);
-        s.continueInProgress = false;
         return;
       }
 
@@ -238,8 +245,7 @@ export function createReviewModule(deps: ReviewDeps) {
       s.continueMessageText = '';
       s.continueRetryCount = 0;
       s.lastContinueRetryAt = 0;
-      s.continueInProgress = false;
-      s.lastContinueAt = Date.now(); // Track for recovery success toast
+      s.lastContinueAt = Date.now();
 
       log('continue sent successfully');
       s.recoverySuccessful++;
@@ -260,7 +266,6 @@ export function createReviewModule(deps: ReviewDeps) {
       // FIX 1: Track retry count on failure
       s.continueRetryCount++;
       s.lastContinueRetryAt = Date.now();
-      s.continueInProgress = false;
       writeStatusFile(sessionId);
 
       // Handle token limit error
@@ -307,6 +312,9 @@ export function createReviewModule(deps: ReviewDeps) {
           log('compaction failed, giving up on this recovery');
         }
       }
+    } finally {
+      clearTimeout(continueSafetyTimer);
+      s.continueInProgress = false;
     }
   }
 
