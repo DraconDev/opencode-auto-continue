@@ -1289,55 +1289,6 @@ opencode plugin @mohak34/opencode-notifier@latest --global
 
 ## Roadmap
 
-### Recently Completed ✅
-
-| Feature | Status | Version |
-|---------|--------|---------|
-| **Session Monitor** | ✅ Complete | v7.2.0 |
-| - Orphan parent detection | Detects stuck parents after subagent completion |
-| - Session discovery | Periodic polling catches missed sessions |
-| - Idle cleanup | Automatic memory management |
-| **Custom Prompts API** | ✅ Complete | v6.62 |
-| **AI Advisory** | ✅ Complete | v6.5 |
-| **Tool-Text Recovery** | ✅ Complete | v6.54 |
-| **Hallucination Loop Detection** | ✅ Complete | v6.54 |
-| **Cross-Instance Prompt Guard** | ✅ Complete | v6.54 |
-| **Busy-But-Dead Detection** | ✅ Complete | v7.8.254 |
-
-### In Progress 🚧
-
-| Feature | Priority | Target |
-|---------|----------|--------|
-| **Config Presets** | Medium | v7.3 |
-| Pre-defined profiles: `default`, `aggressive`, `gentle`, `subagent` |
-| **Subagent Stuck Detection** | Medium | v7.4 |
-| Per-subagent timeout monitoring with tool-call awareness |
-
-### Planned 📋
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| **Plan-Driven Continue Messages** | High | Read PLAN.md and send contextual "next item is X" continue messages when todos run out. Code exists (`buildPlanContinueMessage`) but not wired into recovery flow. |
-| **Test-Fix Loop** | High | ✅ **Implemented in v7.8.306** — reviewFired resets when new pending todos appear after review, enabling automatic test-run → fix → re-test cycles. |
-| **v7.0 Autonomy Module** | High | Self-improving recovery with intent extraction and strategy selection |
-| **Learning Database** | High | SQLite-based effectiveness tracking for recovery strategies |
-| **Predictive Engine** | Medium | Predict stalls before they happen using token trends |
-| **Health Endpoint** | Medium | JSON endpoint for external monitoring integrations |
-| **Telemetry (opt-in)** | Low | Anonymous recovery success rates and stall pattern stats |
-| **Multi-Session Orchestration** | Low | Coordinate recovery across concurrent sessions |
-
-### v7.0 Vision 🎯
-
-The v7.0 release transforms the plugin from reactive recovery to **proactive session intelligence**:
-
-1. **Intent Extraction** — Understand what the user is trying to accomplish
-2. **Task Graphs** — Build structured understanding from todos
-3. **Strategy Pool** — Select optimal recovery strategy based on context
-4. **Self-Improving** — Learn which strategies work best per pattern
-5. **Meta-Cognition** — Track own effectiveness and adapt behavior
-
-See `docs/VISION-v7.0.md` for full architecture details.
-
 ---
 
 ## Performance
