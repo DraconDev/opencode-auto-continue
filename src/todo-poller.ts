@@ -143,6 +143,11 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     const lastEvent = lastEventTodoAt.get(sessionId);
     if (lastEvent && Date.now() - lastEvent < TODO_EVENT_FRESH_MS) {
       log("todo poll skipped — recent todo.updated event:", sessionId);
+      const s = sessions.get(sessionId);
+      if (s && s.lastKnownTodos && s.lastKnownTodos.length > 0) {
+        log("todo poll skipped but reprocessing cached todos:", sessionId);
+        processTodos(sessionId, s.lastKnownTodos);
+      }
       return null;
     }
 

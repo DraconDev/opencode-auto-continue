@@ -124,6 +124,34 @@ describe("todo-poller", () => {
       expect(deps.mockTodo).not.toHaveBeenCalled();
     });
 
+    it("should process cached todos when poll is skipped due to freshness", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+
+      // First, populate cached todos via processTodos
+      poller.processTodos("test", [
+        { id: "t1", content: "Task A", status: "in_progress" },
+      ]);
+      expect(s.hasOpenTodos).toBe(true);
+      expect(deps.scheduleNudge).toHaveBeenCalledWith("test");
+
+      // Simulate a recent todo.updated event (marks freshness)
+      poller.markEventTodoReceived("test");
+
+      // Reset the mock to check if scheduleNudge is called again
+      deps.scheduleNudge.mockClear();
+
+      // Poll should be skipped, but cached todos should be reprocessed
+      const result = await poller.pollAndProcess("test");
+
+      expect(result).toBeNull();
+      expect(deps.mockTodo).not.toHaveBeenCalled();
+      expect(deps.scheduleNudge).toHaveBeenCalledWith("test");
+    });
+
     it("should poll after event freshness window expires", async () => {
       vi.useFakeTimers();
       const deps = makeDeps();
