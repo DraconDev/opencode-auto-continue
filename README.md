@@ -325,6 +325,7 @@ Start stall timer (stallTimeoutMs)
         │                   Cancel any pending nudge
         │
         └──[session.idle]──► Clear timer, send any queued continue
+                            (if recovery in progress, schedules delayed fallback)
 ```
 
 **Recovery module** (`createRecoveryModule`):
@@ -332,6 +333,8 @@ Start stall timer (stallTimeoutMs)
 - Called from event handlers in `index.ts`
 - Receives `writeStatusFile` and `cancelNudge` as dependencies
 - Uses `input as any` for all client API calls
+- Sends continue via `sendContinue()` — guarded by `continueInProgress` flag and prompt guard
+- If `session.idle` fires while `aborting=true`, a delayed fallback (3s) ensures the continue is sent even if the primary `sendContinue` call was blocked
 
 **Exponential backoff**:
 - After `maxRecoveries` attempts, delay doubles each time
