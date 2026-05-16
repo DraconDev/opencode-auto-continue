@@ -911,10 +911,12 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
               const stepTokens = part.tokens;
               const totalStepTokens = (stepTokens.input || 0) + (stepTokens.output || 0) + (stepTokens.reasoning || 0);
               if (totalStepTokens > 0) {
-                // step-finish tokens represent the actual tokens used in this completion step
-                // This is the most accurate token count available
-                s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
-                log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
+                if (s.realTokensBaseline > 0 && totalStepTokens > s.estimatedTokens) {
+                  log('step-finish tokens ignored (post-compaction, tokens likely pre-compaction):', totalStepTokens, 'estimated:', s.estimatedTokens, 'session:', sid);
+                } else {
+                  s.estimatedTokens = Math.max(s.estimatedTokens, totalStepTokens);
+                  log('step-finish tokens:', totalStepTokens, 'input:', stepTokens.input, 'output:', stepTokens.output, 'reasoning:', stepTokens.reasoning, 'session:', sid);
+                }
               }
             }
           }

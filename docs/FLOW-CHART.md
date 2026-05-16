@@ -377,7 +377,7 @@ Nudges remind the AI to continue when idle with pending todos.
 ┌─────────────────────────────┐
 │ scheduleNudge()             │
 │ Set timeout for             │
-│ nudgeIdleDelayMs (500ms)    │
+│ nudgeIdleDelayMs (0ms)      │
 └──────┬──────────────────────┘
        │
        ▼
@@ -735,8 +735,8 @@ Plugin Init
        └──► Failure ──► Return false
 ```
 
-**Post-compaction**: `estimatedTokens *= (1 - compactReductionFactor)`
-- Default factor: 0.7 → tokens reduced to 30%
+**Post-compaction**: `estimatedTokens *= compactReductionFactor`
+- Default factor: 0.7 → 70% of tokens remain (30% removed)
 
 ---
 
@@ -746,7 +746,7 @@ Plugin Init
 
 | Condition | Recovery? | Notes |
 |-----------|-----------|-------|
-| Session busy, no progress for `stallTimeoutMs` | ✅ Yes | Default 45s |
+| Session busy, no progress for `stallTimeoutMs` | ✅ Yes | Default 180s (3 min) |
 | Session busy, progress within timeout | ❌ No | Timer resets |
 | Session idle | ❌ No | Timer cleared |
 | `planning=true` | ❌ No | Monitoring paused |
