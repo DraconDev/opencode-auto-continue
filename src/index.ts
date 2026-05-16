@@ -1188,7 +1188,11 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
           const stopCheck = stopConditions.checkStopConditions(sid);
           if (!stopCheck.shouldStop) {
-             if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
+            // Safety net: re-check proactive compact threshold during idle
+            // (proactive compact normally only runs during message events, so idle
+            // periods after long silent gaps could miss the threshold without this)
+            compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact failed during idle:', e));
+            if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
               compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
             }
             nudge.scheduleNudge(sid);
