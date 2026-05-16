@@ -1044,14 +1044,24 @@ This shows a progress indicator in terminal tabs (iTerm2, WezTerm, Windows Termi
 
 | Event | Action |
 |-------|--------|
-| `session.status` (busy) | Reset timer, update progress, start timers |
-| `session.status` (idle) | Clear timer, clear terminal title/progress |
+| `session.created` | Initialize session state, inject dangerous command warning |
+| `session.status` (busy) | Start/reset stall timer (status pings do NOT count as progress) |
+| `session.status` (idle) | Send queued continue if `needsContinue`; trigger opportunistic compaction |
 | `session.status` (retry) | Treat as busy (progress indicator) |
-| `message.part.updated` (real) | Update progress, reset attempts |
-| `message.part.updated` (synthetic) | **Ignore** (prevents loops) |
-| `message.part.updated` (compaction) | Pause monitoring; `session.compacted` resumes |
-| `session.compacted` | Clear compacting flag, preserve session state, reset estimates |
-| `message.part.updated` (plan text) | Pause monitoring |
+| `session.compacted` | Clear compacting flag, reset estimates, queue continue, re-schedule nudge |
+| `session.idle` | Poll todos, schedule nudge if open todos exist |
+| `session.updated` | Write status file |
+| `session.deleted` / `session.ended` | Full session cleanup |
+| `message.updated` (assistant) | Accumulate token counts |
+| `message.updated` (user) | Reset all counters, cancel nudge |
+| `message.part.updated` (real progress) | Update timestamps, reset attempts, trigger compaction check |
+| `message.part.updated` (text/reasoning with tool-call-as-text) | Do NOT reset progress — model stuck generating XML |
+| `message.part.updated` (compaction) | Set `compacting = true`, start safety timeout |
+| `message.part.updated` (plan text) | Set `planning = true`, schedule planning timeout |
+| `message.part.updated` (tool/file/subtask/step) | Clear `planning` flag, update tool loop counter |
+| `todo.updated` (all done) | Trigger review after debounce |
+| `todo.updated` (has pending) | Set `hasOpenTodos = true` |
+| `question.asked` | Auto-reply with first option if `autoAnswerQuestions` enabled |
 | `message.created` / `message.part.added` | Reset timer, reset attempts |
 | `message.updated` (user) | Reset counters, cancel nudge |
 | `session.error` (MessageAbortedError) | Set userCancelled, clear timer |
