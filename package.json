@@ -1,7 +1,7 @@
 {
   "name": "@dracondev/opencode-auto-continue",
   "version": "7.14.21",
-  "description": "Auto-continue stalled OpenCode sessions — stall recovery, todo nudging, review on completion, and AI-driven session analysis",
+  "description": "Auto-continue stalled OpenCode sessions \u2014 stall recovery, todo nudging, review on completion, and AI-driven session analysis",
   "keywords": [
     "opencode",
     "opencode-plugin",
@@ -12,7 +12,7 @@
     "abort",
     "continue"
   ],
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "author": "dracon",
   "homepage": "https://github.com/DraconDev/opencode-auto-continue",
   "repository": {
