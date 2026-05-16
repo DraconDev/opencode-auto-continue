@@ -56,12 +56,17 @@ export function createStatusFileModule(deps: StatusFileDeps) {
     
     const timeout = setTimeout(() => {
       pendingWrites.delete(sessionId);
-      doWriteStatusFile(sessionId);
+      if (writeInProgress) {
+        writeQueue.push(sessionId);
+      } else {
+        doWriteStatusFile(sessionId);
+      }
     }, DEBOUNCE_MS);
     pendingWrites.set(sessionId, timeout);
   }
 
   function doWriteStatusFile(sessionId: string) {
+    writeInProgress = true;
     try {
       ensureLogDir(logDir);
       const s = sessions.get(sessionId);
@@ -206,6 +211,14 @@ export function createStatusFileModule(deps: StatusFileDeps) {
       renameSync(tmpFile, statusFile);
     } catch (e) {
       log('status file write failed:', e);
+    } finally {
+      writeInProgress = false;
+      // Drain queued writes — only process the latest session
+      if (writeQueue.length > 0) {
+        const next = writeQueue.pop()!;
+        writeQueue.length = 0; // drop older queued writes
+        doWriteStatusFile(next);
+      }
     }
   }
 
