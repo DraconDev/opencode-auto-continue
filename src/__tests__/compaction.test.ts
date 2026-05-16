@@ -1288,4 +1288,77 @@ describe("compaction module unit tests", () => {
       await flushPromises();
     });
   });
+
+  describe("checkBackoff (unit)", () => {
+    it("returns blocked=false when no failures or timeouts", async () => {
+      const s = createSessionState({ estimatedTokens: 200000 });
+      sessions.set("test", s);
+      module = createModule();
+
+      const result = await module.maybeProactiveCompact("test");
+      // Not blocked — just below threshold
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).not.toContain("backoff");
+    });
+
+    it("failure backoff takes priority over timeout backoff when both are recent", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 5000,
+        lastCompactionTimeoutAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionFailBackoffMs: 60000,
+        compactionTimeoutBackoffMs: 10000,
+      });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("failure backoff");
+    });
+
+    it("timeout backoff is used when only timeout is recent", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionTimeoutAt: Date.now() - 5000,
+      });
+      sessions.set("test", s);
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionTimeoutBackoffMs: 10000,
+        compactionFailBackoffMs: 60000,
+      });
+
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+      const allLogs = log.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(allLogs).toContain("timeout backoff");
+    });
+
+    it("neither blocks when both backoffs have expired", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionFailedAt: Date.now() - 70000,
+        lastCompactionTimeoutAt: Date.now() - 20000,
+      });
+      sessions.set("test", s);
+      mockSummarize.mockResolvedValue({ data: {} });
+      module = createModule({
+        proactiveCompactAtTokens: 100000,
+        compactionFailBackoffMs: 60000,
+        compactionTimeoutBackoffMs: 10000,
+      });
+
+      const promise = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+
+      const result = await promise;
+      expect(result).toBe(true);
+    });
+  });
 });
