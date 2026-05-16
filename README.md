@@ -32,17 +32,25 @@ The ultimate OpenCode plugin for session management. **One plugin replaces three
 
 ### Architecture Overview
 
-The plugin is split into 7 focused modules following the factory pattern:
+The plugin is split into focused modules following the factory pattern:
 
 ```
-index.ts              Main plugin — event routing, module wiring
-├── terminal.ts       Terminal title, progress bar, statusLine hook
-├── nudge.ts          Idle nudges with loop protection
-├── status-file.ts    Atomic status file writes
-├── recovery.ts       Stall recovery (abort + continue)
-├── compaction.ts     4-layer compaction (opportunistic/proactive/hard/emergency)
-├── review.ts         Review + continue prompt delivery
-└── shared.ts         Types, config, utilities
+index.ts                Main plugin — event routing, module wiring
+├── terminal.ts         Terminal title, progress bar, statusLine hook
+├── nudge.ts            Idle nudges with loop protection
+├── status-file.ts      Atomic status file writes
+├── recovery.ts         Stall recovery (abort + continue)
+├── compaction.ts        4-layer compaction (opportunistic/proactive/hard/emergency)
+├── review.ts            Review + continue prompt delivery
+├── session-monitor.ts   Orphan parent detection
+├── stop-conditions.ts   Stop condition evaluation
+├── test-runner.ts       Test execution, gate files, lock contention detection
+├── todo-poller.ts       Periodic todo API polling
+├── tokens.ts            SQLite real token counts from OpenCode DB
+├── dangerous-commands.ts  Dangerous command detection and blocking
+├── shared.ts            Utilities, prompt guard, token estimation
+├── config.ts            Plugin config interface, validation, defaults
+└── session-state.ts     SessionState interface, token counting
 ```
 
 Each module is initialized early and receives its dependencies:
@@ -315,11 +323,11 @@ Start stall timer (stallTimeoutMs)
         │                        │
         │                   Wait waitAfterAbortMs
         │                        │
-        │                   Check: autoSubmitCount < maxAutoSubmits?
-        │                        │
-        │                   NO──► Give up (loop protection)
-        │                        │
-        │                   Fetch todos for context (if includeTodoContext)
+         │                   Check: attempts < maxRecoveries?
+         │                        │
+         │                   NO──► Exponential backoff
+         │                        │
+         │                   Fetch todos for context (if includeTodoContext)
         │                        │
         │                   Build message with template vars
         │                        │
@@ -333,7 +341,7 @@ Start stall timer (stallTimeoutMs)
 ```
 
 **Recovery module** (`createRecoveryModule`):
-- Located in `src/recovery.ts` (214 lines)
+- Located in `src/recovery.ts`
 - Called from event handlers in `index.ts`
 - Receives `writeStatusFile` and `cancelNudge` as dependencies
 - Uses `input as any` for all client API calls
@@ -377,16 +385,16 @@ The nudge system prevents sessions from going idle with pending todos. It follow
 
 **Nudge scheduling** (`scheduleNudge`):
 - Fires on every `session.idle` with pending todos (NO wasBusy dedup)
-- Schedules via `setTimeout` with `nudgeIdleDelayMs` (500ms default)
+- Schedules via `setTimeout` with `nudgeIdleDelayMs` (default 0 = immediate)
 - Resets nudge timer on `todo.updated` with pending todos
 - Cancels pending nudge on `message.updated` (user), `session.error`, `session.deleted`
 
 **Nudge injection** (`injectNudge`):
-1. Check cooldown (nudgeCooldownMs=60000ms)
+1. Check cooldown (`nudgeCooldownMs` default 30s)
 2. Check session status (skip if busy/retry)
 3. Check user message cooldown (skip if user messaged recently)
 4. Check `nudgePaused` flag (set on MessageAbortedError, cleared on user message)
-5. Check loop protection (nudgeMaxSubmits=3)
+5. Check loop protection (`nudgeMaxSubmits` default 10)
    - Compare todo snapshot to detect real progress
    - If snapshot unchanged after max submits → pause
 6. Fetch todos via API for context
