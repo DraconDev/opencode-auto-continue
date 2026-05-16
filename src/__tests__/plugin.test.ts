@@ -1928,35 +1928,30 @@ describe("opencode-auto-continue", () => {
       await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
       await flushPromises();
 
-      // Set compacting flag
-      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", part: { type: "compaction" } } } });
-      await flushPromises();
-
-      // Mark all todos complete — review deferred because compacting
+      // Mark all todos complete — review fires immediately (no compaction in progress)
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "Done", status: "completed" }] } } });
       await vi.advanceTimersByTimeAsync(200);
       await flushPromises();
 
-      // Review not sent yet
-      expect(mockPrompt).not.toHaveBeenCalled();
+      // Review prompt should have been sent
+      const reviewCallsBefore = mockPrompt.mock.calls.filter((c: any[]) =>
+        c.some((arg: any) => typeof arg === 'object' && arg?.body?.parts?.some((p: any) => p.text?.includes('All tracked tasks')))
+      );
+      expect(reviewCallsBefore.length).toBe(1);
 
-      // Manually set reviewFired=true to simulate review already completed before compaction ended
-      // (e.g., review completed via the 5s retry timer that fired between compaction starting and ending)
-      const sessions = (plugin as any).sessions as Map<string, any>;
-      const s = sessions.get("test");
-      s.reviewFired = true;
+      // Now set compacting flag (simulating a second compaction starting)
+      await plugin.event({ event: { type: "message.part.updated", properties: { sessionID: "test", part: { type: "compaction" } } } });
+      await flushPromises();
 
-      const promptCallCountBefore = mockPrompt.mock.calls.length;
-
-      // Compaction completes
+      // Compaction completes — should NOT re-trigger review because reviewFired=true
       await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
       await flushPromises();
 
-      // The re-trigger should NOT fire a second review prompt
+      // No additional review prompt should have been sent
       const reviewCallsAfter = mockPrompt.mock.calls.filter((c: any[]) =>
         c.some((arg: any) => typeof arg === 'object' && arg?.body?.parts?.some((p: any) => p.text?.includes('All tracked tasks')))
       );
-      expect(reviewCallsAfter.length).toBe(0);
+      expect(reviewCallsAfter.length).toBe(1); // Still only the original review
 
       vi.useRealTimers();
     });
