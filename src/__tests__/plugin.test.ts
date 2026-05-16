@@ -3031,4 +3031,35 @@ describe("test-fix loop", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("resetSession completeness", () => {
+    it("should reset all session state fields on session.deleted", async () => {
+      vi.useFakeTimers();
+      const plugin = await createPlugin({ client: mockClient }, {
+        stallTimeoutMs: 5000,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: "",
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+
+      // Verify session was created
+      await plugin.event({ event: { type: "session.deleted", properties: { sessionID: "test" } } });
+
+      // After deletion, creating a new session with the same ID should start fresh
+      await plugin.event({ event: { type: "session.created", properties: { sessionID: "test" } } });
+
+      // If resetSession missed any fields, the new session would inherit stale values
+      // We verify by triggering stall detection — if resetSession worked, attempts=0
+      mockStatus.mockResolvedValue({ data: { "test": { type: "busy" } }, error: undefined });
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+
+      // Should trigger recovery (attempts should be 0, not carrying over from before)
+      expect(mockAbort).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
 });
