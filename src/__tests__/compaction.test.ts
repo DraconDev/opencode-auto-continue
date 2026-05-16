@@ -139,15 +139,8 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastKnownTodos: [],
     stoppedByCondition: null,
     recoveryInProgress: false,
-    realTokens: 0,
-    lastRealTokenRefreshAt: 0,
-    hardCompactionInProgress: false,
-    lastHardCompactionAt: 0,
-    compactionSafetyTimer: null,
-    lastCompactionFailedAt: 0,
-    realTokensBaseline: 0,
-    proactiveCompactCount: 0,
-    hardCompactCount: 0,
+    systemTransformHookCalled: false,
+    dangerousCommandPromptTimer: null,
     ...overrides,
   };
 }

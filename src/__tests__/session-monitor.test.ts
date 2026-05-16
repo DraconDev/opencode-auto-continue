@@ -112,6 +112,8 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     lastToolName: '',
     recoveryInProgress: false,
     stoppedByCondition: null,
+    systemTransformHookCalled: false,
+    dangerousCommandPromptTimer: null,
     ...partial,
   };
 }
