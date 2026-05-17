@@ -156,7 +156,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   nudgeEnabled: true,
   nudgeIdleDelayMs: 0,
   nudgeMaxSubmits: 10,
-  nudgeMessage: "You have {pending} unfinished task(s): {todoList}. Continue working on them and mark each as completed when done. **You must use the TodoWrite tool to create todos for any new work you discover before starting it** — do not do untracked work. Do not ask for permission — act autonomously. {todoMdInstruction}",
+  nudgeMessage: "You have {pending} unfinished task(s): {todoList}. Continue working on them and mark each as completed when done. **You must use the TodoWrite tool to create todos for any new work you discover before starting it** — do not do untracked work. Do not ask for permission — act autonomously.{todoMdInstruction}",
   nudgeCooldownMs: 30000,
   todoMdPath: "",
   tokenLimitPatterns: ["context length", "maximum context length", "token count exceeds", "too many tokens", "payload too large", "token limit exceeded"],

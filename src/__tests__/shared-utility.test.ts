@@ -601,13 +601,14 @@ describe("shared.ts utilities", () => {
       expect(result).toBe("");
     });
 
-    it("should return instruction with file path when todoMdPath is set", async () => {
+    it("should return instruction with leading space when todoMdPath is set", async () => {
       const { todoMdInstruction } = await import('../shared.js');
 
       const result = todoMdInstruction("TODO.md");
 
       expect(result).toContain("TODO.md");
       expect(result).toContain("maintain");
+      expect(result.startsWith(" ")).toBe(true);
     });
 
     it("should work with custom file names", async () => {
@@ -621,7 +622,7 @@ describe("shared.ts utilities", () => {
     it("should integrate with formatMessage for default messages", async () => {
       const { formatMessage, todoMdInstruction } = await import('../shared.js');
 
-      const template = "Continue. {todoMdInstruction}";
+      const template = "Continue.{todoMdInstruction}";
       const result = formatMessage(template, { todoMdInstruction: todoMdInstruction("TODO.md") });
 
       expect(result).toContain("Continue.");
@@ -631,10 +632,10 @@ describe("shared.ts utilities", () => {
     it("should produce clean message when todoMdPath is empty (no trailing space)", async () => {
       const { formatMessage, todoMdInstruction } = await import('../shared.js');
 
-      const template = "Continue. {todoMdInstruction}";
+      const template = "Continue.{todoMdInstruction}";
       const result = formatMessage(template, { todoMdInstruction: todoMdInstruction("") });
 
-      expect(result).toBe("Continue. ");
+      expect(result).toBe("Continue.");
     });
   });
 
