@@ -1495,5 +1495,37 @@ describe("compaction module unit tests", () => {
       const result = await promise;
       expect(result).toBe(true);
     });
+
+    it("throttles maybeHardCompact when proactive was throttled", async () => {
+      const s = createSessionState({ estimatedTokens: 200000, lastCompactionCheckAt: 0 });
+      sessions.set("test", s);
+      module = createModule({ proactiveCompactAtTokens: 100000, hardCompactAtTokens: 150000 });
+
+      // First call sets lastCompactionCheckAt
+      const promise1 = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+      await promise1;
+
+      // Hard compact within 10s should also be throttled
+      const result = await module.maybeHardCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("allows maybeHardCompact after 10s throttle window", async () => {
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionCheckAt: Date.now() - 11000,
+      });
+      sessions.set("test", s);
+      mockSummarize.mockResolvedValue({ data: {} });
+      module = createModule({ hardCompactAtTokens: 150000, hardCompactBypassCooldown: true });
+
+      const promise = module.maybeHardCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+      const result = await promise;
+      expect(result).toBe(true);
+    });
   });
 });
