@@ -898,5 +898,31 @@ describe("todo-poller", () => {
       expect(s.reviewFired).toBe(true);
       expect(todoMdReader.readAndParse).not.toHaveBeenCalled();
     });
+
+    it("should pass correct arguments to sendTodoMdSync", async () => {
+      vi.useFakeTimers();
+      const sendTodoMdSync = vi.fn().mockResolvedValue(undefined);
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task A", "Task B"], completed: [] }),
+      };
+      const deps = makeDeps({ sendTodoMdSync, todoMdReader }, { todoMdPath: "TODO.md", todoMdSync: true });
+      const s = createSession();
+      s.reviewFired = true;
+      s.lastReviewAt = 0;
+      deps.sessions.set("test", s);
+
+      const poller = createTodoPoller(deps);
+      poller.processTodos("test", [
+        { id: "t1", content: "Done", status: "completed" },
+      ]);
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(todoMdReader.readAndParse).toHaveBeenCalledWith("/test", expect.arrayContaining([
+        expect.objectContaining({ status: "completed" }),
+      ]));
+
+      vi.useRealTimers();
+    });
   });
 });
