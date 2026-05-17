@@ -59,66 +59,10 @@ export function createTodoPoller(deps: TodoPollerDeps) {
     if (allCompleted && s.reviewFired) {
       const now = Date.now();
       const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
-      if (!inCooldown) {
-        log("todo poll: all completed with stale reviewFired flag, resetting:", sessionId);
-        s.reviewFired = false;
-
-        if (config.todoMdSync && config.todoMdPath && deps.todoMdReader && deps.sendTodoMdSync && !s.todoMdSyncFired) {
-          deps.todoMdReader.readAndParse(input.directory || "", todos).then((mdResult) => {
-            if (mdResult && mdResult.pending.length > 0) {
-              log("todo.md sync: found pending tasks after review reset, firing sync:", mdResult.pending.length, "tasks");
-              deps.sendTodoMdSync!(sessionId, mdResult.pending).catch((e: unknown) => log("todo.md sync send error:", e));
-            }
-          }).catch((e: unknown) => log("todo.md sync read error:", e));
-        }
-      }
-    }
-
-    if (allCompleted && !s.reviewFired && config.reviewOnComplete) {
-      const now = Date.now();
-      const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
-      if (inCooldown) {
-        log("todo poll: all completed but review cooldown active, skipping:", {
-          sessionId,
-          lastReviewAt: s.lastReviewAt,
-          cooldownMs: config.reviewCooldownMs,
-          elapsed: now - s.lastReviewAt,
-        });
-      } else {
-        log("todo poll detected all completed, triggering review:", sessionId);
-        if (config.opportunisticCompactAfterReview && deps.maybeOpportunisticCompact) {
-          if (getTokenCount(s) >= config.opportunisticCompactAtTokens) {
-            deps.maybeOpportunisticCompact(sessionId, "post-review").catch((e: unknown) => log("opportunistic compact post-review failed:", e));
-          }
-        }
-        if (config.reviewDebounceMs <= 0) {
-          log("todo poll detected all completed, triggering review immediately:", sessionId);
-          if (deps.triggerReview) deps.triggerReview(sessionId);
-        } else {
-          if (s.reviewDebounceTimer) {
-            clearTimeout(s.reviewDebounceTimer);
-          }
-          s.reviewDebounceTimer = setTimeout(() => {
-            s.reviewDebounceTimer = null;
-            if (deps.triggerReview) deps.triggerReview(sessionId);
-          }, config.reviewDebounceMs);
-        }
-      }
-    } else if (!allCompleted && s.reviewDebounceTimer) {
-      clearTimeout(s.reviewDebounceTimer);
-      s.reviewDebounceTimer = null;
-    }
-
-    if (hasPending && s.reviewFired) {
-      const now = Date.now();
-      const inCooldown = s.lastReviewAt > 0 && (now - s.lastReviewAt) < config.reviewCooldownMs;
-      if (inCooldown) {
-        log("todo poll: new pending todos after review, but cooldown active — NOT resetting reviewFired:", sessionId);
-      } else {
+if (!inCooldown) {
         log("todo poll: new pending todos after review, resetting review flag:", sessionId);
         s.reviewFired = false;
       }
-      s.todoMdSyncFired = false;
     }
 
     if (hasPending && deps.scheduleNudge && !s.nudgePaused) {

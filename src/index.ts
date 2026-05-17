@@ -363,7 +363,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const testRunner = createTestRunner({ config, log, input });
 
-  const todoMdReader = createTodoMdReader({ todoMdPath: config.todoMdPath, todoMdSync: config.todoMdSync, log });
+  const todoMdReader = createTodoMdReader({ todoMdPath: config.todoMdPath, log });
 
   async function sendTodoMdSync(sessionId: string, tasks: string[]): Promise<void> {
     const s = sessions.get(sessionId);
