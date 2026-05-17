@@ -900,22 +900,20 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
   }
 
   // Poll todos before deciding nudge
-  if (!s.idleProcessingDone) {
-    s.idleProcessingDone = true;
-    await todoPoller.pollAndProcess(sid);
+  // Poll todos before deciding nudge
+  await todoPoller.pollAndProcess(sid);
 
-    const stopCheck = stopConditions.checkStopConditions(sid);
-    if (!stopCheck.shouldStop) {
-      await ctx.refreshRealTokens(sid);
-      compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact failed during idle:', e));
-      if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
-        compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
-      }
-      nudge.scheduleNudge(sid);
+  const stopCheck = stopConditions.checkStopConditions(sid);
+  if (!stopCheck.shouldStop) {
+    await ctx.refreshRealTokens(sid);
+    compaction.maybeProactiveCompact(sid).catch((e: unknown) => log('proactive compact failed during idle:', e));
+    if (config.opportunisticCompactBeforeNudge && getTokenCount(s) >= config.nudgeCompactThreshold) {
+      compaction.maybeOpportunisticCompact(sid, 'pre-nudge').catch((e: unknown) => log('opportunistic compact pre-nudge failed:', e));
     }
-  } else {
-    log('session.idle skipping duplicate idle processing — handled by session.status(idle):', sid);
+    nudge.scheduleNudge(sid);
   }
+
+  s.idleProcessingDone = true;
 
   writeStatusFile(sid);
 }
