@@ -108,6 +108,22 @@ describe("todo-poller", () => {
       vi.useRealTimers();
     });
 
+    it("should trigger review immediately when reviewDebounceMs is 0", async () => {
+      const deps = makeDeps({ reviewDebounceMs: 0 });
+      const s = createSession();
+      deps.sessions.set("test", s);
+      deps.mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "Task A", status: "completed" }],
+        error: undefined,
+      });
+
+      const poller = createTodoPoller(deps);
+      await poller.pollAndProcess("test");
+
+      expect(deps.triggerReview).toHaveBeenCalledWith("test");
+      expect(s.reviewDebounceTimer).toBeNull();
+    });
+
     it("should skip poll when todo.updated event received recently", async () => {
       const deps = makeDeps();
       const s = createSession();
