@@ -129,7 +129,7 @@ export interface SessionState {
   dangerousCommandPromptTimer: ReturnType<typeof setTimeout> | null;
 
   // === Idle Dedup (event-handlers.ts) ===
-  lastIdleProcessedAt: number; // Timestamp of last idle todo-poll + nudge scheduling (dedup session.status vs session.idle)
+  idleProcessingDone: boolean; // Set when idle todo-poll + nudge scheduling ran; cleared on busy
 }
 
 /**
@@ -242,7 +242,7 @@ export function createSession(): SessionState {
     systemTransformHookCalled: false,
     dangerousCommandPromptTimer: null,
 
-    lastIdleProcessedAt: 0,
+    idleProcessingDone: false,
   };
 }
 
