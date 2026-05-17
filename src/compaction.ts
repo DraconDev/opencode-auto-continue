@@ -3,6 +3,8 @@ import type { SessionState } from "./session-state.js";
 import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
 
+const COMPACTION_CHECK_MIN_INTERVAL_MS = 10000;
+
 export interface CompactionDeps {
   config: PluginConfig;
   sessions: Map<string, SessionState>;
@@ -228,6 +230,11 @@ export function createCompactionModule(deps: CompactionDeps) {
     
     const s = sessions.get(sessionId);
     if (!s) return false;
+
+    const now = Date.now();
+    if (now - s.lastCompactionCheckAt < COMPACTION_CHECK_MIN_INTERVAL_MS) return false;
+    s.lastCompactionCheckAt = now;
+
     if (s.compacting) { log('[Compaction] PROACTIVE SKIP — already compacting'); return false; }
     if (s.planning) { log('[Compaction] PROACTIVE SKIP — planning'); return false; }
     if (inGracePeriod(s)) { log('[Compaction] PROACTIVE SKIP — grace period'); return false; }
