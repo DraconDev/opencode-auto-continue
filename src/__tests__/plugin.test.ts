@@ -765,10 +765,11 @@ describe("opencode-auto-continue", () => {
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
       // Then session.status(idle) — should skip due to idleProcessingDone
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(1000);
 
-      // Only one nudge prompt should fire
-      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      // Only one nudge prompt should fire (not two)
+      expect(mockPrompt.mock.calls.length).toBeLessThanOrEqual(1);
+      expect(mockPrompt).toHaveBeenCalled();
       vi.useRealTimers();
     });
 
