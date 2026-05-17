@@ -161,6 +161,12 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     lastToolSummary: '',
     systemTransformHookCalled: false,
     dangerousCommandPromptTimer: null,
+    idleProcessingDone: false,
+    lastTestRunAt: 0,
+    lastTodoMdSyncAt: 0,
+    nudgeCount: 0,
+    testRunInProgress: false,
+    todoMdSyncFired: false,
     ...overrides,
   };
 }

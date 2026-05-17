@@ -113,8 +113,12 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     stoppedByCondition: null,
     systemTransformHookCalled: false,
     dangerousCommandPromptTimer: null,
-    realTokens: 0,
-    realTokensBaseline: 0,
+    idleProcessingDone: false,
+    lastTestRunAt: 0,
+    lastTodoMdSyncAt: 0,
+    nudgeTimer: null,
+    testRunInProgress: false,
+    todoMdSyncFired: false,
     compactionTimedOut: false,
     compactionSafetyTimer: null,
     lastCompactionFailedAt: 0,
@@ -138,6 +142,8 @@ function createMockSession(partial: Partial<SessionState> = {}): SessionState {
     lastFileEdited: '',
     lastToolCall: '',
     lastToolSummary: '',
+    realTokens: 0,
+    realTokensBaseline: 0,
     ...partial,
   };
 }
