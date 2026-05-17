@@ -696,14 +696,14 @@ describe("compaction module unit tests", () => {
       // Simulate summarize hanging forever — never resolves
       mockSummarize.mockImplementation(() => new Promise(() => {}));
 
-      sessions.set("test", createSessionState({ estimatedTokens: 100000 }));
-      module = createModule({ compactionSafetyTimeoutMs: 2000, compactMaxRetries: 1 });
+      sessions.set("test", createSessionState({ estimatedTokens: 50000 }));
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactionVerifyWaitMs: 1000, compactMaxRetries: 1 });
 
       const promise = module.forceCompact("test");
       expect(sessions.get("test")!.compacting).toBe(true);
 
-      // Advance past safety timeout (2000ms)
-      await vi.advanceTimersByTimeAsync(2000);
+      // scaledWait = 1000 (1x at 50k tokens), effectiveSafetyMs = max(2000, 1000+5000) = 5000
+      await vi.advanceTimersByTimeAsync(5000);
       await flushPromises();
 
       expect(sessions.get("test")!.compacting).toBe(false);
