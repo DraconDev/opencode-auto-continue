@@ -131,10 +131,6 @@ export interface SessionState {
 
   // === Idle Dedup (event-handlers.ts) ===
   idleProcessingDone: boolean; // Set when idle todo-poll + nudge scheduling ran; cleared on busy
-
-  // === TODO.md Sync (todo-poller.ts, nudge.ts) ===
-  todoMdSyncFired: boolean; // Set when TODO.md sync message was sent; reset when new todos appear
-  lastTodoMdSyncAt: number; // Timestamp of last TODO.md sync message
 }
 
 /**
@@ -249,9 +245,6 @@ export function createSession(): SessionState {
     dangerousCommandPromptTimer: null,
 
     idleProcessingDone: false,
-
-    todoMdSyncFired: false,
-    lastTodoMdSyncAt: 0,
   };
 }
 

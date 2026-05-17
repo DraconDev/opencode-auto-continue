@@ -373,9 +373,6 @@ export function validateConfigDetailed(config: PluginConfig): ConfigValidationRe
   if (typeof normalized.autoAnswerQuestions !== 'boolean') addError('autoAnswerQuestions', `autoAnswerQuestions must be a boolean, got ${typeof normalized.autoAnswerQuestions}`);
   if (typeof normalized.autoAnswerSafeOnly !== 'boolean') addError('autoAnswerSafeOnly', `autoAnswerSafeOnly must be a boolean, got ${typeof normalized.autoAnswerSafeOnly}`);
 
-  if (typeof normalized.todoMdSync !== 'boolean') addError('todoMdSync', `todoMdSync must be a boolean, got ${typeof normalized.todoMdSync}`);
-  if (typeof normalized.todoMdSyncMessage !== 'string' || normalized.todoMdSyncMessage.trim().length === 0) addError('todoMdSyncMessage', `todoMdSyncMessage must be a non-empty string`);
-
   if (normalized.todoPollIntervalMs < 0) addError('todoPollIntervalMs', `todoPollIntervalMs must be >= 0, got ${normalized.todoPollIntervalMs}`);
 
   if (typeof normalized.testOnIdle !== 'boolean') addError('testOnIdle', `testOnIdle must be a boolean, got ${typeof normalized.testOnIdle}`);
