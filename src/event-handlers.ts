@@ -8,7 +8,6 @@ import {
   parseTokensFromError,
   updateProgress,
   safeHook,
-  getMessageText,
 } from "./shared.js";
 import type { createTerminalModule } from "./terminal.js";
 import type { createCompactionModule } from "./compaction.js";

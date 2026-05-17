@@ -13,7 +13,6 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     opportunisticCompactAtTokens: 60000,
     todoMdPath: "",
     todoMdSync: true,
-    todoMdSyncMessage: "Tasks from {todoMdPath}:\n\n{todoMdTaskList}",
     ...overrides,
   } as any;
 }

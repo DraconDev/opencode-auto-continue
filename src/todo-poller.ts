@@ -5,7 +5,7 @@ import type { TypedPluginInput } from "./types.js";
 import type { TodoMdReader } from "./todo-md-reader.js";
 
 export interface TodoPollerDeps {
-  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "todoMdPath" | "todoMdSync" | "todoMdSyncMessage">;
+  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "todoMdPath" | "todoMdSync">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
