@@ -373,7 +373,7 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     const syncMessage = formatMessage(config.todoMdSyncMessage, {
       todoMdPath: config.todoMdPath,
       todoMdTaskList,
-      todoMdInstruction: '',
+      todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync),
     });
 
     const isDuplicate = await shouldBlockPrompt(sessionId, syncMessage, input, log);
