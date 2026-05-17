@@ -1179,5 +1179,65 @@ describe("nudge integration with plugin events", () => {
 
       expect(todoMdReader.readAndParse).toHaveBeenCalled();
     });
+
+    it("should NOT set todoMdSyncFired when prompt guard blocks sync", async () => {
+      const { shouldBlockPrompt } = await import("../shared.js");
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task"], completed: [] }),
+      };
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      const { createNudgeModule } = await import("../nudge.js");
+      const { createSession } = await import("../session-state.js");
+      const s = createSession();
+      sessions.set("test", s);
+
+      const input = {
+        client: {
+          session: {
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+            messages: vi.fn().mockResolvedValue({
+              data: [{
+                role: "user",
+                createdAt: new Date().toISOString(),
+                parts: [{ type: "text", text: "Tasks from TODO.md:\n\n1. Task", synthetic: true }],
+              }],
+            }),
+          },
+          tui: { showToast: vi.fn().mockResolvedValue({}) },
+        },
+        directory: "/test",
+      };
+
+      const mod = createNudgeModule({
+        config: {
+          nudgeEnabled: true,
+          nudgeIdleDelayMs: 0,
+          nudgeMaxSubmits: 10,
+          nudgeMessage: "You have {pending} task(s).",
+          nudgeCooldownMs: 0,
+          includeTodoContext: true,
+          showToasts: false,
+          todoMdPath: "TODO.md",
+          todoMdSync: true,
+          todoMdSyncMessage: "Tasks from {todoMdPath}:\n\n{todoMdTaskList}",
+        },
+        sessions,
+        log,
+        isDisposed: () => false,
+        input,
+        todoMdReader,
+      });
+
+      await mod.injectNudge("test");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(todoMdReader.readAndParse).toHaveBeenCalled();
+      expect(s.todoMdSyncFired).toBe(false);
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
   });
 });
