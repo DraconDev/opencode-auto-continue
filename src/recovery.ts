@@ -1,6 +1,6 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
-import { formatMessage, shouldBlockPrompt, containsToolCallAsText } from "./shared.js";
+import { formatMessage, shouldBlockPrompt, containsToolCallAsText, todoMdInstruction } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface RecoveryDeps {
@@ -291,6 +291,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const templateVars: Record<string, string> = {
         attempts: String(s.attempts + 1),
         maxAttempts: String(config.maxRecoveries),
+        todoMdInstruction: todoMdInstruction(config.todoMdPath),
       };
 
       // If tool-text was detected, use the tool-text recovery prompt

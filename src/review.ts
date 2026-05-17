@@ -180,7 +180,10 @@ export function createReviewModule(deps: ReviewDeps) {
     if ((continueSafetyTimer as any).unref) (continueSafetyTimer as any).unref();
 
     try {
-      const messageText = s.continueMessageText;
+      const rawMessageText = s.continueMessageText;
+      const messageText = rawMessageText.includes('{todoMdInstruction}')
+        ? formatMessage(rawMessageText, { todoMdInstruction: todoMdInstruction(config.todoMdPath) })
+        : rawMessageText;
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;
       const CONTINUE_RETRY_STALE_MS = 60000;

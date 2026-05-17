@@ -8,7 +8,7 @@ export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts">;
+    "showToasts" | "todoMdPath">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -284,7 +284,7 @@ export function createNudgeModule(deps: NudgeDeps) {
         templateVars.todoList = todoList + (pending.length > 5 ? "..." : "");
       }
 
-      messageText = formatMessage(config.nudgeMessage, templateVars);
+      messageText = formatMessage(config.nudgeMessage, { ...templateVars, todoMdInstruction: todoMdInstruction(config.todoMdPath) });
 
     // If tests failed, override nudge message with fix directive
     if (testFailureOutput) {
