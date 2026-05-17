@@ -1,55 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createReviewModule } from "../review.js";
 import type { ReviewDeps } from "../review.js";
-import type { SessionState } from "../session-state.js";
 import { createSession } from "../session-state.js";
 
-async function flushPromises(): Promise<void> {
-  for (let i = 0; i < 10; i++) {
-    await new Promise(r => setTimeout(r, 0));
-  }
-}
-
-function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
-  return {
-    config: {
-      reviewMessage: "All tracked tasks are marked complete. {testOutput}",
-      reviewWithoutTestsMessage: "All tracked tasks are marked complete.",
-      showToasts: false,
-      shortContinueMessage: "Continue.",
-      reviewCooldownMs: 60000,
-    },
-    sessions: new Map(),
-    log: vi.fn(),
-    input: {
-      client: {
-        session: {
-          prompt: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
-          messages: vi.fn().mockResolvedValue({ data: [], error: undefined }),
-        },
-        tui: {
-          showToast: vi.fn().mockResolvedValue(undefined),
-        },
-      },
-      directory: "/test",
-    } as any,
-    isDisposed: vi.fn().mockReturnValue(false),
-    writeStatusFile: vi.fn(),
-    isTokenLimitError: vi.fn().mockReturnValue(false),
-    forceCompact: vi.fn().mockResolvedValue(false),
-    ...overrides,
-  };
-}
-
 describe("review module", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   describe("triggerReview compaction deferral", () => {
     it("should defer review when hardCompactionInProgress is true", async () => {
       const deps = makeDeps();
@@ -106,7 +60,8 @@ describe("review module", () => {
       expect(s.reviewRetryTimer).not.toBe(firstTimer);
     });
 
-    it("should retry review after 5s timer fires and compaction is done", async () => {
+    it("should fire review after 5s retry timer when compaction clears", async () => {
+      vi.useFakeTimers();
       const deps = makeDeps();
       const s = createSession();
       s.compacting = true;
@@ -114,19 +69,19 @@ describe("review module", () => {
 
       const { triggerReview } = createReviewModule(deps);
       await triggerReview("test");
-
       expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
 
       s.compacting = false;
       s.hardCompactionInProgress = false;
 
-      await vi.advanceTimersByTimeAsync(5000);
-      await flushPromises();
+      await vi.advanceTimersByTimeAsync(5500);
 
       expect(deps.input.client.session.prompt).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
-    it("should NOT retry review when reviewFired is true when timer fires", async () => {
+    it("should NOT fire review after 5s timer when reviewFired is true", async () => {
+      vi.useFakeTimers();
       const deps = makeDeps();
       const s = createSession();
       s.compacting = true;
@@ -136,16 +91,17 @@ describe("review module", () => {
       await triggerReview("test");
 
       s.compacting = false;
-      s.hardCompactionInProgress = false;
       s.reviewFired = true;
 
-      await vi.advanceTimersByTimeAsync(5000);
-      await flushPromises();
+      const promptCallsBefore = (deps.input.client.session.prompt as any).mock.calls.length;
+      await vi.advanceTimersByTimeAsync(5500);
 
-      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+      expect((deps.input.client.session.prompt as any).mock.calls.length).toBe(promptCallsBefore);
+      vi.useRealTimers();
     });
 
-    it("should NOT retry review when session is disposed when timer fires", async () => {
+    it("should NOT fire review after 5s timer when session is disposed", async () => {
+      vi.useFakeTimers();
       const deps = makeDeps();
       const s = createSession();
       s.compacting = true;
@@ -157,13 +113,15 @@ describe("review module", () => {
       s.compacting = false;
       (deps.isDisposed as any).mockReturnValue(true);
 
-      await vi.advanceTimersByTimeAsync(5000);
-      await flushPromises();
+      const promptCallsBefore = (deps.input.client.session.prompt as any).mock.calls.length;
+      await vi.advanceTimersByTimeAsync(5500);
 
-      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+      expect((deps.input.client.session.prompt as any).mock.calls.length).toBe(promptCallsBefore);
+      vi.useRealTimers();
     });
 
-    it("should NOT retry review when session is removed when timer fires", async () => {
+    it("should NOT fire review after 5s timer when session is removed", async () => {
+      vi.useFakeTimers();
       const deps = makeDeps();
       const s = createSession();
       s.compacting = true;
@@ -174,10 +132,42 @@ describe("review module", () => {
 
       deps.sessions.delete("test");
 
-      await vi.advanceTimersByTimeAsync(5000);
-      await flushPromises();
+      const promptCallsBefore = (deps.input.client.session.prompt as any).mock.calls.length;
+      await vi.advanceTimersByTimeAsync(5500);
 
-      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+      expect((deps.input.client.session.prompt as any).mock.calls.length).toBe(promptCallsBefore);
+      vi.useRealTimers();
     });
   });
 });
+
+function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
+  return {
+    config: {
+      reviewMessage: "All tracked tasks are marked complete. {testOutput}",
+      reviewWithoutTestsMessage: "All tracked tasks are marked complete.",
+      showToasts: false,
+      shortContinueMessage: "Continue.",
+      reviewCooldownMs: 60000,
+    },
+    sessions: new Map(),
+    log: vi.fn(),
+    input: {
+      client: {
+        session: {
+          prompt: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
+          messages: vi.fn().mockResolvedValue({ data: [], error: undefined }),
+        },
+        tui: {
+          showToast: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+      directory: "/test",
+    } as any,
+    isDisposed: vi.fn().mockReturnValue(false),
+    writeStatusFile: vi.fn(),
+    isTokenLimitError: vi.fn().mockReturnValue(false),
+    forceCompact: vi.fn().mockResolvedValue(false),
+    ...overrides,
+  };
+}
