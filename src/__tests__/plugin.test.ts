@@ -824,7 +824,7 @@ describe("opencode-auto-continue", () => {
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, {
         nudgeEnabled: true,
-        nudgeIdleDelayMs: 0,
+        nudgeIdleDelayMs: 500,
         nudgeCooldownMs: 0,
         stallTimeoutMs: 5000,
         terminalTitleEnabled: false,
@@ -832,16 +832,19 @@ describe("opencode-auto-continue", () => {
         statusFilePath: ""
       });
 
-      // Create session with busy status
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
 
       // Set needsContinue (simulating recovery state)
-      const s = (plugin as any).sessions?.get?.("test");
-      if (s) {
-        s.needsContinue = true;
-        s.continueMessageText = "Continue.";
-        s.hasOpenTodos = true;
+      const sessions = (plugin as any).sessions;
+      const s = sessions?.get?.("test");
+      if (!s) {
+        // Skip if session not found (shouldn't happen)
+        vi.useRealTimers();
+        return;
       }
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      s.hasOpenTodos = true;
 
       mockTodo.mockResolvedValue({
         data: [{ id: "t1", content: "test todo", status: "in_progress" }],
@@ -850,16 +853,16 @@ describe("opencode-auto-continue", () => {
 
       // Fire session.idle with needsContinue — should send continue AND schedule nudge
       await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-      await vi.advanceTimersByTimeAsync(100);
 
-      // Continue prompt should have been sent
+      // Continue prompt should have been sent immediately
       const calls = mockPrompt.mock.calls.map((c: any) => c[0]?.body?.parts?.[0]?.text);
       const continueCall = calls.some((t: string) => t && t.includes("Continue"));
+      expect(continueCall).toBe(true);
 
-      // Nudge should also be scheduled (prompt called for nudge scheduling)
-      // Note: nudge may not fire yet if session goes busy after continue,
-      // but scheduleNudge should have been called
-      expect(continueCall || mockPrompt.mock.calls.length >= 1).toBe(true);
+      // Nudge timer should also be set (nudgeIdleDelayMs = 500)
+      // After continue, session goes busy, so nudge injectNudge will check status
+      // and defer if busy. But the timer should still be scheduled.
+      expect(s.nudgeTimer).not.toBeNull();
 
       vi.useRealTimers();
     });
