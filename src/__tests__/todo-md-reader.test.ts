@@ -80,13 +80,7 @@ describe("parseTodoMd", () => {
 
 describe("createTodoMdReader", () => {
   it("returns null when todoMdPath is empty", async () => {
-    const reader = createTodoMdReader({ todoMdPath: "", todoMdSync: true, log: vi.fn() });
-    const result = await reader.readAndParse("/project");
-    expect(result).toBeNull();
-  });
-
-  it("returns null when todoMdSync is false", async () => {
-    const reader = createTodoMdReader({ todoMdPath: "TODO.md", todoMdSync: false, log: vi.fn() });
+    const reader = createTodoMdReader({ todoMdPath: "", log: vi.fn() });
     const result = await reader.readAndParse("/project");
     expect(result).toBeNull();
   });
@@ -94,7 +88,6 @@ describe("createTodoMdReader", () => {
   it("returns parsed tasks when file exists", async () => {
     const reader = createTodoMdReader({
       todoMdPath: "TODO.md",
-      todoMdSync: true,
       log: vi.fn(),
       readFile: async () => "- [ ] Fix bug\n- [x] Done\n",
     });
@@ -109,7 +102,6 @@ describe("createTodoMdReader", () => {
     const log = vi.fn();
     const reader = createTodoMdReader({
       todoMdPath: "TODO.md",
-      todoMdSync: true,
       log,
       readFile: async () => { throw new Error("ENOENT"); },
     });
@@ -119,44 +111,9 @@ describe("createTodoMdReader", () => {
     expect(log).toHaveBeenCalledWith(expect.stringContaining("todo.md read error"), expect.any(String));
   });
 
-  it("deduplicates against existing TodoWrite items by exact match", async () => {
-    const reader = createTodoMdReader({
-      todoMdPath: "TODO.md",
-      todoMdSync: true,
-      log: vi.fn(),
-      readFile: async () => "- [ ] Fix bug\n- [ ] New feature\n- [x] Done\n",
-    });
-    const existingTodos = [
-      { id: "1", content: "Fix bug", title: "Fix bug", status: "pending" },
-      { id: "2", content: "Some other task", title: "Some other task", status: "in_progress" },
-    ];
-    const result = await reader.readAndParse("/project", existingTodos);
-
-    expect(result).not.toBeNull();
-    expect(result!.pending).toEqual(["New feature"]);
-  });
-
-  it("deduplicates with fuzzy prefix matching for long tasks", async () => {
-    const reader = createTodoMdReader({
-      todoMdPath: "TODO.md",
-      todoMdSync: true,
-      log: vi.fn(),
-      readFile: async () => "- [ ] Implement the new authentication module\n- [ ] Write integration tests for auth\n- [ ] Unrelated new task\n",
-    });
-    const existingTodos = [
-      { id: "1", content: "Implement the new authentication module with OAuth2", title: "Implement the new authentication module with OAuth2", status: "in_progress" },
-      { id: "2", content: "Write integration tests for authentication", title: "Write integration tests for authentication", status: "pending" },
-    ];
-    const result = await reader.readAndParse("/project", existingTodos);
-
-    expect(result).not.toBeNull();
-    expect(result!.pending).toEqual(["Unrelated new task"]);
-  });
-
   it("returns all pending when no existing todos provided", async () => {
     const reader = createTodoMdReader({
       todoMdPath: "TODO.md",
-      todoMdSync: true,
       log: vi.fn(),
       readFile: async () => "- [ ] Task A\n- [ ] Task B\n- [x] Task C\n",
     });

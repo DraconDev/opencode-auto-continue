@@ -215,7 +215,6 @@ describe("review module", () => {
     it("resolves {todoMdInstruction} in continueMessageText", async () => {
       const deps = makeDeps();
       deps.config.todoMdPath = "TODO.md";
-      deps.config.todoMdSync = true;
       deps.config.shortContinueMessage = "Continue. {todoMdInstruction}";
       const s = createSession();
       s.needsContinue = true;
@@ -511,7 +510,6 @@ function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
       shortContinueMessage: "Continue.",
       reviewCooldownMs: 60000,
       todoMdPath: "",
-      todoMdSync: false,
     },
     sessions: new Map(),
     log: vi.fn(),

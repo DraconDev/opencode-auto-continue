@@ -163,10 +163,8 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     dangerousCommandPromptTimer: null,
     idleProcessingDone: false,
     lastTestRunAt: 0,
-    lastTodoMdSyncAt: 0,
     nudgeCount: 0,
     testRunInProgress: false,
-    todoMdSyncFired: false,
     ...overrides,
   };
 }
