@@ -697,18 +697,23 @@ describe("compaction module unit tests", () => {
       mockSummarize.mockImplementation(() => new Promise(() => {}));
 
       sessions.set("test", createSessionState({ estimatedTokens: 50000 }));
-      module = createModule({ compactionSafetyTimeoutMs: 2000, compactionVerifyWaitMs: 1000, compactMaxRetries: 1 });
+      module = createModule({ compactionSafetyTimeoutMs: 2000, compactionVerifyWaitMs: 30000, compactMaxRetries: 1 });
 
       const promise = module.forceCompact("test");
       expect(sessions.get("test")!.compacting).toBe(true);
 
-      // scaledWait = 1000 (1x at 50k tokens), effectiveSafetyMs = max(2000, 1000+5000) = 5000
-      await vi.advanceTimersByTimeAsync(5000);
+      // scaledWait = 30000 (1x at 50k tokens), effectiveSafetyMs = max(2000, 30000+5000) = 35000
+      // Safety timeout should NOT fire at 2000ms (scaled up)
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      expect(sessions.get("test")!.compacting).toBe(true);
+
+      // Safety timeout SHOULD fire at 35000ms
+      await vi.advanceTimersByTimeAsync(33000);
       await flushPromises();
 
       expect(sessions.get("test")!.compacting).toBe(false);
       expect(sessions.get("test")!.compactionTimedOut).toBe(true);
-      // Promise will never resolve, don't await it
     });
 
     it("does not compact if forceCompact called with no session", async () => {
