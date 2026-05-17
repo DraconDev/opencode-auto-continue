@@ -289,6 +289,11 @@ export function formatMessage(template: string, vars: Record<string, string>): s
   return result;
 }
 
+export function todoMdInstruction(todoMdPath: string): string {
+  if (!todoMdPath) return "";
+  return `Also maintain \`${todoMdPath}\` in the project root — update it when tasks are created, completed, or discovered. This file persists across sessions.`;
+}
+
 function getMessageTimestamp(message: any): number | null {
   const raw =
     message?.createdAt ??
