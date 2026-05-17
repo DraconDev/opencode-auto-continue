@@ -1497,6 +1497,7 @@ describe("compaction module unit tests", () => {
     });
 
     it("throttles maybeHardCompact when proactive was throttled", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
       // Simulate a recent proactive check by setting lastCompactionCheckAt directly
       const s = createSessionState({
         estimatedTokens: 200000,
@@ -1505,7 +1506,7 @@ describe("compaction module unit tests", () => {
       sessions.set("test", s);
       module = createModule({ hardCompactAtTokens: 150000, compactionGracePeriodMs: 0, hardCompactBypassCooldown: true });
 
-      // Hard compact within 10s of last check should be throttled
+      // Hard compact within 10s of last check should be throttled (returns false immediately, no compact attempt)
       const result = await module.maybeHardCompact("test");
       expect(result).toBe(false);
       // If NOT throttled, it would call summarize — verify it didn't

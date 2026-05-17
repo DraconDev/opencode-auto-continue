@@ -384,6 +384,21 @@ describe("review module", () => {
 
       expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
     });
+
+    it("calls maybeHardCompact before sending continue", async () => {
+      const deps = makeDeps();
+      const mockHardCompact = vi.fn().mockResolvedValue(false);
+      deps.maybeHardCompact = mockHardCompact;
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(mockHardCompact).toHaveBeenCalledWith("test");
+    });
   });
 });
 

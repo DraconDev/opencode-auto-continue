@@ -273,6 +273,14 @@ export function createCompactionModule(deps: CompactionDeps) {
   async function maybeHardCompact(sessionId: string): Promise<boolean> {
     const s = sessions.get(sessionId);
     if (!s) return false;
+
+    const now = Date.now();
+    if (now - s.lastCompactionCheckAt < COMPACTION_CHECK_MIN_INTERVAL_MS) {
+      log('[Compaction] HARD SKIP — throttled');
+      return false;
+    }
+    s.lastCompactionCheckAt = now;
+
     if (s.hardCompactionInProgress) { log('[Compaction] HARD SKIP — already in progress'); return false; }
     if (s.compacting) { log('[Compaction] HARD SKIP — already compacting'); return false; }
     if (s.stoppedByCondition) { log('[Compaction] HARD SKIP — stopped by condition'); return false; }
