@@ -81,15 +81,23 @@ export function createCompactionModule(deps: CompactionDeps) {
       }
       s.compacting = true;
       s.compactionTimedOut = false;
-      if (config.compactionSafetyTimeoutMs > 0 && !s.compactionSafetyTimer) {
+
+      const baseWait = config.compactionVerifyWaitMs;
+      const tokenCount = getTokenCount(s);
+      const scaledWait = tokenCount > 500000 ? baseWait * 3 : tokenCount > 200000 ? baseWait * 2 : baseWait;
+      const effectiveSafetyMs = config.compactionSafetyTimeoutMs > 0
+        ? Math.max(config.compactionSafetyTimeoutMs, scaledWait + 5000)
+        : 0;
+
+      if (effectiveSafetyMs > 0 && !s.compactionSafetyTimer) {
         s.compactionSafetyTimer = setTimeout(() => {
           if (s.compacting) {
-            log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', force-clearing after', config.compactionSafetyTimeoutMs, 'ms');
+            log('[Compaction] SAFETY TIMEOUT — compacting flag stuck for', sessionId, ', force-clearing after', effectiveSafetyMs, 'ms');
             s.compactionTimedOut = true;
             s.compacting = false;
             s.hardCompactionInProgress = false;
           }
-        }, config.compactionSafetyTimeoutMs);
+        }, effectiveSafetyMs);
         if (s.compactionSafetyTimer.unref) s.compactionSafetyTimer.unref();
       }
 
@@ -98,9 +106,6 @@ export function createCompactionModule(deps: CompactionDeps) {
         query: { directory: input.directory || "" }
       });
 
-      const baseWait = config.compactionVerifyWaitMs;
-      const tokenCount = getTokenCount(sessions.get(sessionId) || s);
-      const scaledWait = tokenCount > 500000 ? baseWait * 3 : tokenCount > 200000 ? baseWait * 2 : baseWait;
       const maxWait = scaledWait;
       const pollInterval = 1000;
       const deadline = Date.now() + maxWait;
