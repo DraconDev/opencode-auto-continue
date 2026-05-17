@@ -7,6 +7,7 @@ import { type SessionState, createSession, getTokenCount, clearAllSessionTimers 
 import {
   formatMessage,
   shouldBlockPrompt,
+  todoMdInstruction,
   scheduleRecoveryWithGeneration,
   getMessageText,
   clearMessagesCache,
