@@ -1,11 +1,11 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
-import { formatMessage, shouldBlockPrompt } from "./shared.js";
+import { formatMessage, shouldBlockPrompt, todoMdInstruction } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
 export interface ReviewDeps {
-  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs">;
+  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs" | "todoMdPath">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -114,9 +114,9 @@ export function createReviewModule(deps: ReviewDeps) {
       // Build review message — only include test section if real results exist
       let messageText: string;
       if (hasRealTests) {
-        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)" });
+        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)", todoMdInstruction: todoMdInstruction(config.todoMdPath) });
       } else {
-        messageText = config.reviewWithoutTestsMessage;
+        messageText = formatMessage(config.reviewWithoutTestsMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath) });
       }
 
       // Prompt guard: prevent duplicate review prompts

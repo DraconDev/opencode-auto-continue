@@ -1,6 +1,6 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
-import { formatMessage, shouldBlockPrompt } from "./shared.js";
+import { formatMessage, shouldBlockPrompt, todoMdInstruction } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
