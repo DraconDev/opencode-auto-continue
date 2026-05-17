@@ -5,7 +5,7 @@ import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
 export interface ReviewDeps {
-  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs" | "todoMdPath" | "todoMdSync">;
+  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs" | "todoMdPath">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -114,7 +114,7 @@ export function createReviewModule(deps: ReviewDeps) {
       // Build review message — only include test section if real results exist
       let messageText: string;
       if (hasRealTests) {
-        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)", todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
+        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)", todoMdInstruction: todoMdInstruction(config.todoMdPath) });
       } else {
         messageText = formatMessage(config.reviewWithoutTestsMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
       }
