@@ -2,9 +2,10 @@ import type { PluginConfig } from "./config.js";
 import type { SessionState, Todo } from "./session-state.js";
 import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
+import type { TodoMdReader } from "./todo-md-reader.js";
 
 export interface TodoPollerDeps {
-  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens">;
+  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "todoMdPath" | "todoMdSync" | "todoMdSyncMessage">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -13,6 +14,8 @@ export interface TodoPollerDeps {
   triggerReview?: (sessionId: string) => void;
   maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<boolean>;
   scheduleNudge?: (sessionId: string) => void;
+  todoMdReader?: TodoMdReader;
+  sendTodoMdSync?: (sessionId: string, tasks: string[]) => Promise<void>;
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;
@@ -60,6 +63,15 @@ export function createTodoPoller(deps: TodoPollerDeps) {
       if (!inCooldown) {
         log("todo poll: all completed with stale reviewFired flag, resetting:", sessionId);
         s.reviewFired = false;
+
+        if (config.todoMdSync && config.todoMdPath && deps.todoMdReader && deps.sendTodoMdSync && !s.todoMdSyncFired) {
+          deps.todoMdReader.readAndParse(input.directory || "", todos).then((mdResult) => {
+            if (mdResult && mdResult.pending.length > 0) {
+              log("todo.md sync: found pending tasks after review reset, firing sync:", mdResult.pending.length, "tasks");
+              deps.sendTodoMdSync!(sessionId, mdResult.pending).catch((e: unknown) => log("todo.md sync send error:", e));
+            }
+          }).catch((e: unknown) => log("todo.md sync read error:", e));
+        }
       }
     }
 
@@ -107,6 +119,7 @@ export function createTodoPoller(deps: TodoPollerDeps) {
         log("todo poll: new pending todos after review, resetting review flag:", sessionId);
         s.reviewFired = false;
       }
+      s.todoMdSyncFired = false;
     }
 
     if (hasPending && deps.scheduleNudge && !s.nudgePaused) {
