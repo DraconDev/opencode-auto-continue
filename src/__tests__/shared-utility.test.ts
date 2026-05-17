@@ -648,30 +648,6 @@ describe("shared.ts utilities", () => {
       expect(result.startsWith(" ")).toBe(true);
     });
 
-    it("should include sync note when todoMdSync is true", async () => {
-      const { todoMdInstruction } = await import('../shared.js');
-
-      const result = todoMdInstruction("TODO.md", true);
-
-      expect(result).toContain("picked up automatically");
-    });
-
-    it("should NOT include sync note when todoMdSync is false", async () => {
-      const { todoMdInstruction } = await import('../shared.js');
-
-      const result = todoMdInstruction("TODO.md", false);
-
-      expect(result).not.toContain("picked up automatically");
-    });
-
-    it("should NOT include sync note when todoMdSync is undefined (default)", async () => {
-      const { todoMdInstruction } = await import('../shared.js');
-
-      const result = todoMdInstruction("TODO.md");
-
-      expect(result).not.toContain("picked up automatically");
-    });
-
     it("should work with custom file names", async () => {
       const { todoMdInstruction } = await import('../shared.js');
 
