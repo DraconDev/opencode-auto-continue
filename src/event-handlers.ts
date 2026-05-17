@@ -890,6 +890,8 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
       if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
     }).catch((e: unknown) => log('proactive compact check failed:', e));
 
+    s.idleProcessingDone = true;
+
     // Also poll todos and schedule nudge so we're ready immediately
     // when the AI finishes the continue prompt
     await todoPoller.pollAndProcess(sid);
