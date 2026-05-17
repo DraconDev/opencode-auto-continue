@@ -466,6 +466,24 @@ describe("shared.ts utilities", () => {
 
       expect(result.orphanParentDetection).toBe(false);
     });
+
+    it("should reject negative compactionTimeoutBackoffMs", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, compactionTimeoutBackoffMs: -1 };
+      const result = validateConfig(config);
+
+      expect(result.compactionTimeoutBackoffMs).toBe(DEFAULT_CONFIG.compactionTimeoutBackoffMs);
+    });
+
+    it("should accept valid compactionTimeoutBackoffMs = 0", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, compactionTimeoutBackoffMs: 0 };
+      const result = validateConfig(config);
+
+      expect(result.compactionTimeoutBackoffMs).toBe(0);
+    });
   });
 
   describe("formatMessage", () => {
