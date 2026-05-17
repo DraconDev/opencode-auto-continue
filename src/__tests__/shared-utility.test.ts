@@ -485,7 +485,7 @@ describe("shared.ts utilities", () => {
       expect(result.compactionTimeoutBackoffMs).toBe(0);
     });
 
-    it("should work with custom file names", async () => {
+    });
 
   describe("formatMessage", () => {
     it("should replace single placeholder", async () => {
