@@ -394,6 +394,12 @@ export function createNudgeModule(deps: NudgeDeps) {
     const s = sessions.get(sessionId);
     if (!s || !config.nudgeEnabled) return;
 
+    if (config.nudgeIdleDelayMs <= 0) {
+      log("scheduling nudge immediately", { sessionId });
+      injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
+      return;
+    }
+
     log("scheduling nudge", { sessionId, delayMs: config.nudgeIdleDelayMs });
     s.nudgeTimer = setTimeout(() => {
       const session = sessions.get(sessionId);

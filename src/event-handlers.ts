@@ -285,7 +285,7 @@ async function handleMessageUpdated(ctx: HandlerContext, sid: string, e: PluginE
 }
 
 async function handleSessionStatus(ctx: HandlerContext, sid: string, e: PluginEvent): Promise<void> {
-  const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, recover, sessionMonitor, stopConditions, review, compaction, terminal, input, isDisposed } = ctx;
+  const { config, sessions, log, getSession, clearTimer, writeStatusFile, scheduleRecovery, recover, sessionMonitor, stopConditions, review, compaction, terminal, input, isDisposed, todoPoller, nudge } = ctx;
   const props = e.properties as Record<string, unknown>;
   const status = props.status as SessionStatusType | undefined;
   log('session.status:', sid, status?.type);
@@ -444,6 +444,15 @@ async function handleSessionStatus(ctx: HandlerContext, sid: string, e: PluginEv
       // Opportunistic compaction on idle
       if (config.opportunisticCompactOnIdle && getTokenCount(s) >= config.opportunisticCompactAtTokens) {
         compaction.maybeOpportunisticCompact(sid, 'idle').catch((e: unknown) => log('opportunistic compact on idle failed:', e));
+      }
+
+      // Poll todos and schedule nudge/review — same as handleSessionIdle
+      // This ensures we pick up work immediately even if session.idle event is delayed
+      await todoPoller.pollAndProcess(sid);
+
+      const stopCheck = stopConditions.checkStopConditions(sid);
+      if (!stopCheck.shouldStop && config.nudgeEnabled) {
+        nudge.scheduleNudge(sid);
       }
     }
 
@@ -875,6 +884,13 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
     compaction.maybeProactiveCompact(sid).then((proactiveOk) => {
       if (!proactiveOk) compaction.maybeHardCompact(sid).catch((e: unknown) => log('hard compact escalation failed:', e));
     }).catch((e: unknown) => log('proactive compact check failed:', e));
+
+    // Also poll todos and schedule nudge so we're ready immediately
+    // when the AI finishes the continue prompt
+    await todoPoller.pollAndProcess(sid);
+    if (s.hasOpenTodos && config.nudgeEnabled) {
+      nudge.scheduleNudge(sid);
+    }
     return;
   }
 

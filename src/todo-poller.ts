@@ -80,13 +80,18 @@ export function createTodoPoller(deps: TodoPollerDeps) {
             deps.maybeOpportunisticCompact(sessionId, "post-review").catch((e: unknown) => log("opportunistic compact post-review failed:", e));
           }
         }
-        if (s.reviewDebounceTimer) {
-          clearTimeout(s.reviewDebounceTimer);
-        }
-        s.reviewDebounceTimer = setTimeout(() => {
-          s.reviewDebounceTimer = null;
+        if (config.reviewDebounceMs <= 0) {
+          log("todo poll detected all completed, triggering review immediately:", sessionId);
           if (deps.triggerReview) deps.triggerReview(sessionId);
-        }, config.reviewDebounceMs);
+        } else {
+          if (s.reviewDebounceTimer) {
+            clearTimeout(s.reviewDebounceTimer);
+          }
+          s.reviewDebounceTimer = setTimeout(() => {
+            s.reviewDebounceTimer = null;
+            if (deps.triggerReview) deps.triggerReview(sessionId);
+          }, config.reviewDebounceMs);
+        }
       }
     } else if (!allCompleted && s.reviewDebounceTimer) {
       clearTimeout(s.reviewDebounceTimer);
