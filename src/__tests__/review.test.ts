@@ -4,6 +4,12 @@ import type { ReviewDeps } from "../review.js";
 import type { SessionState } from "../session-state.js";
 import { createSession } from "../session-state.js";
 
+async function flushPromises(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 0));
+  }
+}
+
 function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
   return {
     config: {
