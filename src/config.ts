@@ -33,6 +33,7 @@ export interface PluginConfig {
   nudgeMaxSubmits: number;
   nudgeMessage: string;
   nudgeCooldownMs: number;
+  todoMdPath: string;
   autoCompact: boolean;
   maxSessionAgeMs: number;
   proactiveCompactAtTokens: number;
