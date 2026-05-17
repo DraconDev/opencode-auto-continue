@@ -9,7 +9,7 @@ export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts" | "todoMdPath" | "todoMdSync" | "todoMdSyncMessage">;
+    "showToasts" | "todoMdPath">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
