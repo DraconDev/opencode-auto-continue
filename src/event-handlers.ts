@@ -900,7 +900,6 @@ async function handleSessionIdle(ctx: HandlerContext, sid: string): Promise<void
   }
 
   // Poll todos before deciding nudge
-  // Poll todos before deciding nudge
   await todoPoller.pollAndProcess(sid);
 
   const stopCheck = stopConditions.checkStopConditions(sid);
@@ -927,6 +926,7 @@ function handleSessionCompacted(ctx: HandlerContext, sid: string): void {
   s.lastCompactionFailedAt = 0;
   s.lastCompactionTimeoutAt = 0;
   s.hardCompactionInProgress = false;
+  s.idleProcessingDone = false;
   if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
   const hadPendingReview = s.reviewRetryTimer !== null;
   if (s.reviewRetryTimer) { clearTimeout(s.reviewRetryTimer); s.reviewRetryTimer = null; }
