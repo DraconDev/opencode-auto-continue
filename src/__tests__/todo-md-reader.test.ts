@@ -152,6 +152,23 @@ describe("createTodoMdReader", () => {
     expect(result!.pending).toEqual(["New feature"]);
   });
 
+  it("deduplicates with fuzzy prefix matching for long tasks", async () => {
+    const reader = createTodoMdReader({
+      todoMdPath: "TODO.md",
+      todoMdSync: true,
+      log: vi.fn(),
+      readFile: async () => "- [ ] Implement the new authentication module\n- [ ] Write integration tests for auth\n- [ ] Unrelated new task\n",
+    });
+    const existingTodos = [
+      { id: "1", content: "Implement the new authentication module with OAuth2", title: "Implement the new authentication module with OAuth2", status: "in_progress" },
+      { id: "2", content: "Write integration tests for authentication", title: "Write integration tests for authentication", status: "pending" },
+    ];
+    const result = await reader.readAndParse("/project", existingTodos);
+
+    expect(result).not.toBeNull();
+    expect(result!.pending).toEqual(["Unrelated new task"]);
+  });
+
   it("returns all pending when no existing todos provided", async () => {
     const reader = createTodoMdReader({
       todoMdPath: "TODO.md",
