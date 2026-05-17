@@ -1,7 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createReviewModule } from "../review.js";
 import type { ReviewDeps } from "../review.js";
 import { createSession } from "../session-state.js";
+
+async function flushPromises() {
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+}
 
 describe("review module", () => {
   describe("triggerReview compaction deferral", () => {
@@ -139,6 +143,239 @@ describe("review module", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("sendContinue", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("skips if continueInProgress is true", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      s.continueInProgress = true;
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+      expect(s.continueInProgress).toBe(true);
+    });
+
+    it("skips if needsContinue is false", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = false;
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+
+    it("skips if session is disposed", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+      (deps.isDisposed as any).mockReturnValue(true);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+
+    it("sends prompt and clears needsContinue on success", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).toHaveBeenCalled();
+      expect(s.needsContinue).toBe(false);
+      expect(s.continueMessageText).toBe("");
+      expect(s.continueRetryCount).toBe(0);
+      expect(s.lastContinueRetryAt).toBe(0);
+      expect(s.continueInProgress).toBe(false);
+    });
+
+    it("resolves {todoMdInstruction} in continueMessageText", async () => {
+      const deps = makeDeps();
+      deps.config.todoMdPath = "TODO.md";
+      deps.config.todoMdSync = true;
+      deps.config.shortContinueMessage = "Continue. {todoMdInstruction}";
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue. {todoMdInstruction}";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      const callArgs = (deps.input.client.session.prompt as any).mock.calls[0][0];
+      const sentText = callArgs.body.parts[0].text;
+      expect(sentText).toContain("TODO.md");
+      expect(sentText).not.toContain("{todoMdInstruction}");
+    });
+
+    it("increments retryCount on prompt failure", async () => {
+      const deps = makeDeps();
+      (deps.input.client.session.prompt as any).mockRejectedValue(new Error("fail"));
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(s.continueRetryCount).toBe(1);
+      expect(s.lastContinueRetryAt).toBe(Date.now());
+      expect(s.continueInProgress).toBe(false);
+    });
+
+    it("gives up after MAX_CONTINUE_RETRIES (3) failures", async () => {
+      const deps = makeDeps();
+      (deps.input.client.session.prompt as any).mockRejectedValue(new Error("fail"));
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+
+      for (let i = 0; i < 3; i++) {
+        s.continueRetryCount = i;
+        s.lastContinueRetryAt = i > 0 ? Date.now() : 0;
+        await sendContinue("test");
+      }
+
+      expect(s.needsContinue).toBe(false);
+      expect(s.continueRetryCount).toBe(0);
+    });
+
+    it("skips when retry backoff is active (5s)", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      s.continueRetryCount = 1;
+      s.lastContinueRetryAt = Date.now() - 2000;
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+
+    it("resets stale retry count when >60s since last retry", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      s.continueRetryCount = 2;
+      s.lastContinueRetryAt = Date.now() - 70000;
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).toHaveBeenCalled();
+      expect(s.continueRetryCount).toBe(0);
+    });
+
+    it("clears continueInProgress in finally block on success", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(s.continueInProgress).toBe(false);
+    });
+
+    it("clears continueInProgress in finally block on failure", async () => {
+      const deps = makeDeps();
+      (deps.input.client.session.prompt as any).mockRejectedValue(new Error("fail"));
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(s.continueInProgress).toBe(false);
+    });
+
+    it("60s safety timeout force-clears continueInProgress", async () => {
+      const deps = makeDeps();
+      (deps.input.client.session.prompt as any).mockImplementation(() => new Promise(() => {}));
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      const promise = sendContinue("test");
+
+      await vi.advanceTimersByTimeAsync(61000);
+      await flushPromises();
+
+      expect(s.continueInProgress).toBe(false);
+    });
+
+    it("calls forceCompact on token limit error", async () => {
+      const deps = makeDeps();
+      const tokenError = new Error("context length exceeded");
+      (deps.input.client.session.prompt as any).mockRejectedValue(tokenError);
+      (deps.isTokenLimitError as any).mockReturnValue(true);
+      (deps.forceCompact as any).mockResolvedValue(true);
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.forceCompact).toHaveBeenCalledWith("test");
+    });
+
+    it("blocks duplicate via prompt guard", async () => {
+      const deps = makeDeps();
+      const recentMessages = [
+        { role: "user", info: { role: "user", createdAt: new Date().toISOString() }, parts: [{ type: "text", text: "Continue." }] },
+      ];
+      (deps.input.client.session.messages as any).mockResolvedValue({ data: recentMessages, error: undefined });
+      const s = createSession();
+      s.needsContinue = true;
+      s.continueMessageText = "Continue.";
+      deps.sessions.set("test", s);
+
+      const { sendContinue } = createReviewModule(deps);
+      await sendContinue("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+  });
 });
 
 function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
@@ -149,6 +386,8 @@ function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
       showToasts: false,
       shortContinueMessage: "Continue.",
       reviewCooldownMs: 60000,
+      todoMdPath: "",
+      todoMdSync: false,
     },
     sessions: new Map(),
     log: vi.fn(),
@@ -157,6 +396,7 @@ function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
         session: {
           prompt: vi.fn().mockResolvedValue({ data: {}, error: undefined }),
           messages: vi.fn().mockResolvedValue({ data: [], error: undefined }),
+          status: vi.fn().mockResolvedValue({ data: { test: { type: "idle" } }, error: undefined }),
         },
         tui: {
           showToast: vi.fn().mockResolvedValue(undefined),
