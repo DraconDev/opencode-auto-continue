@@ -121,7 +121,7 @@ describe("review module", () => {
       s.hardCompactionInProgress = false;
 
       await vi.advanceTimersByTimeAsync(5000);
-      await new Promise(r => setTimeout(r, 0));
+      await flushPromises();
 
       expect(deps.input.client.session.prompt).toHaveBeenCalled();
     });
@@ -140,7 +140,7 @@ describe("review module", () => {
       s.reviewFired = true;
 
       await vi.advanceTimersByTimeAsync(5000);
-      await new Promise(r => setTimeout(r, 0));
+      await flushPromises();
 
       expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
     });
@@ -158,7 +158,7 @@ describe("review module", () => {
       (deps.isDisposed as any).mockReturnValue(true);
 
       await vi.advanceTimersByTimeAsync(5000);
-      await new Promise(r => setTimeout(r, 0));
+      await flushPromises();
 
       expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
     });
@@ -175,7 +175,7 @@ describe("review module", () => {
       deps.sessions.delete("test");
 
       await vi.advanceTimersByTimeAsync(5000);
-      await new Promise(r => setTimeout(r, 0));
+      await flushPromises();
 
       expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
     });
