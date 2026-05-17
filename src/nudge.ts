@@ -3,18 +3,20 @@ import type { SessionState } from "./session-state.js";
 import { formatMessage, shouldBlockPrompt, todoMdInstruction } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
+import type { TodoMdReader } from "./todo-md-reader.js";
 
 export interface NudgeDeps {
   config: Pick<PluginConfig, 
     "nudgeEnabled" | "nudgeIdleDelayMs" | "nudgeMaxSubmits" | 
     "nudgeMessage" | "nudgeCooldownMs" | "includeTodoContext" | 
-    "showToasts" | "todoMdPath">;
+    "showToasts" | "todoMdPath" | "todoMdSync" | "todoMdSyncMessage">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
   input: TypedPluginInput;
   maybeHardCompact?: (sessionId: string) => Promise<boolean>;
   testRunner?: TestRunner;
+  todoMdReader?: TodoMdReader;
 }
 
 /**
@@ -201,7 +203,51 @@ export function createNudgeModule(deps: NudgeDeps) {
     });
 
     if (pending.length === 0) {
-      log("no pending todos after fetch, nudge done", { sessionId, total: todos.length, completed: completed.length });
+      log("no pending todos after fetch, checking TODO.md sync", { sessionId, total: todos.length, completed: completed.length });
+
+      if (config.todoMdSync && config.todoMdPath && deps.todoMdReader && !s.todoMdSyncFired) {
+        try {
+          const mdResult = await deps.todoMdReader.readAndParse(input.directory || "", todos);
+          if (mdResult && mdResult.pending.length > 0) {
+            log("TODO.md sync: found pending tasks, sending sync message:", { sessionId, tasks: mdResult.pending.length });
+
+            const todoMdTaskList = mdResult.pending.map((t, i) => `${i + 1}. ${t}`).join("\n");
+            const syncMessage = formatMessage(config.todoMdSyncMessage, {
+              todoMdPath: config.todoMdPath,
+              todoMdTaskList,
+              todoMdInstruction: todoMdInstruction(config.todoMdPath),
+            });
+
+            const isDuplicate = await shouldBlockPrompt(sessionId, syncMessage, input, log as any);
+            if (!isDuplicate) {
+              try {
+                await input.client.session.prompt({
+                  path: { id: sessionId },
+                  query: { directory: input.directory || "" },
+                  body: {
+                    parts: [{
+                      type: "text",
+                      text: syncMessage,
+                      synthetic: true,
+                    }],
+                  },
+                });
+                s.todoMdSyncFired = true;
+                s.lastTodoMdSyncAt = Date.now();
+                s.messageCount++;
+                log("TODO.md sync message sent successfully:", { sessionId, tasks: mdResult.pending.length });
+              } catch (e) {
+                log("TODO.md sync message send failed:", String(e));
+              }
+            } else {
+              log("TODO.md sync message blocked by prompt guard:", sessionId);
+            }
+          }
+        } catch (e) {
+          log("TODO.md sync read error in nudge:", String(e));
+        }
+      }
+
       s.nudgeCount = 0;
       s.lastTodoSnapshot = "";
       return;
