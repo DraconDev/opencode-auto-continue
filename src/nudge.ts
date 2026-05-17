@@ -144,8 +144,6 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
     }
 
-    
-
     // FIX 8: Check failure backoff before proceeding
     const NUDGE_FAILURE_BACKOFF_MS = 5000;
     if (s.nudgeFailureCount > 0 && Date.now() - s.lastNudgeFailureAt < NUDGE_FAILURE_BACKOFF_MS) {
