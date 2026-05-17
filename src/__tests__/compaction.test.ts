@@ -1499,7 +1499,7 @@ describe("compaction module unit tests", () => {
     it("throttles maybeHardCompact when proactive was throttled", async () => {
       const s = createSessionState({ estimatedTokens: 200000, lastCompactionCheckAt: 0 });
       sessions.set("test", s);
-      module = createModule({ proactiveCompactAtTokens: 100000, hardCompactAtTokens: 150000 });
+      module = createModule({ proactiveCompactAtTokens: 100000, hardCompactAtTokens: 150000, compactionGracePeriodMs: 0 });
 
       // First call sets lastCompactionCheckAt
       const promise1 = module.maybeProactiveCompact("test");
@@ -1507,7 +1507,13 @@ describe("compaction module unit tests", () => {
       await simulateCompacted(sessions, "test");
       await promise1;
 
-      // Hard compact within 10s should also be throttled
+      // Reset so hard compact would be allowed (no grace period, no cooldown)
+      const s2 = sessions.get("test")!;
+      s2.lastCompactionAt = 0;
+      s2.proactiveCompactCount = 0;
+      s2.hardCompactCount = 0;
+
+      // Hard compact within 10s should be throttled
       const result = await module.maybeHardCompact("test");
       expect(result).toBe(false);
     });
