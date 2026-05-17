@@ -5,7 +5,7 @@ import type { TypedPluginInput } from "./types.js";
 import type { TodoMdReader } from "./todo-md-reader.js";
 
 export interface TodoPollerDeps {
-  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "todoMdPath" | "todoMdSync">;
+  config: Pick<PluginConfig, "todoPollIntervalMs" | "reviewOnComplete" | "reviewDebounceMs" | "reviewCooldownMs" | "opportunisticCompactAfterReview" | "opportunisticCompactAtTokens" | "todoMdPath">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   isDisposed: () => boolean;
@@ -15,7 +15,6 @@ export interface TodoPollerDeps {
   maybeOpportunisticCompact?: (sessionId: string, trigger: string) => Promise<boolean>;
   scheduleNudge?: (sessionId: string) => void;
   todoMdReader?: TodoMdReader;
-  sendTodoMdSync?: (sessionId: string, tasks: string[]) => Promise<void>;
 }
 
 const MIN_POLL_INTERVAL_MS = 5000;

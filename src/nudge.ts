@@ -201,55 +201,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     });
 
     if (pending.length === 0) {
-      log("no pending todos after fetch, checking TODO.md sync", { sessionId, total: todos.length, completed: completed.length });
-
-      if (config.todoMdSync && config.todoMdPath && deps.todoMdReader && !s.todoMdSyncFired) {
-        const TODO_MD_SYNC_COOLDOWN_MS = 30000;
-        if (s.lastTodoMdSyncAt > 0 && Date.now() - s.lastTodoMdSyncAt < TODO_MD_SYNC_COOLDOWN_MS) {
-          log("TODO.md sync: cooldown active, skipping:", sessionId);
-        } else {
-          try {
-            const mdResult = await deps.todoMdReader.readAndParse(input.directory || "", todos);
-            if (mdResult && mdResult.pending.length > 0) {
-              log("TODO.md sync: found pending tasks, sending sync message:", { sessionId, tasks: mdResult.pending.length });
-
-              const todoMdTaskList = mdResult.pending.map((t, i) => `${i + 1}. ${t}`).join("\n");
-              const syncMessage = formatMessage(config.todoMdSyncMessage, {
-                todoMdPath: config.todoMdPath,
-                todoMdTaskList,
-                todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync),
-              });
-
-              const isDuplicate = await shouldBlockPrompt(sessionId, syncMessage, input, log as any);
-              if (!isDuplicate) {
-                try {
-                  await input.client.session.prompt({
-                    path: { id: sessionId },
-                    query: { directory: input.directory || "" },
-                    body: {
-                      parts: [{
-                        type: "text",
-                        text: syncMessage,
-                        synthetic: true,
-                      }],
-                    },
-                  });
-                  s.todoMdSyncFired = true;
-                  s.lastTodoMdSyncAt = Date.now();
-                  s.messageCount++;
-                  log("TODO.md sync message sent successfully:", { sessionId, tasks: mdResult.pending.length });
-                } catch (e) {
-                  log("TODO.md sync message send failed:", String(e));
-                }
-              } else {
-                log("TODO.md sync message blocked by prompt guard:", sessionId);
-              }
-            }
-          } catch (e) {
-            log("TODO.md sync read error in nudge:", String(e));
-          }
-        }
-      }
+      log("no pending todos after fetch", { sessionId, total: todos.length, completed: completed.length });
 
       s.nudgeCount = 0;
       s.lastTodoSnapshot = "";
@@ -333,7 +285,7 @@ export function createNudgeModule(deps: NudgeDeps) {
         templateVars.todoList = todoList + (pending.length > 5 ? "..." : "");
       }
 
-      messageText = formatMessage(config.nudgeMessage, { ...templateVars, todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
+      messageText = formatMessage(config.nudgeMessage, { ...templateVars, todoMdInstruction: todoMdInstruction(config.todoMdPath) });
 
     // If tests failed, override nudge message with fix directive
     if (testFailureOutput) {
