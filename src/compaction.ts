@@ -244,7 +244,6 @@ export function createCompactionModule(deps: CompactionDeps) {
       return false;
     }
     
-    const now = Date.now();
     if (s.lastCompactionAt > 0 && now - s.lastCompactionAt < config.compactCooldownMs) {
       log('[Compaction] PROACTIVE SKIP — cooldown');
       return false;
