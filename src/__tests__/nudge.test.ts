@@ -1148,5 +1148,36 @@ describe("nudge integration with plugin events", () => {
       expect(textPart).toContain("1. Task A");
       expect(textPart).toContain("2. Task B");
     });
+
+    it("should skip TODO.md sync when lastTodoMdSyncAt cooldown is active", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task"], completed: [] }),
+      };
+      const { mod, s } = await makeNudgeModule({ todoMdReader });
+      s.lastTodoMdSyncAt = Date.now() - 10000;
+      s.todoMdSyncFired = false;
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+
+      expect(todoMdReader.readAndParse).not.toHaveBeenCalled();
+    });
+
+    it("should allow TODO.md sync after cooldown expires", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task"], completed: [] }),
+      };
+      const { mod, s } = await makeNudgeModule({ todoMdReader });
+      s.lastTodoMdSyncAt = Date.now() - 35000;
+      s.todoMdSyncFired = false;
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(todoMdReader.readAndParse).toHaveBeenCalled();
+    });
   });
 });
