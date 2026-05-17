@@ -37,15 +37,15 @@ interface TodoMdReaderDeps {
 }
 
 export interface TodoMdReader {
-  readAndParse: (directory: string, existingTodos?: Todo[]) => Promise<TodoMdResult | null>;
+  readAndParse: (directory: string) => Promise<TodoMdResult | null>;
 }
 
 export function createTodoMdReader(deps: TodoMdReaderDeps): TodoMdReader {
   const { todoMdPath, log } = deps;
   const doRead = deps.readFile ?? ((p: string) => nodeReadFile(p, "utf-8"));
 
-  async function readAndParse(directory: string, existingTodos?: Todo[]): Promise<TodoMdResult | null> {
-    if (!todoMdPath || !deps.todoMdSync) return null;
+  async function readAndParse(directory: string): Promise<TodoMdResult | null> {
+    if (!todoMdPath) return null;
 
     const fullPath = join(directory, todoMdPath);
 
@@ -53,26 +53,10 @@ export function createTodoMdReader(deps: TodoMdReaderDeps): TodoMdReader {
       const content = await doRead(fullPath);
       const result = parseTodoMd(content);
 
-      if (existingTodos && existingTodos.length > 0) {
-        const existingTexts = new Set(
-          existingTodos.map((t) => (t.content || t.title || "").toLowerCase().trim())
-        );
-        result.pending = result.pending.filter((task) => {
-          const normalized = task.toLowerCase().trim();
-          for (const existing of existingTexts) {
-            if (existing === normalized) return false;
-            if (existing.length > 10 && normalized.includes(existing.slice(0, -2))) return false;
-            if (normalized.length > 10 && existing.includes(normalized.slice(0, -2))) return false;
-          }
-          return true;
-        });
-      }
-
       log("todo.md read result", {
         path: fullPath,
         pending: result.pending.length,
         completed: result.completed.length,
-        deduped: existingTodos ? "yes" : "no",
       });
 
       return result;
