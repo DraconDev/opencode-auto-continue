@@ -837,6 +837,42 @@ describe("opencode-auto-continue", () => {
 
       vi.useRealTimers();
     });
+
+    it("should clear idleProcessingDone on session.compacted", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 500,
+        nudgeCooldownMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "test todo", status: "in_progress" }],
+        error: undefined
+      });
+
+      // Fire session.idle — sets idleProcessingDone
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Fire session.compacted — should clear idleProcessingDone
+      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
+
+      // Fire session.status(idle) — should process again since idleProcessingDone was cleared
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
+
+      // Advance past nudge delay — nudge should fire from the session.status(idle) fallback
+      await vi.advanceTimersByTimeAsync(600);
+      expect(mockPrompt).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 
   describe("attempts reset on progress", () => {
