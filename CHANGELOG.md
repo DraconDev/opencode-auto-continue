@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.19.20] - 2026-05-17
+
+### Fixed
+
+- **Compaction safety timeout too short for large sessions** (`attemptCompact`): Safety timeout was fixed at `compactionSafetyTimeoutMs` (default 15s) regardless of session size. Sessions with 200k+ tokens take significantly longer to compact. Now scales: `effectiveSafetyMs = max(compactionSafetyTimeoutMs, scaledWait + 5000)`, where `scaledWait` is 2x at 200k+ tokens and 3x at 500k+ tokens. At 600k tokens with 10s verify wait, safety timeout is now 35s instead of 15s.
+- **`session.compacted` event skips post-compaction proactive checks**: The `handleSessionCompacted` handler now resets `lastCompactionCheckAt = 0` alongside other backoff fields. Previously, post-compaction proactive checks were unnecessarily throttled for 10s because `lastCompactionCheckAt` was never cleared.
+
+### Added
+
+- **Compaction check throttle**: Both `maybeProactiveCompact` and `maybeHardCompact` now track the last check timestamp via `lastCompactionCheckAt` and skip if called within 10s (`COMPACTION_CHECK_MIN_INTERVAL_MS`). Prevents thousands of redundant backoff checks per second on high-frequency events like `message.part.updated`. `maybeHardCompact` is also throttled, fixing a bypass where the proactive→hard escalation chain would still fire hard compaction checks when proactive was throttled.
+- **`sendContinue` unit tests**: 14 new tests covering concurrency guard (`continueInProgress`), 60s safety timeout, retry limit (3 retries), retry backoff (5s), stale retry reset (>60s), prompt guard, `{todoMdInstruction}` resolution, token limit error→forceCompact path, and finally-block cleanup.
+- **`triggerReview` unit tests**: 8 new tests covering `reviewFired` skip, cooldown guard, success sets `reviewFired=true`, failure resets `reviewFired` for retry, prompt guard blocks duplicate, toast when `showToasts=true`, and token limit error→forceCompact path.
+
+### Changed
+
+- **Test helpers synchronized**: All `createSessionState`/`createMockSession` helpers in `compaction.test.ts`, `recovery.test.ts`, and `session-monitor.test.ts` now include all fields from the production `SessionState` interface. `session-monitor.test.ts` also had 2 ghost fields (`todoChangeCount`, `continueHistory`) removed that never existed in production.
+
 ## [7.14.41] - 2026-05-16
 
 ### Changed
