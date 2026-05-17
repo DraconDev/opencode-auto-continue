@@ -298,7 +298,7 @@ export function createReviewModule(deps: ReviewDeps) {
               body: {
                 parts: [{
                   type: "text",
-                  text: config.shortContinueMessage,
+                  text: formatMessage(config.shortContinueMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) }),
                   synthetic: true,
                 }],
               },
