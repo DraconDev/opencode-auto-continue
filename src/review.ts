@@ -116,7 +116,7 @@ export function createReviewModule(deps: ReviewDeps) {
       if (hasRealTests) {
         messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)", todoMdInstruction: todoMdInstruction(config.todoMdPath) });
       } else {
-        messageText = formatMessage(config.reviewWithoutTestsMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
+        messageText = formatMessage(config.reviewWithoutTestsMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath) });
       }
 
       // Prompt guard: prevent duplicate review prompts
@@ -182,7 +182,7 @@ export function createReviewModule(deps: ReviewDeps) {
     try {
       const rawMessageText = s.continueMessageText;
       const messageText = rawMessageText.includes('{todoMdInstruction}')
-        ? formatMessage(rawMessageText, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) })
+        ? formatMessage(rawMessageText, { todoMdInstruction: todoMdInstruction(config.todoMdPath) })
         : rawMessageText;
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;
@@ -298,7 +298,7 @@ export function createReviewModule(deps: ReviewDeps) {
               body: {
                 parts: [{
                   type: "text",
-                  text: formatMessage(config.shortContinueMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) }),
+                  text: formatMessage(config.shortContinueMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath) }),
                   synthetic: true,
                 }],
               },

@@ -32,7 +32,6 @@ export function parseTodoMd(content: string): TodoMdResult {
 
 interface TodoMdReaderDeps {
   todoMdPath: string;
-  todoMdSync: boolean;
   log: (...args: unknown[]) => void;
   readFile?: (path: string) => Promise<string>;
 }
