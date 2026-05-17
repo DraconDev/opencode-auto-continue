@@ -946,5 +946,3 @@ describe("nudge integration with plugin events", () => {
     });
   });
 });
-
-    it("should NOT reset nudgeRetryCount on max retries — prevents infinite retry cycles", async () => {
