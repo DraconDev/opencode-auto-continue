@@ -2,7 +2,7 @@ import { readFile as nodeReadFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Todo } from "./session-state.js";
 
-export interface TodoMdResult {
+interface TodoMdResult {
   pending: string[];
   completed: string[];
 }
@@ -30,7 +30,7 @@ export function parseTodoMd(content: string): TodoMdResult {
   return { pending, completed };
 }
 
-export interface TodoMdReaderDeps {
+interface TodoMdReaderDeps {
   todoMdPath: string;
   todoMdSync: boolean;
   log: (...args: unknown[]) => void;
