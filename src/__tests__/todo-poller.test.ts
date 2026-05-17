@@ -12,7 +12,6 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     opportunisticCompactAfterReview: true,
     opportunisticCompactAtTokens: 60000,
     todoMdPath: "",
-    todoMdSync: true,
     ...overrides,
   } as any;
 }
