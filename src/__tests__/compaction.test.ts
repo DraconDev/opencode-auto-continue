@@ -148,6 +148,7 @@ function createSessionState(overrides?: Partial<SessionState>): SessionState {
     compactionSafetyTimer: null,
     lastCompactionFailedAt: 0,
     lastCompactionTimeoutAt: 0,
+    lastCompactionCheckAt: 0,
     hardCompactionInProgress: false,
     lastHardCompactionAt: 0,
     proactiveCompactCount: 0,
@@ -1356,6 +1357,121 @@ describe("compaction module unit tests", () => {
       await vi.advanceTimersByTimeAsync(1000);
       await simulateCompacted(sessions, "test");
 
+      const result = await promise;
+      expect(result).toBe(true);
+    });
+  });
+
+  describe("safety timeout scales with token count", () => {
+    it("uses compactionSafetyTimeoutMs when tokens are low", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
+      const s = createSessionState({ estimatedTokens: 50000 });
+      sessions.set("test", s);
+      module = createModule({ compactionSafetyTimeoutMs: 5000, compactionVerifyWaitMs: 10000 });
+
+      module.attemptCompact("test");
+
+      expect(s.compactionSafetyTimer).not.toBeNull();
+    });
+
+    it("scales effectiveSafetyMs beyond compactionSafetyTimeoutMs at 500k+ tokens", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
+      const s = createSessionState({ estimatedTokens: 600000 });
+      sessions.set("test", s);
+      module = createModule({ compactionSafetyTimeoutMs: 5000, compactionVerifyWaitMs: 10000 });
+
+      module.attemptCompact("test");
+
+      // scaledWait = baseWait * 3 = 30000 at 600k tokens
+      // effectiveSafetyMs = max(5000, 30000 + 5000) = 35000
+      // Safety timer should NOT fire at 5000ms
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+      expect(s.compacting).toBe(true);
+
+      // But SHOULD fire at 35000ms
+      await vi.advanceTimersByTimeAsync(30000);
+      await flushPromises();
+      expect(s.compacting).toBe(false);
+      expect(s.compactionTimedOut).toBe(true);
+    });
+
+    it("scales effectiveSafetyMs at 200k+ tokens (2x multiplier)", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
+      const s = createSessionState({ estimatedTokens: 250000 });
+      sessions.set("test", s);
+      module = createModule({ compactionSafetyTimeoutMs: 5000, compactionVerifyWaitMs: 10000 });
+
+      module.attemptCompact("test");
+
+      // scaledWait = baseWait * 2 = 20000 at 250k tokens
+      // effectiveSafetyMs = max(5000, 20000 + 5000) = 25000
+      await vi.advanceTimersByTimeAsync(5000);
+      await flushPromises();
+      expect(s.compacting).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(20000);
+      await flushPromises();
+      expect(s.compacting).toBe(false);
+      expect(s.compactionTimedOut).toBe(true);
+    });
+
+    it("disables safety timer when compactionSafetyTimeoutMs is 0", async () => {
+      mockSummarize.mockImplementation(() => new Promise(() => {}));
+      const s = createSessionState({ estimatedTokens: 100000 });
+      sessions.set("test", s);
+      module = createModule({ compactionSafetyTimeoutMs: 0 });
+
+      module.attemptCompact("test");
+
+      expect(s.compactionSafetyTimer).toBeNull();
+    });
+  });
+
+  describe("compaction check throttle (lastCompactionCheckAt)", () => {
+    it("allows first proactive compact check immediately", async () => {
+      const s = createSessionState({ estimatedTokens: 200000, lastCompactionCheckAt: 0 });
+      sessions.set("test", s);
+      module = createModule({ proactiveCompactAtTokens: 100000 });
+
+      // First call should not be throttled
+      const promise = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+      const result = await promise;
+      expect(result).toBe(true);
+    });
+
+    it("throttles second proactive compact check within 10s", async () => {
+      const s = createSessionState({ estimatedTokens: 200000, lastCompactionCheckAt: 0 });
+      sessions.set("test", s);
+      module = createModule({ proactiveCompactAtTokens: 100000 });
+
+      // First call sets lastCompactionCheckAt
+      const promise1 = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
+      await promise1;
+
+      // Reset so another compact would be allowed
+      const s2 = sessions.get("test")!;
+      s2.lastCompactionAt = 0;
+      s2.proactiveCompactCount = 0;
+
+      // Second call within 10s should be throttled (returns false immediately)
+      const result = await module.maybeProactiveCompact("test");
+      expect(result).toBe(false);
+    });
+
+    it("allows proactive compact check after 10s throttle window", async () => {
+      const s = createSessionState({ estimatedTokens: 200000, lastCompactionCheckAt: Date.now() - 11000 });
+      sessions.set("test", s);
+      mockSummarize.mockResolvedValue({ data: {} });
+      module = createModule({ proactiveCompactAtTokens: 100000 });
+
+      const promise = module.maybeProactiveCompact("test");
+      await vi.advanceTimersByTimeAsync(1000);
+      await simulateCompacted(sessions, "test");
       const result = await promise;
       expect(result).toBe(true);
     });
