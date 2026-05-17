@@ -715,14 +715,13 @@ describe("opencode-auto-continue", () => {
       mockPrompt.mockResolvedValue({ data: {}, error: undefined });
       const plugin = await createPlugin({ client: mockClient }, {
         nudgeEnabled: true,
-        nudgeIdleDelayMs: 0,
+        nudgeIdleDelayMs: 500,
         nudgeCooldownMs: 0,
         terminalTitleEnabled: false,
         terminalProgressEnabled: false,
         statusFilePath: ""
       });
 
-      // Create session with busy status
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
       await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
 
@@ -731,10 +730,16 @@ describe("opencode-auto-continue", () => {
         error: undefined
       });
 
-      // Fire session.status(idle) WITHOUT session.idle — should still schedule nudge
+      // Fire ONLY session.status(idle) — should still schedule nudge as fallback
       await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-      await vi.advanceTimersByTimeAsync(100);
 
+      // Nudge should NOT fire yet (in delay period)
+      expect(mockPrompt).not.toHaveBeenCalled();
+
+      // Wait for nudge delay to pass
+      await vi.advanceTimersByTimeAsync(600);
+
+      // Now nudge should have fired
       expect(mockPrompt).toHaveBeenCalled();
       vi.useRealTimers();
     });
