@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseTodoMd, readTodoMdFromFile, createTodoMdReader } from "../todo-md-reader.js";
+import { parseTodoMd, createTodoMdReader } from "../todo-md-reader.js";
 
 describe("parseTodoMd", () => {
   it("parses pending tasks with - [ ] syntax", () => {
@@ -75,22 +75,6 @@ describe("parseTodoMd", () => {
     const content = "- [ ] Task one\r\n- [ ] Task two\r\n";
     const result = parseTodoMd(content);
     expect(result.pending).toEqual(["Task one", "Task two"]);
-  });
-});
-
-describe("readTodoMdFromFile", () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it("returns null when path is empty", async () => {
-    const result = await readTodoMdFromFile("");
-    expect(result).toBeNull();
-  });
-
-  it("returns null when path is whitespace", async () => {
-    const result = await readTodoMdFromFile("  ");
-    expect(result).toBeNull();
   });
 });
 

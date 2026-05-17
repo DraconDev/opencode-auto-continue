@@ -30,17 +30,6 @@ export function parseTodoMd(content: string): TodoMdResult {
   return { pending, completed };
 }
 
-export async function readTodoMdFromFile(filePath: string): Promise<TodoMdResult | null> {
-  if (!filePath || !filePath.trim()) return null;
-
-  try {
-    const content = await nodeReadFile(filePath, "utf-8");
-    return parseTodoMd(content);
-  } catch {
-    return null;
-  }
-}
-
 export interface TodoMdReaderDeps {
   todoMdPath: string;
   todoMdSync: boolean;

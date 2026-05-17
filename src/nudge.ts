@@ -206,6 +206,10 @@ export function createNudgeModule(deps: NudgeDeps) {
       log("no pending todos after fetch, checking TODO.md sync", { sessionId, total: todos.length, completed: completed.length });
 
       if (config.todoMdSync && config.todoMdPath && deps.todoMdReader && !s.todoMdSyncFired) {
+        const TODO_MD_SYNC_COOLDOWN_MS = 30000;
+        if (s.lastTodoMdSyncAt > 0 && Date.now() - s.lastTodoMdSyncAt < TODO_MD_SYNC_COOLDOWN_MS) {
+          log("TODO.md sync: cooldown active, skipping:", sessionId);
+        } else {
         try {
           const mdResult = await deps.todoMdReader.readAndParse(input.directory || "", todos);
           if (mdResult && mdResult.pending.length > 0) {
@@ -245,6 +249,7 @@ export function createNudgeModule(deps: NudgeDeps) {
           }
         } catch (e) {
           log("TODO.md sync read error in nudge:", String(e));
+        }
         }
       }
 
