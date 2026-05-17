@@ -258,11 +258,17 @@ describe("review module", () => {
       const { sendContinue } = createReviewModule(deps);
 
       for (let i = 0; i < 3; i++) {
-        s.continueRetryCount = i;
-        s.lastContinueRetryAt = i > 0 ? Date.now() : 0;
         await sendContinue("test");
+        // Advance past backoff so next retry isn't blocked
+        await vi.advanceTimersByTimeAsync(6000);
+        await flushPromises();
       }
+      // After 3 failures, retryCount=3, needsContinue still true
+      expect(s.continueRetryCount).toBe(3);
+      expect(s.needsContinue).toBe(true);
 
+      // 4th call: hits retry limit, gives up
+      await sendContinue("test");
       expect(s.needsContinue).toBe(false);
       expect(s.continueRetryCount).toBe(0);
     });
@@ -354,7 +360,10 @@ describe("review module", () => {
       deps.sessions.set("test", s);
 
       const { sendContinue } = createReviewModule(deps);
-      await sendContinue("test");
+      const promise = sendContinue("test");
+      await vi.advanceTimersByTimeAsync(3000);
+      await flushPromises();
+      await promise;
 
       expect(deps.forceCompact).toHaveBeenCalledWith("test");
     });
