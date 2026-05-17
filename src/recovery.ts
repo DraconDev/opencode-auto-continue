@@ -291,7 +291,7 @@ export function createRecoveryModule(deps: RecoveryDeps) {
       const templateVars: Record<string, string> = {
         attempts: String(s.attempts + 1),
         maxAttempts: String(config.maxRecoveries),
-        todoMdInstruction: todoMdInstruction(config.todoMdPath),
+        todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync),
       };
 
       // If tool-text was detected, use the tool-text recovery prompt

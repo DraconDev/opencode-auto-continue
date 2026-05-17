@@ -11,6 +11,9 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     reviewCooldownMs: 60000,
     opportunisticCompactAfterReview: true,
     opportunisticCompactAtTokens: 60000,
+    todoMdPath: "",
+    todoMdSync: true,
+    todoMdSyncMessage: "Tasks from {todoMdPath}:\n\n{todoMdTaskList}",
     ...overrides,
   } as any;
 }

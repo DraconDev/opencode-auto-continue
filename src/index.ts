@@ -22,6 +22,7 @@ import { createSessionMonitor } from "./session-monitor.js";
 import { createStopConditionsModule } from "./stop-conditions.js";
 import { createTestRunner } from "./test-runner.js";
 import { createTodoPoller } from "./todo-poller.js";
+import { createTodoMdReader } from "./todo-md-reader.js";
 import { getSessionTokens, getDbLastError, closeDb, warmupSqlite } from "./tokens.js";
 import { type HandlerContext, handleEvent, handleSystemTransform, handleSessionCompacting, handleCompactionAutocontinue } from "./event-handlers.js";
 
@@ -361,11 +362,51 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
 
   const testRunner = createTestRunner({ config, log, input });
 
-  const nudge = createNudgeModule({ config, sessions, log, isDisposed: isDisposed, input, maybeHardCompact: compaction.maybeHardCompact, testRunner });
+  const todoMdReader = createTodoMdReader({ todoMdPath: config.todoMdPath, todoMdSync: config.todoMdSync, log });
+
+  async function sendTodoMdSync(sessionId: string, tasks: string[]): Promise<void> {
+    const s = sessions.get(sessionId);
+    if (!s || isDisposed()) return;
+
+    const todoMdTaskList = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n");
+    const syncMessage = formatMessage(config.todoMdSyncMessage, {
+      todoMdPath: config.todoMdPath,
+      todoMdTaskList,
+      todoMdInstruction: '',
+    });
+
+    const isDuplicate = await shouldBlockPrompt(sessionId, syncMessage, input, log);
+    if (isDuplicate) {
+      log('todo.md sync: prompt guard blocked duplicate:', sessionId);
+      return;
+    }
+
+    try {
+      await input.client.session.prompt({
+        path: { id: sessionId },
+        query: { directory: input.directory || "" },
+        body: {
+          parts: [{
+            type: "text",
+            text: syncMessage,
+            synthetic: true,
+          }],
+        },
+      });
+      s.todoMdSyncFired = true;
+      s.lastTodoMdSyncAt = Date.now();
+      s.messageCount++;
+      log('todo.md sync message sent:', { sessionId, tasks: tasks.length });
+    } catch (e) {
+      log('todo.md sync message send failed:', String(e));
+    }
+  }
+
+  const nudge = createNudgeModule({ config, sessions, log, isDisposed: isDisposed, input, maybeHardCompact: compaction.maybeHardCompact, testRunner, todoMdReader });
 
   const review = createReviewModule({ config, sessions, log, input, isDisposed: isDisposed, writeStatusFile, isTokenLimitError: compaction.isTokenLimitError, forceCompact: compaction.forceCompact, maybeHardCompact: compaction.maybeHardCompact, testRunner });
 
-  const todoPoller = createTodoPoller({ config, sessions, log, isDisposed: isDisposed, input, writeStatusFile, triggerReview: review.triggerReview, maybeOpportunisticCompact: compaction.maybeOpportunisticCompact, scheduleNudge: nudge.scheduleNudge });
+  const todoPoller = createTodoPoller({ config, sessions, log, isDisposed: isDisposed, input, writeStatusFile, triggerReview: review.triggerReview, maybeOpportunisticCompact: compaction.maybeOpportunisticCompact, scheduleNudge: nudge.scheduleNudge, todoMdReader, sendTodoMdSync });
   todoPoller.startPeriodicPoll();
 
   const { recover } = createRecoveryModule({ config, sessions, log, input, isDisposed: isDisposed, writeStatusFile, cancelNudge: nudge.cancelNudge, scheduleRecovery, sendContinue: review.sendContinue, maybeHardCompact: compaction.maybeHardCompact, forceCompact: compaction.forceCompact });

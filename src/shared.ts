@@ -289,9 +289,10 @@ export function formatMessage(template: string, vars: Record<string, string>): s
   return result;
 }
 
-export function todoMdInstruction(todoMdPath: string): string {
+export function todoMdInstruction(todoMdPath: string, todoMdSync?: boolean): string {
   if (!todoMdPath) return "";
-  return ` Also maintain \`${todoMdPath}\` in the project root — update it when tasks are created, completed, or discovered. This file persists across sessions.`;
+  const syncNote = todoMdSync ? " Remaining tasks in this file will be picked up automatically." : "";
+  return ` Also maintain \`${todoMdPath}\` in the project root — update it when tasks are created, completed, or discovered. This file persists across sessions.${syncNote}`;
 }
 
 function getMessageTimestamp(message: any): number | null {

@@ -5,7 +5,7 @@ import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
 export interface ReviewDeps {
-  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs" | "todoMdPath">;
+  config: Pick<PluginConfig, "reviewMessage" | "reviewWithoutTestsMessage" | "showToasts" | "shortContinueMessage" | "reviewCooldownMs" | "todoMdPath" | "todoMdSync">;
   sessions: Map<string, SessionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
@@ -114,9 +114,9 @@ export function createReviewModule(deps: ReviewDeps) {
       // Build review message — only include test section if real results exist
       let messageText: string;
       if (hasRealTests) {
-        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)", todoMdInstruction: todoMdInstruction(config.todoMdPath) });
+        messageText = formatMessage(config.reviewMessage, { testOutput: testOutput || "(no test output)", todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
       } else {
-        messageText = formatMessage(config.reviewWithoutTestsMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath) });
+        messageText = formatMessage(config.reviewWithoutTestsMessage, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
       }
 
       // Prompt guard: prevent duplicate review prompts
@@ -182,7 +182,7 @@ export function createReviewModule(deps: ReviewDeps) {
     try {
       const rawMessageText = s.continueMessageText;
       const messageText = rawMessageText.includes('{todoMdInstruction}')
-        ? formatMessage(rawMessageText, { todoMdInstruction: todoMdInstruction(config.todoMdPath) })
+        ? formatMessage(rawMessageText, { todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) })
         : rawMessageText;
       const MAX_CONTINUE_RETRIES = 3;
       const CONTINUE_RETRY_BACKOFF_MS = 5000;

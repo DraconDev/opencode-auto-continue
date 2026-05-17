@@ -215,7 +215,7 @@ export function createNudgeModule(deps: NudgeDeps) {
             const syncMessage = formatMessage(config.todoMdSyncMessage, {
               todoMdPath: config.todoMdPath,
               todoMdTaskList,
-              todoMdInstruction: todoMdInstruction(config.todoMdPath),
+              todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync),
             });
 
             const isDuplicate = await shouldBlockPrompt(sessionId, syncMessage, input, log as any);
@@ -330,7 +330,7 @@ export function createNudgeModule(deps: NudgeDeps) {
         templateVars.todoList = todoList + (pending.length > 5 ? "..." : "");
       }
 
-      messageText = formatMessage(config.nudgeMessage, { ...templateVars, todoMdInstruction: todoMdInstruction(config.todoMdPath) });
+      messageText = formatMessage(config.nudgeMessage, { ...templateVars, todoMdInstruction: todoMdInstruction(config.todoMdPath, config.todoMdSync) });
 
     // If tests failed, override nudge message with fix directive
     if (testFailureOutput) {
