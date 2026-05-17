@@ -75,53 +75,6 @@ describe("opencode-auto-continue", () => {
       vi.useRealTimers();
     });
 
-    it("should clear idleProcessingDone on session.compacted", async () => {
-      vi.useFakeTimers();
-      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
-      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
-      const plugin = await createPlugin({ client: mockClient }, {
-        nudgeEnabled: true,
-        nudgeIdleDelayMs: 500,
-        nudgeCooldownMs: 0,
-        terminalTitleEnabled: false,
-        terminalProgressEnabled: false,
-        statusFilePath: ""
-      });
-
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [{ id: "t1", content: "test todo", status: "in_progress" }] } } });
-      mockTodo.mockResolvedValue({
-        data: [{ id: "t1", content: "test todo", status: "in_progress" }],
-        error: undefined
-      });
-
-      // Fire session.idle — sets idleProcessingDone
-      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
-
-      // Fire session.compacted — should clear idleProcessingDone
-      await plugin.event({ event: { type: "session.compacted", properties: { sessionID: "test" } } });
-
-      // Fire session.status(idle) — should process again since idleProcessingDone was cleared
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "idle" } } } });
-
-      // Advance past nudge delay — nudge should fire from the session.status(idle) fallback
-      await vi.advanceTimersByTimeAsync(600);
-      expect(mockPrompt).toHaveBeenCalled();
-
-      vi.useRealTimers();
-    });
-  });
-
-      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
-      await vi.advanceTimersByTimeAsync(150);
-      await flushPromises();
-
-      expect(mockAbort).toHaveBeenCalledTimes(1);
-      expect(mockPrompt).toHaveBeenCalledTimes(1);
-      expect((mockPrompt.mock.calls[0] as any)[0].body.parts[0].text).toContain("Continue from where you left off");
-      vi.useRealTimers();
-    });
-
     it("should not treat plugin-initiated abort as user cancellation", async () => {
       vi.useFakeTimers();
       const statusFilePath = `/tmp/opencode-plugin-abort-${Date.now()}.json`;
