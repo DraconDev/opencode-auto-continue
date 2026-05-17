@@ -127,6 +127,9 @@ export interface SessionState {
   // === Dangerous Commands Policy Injection ===
   systemTransformHookCalled: boolean;
   dangerousCommandPromptTimer: ReturnType<typeof setTimeout> | null;
+
+  // === Idle Dedup (event-handlers.ts) ===
+  lastIdleProcessedAt: number; // Timestamp of last idle todo-poll + nudge scheduling (dedup session.status vs session.idle)
 }
 
 /**
@@ -238,6 +241,8 @@ export function createSession(): SessionState {
 
     systemTransformHookCalled: false,
     dangerousCommandPromptTimer: null,
+
+    lastIdleProcessedAt: 0,
   };
 }
 
