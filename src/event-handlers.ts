@@ -926,6 +926,7 @@ function handleSessionCompacted(ctx: HandlerContext, sid: string): void {
   s.compactionTimedOut = false;
   s.lastCompactionFailedAt = 0;
   s.lastCompactionTimeoutAt = 0;
+  s.lastCompactionCheckAt = 0;
   s.hardCompactionInProgress = false;
   s.idleProcessingDone = false;
   if (s.compactionSafetyTimer) { clearTimeout(s.compactionSafetyTimer); s.compactionSafetyTimer = null; }
