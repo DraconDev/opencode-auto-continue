@@ -1,0 +1,38 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": true,
+    "tsconfigRootDir": "."
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended-type-checked",
+    "plugin:@typescript-eslint/stylistic-type-checked"
+  ],
+  "files": ["src/**/*.ts"],
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "*.js",
+    "scripts/**"
+  ],
+  "rules": {
+    // Allow `as unknown as` — this is the correct pattern for strict config merges
+    "@typescript-eslint/no-unnecessary-type-assertion": "off",
+    // Allow unused vars prefixed with underscore (e.g., `_sid`)
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }],
+    // Allow empty blocks that are intentional
+    "no-empty": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["src/__tests__/**/*.ts"],
+      "rules": {
+        // Test files often have more vars/assertions that look unused
+        "@typescript-eslint/no-unused-vars": "off"
+      }
+    }
+  ]
+}

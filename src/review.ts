@@ -1,6 +1,7 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
 import { formatMessage, shouldBlockPrompt, todoMdInstruction } from "./shared.js";
+import { safeUnref } from "./typed-helpers.js";
 import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 
@@ -42,7 +43,10 @@ export function createReviewModule(deps: ReviewDeps) {
           triggerReview(sessionId).catch((e: unknown) => log('review retry failed:', e));
         }
       }, 5000);
-      if (s.reviewRetryTimer && (s.reviewRetryTimer as any).unref) (s.reviewRetryTimer as any).unref();
+      if (s.reviewRetryTimer) {
+        safeUnref(s.reviewRetryTimer);
+        return;
+      }
       return;
     }
 
@@ -177,7 +181,7 @@ export function createReviewModule(deps: ReviewDeps) {
         current.continueInProgress = false;
       }
     }, CONTINUE_SAFETY_TIMEOUT_MS);
-    if ((continueSafetyTimer as any).unref) (continueSafetyTimer as any).unref();
+    safeUnref(continueSafetyTimer);
 
     try {
       const rawMessageText = s.continueMessageText;

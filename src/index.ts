@@ -4,6 +4,7 @@ import { join } from "path";
 import type { TypedPluginInput, PluginEvent } from "./types.js";
 import { type PluginConfig, DEFAULT_CONFIG, validateConfig } from "./config.js";
 import { type SessionState, createSession, getTokenCount, clearAllSessionTimers } from "./session-state.js";
+import { getMessageRole } from "./typed-helpers.js";
 import {
   formatMessage,
   shouldBlockPrompt,
@@ -13,6 +14,7 @@ import {
   clearMessagesCache,
   invalidateModelLimitCache,
 } from "./shared.js";
+import { getPreset } from "./presets.js";
 import { createTerminalModule } from "./terminal.js";
 import { createNudgeModule } from "./nudge.js";
 import { createStatusFileModule } from "./status-file.js";
@@ -93,10 +95,11 @@ function buildContextSummary(pending: Todo[], recentMessages: any[]): string {
   }
 
   for (let i = recentMessages.length - 1; i >= 0; i--) {
-    const msg = recentMessages[i] as any;
-    const role = msg?.role || msg?.info?.role;
+    const msg = recentMessages[i] as Record<string, unknown>;
+    const role = getMessageRole(msg);
     if (role !== "assistant") continue;
-    const text = getMessageText(msg).replace(/\s+/g, " ").slice(0, 180);
+    // getMessageText expects its own signature but we need to pass it a compatible shape
+    const text = getMessageText(msg as Parameters<typeof getMessageText>[0]).replace(/\s+/g, " ").slice(0, 180);
     if (text) return `Recent assistant activity: ${text}${text.length === 180 ? "..." : ""}`;
   }
 
@@ -264,6 +267,19 @@ export const AutoForceResumePlugin: Plugin = async (input, options) => {
     ...(typeof options === "object" && options !== null ? options as Partial<PluginConfig> : {}),
   };
   
+  // Apply preset defaults first — explicit config values override preset values
+  if (config.preset) {
+    const presetValues = getPreset(config.preset);
+    for (const key of Object.keys(presetValues) as Array<keyof typeof presetValues>) {
+      if (key === "preset") continue;
+      const defaultVal = (DEFAULT_CONFIG as unknown as Record<string, unknown>)[key];
+      const userVal = (options as unknown as Record<string, unknown>)?.[key];
+      if (userVal === defaultVal || userVal === undefined) {
+        (config as unknown as Record<string, unknown>)[key] = (presetValues as Record<string, unknown>)[key];
+      }
+    }
+  }
+
   config = validateConfig(config);
 
   // Pre-load SQLite module so first getSessionTokens call is fast

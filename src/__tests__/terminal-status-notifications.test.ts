@@ -3,7 +3,7 @@ import { flushPromises } from './helpers.js';
 import { DEFAULT_CONFIG } from '../config.js';
 import { createSession } from '../session-state.js';
 import { createStatusFileModule } from '../status-file.js';
-import { writeFileSync, readFileSync, existsSync, unlinkSync, mkdirSync, rmdirSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync, unlinkSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 
 // Test terminal output generation
@@ -934,7 +934,7 @@ describe("status file rotation", () => {
       try { unlinkSync(`${base}.${i}`); } catch {}
     }
     try { unlinkSync(`${base}.tmp`); } catch {}
-    try { rmdirSync(dir, { recursive: true }); } catch {}
+    try { rmSync(dir, { recursive: true, force: true }); } catch {}
   }
 
   beforeEach(() => { vi.useFakeTimers(); });

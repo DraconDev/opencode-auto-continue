@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
 
+import { safeUnref } from "./typed-helpers.js";
+
 /** Minimal interface for both node:sqlite and bun:sqlite databases */
 export interface SqliteDatabase {
   prepare(sql: string): { get(...params: unknown[]): unknown; all(): unknown[] };
@@ -144,7 +146,7 @@ function resetIdleTimer(): void {
   cachedDb.idleTimer = setTimeout(() => {
     closeCachedDb();
   }, DB_IDLE_TIMEOUT_MS);
-  if (cachedDb.idleTimer.unref) cachedDb.idleTimer.unref();
+  safeUnref(cachedDb.idleTimer);
 }
 
 /** Close the cached SQLite database connection, releasing resources. */
@@ -158,7 +160,57 @@ export function _resetSqliteCache(): void {
   sqliteModule = null;
   sqliteModuleError = null;
   sqliteModuleLoading = null;
+  consecutiveFailures = 0;
 }
+
+/**
+ * Consecutive failure counter — tracks how many times getSessionTokens
+ * returned NO_TOKENS due to a real database error (module unavailable,
+ * DB open failure, or query error). Resets to 0 on any successful token read.
+ * Does NOT increment on "session not found" — that's a normal lookup miss.
+ *
+ * Used to detect persistent SQLite failures and emit a one-time warning.
+ */
+let consecutiveFailures = 0;
+
+
+/**
+ * Threshold after which we emit a console.warn about persistent SQLite failures.
+ * A warning is logged once when the threshold is first reached. The counter
+ * continues to increment so the failure duration is visible in debug logs.
+ */
+const FAILURE_WARNING_THRESHOLD = 5;
+
+/**
+ * Record a database access failure. Increments the consecutive failure counter.
+ * When the threshold is first reached, emits a one-time console.warn.
+ *
+ * @param reason - Brief description of the failure type (for the warning message)
+ */
+function recordSqliteFailure(reason: string): void {
+  consecutiveFailures++;
+  if (consecutiveFailures === FAILURE_WARNING_THRESHOLD) {
+    console.warn(
+      "[opencode-auto-continue] SQLite failure threshold reached (" +
+        FAILURE_WARNING_THRESHOLD +
+        " consecutive failures). " +
+        "Database token tracking is unavailable — " +
+        reason +
+        ". " +
+        "Compaction triggers may not fire. Check that OpenCode is running and the database is accessible."
+    );
+  }
+}
+
+
+/**
+ * Record a successful token read. Resets the consecutive failure counter.
+ * Call this before any successful return from getSessionTokens.
+ */
+function recordSqliteSuccess(): void {
+  consecutiveFailures = 0;
+}
+
 
 /**
  * Get the path to the OpenCode SQLite database.
@@ -233,6 +285,7 @@ export async function getSessionTokens(sessionId: string): Promise<SessionTokens
       const mod = await loadSqliteModule();
       if (!mod) {
         dbLastError = sqliteModuleError || "No SQLite module available";
+        recordSqliteFailure(sqliteModuleError || "no SQLite module available");
         return NO_TOKENS;
       }
 
@@ -265,6 +318,7 @@ export async function getSessionTokens(sessionId: string): Promise<SessionTokens
       const total = row.tokens_input + row.tokens_output + row.tokens_reasoning;
 
       dbLastError = "";
+      recordSqliteSuccess();
       return {
         input: row.tokens_input,
         output: row.tokens_output,
@@ -273,14 +327,15 @@ export async function getSessionTokens(sessionId: string): Promise<SessionTokens
         cacheWrite: row.tokens_cache_write,
         total,
       };
-    } catch (queryError: any) {
-      dbLastError = queryError?.message || String(queryError);
+    } catch (queryError: unknown) {
+      dbLastError = queryError instanceof Error ? queryError.message : String(queryError);
       closeCachedDb();
+      recordSqliteFailure("query execution failed");
       return NO_TOKENS;
     }
-  } catch (e: any) {
-    dbLastError = e?.message || String(e);
-    closeCachedDb();
+  } catch (e: unknown) {
+    dbLastError = e instanceof Error ? e.message : String(e);
+    recordSqliteFailure("path check or unknown error");
     return NO_TOKENS;
   }
 }

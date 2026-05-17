@@ -1,4 +1,5 @@
 import type { PluginConfig } from "./config.js";
+import type { CompactionState } from "./compaction-state.js";
 import type { SessionState } from "./session-state.js";
 import { getTokenCount } from "./session-state.js";
 import type { TypedPluginInput } from "./types.js";
@@ -7,14 +8,14 @@ const COMPACTION_CHECK_MIN_INTERVAL_MS = 10000;
 
 export interface CompactionDeps {
   config: PluginConfig;
-  sessions: Map<string, SessionState>;
+  sessions: Map<string, CompactionState>;
   log: (...args: unknown[]) => void;
   input: TypedPluginInput;
 }
 
 type BackoffCheckResult = { blocked: boolean; reason: string; remainingMs: number };
 
-function checkBackoff(s: SessionState, config: PluginConfig): BackoffCheckResult {
+function checkBackoff(s: CompactionState, config: PluginConfig): BackoffCheckResult {
   const now = Date.now();
 
   if (s.lastCompactionFailedAt > 0) {
@@ -53,7 +54,7 @@ function checkBackoff(s: SessionState, config: PluginConfig): BackoffCheckResult
 export function createCompactionModule(deps: CompactionDeps) {
   const { config, sessions, log, input } = deps;
 
-  function inGracePeriod(s: SessionState): boolean {
+  function inGracePeriod(s: CompactionState): boolean {
     if (config.compactionGracePeriodMs <= 0 || s.lastCompactionAt <= 0) return false;
     const elapsed = Date.now() - s.lastCompactionAt;
     if (elapsed < config.compactionGracePeriodMs) {
@@ -85,7 +86,7 @@ export function createCompactionModule(deps: CompactionDeps) {
       s.compactionTimedOut = false;
 
       const baseWait = config.compactionVerifyWaitMs;
-      const tokenCount = getTokenCount(s);
+      const tokenCount = getTokenCount(s as unknown as SessionState);
       const scaledWait = tokenCount > 500000 ? baseWait * 3 : tokenCount > 200000 ? baseWait * 2 : baseWait;
       const effectiveSafetyMs = config.compactionSafetyTimeoutMs > 0
         ? Math.max(config.compactionSafetyTimeoutMs, scaledWait + 5000)
@@ -211,7 +212,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     }
 
     const threshold = config.opportunisticCompactAtTokens;
-    const tokenCount = getTokenCount(s);
+    const tokenCount = getTokenCount(s as unknown as SessionState);
     if (tokenCount >= threshold) {
       log(`[Compaction] OPPORTUNISTIC TRIGGER (${reason}) — session ${sessionId} has ${tokenCount} tokens (threshold: ${threshold})`);
       const success = await forceCompact(sessionId);
@@ -253,7 +254,7 @@ export function createCompactionModule(deps: CompactionDeps) {
     }
     
     const threshold = config.proactiveCompactAtTokens;
-    const tokenCount = getTokenCount(s);
+    const tokenCount = getTokenCount(s as unknown as SessionState);
     if (tokenCount >= threshold) {
       log(`[Compaction] PROACTIVE TRIGGER — session ${sessionId} has ${tokenCount} tokens (threshold: ${threshold}), attempting compaction`);
       s.proactiveCompactCount++;
@@ -293,7 +294,7 @@ export function createCompactionModule(deps: CompactionDeps) {
 
     const threshold = config.hardCompactAtTokens;
     if (threshold <= 0) return false;
-    const tokenCount = getTokenCount(s);
+    const tokenCount = getTokenCount(s as unknown as SessionState);
     if (tokenCount < threshold) {
       log(`[Compaction] HARD SKIP — tokens ${tokenCount} < threshold ${threshold}, session ${sessionId}`);
       return false;
@@ -301,7 +302,7 @@ export function createCompactionModule(deps: CompactionDeps) {
 
     s.hardCompactionInProgress = true;
     s.hardCompactCount++;
-    log(`[Compaction] HARD TRIGGER — session ${sessionId} has ${getTokenCount(s)} tokens (hard threshold: ${threshold}), blocking until compaction completes`);
+    log(`[Compaction] HARD TRIGGER — session ${sessionId} has ${getTokenCount(s as unknown as SessionState)} tokens (hard threshold: ${threshold}), blocking until compaction completes`);
 
     const bypassCooldown = config.hardCompactBypassCooldown;
     const cooldownOk = bypassCooldown || s.lastCompactionAt === 0 || Date.now() - s.lastCompactionAt >= config.compactCooldownMs;

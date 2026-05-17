@@ -1,7 +1,7 @@
 /**
  * Configuration module
- * 
- * Contains PluginConfig interface, DEFAULT_CONFIG, and validation.
+ *
+ * Contains PluginConfig interface, DEFAULT_CONFIG, validation, and presets.
  * Extracted from shared.ts to reduce file size.
  */
 
@@ -125,6 +125,19 @@ export interface PluginConfig {
   // Dangerous command blocking — Layer 1 (proactive injection) + Layer 2 (post-execution detection)
   dangerousCommandBlocking: boolean;
   dangerousCommandInjection: boolean;
+
+  /**
+   * Config preset to use. When set, values from the preset are applied first
+   * and then overridden by any explicit config values.
+   *
+   * Valid values: "conservative", "balanced", "aggressive"
+   * Default: "balanced"
+   *
+   * Example:
+   *   // Use the aggressive preset as a starting point
+   *   { preset: "aggressive", stallTimeoutMs: 30000 }
+   */
+  preset?: "conservative" | "balanced" | "aggressive";
 }
 
 /**
@@ -268,6 +281,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
   // Dangerous command blocking
   dangerousCommandBlocking: true,
   dangerousCommandInjection: true,
+
+  // Config preset — "conservative", "balanced" (default), or "aggressive"
+  preset: "balanced",
 };
 
 /**
@@ -307,7 +323,6 @@ export function validateConfigDetailed(config: PluginConfig): ConfigValidationRe
   if (normalized.sessionMonitorEnabled === false) {
     normalized.orphanParentDetection = false;
   }
-
   // Track invalid fields explicitly rather than parsing error messages
   const invalidFields: string[] = [];
   const errors: string[] = [];
@@ -396,7 +411,7 @@ export function validateConfigDetailed(config: PluginConfig): ConfigValidationRe
     
     (Object.keys(normalized) as Array<keyof PluginConfig>).forEach((key) => {
       if (!invalidFields.includes(String(key))) {
-        (result as any)[key] = normalized[key];
+        assignConfigKey(result, key, normalized[key]);
       } else {
         replacedFields.push(String(key));
       }
@@ -404,6 +419,19 @@ export function validateConfigDetailed(config: PluginConfig): ConfigValidationRe
     
     return { config: result, errors, invalidFields, replacedFields, valid: false };
   }
-  
+
   return { config: normalized, errors: [], invalidFields: [], replacedFields: [], valid: true };
+}
+
+/**
+ * Assign a typed config value to a result object, avoiding `as any`.
+ * Used when merging user config with defaults after validation errors.
+ */
+function assignConfigKey<K extends keyof PluginConfig>(
+  result: PluginConfig,
+  key: K,
+  value: PluginConfig[K]
+): void {
+  // Use Object.assign to bypass strict index signature
+  Object.assign(result, { [key]: value });
 }

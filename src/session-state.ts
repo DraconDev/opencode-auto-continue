@@ -1,29 +1,44 @@
 /**
  * Session State Module
- * 
+ *
  * Contains SessionState interface, Todo interface, createSession, and updateProgress.
- * Extracted from shared.ts to reduce file size.
+ * SessionState is composed from focused sub-interfaces for better maintainability.
+ * Sub-interfaces are defined in separate files for modularity.
  */
 
-export interface Todo {
-  id: string;
-  content?: string;
-  title?: string;
-  status: string;
-}
+// Re-export Todo from nudge-state.ts (singleton definition)
+export type { Todo } from "./nudge-state.js";
 
+// Sub-state interfaces — re-exported for consumers who want typed sub-states
+export type { TimerState, createTimerDefaults } from "./timer-state.js";
+export type { RecoveryState, createRecoveryDefaults } from "./recovery-state.js";
+export type { CompactionState, createCompactionDefaults } from "./compaction-state.js";
+export type { PlanningState, createPlanningDefaults } from "./planning-state.js";
+export type { NudgeState, createNudgeDefaults } from "./nudge-state.js";
+export type { ContinueState, createContinueDefaults } from "./continue-state.js";
+export type { ReviewState, createReviewDefaults } from "./review-state.js";
+export type { OutputTrackingState, createOutputTrackingDefaults } from "./output-tracking-state.js";
+export type { MessageTrackingState, createMessageTrackingDefaults } from "./message-tracking-state.js";
+export type { TestState, createTestDefaults } from "./test-state.js";
+export type { DangerCommandState, createDangerCommandDefaults } from "./danger-command-state.js";
+
+/**
+ * SessionState is composed from focused sub-interfaces.
+ * Each sub-interface represents a distinct feature domain.
+ * @deprecated Use individual sub-state interfaces when possible for better decoupling.
+ */
 export interface SessionState {
   // === Timer & Progress (terminal.ts, index.ts) ===
   timer: ReturnType<typeof setTimeout> | null;
   lastProgressAt: number;
   actionStartedAt: number;
-  
+
   // === Output Tracking (busy-but-dead detection) ===
-  lastOutputAt: number;      // Last actual output (text/tool/file), not status ping
-  lastOutputLength: number;  // Total content length to detect even small changes
-  lastToolExecutionAt: number; // Last time a tool/file/subtask/step part was seen (text-only stall detection)
-  toolRepeatCount: number;   // How many times the same tool was called consecutively
-  lastToolName: string;     // Name of last tool executed (for loop detection)
+  lastOutputAt: number;
+  lastOutputLength: number;
+  lastToolExecutionAt: number;
+  toolRepeatCount: number;
+  lastToolName: string;
 
   // === Test-Driven Quality Gate (test-runner.ts) ===
   lastTestRunAt: number;
@@ -44,7 +59,7 @@ export interface SessionState {
   recoveryTimes: number[];
   lastStallPartType: string;
   stallPatterns: Record<string, number>;
-  continueTimestamps: number[]; // Hallucination loop detection
+  continueTimestamps: number[];
 
   // === Session Control (index.ts) ===
   userCancelled: boolean;
@@ -53,37 +68,37 @@ export interface SessionState {
   compacting: boolean;
   sessionCreatedAt: number;
   messageCount: number;
-  lastKnownStatus: string; // 'busy' | 'retry' | 'idle' | 'unknown'
+  lastKnownStatus: string;
 
   // === Compaction (compaction.ts) ===
   estimatedTokens: number;
   realTokens: number;
-  lastRealTokenRefreshAt: number; // Throttle DB reads — only refresh every 10s
+  lastRealTokenRefreshAt: number;
   lastCompactionAt: number;
   tokenLimitHits: number;
   hardCompactionInProgress: boolean;
   lastHardCompactionAt: number;
   compactionSafetyTimer: ReturnType<typeof setTimeout> | null;
   compactionTimedOut: boolean;
-  lastCompactionFailedAt: number; // Timestamp of last compaction failure — backoff period
-  lastCompactionTimeoutAt: number; // Timestamp of last compaction timeout — shorter backoff period
-  lastCompactionCheckAt: number; // Timestamp of last compaction token check — throttle frequent events
-  realTokensBaseline: number; // Set to realTokens on compaction — signals DB values are cumulative, prefer estimatedTokens
+  lastCompactionFailedAt: number;
+  lastCompactionTimeoutAt: number;
+  lastCompactionCheckAt: number;
+  realTokensBaseline: number;
   proactiveCompactCount: number;
   hardCompactCount: number;
 
   // === Nudge (nudge.ts) ===
   nudgeTimer: ReturnType<typeof setTimeout> | null;
-  nudgeRetryTimer: ReturnType<typeof setTimeout> | null; // Retries nudge when blocked by compaction/planning
-  nudgeRetryCount: number; // Count of nudge retries due to compaction blocking
+  nudgeRetryTimer: ReturnType<typeof setTimeout> | null;
+  nudgeRetryCount: number;
   lastNudgeAt: number;
   nudgeCount: number;
-  nudgeFailureCount: number; // FIX 8: Track nudge failures
-  lastNudgeFailureAt: number; // FIX 8: Track last nudge failure time
+  nudgeFailureCount: number;
+  lastNudgeFailureAt: number;
   lastTodoSnapshot: string;
   nudgePaused: boolean;
   hasOpenTodos: boolean;
-  lastKnownTodos: Todo[];
+  lastKnownTodos: Array<{ id: string; content?: string; title?: string; status: string }>;
 
   // === Concurrency Guard (recovery.ts) ===
   recoveryInProgress: boolean;
@@ -91,10 +106,10 @@ export interface SessionState {
   // === Continue Queue (recovery.ts, review.ts) ===
   needsContinue: boolean;
   continueMessageText: string;
-  continueRetryCount: number; // FIX 1: Track continue retry attempts
-  lastContinueRetryAt: number; // FIX 1: Track last continue retry time
-  continueInProgress: boolean; // FIX 2: Concurrency guard for sendContinue
-  lastContinueAt: number; // Track when continue was sent for success toast
+  continueRetryCount: number;
+  lastContinueRetryAt: number;
+  continueInProgress: boolean;
+  lastContinueAt: number;
 
   // === Timer Generation (Fix 4: Prevent stale timer races) ===
   timerGeneration: number;
@@ -113,11 +128,10 @@ export interface SessionState {
   lastUserMessageId: string;
   sentMessageAt: number;
 
-  // === Plan-Driven Continue ===
   // === Recovery Intent (recovery.ts) ===
-  lastFileEdited: string;  // Last file URL edited before stall
-  lastToolCall: string;    // Last tool call name before stall
-  lastToolSummary: string; // Brief description of last action
+  lastFileEdited: string;
+  lastToolCall: string;
+  lastToolSummary: string;
 
   // === Status File (status-file.ts) ===
   statusHistory: Array<{ timestamp: string; status: string; actionDuration: string; progressAgo: string }>;
@@ -130,7 +144,7 @@ export interface SessionState {
   dangerousCommandPromptTimer: ReturnType<typeof setTimeout> | null;
 
   // === Idle Dedup (event-handlers.ts) ===
-  idleProcessingDone: boolean; // Set when idle todo-poll + nudge scheduling ran; cleared on busy
+  idleProcessingDone: boolean;
 }
 
 /**
@@ -142,11 +156,12 @@ export interface SessionState {
 export function createSession(): SessionState {
   const now = Date.now();
   return {
+    // Timer & Progress
     timer: null,
     lastProgressAt: now,
     actionStartedAt: 0,
-    
-    // Output Tracking (busy-but-dead detection)
+
+    // Output Tracking
     lastOutputAt: now,
     lastOutputLength: 0,
     lastToolExecutionAt: now,
@@ -157,6 +172,7 @@ export function createSession(): SessionState {
     lastTestRunAt: 0,
     testRunInProgress: false,
 
+    // Recovery
     attempts: 0,
     lastRecoveryTime: 0,
     backoffAttempts: 0,
@@ -173,6 +189,7 @@ export function createSession(): SessionState {
     stallPatterns: {},
     continueTimestamps: [],
 
+    // Session Control
     userCancelled: false,
     planning: false,
     planBuffer: '',
@@ -181,6 +198,7 @@ export function createSession(): SessionState {
     messageCount: 0,
     lastKnownStatus: 'unknown',
 
+    // Compaction
     estimatedTokens: 0,
     realTokens: 0,
     lastRealTokenRefreshAt: 0,
@@ -197,53 +215,63 @@ export function createSession(): SessionState {
     proactiveCompactCount: 0,
     hardCompactCount: 0,
 
+    // Nudge
     nudgeTimer: null,
     nudgeRetryTimer: null,
     nudgeRetryCount: 0,
     lastNudgeAt: 0,
     nudgeCount: 0,
-    nudgeFailureCount: 0, // FIX 8
-    lastNudgeFailureAt: 0, // FIX 8
+    nudgeFailureCount: 0,
+    lastNudgeFailureAt: 0,
     lastTodoSnapshot: '',
     nudgePaused: false,
     hasOpenTodos: false,
     lastKnownTodos: [],
 
+    // Concurrency Guard
     recoveryInProgress: false,
 
+    // Continue Queue
     needsContinue: false,
     continueMessageText: '',
     continueRetryCount: 0,
     lastContinueRetryAt: 0,
-    continueInProgress: false, // FIX 2
+    continueInProgress: false,
     lastContinueAt: 0,
 
-    // Timer Generation (Fix 4)
+    // Timer Generation
     timerGeneration: 0,
 
-    // Planning Timeout (Fix 3)
+    // Planning Timeout
     planningStartedAt: 0,
 
+    // Review
     reviewFired: false,
     reviewDebounceTimer: null,
     reviewRetryTimer: null,
     lastReviewAt: 0,
     reviewCount: 0,
 
+    // Message Tracking
     lastUserMessageId: '',
     sentMessageAt: 0,
 
+    // Recovery Intent
     lastFileEdited: '',
     lastToolCall: '',
     lastToolSummary: '',
 
+    // Status File
     statusHistory: [],
 
+    // Stop Conditions
     stoppedByCondition: null,
 
+    // Dangerous Commands
     systemTransformHookCalled: false,
     dangerousCommandPromptTimer: null,
 
+    // Idle Dedup
     idleProcessingDone: false,
   };
 }
@@ -261,10 +289,6 @@ export function createSession(): SessionState {
  */
 export function getTokenCount(s: SessionState): number {
   if (s.realTokensBaseline > 0 && s.realTokens > 0) {
-    // Post-compaction: estimatedTokens is our local (reduced) estimate.
-    // But it can drift low if accumulation undershoots (e.g. assistant text
-    // with no info.tokens). Use actual DB growth since last compaction as a
-    // floor so we never ignore >80k of new content between compactions.
     const growth = Math.max(0, s.realTokens - s.realTokensBaseline);
     return Math.max(s.estimatedTokens, growth);
   }
@@ -272,27 +296,29 @@ export function getTokenCount(s: SessionState): number {
 }
 
 /**
+ * Timer fields in SessionState that need to be cleared.
+ */
+const SESSION_TIMER_FIELDS = [
+  'timer',
+  'nudgeTimer',
+  'nudgeRetryTimer',
+  'reviewDebounceTimer',
+  'reviewRetryTimer',
+  'compactionSafetyTimer',
+  'dangerousCommandPromptTimer',
+] as const;
+
+/**
  * Clear all timer references in a session state and call clearTimeout on each.
- * Handles: timer, nudgeTimer, nudgeRetryTimer, reviewDebounceTimer,
- * compactionSafetyTimer, dangerousCommandPromptTimer.
  *
  * @param s - The session state whose timers should be cleared
  */
 export function clearAllSessionTimers(s: SessionState): void {
-  const timerFields: (keyof SessionState)[] = [
-    'timer',
-    'nudgeTimer',
-    'nudgeRetryTimer',
-    'reviewDebounceTimer',
-    'reviewRetryTimer',
-    'compactionSafetyTimer',
-    'dangerousCommandPromptTimer',
-  ];
-  for (const field of timerFields) {
+  for (const field of SESSION_TIMER_FIELDS) {
     const t = s[field] as ReturnType<typeof setTimeout> | null;
     if (t) {
       clearTimeout(t);
-      (s as any)[field] = null;
+      s[field] = null as unknown as ReturnType<typeof setTimeout>;
     }
   }
 }

@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { join } from "path";
 import type { PluginConfig } from "./config.js";
+import { safeUnref, hasDollarMethod } from "./typed-helpers.js";
 import type { TypedPluginInput } from "./types.js";
 
 export interface TestResult {
@@ -84,7 +85,7 @@ export function createTestRunner(deps: TestRunnerDeps) {
       return [];
     }
 
-    if (typeof (input as any).$ !== "function") {
+    if (!hasDollarMethod(input)) {
       return [];
     }
 
@@ -143,10 +144,11 @@ export function createTestRunner(deps: TestRunnerDeps) {
 
     try {
       const processPromise = input.$`${{ raw: cmd }}`.cwd(cwd ?? ".").quiet();
-      const outputPromise = processPromise.then((p: any) => {
-        const stdout = typeof p?.stdout === "string" ? p.stdout : "";
-        const stderr = typeof p?.stderr === "string" ? p.stderr : "";
-        const exitCode = p?.exitCode ?? 0;
+      const outputPromise = processPromise.then((p: unknown) => {
+        const obj = p as Record<string, unknown>;
+        const stdout = typeof obj?.stdout === "string" ? obj.stdout : "";
+        const stderr = typeof obj?.stderr === "string" ? obj.stderr : "";
+        const exitCode = typeof obj?.exitCode === "number" ? obj.exitCode : 0;
         return { output: (stdout + stderr).slice(0, MAX_OUTPUT_PER_COMMAND), exitCode };
       });
 
@@ -158,10 +160,15 @@ export function createTestRunner(deps: TestRunnerDeps) {
       let result: { output: string; exitCode: number };
       try {
         result = await Promise.race([outputPromise, timeoutPromise]);
-      } catch (e: any) {
-        const isTimeout = e?.message?.includes("timeout");
-        if (isTimeout && typeof (processPromise as any).kill === "function") {
-          try { (processPromise as any).kill("SIGTERM"); } catch {}
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const isTimeout = msg.includes("timeout");
+        if (isTimeout) {
+      // Try to kill the timed-out process — processPromise has .kill() via plugin internals
+          const proc = processPromise as unknown as Record<string, unknown>;
+          if (proc && typeof proc.kill === "function") {
+            try { proc.kill("SIGTERM"); } catch { /* ignore kill failure */ }
+          }
         }
         throw e;
       } finally {

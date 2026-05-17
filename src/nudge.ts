@@ -1,6 +1,7 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
 import { formatMessage, shouldBlockPrompt, todoMdInstruction } from "./shared.js";
+import { createPromptGuardLogger, safeUnref, getErrorName, getResponseError, isMessageAbortedError } from "./typed-helpers.js";
 import type { TypedPluginInput } from "./types.js";
 import type { TestRunner } from "./test-runner.js";
 import type { TodoMdReader } from "./todo-md-reader.js";
@@ -293,7 +294,7 @@ export function createNudgeModule(deps: NudgeDeps) {
     }
 
     // Prompt guard: prevent duplicate injections
-    const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, log as any);
+    const isDuplicate = await shouldBlockPrompt(sessionId, messageText, input, createPromptGuardLogger(log));
     if (isDuplicate) {
       log("prompt guard blocked duplicate nudge", { sessionId });
       return;
@@ -317,8 +318,8 @@ export function createNudgeModule(deps: NudgeDeps) {
       });
 
       // Check if prompt was aborted
-      const promptError = (promptResponse as any)?.data?.info?.error;
-      if (promptError?.name === "MessageAbortedError") {
+      const error = getResponseError(promptResponse);
+      if (error?.name === "MessageAbortedError") {
         log("nudge prompt aborted", sessionId);
         if (!s.aborting) pauseNudge(sessionId);
         return;
@@ -335,13 +336,10 @@ export function createNudgeModule(deps: NudgeDeps) {
       // Instead, we show "Session Resumed" when progress is detected.
     } catch (e: unknown) {
       const errorStr = String(e);
-      const errorName = (e as any)?.name || "";
+      const errorName = getErrorName(e);
 
       // Check for MessageAbortedError via multiple paths
-      const isAborted =
-        errorName === "MessageAbortedError" ||
-        errorStr.includes("MessageAbortedError") ||
-        (e as any)?.data?.info?.error?.name === "MessageAbortedError";
+      const isAborted = isMessageAbortedError(e) || errorStr.includes("MessageAbortedError");
 
       if (isAborted) {
         log("nudge prompt aborted", sessionId);
@@ -350,7 +348,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
 
       // Check response data for server-side errors
-      const responseError = (e as any)?.response?.data?.info?.error;
+      const responseError = getResponseError(e);
       if (responseError) {
         log("nudge response error", { sessionId, error: responseError });
         if (responseError.name === "MessageAbortedError" && !s.aborting) {
@@ -404,7 +402,7 @@ export function createNudgeModule(deps: NudgeDeps) {
         }
         injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
       }, 0);
-      if ((s.nudgeTimer as any).unref) (s.nudgeTimer as any).unref();
+      safeUnref(s.nudgeTimer);
       return;
     }
 
@@ -416,7 +414,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge inject error", String(e)));
     }, config.nudgeIdleDelayMs);
-    if (s.nudgeTimer && (s.nudgeTimer as any).unref) (s.nudgeTimer as any).unref();
+    safeUnref(s.nudgeTimer);
   }
 
   // Retry nudge when blocked by compaction/planning — retries every 5s up to 12 times (1 minute)
@@ -452,7 +450,7 @@ export function createNudgeModule(deps: NudgeDeps) {
       }
       injectNudge(sessionId, knownTodos).catch((e) => log("nudge retry inject error", String(e)));
     }, NUDGE_RETRY_INTERVAL_MS);
-    if (s.nudgeRetryTimer && (s.nudgeRetryTimer as any).unref) (s.nudgeRetryTimer as any).unref();
+    safeUnref(s.nudgeRetryTimer);
   }
 
   return {

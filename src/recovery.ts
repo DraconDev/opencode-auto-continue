@@ -1,5 +1,6 @@
 import type { PluginConfig } from "./config.js";
 import type { SessionState } from "./session-state.js";
+import { getMessageRole, getMessageParts } from "./typed-helpers.js";
 import { formatMessage, shouldBlockPrompt, containsToolCallAsText, todoMdInstruction } from "./shared.js";
 import type { TypedPluginInput } from "./types.js";
 
@@ -27,13 +28,13 @@ async function checkToolTextInSession(sessionId: string, input: TypedPluginInput
       query: { limit: 3 },
     });
     const messages = Array.isArray(resp.data) ? resp.data : [];
-    for (const msg of messages) {
-      const role = (msg as any).role || (msg as any).info?.role;
+    for (const msg of messages as Record<string, unknown>[]) {
+      const role = getMessageRole(msg);
       if (role !== "assistant") continue;
-      const parts = (msg as any).parts || [];
+      const parts = getMessageParts(msg);
       for (const part of parts) {
         if (part.type === "text" || part.type === "reasoning") {
-          const text = part.text || "";
+          const text = typeof part.text === "string" ? part.text : "";
           if (containsToolCallAsText(text)) return true;
         }
       }

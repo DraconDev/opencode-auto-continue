@@ -18,6 +18,7 @@ __pycache__/
 build/
 dist/
 node_modules/
+output-tracking-state.ts/
 target/
 !*.env
 !.env
