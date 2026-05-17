@@ -1497,25 +1497,19 @@ describe("compaction module unit tests", () => {
     });
 
     it("throttles maybeHardCompact when proactive was throttled", async () => {
-      const s = createSessionState({ estimatedTokens: 200000, lastCompactionCheckAt: 0 });
+      // Simulate a recent proactive check by setting lastCompactionCheckAt directly
+      const s = createSessionState({
+        estimatedTokens: 200000,
+        lastCompactionCheckAt: Date.now(),
+      });
       sessions.set("test", s);
-      module = createModule({ proactiveCompactAtTokens: 100000, hardCompactAtTokens: 150000, compactionGracePeriodMs: 0 });
+      module = createModule({ hardCompactAtTokens: 150000, compactionGracePeriodMs: 0, hardCompactBypassCooldown: true });
 
-      // First call sets lastCompactionCheckAt
-      const promise1 = module.maybeProactiveCompact("test");
-      await vi.advanceTimersByTimeAsync(1000);
-      await simulateCompacted(sessions, "test");
-      await promise1;
-
-      // Reset so hard compact would be allowed (no grace period, no cooldown)
-      const s2 = sessions.get("test")!;
-      s2.lastCompactionAt = 0;
-      s2.proactiveCompactCount = 0;
-      s2.hardCompactCount = 0;
-
-      // Hard compact within 10s should be throttled
+      // Hard compact within 10s of last check should be throttled
       const result = await module.maybeHardCompact("test");
       expect(result).toBe(false);
+      // If NOT throttled, it would call summarize — verify it didn't
+      expect(mockSummarize).not.toHaveBeenCalled();
     });
 
     it("allows maybeHardCompact after 10s throttle window", async () => {
