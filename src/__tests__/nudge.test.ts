@@ -988,4 +988,165 @@ describe("nudge integration with plugin events", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("TODO.md sync in nudge", () => {
+    let sessions: Map<string, any>;
+    let log: ReturnType<typeof vi.fn>;
+    let mockPrompt: ReturnType<typeof vi.fn>;
+    let mockStatus: ReturnType<typeof vi.fn>;
+    let mockTodo: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      sessions = new Map();
+      log = vi.fn();
+      mockPrompt = vi.fn().mockResolvedValue({ data: {}, error: undefined });
+      mockStatus = vi.fn().mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function makeNudgeModule(overrides: Record<string, any> = {}) {
+      const { createNudgeModule } = await import("../nudge.js");
+      const { createSession } = await import("../session-state.js");
+      const s = createSession();
+      sessions.set("test", s);
+
+      const config = {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeMaxSubmits: 10,
+        nudgeMessage: "You have {pending} unfinished task(s): {todoList}.",
+        nudgeCooldownMs: 0,
+        includeTodoContext: true,
+        showToasts: false,
+        todoMdPath: "TODO.md",
+        todoMdSync: true,
+        todoMdSyncMessage: "Tasks from {todoMdPath}:\n\n{todoMdTaskList}",
+        ...overrides.config,
+      };
+
+      const input = {
+        client: {
+          session: {
+            prompt: mockPrompt,
+            status: mockStatus,
+            todo: mockTodo,
+          },
+          tui: { showToast: vi.fn().mockResolvedValue({}) },
+        },
+        directory: "/test",
+      };
+
+      const mod = createNudgeModule({
+        config,
+        sessions,
+        log,
+        isDisposed: () => false,
+        input,
+        ...overrides,
+      });
+
+      return { mod, s };
+    }
+
+    it("should send TODO.md sync message when no pending todos and TODO.md has tasks", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["New task from TODO.md"], completed: [] }),
+      };
+      const { mod, s } = await makeNudgeModule({ todoMdReader });
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(todoMdReader.readAndParse).toHaveBeenCalled();
+      expect(mockPrompt).toHaveBeenCalled();
+      expect(s.todoMdSyncFired).toBe(true);
+    });
+
+    it("should NOT send TODO.md sync when todoMdSync is disabled", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task"], completed: [] }),
+      };
+      const { mod, s } = await makeNudgeModule({ todoMdReader, config: { todoMdSync: false, todoMdPath: "TODO.md" } });
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+
+      expect(todoMdReader.readAndParse).not.toHaveBeenCalled();
+      expect(s.todoMdSyncFired).toBe(false);
+    });
+
+    it("should NOT send TODO.md sync when todoMdSyncFired is already true", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task"], completed: [] }),
+      };
+      const { mod, s } = await makeNudgeModule({ todoMdReader });
+      s.todoMdSyncFired = true;
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+
+      expect(todoMdReader.readAndParse).not.toHaveBeenCalled();
+    });
+
+    it("should NOT send TODO.md sync when there are pending todos", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: ["Task"], completed: [] }),
+      };
+      const { mod } = await makeNudgeModule({ todoMdReader });
+
+      mockTodo.mockResolvedValue({
+        data: [{ id: "t1", content: "Existing task", status: "in_progress" }],
+        error: undefined,
+      });
+
+      await mod.injectNudge("test");
+
+      expect(todoMdReader.readAndParse).not.toHaveBeenCalled();
+      expect(mockPrompt).toHaveBeenCalled();
+    });
+
+    it("should NOT send TODO.md sync when TODO.md has no pending tasks", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({ pending: [], completed: ["Done"] }),
+      };
+      const { mod, s } = await makeNudgeModule({ todoMdReader });
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+
+      expect(todoMdReader.readAndParse).toHaveBeenCalled();
+      expect(s.todoMdSyncFired).toBe(false);
+    });
+
+    it("should include task list in sync message format", async () => {
+      const todoMdReader = {
+        readAndParse: vi.fn().mockResolvedValue({
+          pending: ["Task A", "Task B"],
+          completed: [],
+        }),
+      };
+      const { mod } = await makeNudgeModule({ todoMdReader });
+
+      mockTodo.mockResolvedValue({ data: [], error: undefined });
+
+      await mod.injectNudge("test");
+
+      const call = mockPrompt.mock.calls[0];
+      const promptArg = call?.[2] || call?.[1] || call?.[0];
+      const body = promptArg?.body;
+      const textPart = body?.parts?.[0]?.text || "";
+      expect(textPart).toContain("1. Task A");
+      expect(textPart).toContain("2. Task B");
+    });
+  });
 });

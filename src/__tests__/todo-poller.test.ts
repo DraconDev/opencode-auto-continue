@@ -781,6 +781,7 @@ describe("todo-poller", () => {
 
   describe("TODO.md sync", () => {
     it("should call sendTodoMdSync when all todos complete and reviewFired reset with TODO.md tasks", async () => {
+      vi.useFakeTimers();
       const sendTodoMdSync = vi.fn().mockResolvedValue(undefined);
       const todoMdReader = {
         readAndParse: vi.fn().mockResolvedValue({ pending: ["New task from TODO.md"], completed: [] }),
@@ -801,6 +802,7 @@ describe("todo-poller", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(todoMdReader.readAndParse).toHaveBeenCalledWith("/test", expect.any(Array));
+      vi.useRealTimers();
     });
 
     it("should NOT call sendTodoMdSync when todoMdSync is false", () => {
