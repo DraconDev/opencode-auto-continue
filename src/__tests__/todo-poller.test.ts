@@ -945,7 +945,7 @@ describe("todo-poller", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(sendTodoMdSync).toHaveBeenCalled();
-      expect(deps.log).toHaveBeenCalledWith(expect.stringContaining("todo.md sync send error"), expect.any(String));
+      expect(deps.log).toHaveBeenCalledWith("todo.md sync send error:", expect.any(Error));
 
       vi.useRealTimers();
     });
