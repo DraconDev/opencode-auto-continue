@@ -400,6 +400,106 @@ describe("review module", () => {
       expect(mockHardCompact).toHaveBeenCalledWith("test");
     });
   });
+
+  describe("triggerReview", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("skips if reviewFired is true", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.reviewFired = true;
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+
+    it("skips if review cooldown is active", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      s.lastReviewAt = Date.now() - 30000;
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+
+    it("sends review prompt and sets reviewFired=true on success", async () => {
+      const deps = makeDeps();
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(deps.input.client.session.prompt).toHaveBeenCalled();
+      expect(s.reviewFired).toBe(true);
+      expect(s.lastReviewAt).toBeGreaterThan(0);
+    });
+
+    it("resets reviewFired on failure so retry is allowed", async () => {
+      const deps = makeDeps();
+      (deps.input.client.session.prompt as any).mockRejectedValue(new Error("fail"));
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(s.reviewFired).toBe(false);
+    });
+
+    it("blocks duplicate review via prompt guard", async () => {
+      const deps = makeDeps();
+      const recentMessages = [
+        { role: "user", info: { role: "user", createdAt: new Date().toISOString() }, parts: [{ type: "text", text: "All tracked tasks are marked complete." }] },
+      ];
+      (deps.input.client.session.messages as any).mockResolvedValue({ data: recentMessages, error: undefined });
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(deps.input.client.session.prompt).not.toHaveBeenCalled();
+    });
+
+    it("shows toast when showToasts is true", async () => {
+      const deps = makeDeps();
+      deps.config.showToasts = true;
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(deps.input.client.tui.showToast).toHaveBeenCalled();
+    });
+
+    it("calls forceCompact on token limit error", async () => {
+      const deps = makeDeps();
+      const tokenError = new Error("context length exceeded");
+      (deps.input.client.session.prompt as any).mockRejectedValue(tokenError);
+      (deps.isTokenLimitError as any).mockReturnValue(true);
+      const s = createSession();
+      deps.sessions.set("test", s);
+
+      const { triggerReview } = createReviewModule(deps);
+      await triggerReview("test");
+
+      expect(deps.forceCompact).toHaveBeenCalledWith("test");
+    });
+  });
 });
 
 function makeDeps(overrides?: Partial<ReviewDeps>): ReviewDeps {
