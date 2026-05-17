@@ -592,6 +592,52 @@ describe("shared.ts utilities", () => {
     });
   });
 
+  describe("todoMdInstruction", () => {
+    it("should return empty string when todoMdPath is empty", async () => {
+      const { todoMdInstruction } = await import('../shared.js');
+
+      const result = todoMdInstruction("");
+
+      expect(result).toBe("");
+    });
+
+    it("should return instruction with file path when todoMdPath is set", async () => {
+      const { todoMdInstruction } = await import('../shared.js');
+
+      const result = todoMdInstruction("TODO.md");
+
+      expect(result).toContain("TODO.md");
+      expect(result).toContain("maintain");
+    });
+
+    it("should work with custom file names", async () => {
+      const { todoMdInstruction } = await import('../shared.js');
+
+      const result = todoMdInstruction("TASKS.md");
+
+      expect(result).toContain("TASKS.md");
+    });
+
+    it("should integrate with formatMessage for default messages", async () => {
+      const { formatMessage, todoMdInstruction } = await import('../shared.js');
+
+      const template = "Continue. {todoMdInstruction}";
+      const result = formatMessage(template, { todoMdInstruction: todoMdInstruction("TODO.md") });
+
+      expect(result).toContain("Continue.");
+      expect(result).toContain("TODO.md");
+    });
+
+    it("should produce clean message when todoMdPath is empty (no trailing space)", async () => {
+      const { formatMessage, todoMdInstruction } = await import('../shared.js');
+
+      const template = "Continue. {todoMdInstruction}";
+      const result = formatMessage(template, { todoMdInstruction: todoMdInstruction("") });
+
+      expect(result).toBe("Continue. ");
+    });
+  });
+
   describe("snapshot behavior via formatMessage", () => {
     // snapshot() is internal to nudge.ts - test snapshot behavior via formatMessage
     it("should use formatMessage for placeholder replacement", async () => {
