@@ -15,7 +15,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
   } as any;
 }
 
-function makeDeps(overrides: Record<string, unknown> = {}) {
+function makeDeps(overrides: Record<string, unknown> = {}, configOverrides: Record<string, unknown> = {}) {
   const sessions = new Map<string, SessionState>();
   const log = vi.fn();
   const mockTodo = vi.fn().mockResolvedValue({ data: [], error: undefined });
@@ -29,7 +29,7 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
   const scheduleNudge = vi.fn();
 
   return {
-    config: makeConfig(),
+    config: makeConfig(configOverrides),
     sessions,
     log,
     isDisposed: () => false,
@@ -109,7 +109,7 @@ describe("todo-poller", () => {
     });
 
     it("should trigger review immediately when reviewDebounceMs is 0", async () => {
-      const deps = makeDeps({ reviewDebounceMs: 0 });
+      const deps = makeDeps({}, { reviewDebounceMs: 0 });
       const s = createSession();
       deps.sessions.set("test", s);
       deps.mockTodo.mockResolvedValue({

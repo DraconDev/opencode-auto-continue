@@ -492,6 +492,42 @@ describe("nudge integration with plugin events", () => {
 
       vi.useRealTimers();
     });
+
+    it("should dedup scheduleNudge calls when nudgeIdleDelayMs is 0 (cancelNudge before next tick)", async () => {
+      vi.useFakeTimers();
+      mockStatus.mockResolvedValue({ data: { "test": { type: "idle" } }, error: undefined });
+      mockPrompt.mockResolvedValue({ data: {}, error: undefined });
+
+      const plugin = await createPlugin({ client: mockClient }, {
+        nudgeEnabled: true,
+        nudgeIdleDelayMs: 0,
+        nudgeCooldownMs: 0,
+        terminalTitleEnabled: false,
+        terminalProgressEnabled: false,
+        statusFilePath: ""
+      });
+
+      await plugin.event({ event: { type: "session.status", properties: { sessionID: "test", status: { type: "busy" } } } });
+      await plugin.event({ event: { type: "todo.updated", properties: { sessionID: "test", todos: [
+        { id: "t1", content: "task", status: "in_progress" }
+      ] } } });
+
+      mockTodo.mockResolvedValue({ data: [{ id: "t1", content: "task", status: "in_progress" }], error: undefined });
+
+      // Fire session.idle — schedules nudge with setTimeout(0)
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Before timer fires, fire another session.idle — cancelNudge should cancel the first
+      await plugin.event({ event: { type: "session.idle", properties: { sessionID: "test" } } });
+
+      // Advance past the setTimeout(0)
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Only one nudge should fire
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
   });
 
   describe("nudge pause behavior", () => {
