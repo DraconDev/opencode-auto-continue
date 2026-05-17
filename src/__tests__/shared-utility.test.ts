@@ -484,6 +484,43 @@ describe("shared.ts utilities", () => {
 
       expect(result.compactionTimeoutBackoffMs).toBe(0);
     });
+
+    it("should reject non-boolean todoMdSync", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, todoMdSync: "yes" as any };
+      const result = validateConfig(config);
+
+      expect(result.todoMdSync).toBe(DEFAULT_CONFIG.todoMdSync);
+    });
+
+    it("should reject empty todoMdSyncMessage", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, todoMdSyncMessage: "" };
+      const result = validateConfig(config);
+
+      expect(result.todoMdSyncMessage).toBe(DEFAULT_CONFIG.todoMdSyncMessage);
+    });
+
+    it("should reject whitespace-only todoMdSyncMessage", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, todoMdSyncMessage: "   " };
+      const result = validateConfig(config);
+
+      expect(result.todoMdSyncMessage).toBe(DEFAULT_CONFIG.todoMdSyncMessage);
+    });
+
+    it("should accept valid todoMdSync and todoMdSyncMessage", async () => {
+      const { validateConfig, DEFAULT_CONFIG } = await import('../shared.js');
+
+      const config = { ...DEFAULT_CONFIG, todoMdSync: false, todoMdSyncMessage: "Custom sync message" };
+      const result = validateConfig(config);
+
+      expect(result.todoMdSync).toBe(false);
+      expect(result.todoMdSyncMessage).toBe("Custom sync message");
+    });
   });
 
   describe("formatMessage", () => {
