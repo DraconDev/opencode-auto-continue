@@ -939,10 +939,12 @@ describe("nudge integration with plugin events", () => {
       // Wait for nudge delay + cooldown
       await vi.advanceTimersByTimeAsync(500);
 
-      // Nudge should have been sent (or at least attempted) after compaction cleared
+// Nudge should have been sent (or at least attempted) after compaction cleared
       expect(mockPrompt).toHaveBeenCalled();
 
       vi.useRealTimers();
     });
+  });
+});
 
     it("should NOT reset nudgeRetryCount on max retries — prevents infinite retry cycles", async () => {
